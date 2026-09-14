@@ -443,7 +443,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
-      expect(find.byIcon(Icons.restaurant_rounded), findsOneWidget);
+      expect(find.byKey(const Key('meal_photo_placeholder')), findsOneWidget);
     });
 
     testWidgets('ADVERSARIAL-14: MealCard errorBuilder handles 0-byte or corrupted image file without crashing', (tester) async {
@@ -476,7 +476,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(tester.takeException(), isNull);
-        expect(find.byIcon(Icons.restaurant_rounded), findsOneWidget);
+        expect(find.byKey(const Key('meal_photo_placeholder')), findsOneWidget);
       } finally {
         await tester.runAsync(() async {
           if (await tempDir.exists()) {
@@ -507,7 +507,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
-      expect(find.byIcon(Icons.restaurant_rounded), findsOneWidget);
+      expect(find.byKey(const Key('meal_photo_placeholder')), findsOneWidget);
     });
 
     testWidgets('ADVERSARIAL-16: MealCard badges explicitly use labelSmall typography inheriting Cairo font family', (tester) async {

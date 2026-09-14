@@ -2,18 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/database/app_database.dart';
+import '../../../core/theme/app_palette.dart';
 import '../providers/settings_providers.dart';
 import 'widgets/legal_policies_dialog.dart' as widgets;
 
 // ---------- الألوان المستخدمة في التصميم ----------
+// Temporary local alias over the global palette; the Settings screen will be
+// rebuilt against the mockups in a later pass (values already tokenised).
 class AppColors {
-  static const background = Color(0xFF0E1220);
-  static const card = Color(0xFF161B2E);
-  static const cardBorder = Color(0xFF232A44);
-  static const textPrimary = Colors.white;
-  static const textSecondary = Color(0xFF8A93B2);
-  static const green = Color(0xFF17C97B);
-  static const purple = Color(0xFF5B4FE9);
+  static const background = AppPalette.darkBg;
+  static const card = AppPalette.darkCard;
+  static const cardBorder = AppPalette.darkOutline;
+  static const textPrimary = AppPalette.darkTextPrimary;
+  static const textSecondary = AppPalette.darkTextSecondary;
+  static const green = AppPalette.brandGreen;
+  static const purple = Color(0xFF8B93F8);
 }
 
 class SettingsScreen extends ConsumerStatefulWidget {

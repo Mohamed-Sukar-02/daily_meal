@@ -1,7 +1,7 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/database/app_database.dart';
+import '../../../../core/widgets/meal_image.dart';
 import '../../../home/presentation/widgets/meal_card.dart' show formatPrepTime;
 import '../../providers/vault_providers.dart';
 
@@ -179,34 +179,29 @@ class MealVaultCard extends ConsumerWidget {
 
   Widget _buildThumbnail(BuildContext context) {
     final theme = Theme.of(context);
-    final hasPhoto = meal.photoPath != null &&
-        meal.photoPath!.isNotEmpty &&
-        File(meal.photoPath!).existsSync();
+    const double size = 72;
+    final BorderRadius radius = BorderRadius.circular(12);
 
-    if (hasPhoto) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Image.file(
-          File(meal.photoPath!),
-          width: 72,
-          height: 72,
-          fit: BoxFit.cover,
+    // Handles Firebase URLs, local files and bundled assets in one place.
+    return MealImage(
+      photoPath: meal.photoPath,
+      width: size,
+      height: size,
+      cacheWidth: 240,
+      borderRadius: radius,
+      fallback: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
+          borderRadius: radius,
         ),
-      );
-    }
-
-    return Container(
-      width: 72,
-      height: 72,
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Center(
-        child: Icon(
-          _getCategoryIcon(meal.category),
-          size: 32,
-          color: theme.colorScheme.primary,
+        child: Center(
+          child: Icon(
+            _getCategoryIcon(meal.category),
+            size: 32,
+            color: theme.colorScheme.primary,
+          ),
         ),
       ),
     );

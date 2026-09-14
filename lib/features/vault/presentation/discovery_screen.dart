@@ -6,7 +6,7 @@ import '../providers/vault_providers.dart';
 import '../data/models/cloud_meal.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/providers/network_provider.dart';
-import '../../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_palette.dart';
 
 class DiscoveryScreen extends ConsumerStatefulWidget {
   final bool isEmbedded;
@@ -178,9 +178,9 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     // Choose color based on category
     Color activeColor;
     switch (index) {
-      case 0: activeColor = AppColors.lightAccentCoral; break; // Trending -> Orange/Coral
+      case 0: activeColor = AppPalette.brandCoral; break; // Trending -> Orange/Coral
       case 1: activeColor = const Color(0xFF2563EB); break;    // Admin -> Blue
-      case 2: activeColor = AppColors.lightPrimary; break;     // Quick -> Green
+      case 2: activeColor = AppPalette.brandGreen; break;     // Quick -> Green
       case 3: activeColor = const Color(0xFF7C3AED); break;    // Global -> Purple
       default: activeColor = theme.colorScheme.primary;
     }
@@ -255,8 +255,8 @@ class _CloudMealCard extends ConsumerWidget {
 
     // Alternating button colors (Coral, Green, Purple)
     final colors = [
-      AppColors.lightAccentCoral,
-      AppColors.lightPrimary,
+      AppPalette.brandCoral,
+      AppPalette.brandGreen,
       const Color(0xFF7C3AED),
     ];
     final btnColor = colors[index % colors.length];

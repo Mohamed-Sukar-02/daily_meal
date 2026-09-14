@@ -1,6 +1,6 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/widgets/meal_image.dart';
 import '../providers/history_providers.dart';
 
 class HistoryScreen extends ConsumerWidget {
@@ -251,15 +251,20 @@ class HistoryScreen extends ConsumerWidget {
                                           ),
                                           child: ListTile(
                                             contentPadding: const EdgeInsets.all(12),
-                                            leading: CircleAvatar(
-                                              radius: 24,
-                                              backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                                              backgroundImage: (meal != null && meal.photoPath != null && meal.photoPath!.isNotEmpty) 
-                                                  ? FileImage(File(meal.photoPath!))
-                                                  : null,
-                                              child: (meal == null || meal.photoPath == null || meal.photoPath!.isEmpty)
-                                                  ? const Text('🍲', style: TextStyle(fontSize: 24))
-                                                  : null,
+                                            leading: ClipOval(
+                                              child: MealImage(
+                                                photoPath: meal?.photoPath,
+                                                width: 48,
+                                                height: 48,
+                                                cacheWidth: 144,
+                                                fallback: Container(
+                                                  width: 48,
+                                                  height: 48,
+                                                  color: theme.colorScheme.surfaceContainerHighest,
+                                                  alignment: Alignment.center,
+                                                  child: const Text('🍲', style: TextStyle(fontSize: 24)),
+                                                ),
+                                              ),
                                             ),
                                             title: Text(
                                               entry.mealName,
