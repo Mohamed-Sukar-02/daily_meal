@@ -689,6 +689,7 @@ void main() {
           chickenCooldownDays: 3,
           beefCooldownDays: 7,
           fishCooldownDays: 4,
+          meatlessCooldownDays: 1,
           preventRepeatProtein: true,
           preventRepeatCarbs: true,
           notificationHour: 12,

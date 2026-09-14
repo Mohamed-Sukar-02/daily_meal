@@ -61,43 +61,90 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: SizedBox(
               width: double.infinity,
-              child: SegmentedButton<VaultTab>(
-                style: ButtonStyle(
-                  backgroundColor: WidgetStateProperty.resolveWith<Color>((states) {
-                    if (states.contains(WidgetState.selected)) {
-                      return Colors.green; // Active tab is green
-                    }
-                    return theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5); // Inactive is grey/white
-                  }),
-                  foregroundColor: WidgetStateProperty.resolveWith<Color>((states) {
-                    if (states.contains(WidgetState.selected)) {
-                      return Colors.white;
-                    }
-                    return theme.colorScheme.onSurfaceVariant;
-                  }),
-                  side: WidgetStateProperty.all(BorderSide.none), // Remove borders
-                  shape: WidgetStateProperty.all(
-                    RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                  ),
+              child: Container(
+                height: 48,
+                decoration: BoxDecoration(
+                  color: theme.brightness == Brightness.dark 
+                      ? Colors.grey[900] 
+                      : const Color(0xFFF0F2F5),
+                  borderRadius: BorderRadius.circular(24),
                 ),
-                segments: const [
-                  ButtonSegment(
-                    value: VaultTab.myKitchen,
-                    label: Text('خزنتي', style: TextStyle(fontWeight: FontWeight.bold)),
-                    icon: Icon(Icons.kitchen),
-                  ),
-                  ButtonSegment(
-                    value: VaultTab.discovery,
-                    label: Text('اكتشف', style: TextStyle(fontWeight: FontWeight.bold)),
-                    icon: Icon(Icons.explore),
-                  ),
-                ],
-                selected: {_selectedTab},
-                onSelectionChanged: (selected) {
-                  setState(() {
-                    _selectedTab = selected.first;
-                  });
-                },
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _selectedTab = VaultTab.myKitchen),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: _selectedTab == VaultTab.myKitchen
+                                ? const Color(0xFF00C48C)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          alignment: Alignment.center,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.kitchen,
+                                size: 20,
+                                color: _selectedTab == VaultTab.myKitchen
+                                    ? Colors.white
+                                    : Colors.grey,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'My Kitchen',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: _selectedTab == VaultTab.myKitchen
+                                      ? Colors.white
+                                      : Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _selectedTab = VaultTab.discovery),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: _selectedTab == VaultTab.discovery
+                                ? const Color(0xFF00C48C)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          alignment: Alignment.center,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.explore_outlined,
+                                size: 20,
+                                color: _selectedTab == VaultTab.discovery
+                                    ? Colors.white
+                                    : Colors.grey,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Discovery',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: _selectedTab == VaultTab.discovery
+                                      ? Colors.white
+                                      : Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

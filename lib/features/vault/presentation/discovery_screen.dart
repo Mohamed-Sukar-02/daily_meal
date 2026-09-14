@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/discovery_providers.dart';
 import '../providers/vault_providers.dart';
-import '../../admin/data/models/cloud_meal.dart';
+import '../data/models/cloud_meal.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/providers/network_provider.dart';
 import '../../../../core/theme/app_colors.dart';

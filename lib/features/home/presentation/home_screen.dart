@@ -46,119 +46,112 @@ class HomeScreen extends ConsumerWidget {
     final canSpin = meals.length >= 2;
     final isDark = theme.brightness == Brightness.dark;
     
-    return SizedBox(
-      height: 100,
-      child: Stack(
-        alignment: Alignment.bottomCenter,
-        clipBehavior: Clip.none,
+    return Container(
+      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 24, top: 12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          // Background bar
-          Container(
-            height: 70,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
-                  blurRadius: 15,
-                  offset: const Offset(0, -5),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                const Expanded(child: SizedBox()), // Right side empty
-                const SizedBox(width: 80), // Center space
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 16.0),
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        if (meals.isNotEmpty) {
-                          _handleLeftover(context, ref, meals.first);
-                        }
-                      },
-                      icon: const Icon(Icons.replay_rounded),
-                      label: const Text('بواقي أكل', style: TextStyle(fontWeight: FontWeight.bold)),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        side: BorderSide(color: theme.colorScheme.outlineVariant),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () {
+                if (meals.isNotEmpty) {
+                  _handleLeftover(context, ref, meals.first);
+                }
+              },
+              icon: const Icon(Icons.replay_rounded, size: 18),
+              label: const Text('بواقي أكل', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+                side: BorderSide(color: theme.colorScheme.outlineVariant),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
             ),
           ),
-          // Center Protruding Wheel
-          Positioned(
-            top: 0,
-            child: GestureDetector(
-              onTap: canSpin
-                  ? () {
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (ctx) => SpinWheelDialog(
-                          candidates: meals,
-                          onWinnerCooked: (winner) =>
-                              _handleCookedToday(context, ref, winner),
-                        ),
-                      );
-                    }
-                  : null,
-              child: Container(
-                width: 84,
-                height: 84,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const SweepGradient(
-                    colors: [
-                      Color(0xFFFF3B30),
-                      Color(0xFFFF9500),
-                      Color(0xFFFFCC00),
-                      Color(0xFF4CD964),
-                      Color(0xFF5AC8FA),
-                      Color(0xFF007AFF),
-                      Color(0xFF5856D6),
-                      Color(0xFFFF3B30),
-                    ],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 10,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                  border: Border.all(
-                    color: theme.colorScheme.surface,
-                    width: 4,
-                  ),
-                ),
-                child: Center(
+          const SizedBox(width: 8),
+          Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              Positioned(
+                top: -20,
+                child: GestureDetector(
+                  onTap: canSpin
+                      ? () {
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (ctx) => SpinWheelDialog(
+                              candidates: meals,
+                              onWinnerCooked: (winner) =>
+                                  _handleCookedToday(context, ref, winner),
+                            ),
+                          );
+                        }
+                      : null,
                   child: Container(
-                    width: 56,
-                    height: 56,
+                    height: 64,
+                    width: 120,
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.grey[800] : Colors.white,
-                      shape: BoxShape.circle,
+                      gradient: const SweepGradient(
+                        colors: [Colors.blue, Colors.purple, Colors.red, Colors.orange, Colors.yellow, Colors.green, Colors.blue],
+                      ),
+                      borderRadius: BorderRadius.circular(32),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        )
+                      ],
                     ),
-                    child: Center(
-                      child: Text(
-                        'لف\nالعجلة',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: isDark ? Colors.white : Colors.black87,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          height: 1.2,
+                    child: Container(
+                      margin: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.grey[900] : Colors.white,
+                        borderRadius: BorderRadius.circular(28),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'لف العجلة',
+                          style: TextStyle(
+                            color: isDark ? Colors.white : Colors.black87,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
+              ),
+              // invisible spacer to reserve height/width
+              const SizedBox(height: 50, width: 120),
+            ],
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('ميزة التوصيل قادمة قريباً!')),
+                );
+              },
+              icon: const Icon(Icons.delivery_dining, size: 18),
+              label: const Text('توصيل', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+                side: BorderSide(color: theme.colorScheme.outlineVariant),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
             ),
           ),

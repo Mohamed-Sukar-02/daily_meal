@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
 import '../../../core/database/app_database.dart';
-import '../../admin/data/models/cloud_meal.dart';
+import '../data/models/cloud_meal.dart';
 import '../data/discovery_repository.dart';
 import '../../../core/database/database_providers.dart';
 
