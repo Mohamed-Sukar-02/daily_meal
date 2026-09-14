@@ -33,6 +33,7 @@ class DailyMealApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
     final router = ref.watch(appRouterProvider);
+    final locale = ref.watch(localeProvider);
 
     return MaterialApp.router(
       title: 'أكلة النهاردة',
@@ -41,8 +42,8 @@ class DailyMealApp extends ConsumerWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       routerConfig: router,
-      locale: const Locale('ar'),
-      supportedLocales: const [Locale('ar')],
+      locale: locale,
+      supportedLocales: const [Locale('ar'), Locale('en')],
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
@@ -50,7 +51,7 @@ class DailyMealApp extends ConsumerWidget {
       ],
       builder: (context, child) {
         return Directionality(
-          textDirection: TextDirection.rtl,
+          textDirection: locale.languageCode == 'ar' ? TextDirection.rtl : TextDirection.ltr,
           child: child ?? const SizedBox.shrink(),
         );
       },

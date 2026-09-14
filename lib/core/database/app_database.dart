@@ -29,7 +29,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? driftDatabase(name: 'daily_meal_db'));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -47,6 +47,7 @@ class AppDatabase extends _$AppDatabase {
           notificationMinute: Value(0),
           notificationsEnabled: Value(true),
           themeMode: Value(AppThemeModePreference.system),
+          language: Value(AppLanguagePreference.ar),
           isFirstRun: Value(true),
         ),
       );
@@ -55,6 +56,24 @@ class AppDatabase extends _$AppDatabase {
       await batch((b) {
         b.insertAll(meals, initialEgyptianMealsSeed);
       });
+    },
+    onUpgrade: (Migrator m, int from, int to) async {
+      if (from < 2) {
+        await m.addColumn(meals, meals.cloudId);
+      }
+      if (from < 3) {
+        await m.addColumn(appSettings, appSettings.userName);
+        await m.addColumn(appSettings, appSettings.userEmail);
+      }
+      if (from < 4) {
+        await m.addColumn(appSettings, appSettings.userGender);
+      }
+      if (from < 5) {
+        await m.addColumn(appSettings, appSettings.userAvatar);
+      }
+      if (from < 6) {
+        await m.addColumn(appSettings, appSettings.language);
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');

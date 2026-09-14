@@ -1,16 +1,80 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Anyone can view meals in the vault; signed-in users (admin) can write/edit/delete
-    match /vault_meals/{mealId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+
+    // Helper: Check if caller is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
     }
 
-    // Anyone can submit an idea to staging; signed-in users (admin) can review/approve/delete
+    // Helper: Check if caller is a whitelisted admin
+    function isAdmin() {
+      return isAuthenticated() &&
+        request.auth.token.email != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.token.email));
+    }
+
+    // Comprehensive anti-spam and schema validator for staging meals
+    function isValidStagingMeal() {
+      let data = request.resource.data;
+
+      let requiredKeys = [
+        'name', 'proteinType', 'carbsType', 'category',
+        'prepTimeMinutes', 'createdAt', 'status'
+      ];
+
+      let allowedKeys = [
+        'id', 'name', 'imageUrl', 'proteinType', 'carbsType', 'category',
+        'prepTimeMinutes', 'isFridaySpecial', 'isBudgetFriendly',
+        'isStarterMeal', 'notes', 'createdAt', 'proposedBy', 'status'
+      ];
+
+      return (
+        data.keys().hasAll(requiredKeys) &&
+        data.keys().hasOnly(allowedKeys) &&
+        data.name is string &&
+        data.name.size() >= 2 &&
+        data.name.size() <= 100 &&
+        data.proteinType is string &&
+        data.proteinType in ['chicken', 'beef', 'fish', 'meatless', 'other'] &&
+        data.carbsType is string &&
+        data.carbsType in ['rice', 'pasta', 'bread', 'none'] &&
+        data.category is string &&
+        data.category in ['tabeekh', 'casserole', 'dry_sandwich', 'popular', 'seafood'] &&
+        (data.prepTimeMinutes is int || data.prepTimeMinutes is number) &&
+        data.prepTimeMinutes >= 5 &&
+        data.prepTimeMinutes <= 720 &&
+        (!('isFridaySpecial' in data) || data.isFridaySpecial is bool) &&
+        (!('isBudgetFriendly' in data) || data.isBudgetFriendly is bool) &&
+        (!('isStarterMeal' in data) || (data.isStarterMeal is bool && data.isStarterMeal == false)) &&
+        data.status is string &&
+        data.status == 'pending' &&
+        (!('notes' in data) || data.notes == null || (data.notes is string && data.notes.size() <= 500)) &&
+        (!('imageUrl' in data) || data.imageUrl == null || (data.imageUrl is string && data.imageUrl.size() <= 2048)) &&
+        data.createdAt is string &&
+        data.createdAt.size() >= 10 &&
+        data.createdAt.size() <= 40 &&
+        (!('proposedBy' in data) || data.proposedBy == null || (isAuthenticated() && data.proposedBy == request.auth.uid))
+      );
+    }
+
+    // Admins Collection: read and write restricted to admins
+    match /admins/{email} {
+      allow read, write: if isAdmin();
+    }
+
+    // Vault Meals: public read for discovery, admin-only write
+    match /vault_meals/{mealId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Staging Meals: admin-only read/update/delete, authenticated + validated create
     match /staging_meals/{mealId} {
-      allow create: if true;
-      allow read, update, delete: if request.auth != null;
+      allow read, update, delete: if isAdmin();
+      allow create: if isAdmin() || (isAuthenticated() && isValidStagingMeal());
     }
   }
 }
+

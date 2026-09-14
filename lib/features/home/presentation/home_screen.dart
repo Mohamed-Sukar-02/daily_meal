@@ -7,27 +7,19 @@ import '../domain/cooldown_engine.dart';
 import '../providers/recommendation_provider.dart';
 import 'widgets/meal_card.dart';
 import 'widgets/spin_wheel_dialog.dart';
+import 'widgets/chef_hat_painter.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
     final recsAsync = ref.watch(todayRecommendationsProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('أكلة النهاردة'),
-        centerTitle: false,
-        actions: [
-          IconButton(
-            tooltip: 'تحديث الاقتراحات',
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(todayRecommendationsProvider),
-          ),
-        ],
-      ),
-      body: recsAsync.when(
+      body: SafeArea(
+        child: recsAsync.when(
         data: (result) {
           if (result.recommendations.isEmpty) {
             return _buildEmptyState(context);
@@ -38,6 +30,139 @@ class HomeScreen extends ConsumerWidget {
           child: CircularProgressIndicator.adaptive(),
         ),
         error: (err, stack) => _buildErrorState(context, ref, err),
+      ),
+      ),
+      bottomNavigationBar: recsAsync.maybeWhen(
+        data: (result) => result.recommendations.isNotEmpty
+            ? _buildBottomActionBar(context, ref, result.recommendations)
+            : null,
+        orElse: () => null,
+      ),
+    );
+  }
+
+  Widget _buildBottomActionBar(BuildContext context, WidgetRef ref, List<Meal> meals) {
+    final theme = Theme.of(context);
+    final canSpin = meals.length >= 2;
+    final isDark = theme.brightness == Brightness.dark;
+    
+    return SizedBox(
+      height: 100,
+      child: Stack(
+        alignment: Alignment.bottomCenter,
+        clipBehavior: Clip.none,
+        children: [
+          // Background bar
+          Container(
+            height: 70,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 15,
+                  offset: const Offset(0, -5),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                const Expanded(child: SizedBox()), // Right side empty
+                const SizedBox(width: 80), // Center space
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 16.0),
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        if (meals.isNotEmpty) {
+                          _handleLeftover(context, ref, meals.first);
+                        }
+                      },
+                      icon: const Icon(Icons.replay_rounded),
+                      label: const Text('بواقي أكل', style: TextStyle(fontWeight: FontWeight.bold)),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        side: BorderSide(color: theme.colorScheme.outlineVariant),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Center Protruding Wheel
+          Positioned(
+            top: 0,
+            child: GestureDetector(
+              onTap: canSpin
+                  ? () {
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (ctx) => SpinWheelDialog(
+                          candidates: meals,
+                          onWinnerCooked: (winner) =>
+                              _handleCookedToday(context, ref, winner),
+                        ),
+                      );
+                    }
+                  : null,
+              child: Container(
+                width: 84,
+                height: 84,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const SweepGradient(
+                    colors: [
+                      Color(0xFFFF3B30),
+                      Color(0xFFFF9500),
+                      Color(0xFFFFCC00),
+                      Color(0xFF4CD964),
+                      Color(0xFF5AC8FA),
+                      Color(0xFF007AFF),
+                      Color(0xFF5856D6),
+                      Color(0xFFFF3B30),
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                  border: Border.all(
+                    color: theme.colorScheme.surface,
+                    width: 4,
+                  ),
+                ),
+                child: Center(
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.grey[800] : Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        'لف\nالعجلة',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: isDark ? Colors.white : Colors.black87,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          height: 1.2,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -181,64 +306,59 @@ class HomeScreen extends ConsumerWidget {
     bool canSpin,
   ) {
     final theme = Theme.of(context);
-    final hour = DateTime.now().hour;
-    String greeting;
-    if (hour >= 5 && hour < 12) {
-      greeting = 'صباح الفل والجمال ☀️';
-    } else if (hour >= 12 && hour < 18) {
-      greeting = 'أكلة النهاردة.. هنطبخ إيه؟ 🍲';
-    } else {
-      greeting = 'مساء الهنا والسرور 🌙';
-    }
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-        ),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Center(
+              child: CustomPaint(
+                size: const Size(28, 28),
+                painter: ChefHatPainter(),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  greeting,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      'أكلة النهاردة',
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.auto_awesome, color: Colors.orange, size: 24),
+                  ],
                 ),
-                const SizedBox(height: 4),
                 Text(
-                  'اخترنا لك أفضل 3 وجبات متنوعة ومتوازنة.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                  'كل يوم فكرة جديدة .. على قدك',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.primary.withOpacity(0.7),
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 12),
-          FilledButton.tonalIcon(
-            onPressed: canSpin
-                ? () {
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (ctx) => SpinWheelDialog(
-                        candidates: meals,
-                        onWinnerCooked: (winner) =>
-                            _handleCookedToday(context, ref, winner),
-                      ),
-                    );
-                  }
-                : null,
-            icon: const Icon(Icons.casino_outlined, size: 20),
-            label: const Text('لف العجلة'),
+          CircleAvatar(
+            backgroundColor: Colors.grey.shade200,
+            radius: 24,
+            child: const Icon(Icons.person, color: Colors.grey, size: 28),
           ),
         ],
       ),

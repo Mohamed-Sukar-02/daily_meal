@@ -15,8 +15,11 @@ class MealVaultScreen extends ConsumerStatefulWidget {
   ConsumerState<MealVaultScreen> createState() => _MealVaultScreenState();
 }
 
+enum VaultTab { myKitchen, discovery }
+
 class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
   final _searchController = TextEditingController();
+  VaultTab _selectedTab = VaultTab.myKitchen;
 
   @override
   void dispose() {
@@ -53,9 +56,55 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
       ),
       body: Column(
         children: [
+          // 0. Toggle
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<VaultTab>(
+                style: ButtonStyle(
+                  backgroundColor: WidgetStateProperty.resolveWith<Color>((states) {
+                    if (states.contains(WidgetState.selected)) {
+                      return Colors.green; // Active tab is green
+                    }
+                    return theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5); // Inactive is grey/white
+                  }),
+                  foregroundColor: WidgetStateProperty.resolveWith<Color>((states) {
+                    if (states.contains(WidgetState.selected)) {
+                      return Colors.white;
+                    }
+                    return theme.colorScheme.onSurfaceVariant;
+                  }),
+                  side: WidgetStateProperty.all(BorderSide.none), // Remove borders
+                  shape: WidgetStateProperty.all(
+                    RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                  ),
+                ),
+                segments: const [
+                  ButtonSegment(
+                    value: VaultTab.myKitchen,
+                    label: Text('خزنتي', style: TextStyle(fontWeight: FontWeight.bold)),
+                    icon: Icon(Icons.kitchen),
+                  ),
+                  ButtonSegment(
+                    value: VaultTab.discovery,
+                    label: Text('اكتشف', style: TextStyle(fontWeight: FontWeight.bold)),
+                    icon: Icon(Icons.explore),
+                  ),
+                ],
+                selected: {_selectedTab},
+                onSelectionChanged: (selected) {
+                  setState(() {
+                    _selectedTab = selected.first;
+                  });
+                },
+              ),
+            ),
+          ),
+
           // 1. Search Bar
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: SearchBar(
               key: const Key('vault_search_field'),
               controller: _searchController,

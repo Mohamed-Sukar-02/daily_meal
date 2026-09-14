@@ -152,6 +152,17 @@ class $MealsTable extends Meals with TableInfo<$MealsTable, Meal> {
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _cloudIdMeta = const VerificationMeta(
+    'cloudId',
+  );
+  @override
+  late final GeneratedColumn<String> cloudId = GeneratedColumn<String>(
+    'cloud_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -166,6 +177,7 @@ class $MealsTable extends Meals with TableInfo<$MealsTable, Meal> {
     isFavorite,
     createdAt,
     updatedAt,
+    cloudId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -240,6 +252,12 @@ class $MealsTable extends Meals with TableInfo<$MealsTable, Meal> {
         updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
       );
     }
+    if (data.containsKey('cloud_id')) {
+      context.handle(
+        _cloudIdMeta,
+        cloudId.isAcceptableOrUnknown(data['cloud_id']!, _cloudIdMeta),
+      );
+    }
     return context;
   }
 
@@ -303,6 +321,10 @@ class $MealsTable extends Meals with TableInfo<$MealsTable, Meal> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       )!,
+      cloudId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cloud_id'],
+      ),
     );
   }
 
@@ -332,6 +354,7 @@ class Meal extends DataClass implements Insertable<Meal> {
   final bool isFavorite;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? cloudId;
   const Meal({
     required this.id,
     required this.name,
@@ -345,6 +368,7 @@ class Meal extends DataClass implements Insertable<Meal> {
     required this.isFavorite,
     required this.createdAt,
     required this.updatedAt,
+    this.cloudId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -375,6 +399,9 @@ class Meal extends DataClass implements Insertable<Meal> {
     map['is_favorite'] = Variable<bool>(isFavorite);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || cloudId != null) {
+      map['cloud_id'] = Variable<String>(cloudId);
+    }
     return map;
   }
 
@@ -394,6 +421,9 @@ class Meal extends DataClass implements Insertable<Meal> {
       isFavorite: Value(isFavorite),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
+      cloudId: cloudId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cloudId),
     );
   }
 
@@ -421,6 +451,7 @@ class Meal extends DataClass implements Insertable<Meal> {
       isFavorite: serializer.fromJson<bool>(json['isFavorite']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      cloudId: serializer.fromJson<String?>(json['cloudId']),
     );
   }
   @override
@@ -445,6 +476,7 @@ class Meal extends DataClass implements Insertable<Meal> {
       'isFavorite': serializer.toJson<bool>(isFavorite),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'cloudId': serializer.toJson<String?>(cloudId),
     };
   }
 
@@ -461,6 +493,7 @@ class Meal extends DataClass implements Insertable<Meal> {
     bool? isFavorite,
     DateTime? createdAt,
     DateTime? updatedAt,
+    Value<String?> cloudId = const Value.absent(),
   }) => Meal(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -474,6 +507,7 @@ class Meal extends DataClass implements Insertable<Meal> {
     isFavorite: isFavorite ?? this.isFavorite,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
+    cloudId: cloudId.present ? cloudId.value : this.cloudId,
   );
   Meal copyWithCompanion(MealsCompanion data) {
     return Meal(
@@ -497,6 +531,7 @@ class Meal extends DataClass implements Insertable<Meal> {
           : this.isFavorite,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      cloudId: data.cloudId.present ? data.cloudId.value : this.cloudId,
     );
   }
 
@@ -514,7 +549,8 @@ class Meal extends DataClass implements Insertable<Meal> {
           ..write('isBudgetFriendly: $isBudgetFriendly, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('cloudId: $cloudId')
           ..write(')'))
         .toString();
   }
@@ -533,6 +569,7 @@ class Meal extends DataClass implements Insertable<Meal> {
     isFavorite,
     createdAt,
     updatedAt,
+    cloudId,
   );
   @override
   bool operator ==(Object other) =>
@@ -549,7 +586,8 @@ class Meal extends DataClass implements Insertable<Meal> {
           other.isBudgetFriendly == this.isBudgetFriendly &&
           other.isFavorite == this.isFavorite &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.cloudId == this.cloudId);
 }
 
 class MealsCompanion extends UpdateCompanion<Meal> {
@@ -565,6 +603,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
   final Value<bool> isFavorite;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<String?> cloudId;
   const MealsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -578,6 +617,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     this.isFavorite = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.cloudId = const Value.absent(),
   });
   MealsCompanion.insert({
     this.id = const Value.absent(),
@@ -592,6 +632,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     this.isFavorite = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.cloudId = const Value.absent(),
   }) : name = Value(name),
        proteinType = Value(proteinType),
        carbsType = Value(carbsType),
@@ -610,6 +651,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     Expression<bool>? isFavorite,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<String>? cloudId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -624,6 +666,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
       if (isFavorite != null) 'is_favorite': isFavorite,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (cloudId != null) 'cloud_id': cloudId,
     });
   }
 
@@ -640,6 +683,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     Value<bool>? isFavorite,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
+    Value<String?>? cloudId,
   }) {
     return MealsCompanion(
       id: id ?? this.id,
@@ -654,6 +698,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
       isFavorite: isFavorite ?? this.isFavorite,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      cloudId: cloudId ?? this.cloudId,
     );
   }
 
@@ -702,6 +747,9 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (cloudId.present) {
+      map['cloud_id'] = Variable<String>(cloudId.value);
+    }
     return map;
   }
 
@@ -719,7 +767,8 @@ class MealsCompanion extends UpdateCompanion<Meal> {
           ..write('isBudgetFriendly: $isBudgetFriendly, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('cloudId: $cloudId')
           ..write(')'))
         .toString();
   }
@@ -1319,6 +1368,52 @@ class $AppSettingsTable extends AppSettings
     requiredDuringInsert: false,
     defaultValue: const Constant(14),
   );
+  static const VerificationMeta _chickenCooldownDaysMeta =
+      const VerificationMeta('chickenCooldownDays');
+  @override
+  late final GeneratedColumn<int> chickenCooldownDays = GeneratedColumn<int>(
+    'chicken_cooldown_days',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(7),
+  );
+  static const VerificationMeta _beefCooldownDaysMeta = const VerificationMeta(
+    'beefCooldownDays',
+  );
+  @override
+  late final GeneratedColumn<int> beefCooldownDays = GeneratedColumn<int>(
+    'beef_cooldown_days',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(10),
+  );
+  static const VerificationMeta _fishCooldownDaysMeta = const VerificationMeta(
+    'fishCooldownDays',
+  );
+  @override
+  late final GeneratedColumn<int> fishCooldownDays = GeneratedColumn<int>(
+    'fish_cooldown_days',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(5),
+  );
+  static const VerificationMeta _meatlessCooldownDaysMeta =
+      const VerificationMeta('meatlessCooldownDays');
+  @override
+  late final GeneratedColumn<int> meatlessCooldownDays = GeneratedColumn<int>(
+    'meatless_cooldown_days',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(3),
+  );
   static const VerificationMeta _preventRepeatProteinMeta =
       const VerificationMeta('preventRepeatProtein');
   @override
@@ -1397,6 +1492,16 @@ class $AppSettingsTable extends AppSettings
       ).withConverter<AppThemeModePreference>(
         $AppSettingsTable.$converterthemeMode,
       );
+  @override
+  late final GeneratedColumnWithTypeConverter<AppLanguagePreference, String>
+  language = GeneratedColumn<String>(
+    'language',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('ar'),
+  ).withConverter<AppLanguagePreference>($AppSettingsTable.$converterlanguage);
   static const VerificationMeta _isFirstRunMeta = const VerificationMeta(
     'isFirstRun',
   );
@@ -1412,17 +1517,70 @@ class $AppSettingsTable extends AppSettings
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _userNameMeta = const VerificationMeta(
+    'userName',
+  );
+  @override
+  late final GeneratedColumn<String> userName = GeneratedColumn<String>(
+    'user_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _userEmailMeta = const VerificationMeta(
+    'userEmail',
+  );
+  @override
+  late final GeneratedColumn<String> userEmail = GeneratedColumn<String>(
+    'user_email',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _userGenderMeta = const VerificationMeta(
+    'userGender',
+  );
+  @override
+  late final GeneratedColumn<String> userGender = GeneratedColumn<String>(
+    'user_gender',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _userAvatarMeta = const VerificationMeta(
+    'userAvatar',
+  );
+  @override
+  late final GeneratedColumn<String> userAvatar = GeneratedColumn<String>(
+    'user_avatar',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
     cooldownDays,
+    chickenCooldownDays,
+    beefCooldownDays,
+    fishCooldownDays,
+    meatlessCooldownDays,
     preventRepeatProtein,
     preventRepeatCarbs,
     notificationHour,
     notificationMinute,
     notificationsEnabled,
     themeMode,
+    language,
     isFirstRun,
+    userName,
+    userEmail,
+    userGender,
+    userAvatar,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1445,6 +1603,42 @@ class $AppSettingsTable extends AppSettings
         cooldownDays.isAcceptableOrUnknown(
           data['cooldown_days']!,
           _cooldownDaysMeta,
+        ),
+      );
+    }
+    if (data.containsKey('chicken_cooldown_days')) {
+      context.handle(
+        _chickenCooldownDaysMeta,
+        chickenCooldownDays.isAcceptableOrUnknown(
+          data['chicken_cooldown_days']!,
+          _chickenCooldownDaysMeta,
+        ),
+      );
+    }
+    if (data.containsKey('beef_cooldown_days')) {
+      context.handle(
+        _beefCooldownDaysMeta,
+        beefCooldownDays.isAcceptableOrUnknown(
+          data['beef_cooldown_days']!,
+          _beefCooldownDaysMeta,
+        ),
+      );
+    }
+    if (data.containsKey('fish_cooldown_days')) {
+      context.handle(
+        _fishCooldownDaysMeta,
+        fishCooldownDays.isAcceptableOrUnknown(
+          data['fish_cooldown_days']!,
+          _fishCooldownDaysMeta,
+        ),
+      );
+    }
+    if (data.containsKey('meatless_cooldown_days')) {
+      context.handle(
+        _meatlessCooldownDaysMeta,
+        meatlessCooldownDays.isAcceptableOrUnknown(
+          data['meatless_cooldown_days']!,
+          _meatlessCooldownDaysMeta,
         ),
       );
     }
@@ -1502,6 +1696,30 @@ class $AppSettingsTable extends AppSettings
         ),
       );
     }
+    if (data.containsKey('user_name')) {
+      context.handle(
+        _userNameMeta,
+        userName.isAcceptableOrUnknown(data['user_name']!, _userNameMeta),
+      );
+    }
+    if (data.containsKey('user_email')) {
+      context.handle(
+        _userEmailMeta,
+        userEmail.isAcceptableOrUnknown(data['user_email']!, _userEmailMeta),
+      );
+    }
+    if (data.containsKey('user_gender')) {
+      context.handle(
+        _userGenderMeta,
+        userGender.isAcceptableOrUnknown(data['user_gender']!, _userGenderMeta),
+      );
+    }
+    if (data.containsKey('user_avatar')) {
+      context.handle(
+        _userAvatarMeta,
+        userAvatar.isAcceptableOrUnknown(data['user_avatar']!, _userAvatarMeta),
+      );
+    }
     return context;
   }
 
@@ -1518,6 +1736,22 @@ class $AppSettingsTable extends AppSettings
       cooldownDays: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}cooldown_days'],
+      )!,
+      chickenCooldownDays: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}chicken_cooldown_days'],
+      )!,
+      beefCooldownDays: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}beef_cooldown_days'],
+      )!,
+      fishCooldownDays: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}fish_cooldown_days'],
+      )!,
+      meatlessCooldownDays: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}meatless_cooldown_days'],
       )!,
       preventRepeatProtein: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
@@ -1545,10 +1779,32 @@ class $AppSettingsTable extends AppSettings
           data['${effectivePrefix}theme_mode'],
         )!,
       ),
+      language: $AppSettingsTable.$converterlanguage.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}language'],
+        )!,
+      ),
       isFirstRun: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_first_run'],
       )!,
+      userName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_name'],
+      ),
+      userEmail: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_email'],
+      ),
+      userGender: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_gender'],
+      ),
+      userAvatar: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_avatar'],
+      ),
     );
   }
 
@@ -1561,34 +1817,60 @@ class $AppSettingsTable extends AppSettings
   $converterthemeMode = const EnumNameConverter<AppThemeModePreference>(
     AppThemeModePreference.values,
   );
+  static JsonTypeConverter2<AppLanguagePreference, String, String>
+  $converterlanguage = const EnumNameConverter<AppLanguagePreference>(
+    AppLanguagePreference.values,
+  );
 }
 
 class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
   final int id;
   final int cooldownDays;
+  final int chickenCooldownDays;
+  final int beefCooldownDays;
+  final int fishCooldownDays;
+  final int meatlessCooldownDays;
   final bool preventRepeatProtein;
   final bool preventRepeatCarbs;
   final int notificationHour;
   final int notificationMinute;
   final bool notificationsEnabled;
   final AppThemeModePreference themeMode;
+  final AppLanguagePreference language;
   final bool isFirstRun;
+  final String? userName;
+  final String? userEmail;
+  final String? userGender;
+  final String? userAvatar;
   const AppSettingsData({
     required this.id,
     required this.cooldownDays,
+    required this.chickenCooldownDays,
+    required this.beefCooldownDays,
+    required this.fishCooldownDays,
+    required this.meatlessCooldownDays,
     required this.preventRepeatProtein,
     required this.preventRepeatCarbs,
     required this.notificationHour,
     required this.notificationMinute,
     required this.notificationsEnabled,
     required this.themeMode,
+    required this.language,
     required this.isFirstRun,
+    this.userName,
+    this.userEmail,
+    this.userGender,
+    this.userAvatar,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['cooldown_days'] = Variable<int>(cooldownDays);
+    map['chicken_cooldown_days'] = Variable<int>(chickenCooldownDays);
+    map['beef_cooldown_days'] = Variable<int>(beefCooldownDays);
+    map['fish_cooldown_days'] = Variable<int>(fishCooldownDays);
+    map['meatless_cooldown_days'] = Variable<int>(meatlessCooldownDays);
     map['prevent_repeat_protein'] = Variable<bool>(preventRepeatProtein);
     map['prevent_repeat_carbs'] = Variable<bool>(preventRepeatCarbs);
     map['notification_hour'] = Variable<int>(notificationHour);
@@ -1599,7 +1881,24 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
         $AppSettingsTable.$converterthemeMode.toSql(themeMode),
       );
     }
+    {
+      map['language'] = Variable<String>(
+        $AppSettingsTable.$converterlanguage.toSql(language),
+      );
+    }
     map['is_first_run'] = Variable<bool>(isFirstRun);
+    if (!nullToAbsent || userName != null) {
+      map['user_name'] = Variable<String>(userName);
+    }
+    if (!nullToAbsent || userEmail != null) {
+      map['user_email'] = Variable<String>(userEmail);
+    }
+    if (!nullToAbsent || userGender != null) {
+      map['user_gender'] = Variable<String>(userGender);
+    }
+    if (!nullToAbsent || userAvatar != null) {
+      map['user_avatar'] = Variable<String>(userAvatar);
+    }
     return map;
   }
 
@@ -1607,13 +1906,30 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
     return AppSettingsCompanion(
       id: Value(id),
       cooldownDays: Value(cooldownDays),
+      chickenCooldownDays: Value(chickenCooldownDays),
+      beefCooldownDays: Value(beefCooldownDays),
+      fishCooldownDays: Value(fishCooldownDays),
+      meatlessCooldownDays: Value(meatlessCooldownDays),
       preventRepeatProtein: Value(preventRepeatProtein),
       preventRepeatCarbs: Value(preventRepeatCarbs),
       notificationHour: Value(notificationHour),
       notificationMinute: Value(notificationMinute),
       notificationsEnabled: Value(notificationsEnabled),
       themeMode: Value(themeMode),
+      language: Value(language),
       isFirstRun: Value(isFirstRun),
+      userName: userName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(userName),
+      userEmail: userEmail == null && nullToAbsent
+          ? const Value.absent()
+          : Value(userEmail),
+      userGender: userGender == null && nullToAbsent
+          ? const Value.absent()
+          : Value(userGender),
+      userAvatar: userAvatar == null && nullToAbsent
+          ? const Value.absent()
+          : Value(userAvatar),
     );
   }
 
@@ -1625,6 +1941,14 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
     return AppSettingsData(
       id: serializer.fromJson<int>(json['id']),
       cooldownDays: serializer.fromJson<int>(json['cooldownDays']),
+      chickenCooldownDays: serializer.fromJson<int>(
+        json['chickenCooldownDays'],
+      ),
+      beefCooldownDays: serializer.fromJson<int>(json['beefCooldownDays']),
+      fishCooldownDays: serializer.fromJson<int>(json['fishCooldownDays']),
+      meatlessCooldownDays: serializer.fromJson<int>(
+        json['meatlessCooldownDays'],
+      ),
       preventRepeatProtein: serializer.fromJson<bool>(
         json['preventRepeatProtein'],
       ),
@@ -1637,7 +1961,14 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
       themeMode: $AppSettingsTable.$converterthemeMode.fromJson(
         serializer.fromJson<String>(json['themeMode']),
       ),
+      language: $AppSettingsTable.$converterlanguage.fromJson(
+        serializer.fromJson<String>(json['language']),
+      ),
       isFirstRun: serializer.fromJson<bool>(json['isFirstRun']),
+      userName: serializer.fromJson<String?>(json['userName']),
+      userEmail: serializer.fromJson<String?>(json['userEmail']),
+      userGender: serializer.fromJson<String?>(json['userGender']),
+      userAvatar: serializer.fromJson<String?>(json['userAvatar']),
     );
   }
   @override
@@ -1646,6 +1977,10 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'cooldownDays': serializer.toJson<int>(cooldownDays),
+      'chickenCooldownDays': serializer.toJson<int>(chickenCooldownDays),
+      'beefCooldownDays': serializer.toJson<int>(beefCooldownDays),
+      'fishCooldownDays': serializer.toJson<int>(fishCooldownDays),
+      'meatlessCooldownDays': serializer.toJson<int>(meatlessCooldownDays),
       'preventRepeatProtein': serializer.toJson<bool>(preventRepeatProtein),
       'preventRepeatCarbs': serializer.toJson<bool>(preventRepeatCarbs),
       'notificationHour': serializer.toJson<int>(notificationHour),
@@ -1654,30 +1989,55 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
       'themeMode': serializer.toJson<String>(
         $AppSettingsTable.$converterthemeMode.toJson(themeMode),
       ),
+      'language': serializer.toJson<String>(
+        $AppSettingsTable.$converterlanguage.toJson(language),
+      ),
       'isFirstRun': serializer.toJson<bool>(isFirstRun),
+      'userName': serializer.toJson<String?>(userName),
+      'userEmail': serializer.toJson<String?>(userEmail),
+      'userGender': serializer.toJson<String?>(userGender),
+      'userAvatar': serializer.toJson<String?>(userAvatar),
     };
   }
 
   AppSettingsData copyWith({
     int? id,
     int? cooldownDays,
+    int? chickenCooldownDays,
+    int? beefCooldownDays,
+    int? fishCooldownDays,
+    int? meatlessCooldownDays,
     bool? preventRepeatProtein,
     bool? preventRepeatCarbs,
     int? notificationHour,
     int? notificationMinute,
     bool? notificationsEnabled,
     AppThemeModePreference? themeMode,
+    AppLanguagePreference? language,
     bool? isFirstRun,
+    Value<String?> userName = const Value.absent(),
+    Value<String?> userEmail = const Value.absent(),
+    Value<String?> userGender = const Value.absent(),
+    Value<String?> userAvatar = const Value.absent(),
   }) => AppSettingsData(
     id: id ?? this.id,
     cooldownDays: cooldownDays ?? this.cooldownDays,
+    chickenCooldownDays: chickenCooldownDays ?? this.chickenCooldownDays,
+    beefCooldownDays: beefCooldownDays ?? this.beefCooldownDays,
+    fishCooldownDays: fishCooldownDays ?? this.fishCooldownDays,
+    meatlessCooldownDays: meatlessCooldownDays ?? this.meatlessCooldownDays,
     preventRepeatProtein: preventRepeatProtein ?? this.preventRepeatProtein,
     preventRepeatCarbs: preventRepeatCarbs ?? this.preventRepeatCarbs,
     notificationHour: notificationHour ?? this.notificationHour,
     notificationMinute: notificationMinute ?? this.notificationMinute,
     notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
     themeMode: themeMode ?? this.themeMode,
+    language: language ?? this.language,
     isFirstRun: isFirstRun ?? this.isFirstRun,
+    userName: userName.present ? userName.value : this.userName,
+    userEmail: userEmail.present ? userEmail.value : this.userEmail,
+    userGender: userGender.present ? userGender.value : this.userGender,
+    userAvatar: userAvatar.present ? userAvatar.value : this.userAvatar,
   );
   AppSettingsData copyWithCompanion(AppSettingsCompanion data) {
     return AppSettingsData(
@@ -1685,6 +2045,18 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
       cooldownDays: data.cooldownDays.present
           ? data.cooldownDays.value
           : this.cooldownDays,
+      chickenCooldownDays: data.chickenCooldownDays.present
+          ? data.chickenCooldownDays.value
+          : this.chickenCooldownDays,
+      beefCooldownDays: data.beefCooldownDays.present
+          ? data.beefCooldownDays.value
+          : this.beefCooldownDays,
+      fishCooldownDays: data.fishCooldownDays.present
+          ? data.fishCooldownDays.value
+          : this.fishCooldownDays,
+      meatlessCooldownDays: data.meatlessCooldownDays.present
+          ? data.meatlessCooldownDays.value
+          : this.meatlessCooldownDays,
       preventRepeatProtein: data.preventRepeatProtein.present
           ? data.preventRepeatProtein.value
           : this.preventRepeatProtein,
@@ -1701,9 +2073,18 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
           ? data.notificationsEnabled.value
           : this.notificationsEnabled,
       themeMode: data.themeMode.present ? data.themeMode.value : this.themeMode,
+      language: data.language.present ? data.language.value : this.language,
       isFirstRun: data.isFirstRun.present
           ? data.isFirstRun.value
           : this.isFirstRun,
+      userName: data.userName.present ? data.userName.value : this.userName,
+      userEmail: data.userEmail.present ? data.userEmail.value : this.userEmail,
+      userGender: data.userGender.present
+          ? data.userGender.value
+          : this.userGender,
+      userAvatar: data.userAvatar.present
+          ? data.userAvatar.value
+          : this.userAvatar,
     );
   }
 
@@ -1712,13 +2093,22 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
     return (StringBuffer('AppSettingsData(')
           ..write('id: $id, ')
           ..write('cooldownDays: $cooldownDays, ')
+          ..write('chickenCooldownDays: $chickenCooldownDays, ')
+          ..write('beefCooldownDays: $beefCooldownDays, ')
+          ..write('fishCooldownDays: $fishCooldownDays, ')
+          ..write('meatlessCooldownDays: $meatlessCooldownDays, ')
           ..write('preventRepeatProtein: $preventRepeatProtein, ')
           ..write('preventRepeatCarbs: $preventRepeatCarbs, ')
           ..write('notificationHour: $notificationHour, ')
           ..write('notificationMinute: $notificationMinute, ')
           ..write('notificationsEnabled: $notificationsEnabled, ')
           ..write('themeMode: $themeMode, ')
-          ..write('isFirstRun: $isFirstRun')
+          ..write('language: $language, ')
+          ..write('isFirstRun: $isFirstRun, ')
+          ..write('userName: $userName, ')
+          ..write('userEmail: $userEmail, ')
+          ..write('userGender: $userGender, ')
+          ..write('userAvatar: $userAvatar')
           ..write(')'))
         .toString();
   }
@@ -1727,13 +2117,22 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
   int get hashCode => Object.hash(
     id,
     cooldownDays,
+    chickenCooldownDays,
+    beefCooldownDays,
+    fishCooldownDays,
+    meatlessCooldownDays,
     preventRepeatProtein,
     preventRepeatCarbs,
     notificationHour,
     notificationMinute,
     notificationsEnabled,
     themeMode,
+    language,
     isFirstRun,
+    userName,
+    userEmail,
+    userGender,
+    userAvatar,
   );
   @override
   bool operator ==(Object other) =>
@@ -1741,61 +2140,112 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
       (other is AppSettingsData &&
           other.id == this.id &&
           other.cooldownDays == this.cooldownDays &&
+          other.chickenCooldownDays == this.chickenCooldownDays &&
+          other.beefCooldownDays == this.beefCooldownDays &&
+          other.fishCooldownDays == this.fishCooldownDays &&
+          other.meatlessCooldownDays == this.meatlessCooldownDays &&
           other.preventRepeatProtein == this.preventRepeatProtein &&
           other.preventRepeatCarbs == this.preventRepeatCarbs &&
           other.notificationHour == this.notificationHour &&
           other.notificationMinute == this.notificationMinute &&
           other.notificationsEnabled == this.notificationsEnabled &&
           other.themeMode == this.themeMode &&
-          other.isFirstRun == this.isFirstRun);
+          other.language == this.language &&
+          other.isFirstRun == this.isFirstRun &&
+          other.userName == this.userName &&
+          other.userEmail == this.userEmail &&
+          other.userGender == this.userGender &&
+          other.userAvatar == this.userAvatar);
 }
 
 class AppSettingsCompanion extends UpdateCompanion<AppSettingsData> {
   final Value<int> id;
   final Value<int> cooldownDays;
+  final Value<int> chickenCooldownDays;
+  final Value<int> beefCooldownDays;
+  final Value<int> fishCooldownDays;
+  final Value<int> meatlessCooldownDays;
   final Value<bool> preventRepeatProtein;
   final Value<bool> preventRepeatCarbs;
   final Value<int> notificationHour;
   final Value<int> notificationMinute;
   final Value<bool> notificationsEnabled;
   final Value<AppThemeModePreference> themeMode;
+  final Value<AppLanguagePreference> language;
   final Value<bool> isFirstRun;
+  final Value<String?> userName;
+  final Value<String?> userEmail;
+  final Value<String?> userGender;
+  final Value<String?> userAvatar;
   const AppSettingsCompanion({
     this.id = const Value.absent(),
     this.cooldownDays = const Value.absent(),
+    this.chickenCooldownDays = const Value.absent(),
+    this.beefCooldownDays = const Value.absent(),
+    this.fishCooldownDays = const Value.absent(),
+    this.meatlessCooldownDays = const Value.absent(),
     this.preventRepeatProtein = const Value.absent(),
     this.preventRepeatCarbs = const Value.absent(),
     this.notificationHour = const Value.absent(),
     this.notificationMinute = const Value.absent(),
     this.notificationsEnabled = const Value.absent(),
     this.themeMode = const Value.absent(),
+    this.language = const Value.absent(),
     this.isFirstRun = const Value.absent(),
+    this.userName = const Value.absent(),
+    this.userEmail = const Value.absent(),
+    this.userGender = const Value.absent(),
+    this.userAvatar = const Value.absent(),
   });
   AppSettingsCompanion.insert({
     this.id = const Value.absent(),
     this.cooldownDays = const Value.absent(),
+    this.chickenCooldownDays = const Value.absent(),
+    this.beefCooldownDays = const Value.absent(),
+    this.fishCooldownDays = const Value.absent(),
+    this.meatlessCooldownDays = const Value.absent(),
     this.preventRepeatProtein = const Value.absent(),
     this.preventRepeatCarbs = const Value.absent(),
     this.notificationHour = const Value.absent(),
     this.notificationMinute = const Value.absent(),
     this.notificationsEnabled = const Value.absent(),
     this.themeMode = const Value.absent(),
+    this.language = const Value.absent(),
     this.isFirstRun = const Value.absent(),
+    this.userName = const Value.absent(),
+    this.userEmail = const Value.absent(),
+    this.userGender = const Value.absent(),
+    this.userAvatar = const Value.absent(),
   });
   static Insertable<AppSettingsData> custom({
     Expression<int>? id,
     Expression<int>? cooldownDays,
+    Expression<int>? chickenCooldownDays,
+    Expression<int>? beefCooldownDays,
+    Expression<int>? fishCooldownDays,
+    Expression<int>? meatlessCooldownDays,
     Expression<bool>? preventRepeatProtein,
     Expression<bool>? preventRepeatCarbs,
     Expression<int>? notificationHour,
     Expression<int>? notificationMinute,
     Expression<bool>? notificationsEnabled,
     Expression<String>? themeMode,
+    Expression<String>? language,
     Expression<bool>? isFirstRun,
+    Expression<String>? userName,
+    Expression<String>? userEmail,
+    Expression<String>? userGender,
+    Expression<String>? userAvatar,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (cooldownDays != null) 'cooldown_days': cooldownDays,
+      if (chickenCooldownDays != null)
+        'chicken_cooldown_days': chickenCooldownDays,
+      if (beefCooldownDays != null) 'beef_cooldown_days': beefCooldownDays,
+      if (fishCooldownDays != null) 'fish_cooldown_days': fishCooldownDays,
+      if (meatlessCooldownDays != null)
+        'meatless_cooldown_days': meatlessCooldownDays,
       if (preventRepeatProtein != null)
         'prevent_repeat_protein': preventRepeatProtein,
       if (preventRepeatCarbs != null)
@@ -1805,31 +2255,54 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsData> {
       if (notificationsEnabled != null)
         'notifications_enabled': notificationsEnabled,
       if (themeMode != null) 'theme_mode': themeMode,
+      if (language != null) 'language': language,
       if (isFirstRun != null) 'is_first_run': isFirstRun,
+      if (userName != null) 'user_name': userName,
+      if (userEmail != null) 'user_email': userEmail,
+      if (userGender != null) 'user_gender': userGender,
+      if (userAvatar != null) 'user_avatar': userAvatar,
     });
   }
 
   AppSettingsCompanion copyWith({
     Value<int>? id,
     Value<int>? cooldownDays,
+    Value<int>? chickenCooldownDays,
+    Value<int>? beefCooldownDays,
+    Value<int>? fishCooldownDays,
+    Value<int>? meatlessCooldownDays,
     Value<bool>? preventRepeatProtein,
     Value<bool>? preventRepeatCarbs,
     Value<int>? notificationHour,
     Value<int>? notificationMinute,
     Value<bool>? notificationsEnabled,
     Value<AppThemeModePreference>? themeMode,
+    Value<AppLanguagePreference>? language,
     Value<bool>? isFirstRun,
+    Value<String?>? userName,
+    Value<String?>? userEmail,
+    Value<String?>? userGender,
+    Value<String?>? userAvatar,
   }) {
     return AppSettingsCompanion(
       id: id ?? this.id,
       cooldownDays: cooldownDays ?? this.cooldownDays,
+      chickenCooldownDays: chickenCooldownDays ?? this.chickenCooldownDays,
+      beefCooldownDays: beefCooldownDays ?? this.beefCooldownDays,
+      fishCooldownDays: fishCooldownDays ?? this.fishCooldownDays,
+      meatlessCooldownDays: meatlessCooldownDays ?? this.meatlessCooldownDays,
       preventRepeatProtein: preventRepeatProtein ?? this.preventRepeatProtein,
       preventRepeatCarbs: preventRepeatCarbs ?? this.preventRepeatCarbs,
       notificationHour: notificationHour ?? this.notificationHour,
       notificationMinute: notificationMinute ?? this.notificationMinute,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       themeMode: themeMode ?? this.themeMode,
+      language: language ?? this.language,
       isFirstRun: isFirstRun ?? this.isFirstRun,
+      userName: userName ?? this.userName,
+      userEmail: userEmail ?? this.userEmail,
+      userGender: userGender ?? this.userGender,
+      userAvatar: userAvatar ?? this.userAvatar,
     );
   }
 
@@ -1841,6 +2314,18 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsData> {
     }
     if (cooldownDays.present) {
       map['cooldown_days'] = Variable<int>(cooldownDays.value);
+    }
+    if (chickenCooldownDays.present) {
+      map['chicken_cooldown_days'] = Variable<int>(chickenCooldownDays.value);
+    }
+    if (beefCooldownDays.present) {
+      map['beef_cooldown_days'] = Variable<int>(beefCooldownDays.value);
+    }
+    if (fishCooldownDays.present) {
+      map['fish_cooldown_days'] = Variable<int>(fishCooldownDays.value);
+    }
+    if (meatlessCooldownDays.present) {
+      map['meatless_cooldown_days'] = Variable<int>(meatlessCooldownDays.value);
     }
     if (preventRepeatProtein.present) {
       map['prevent_repeat_protein'] = Variable<bool>(
@@ -1864,8 +2349,25 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsData> {
         $AppSettingsTable.$converterthemeMode.toSql(themeMode.value),
       );
     }
+    if (language.present) {
+      map['language'] = Variable<String>(
+        $AppSettingsTable.$converterlanguage.toSql(language.value),
+      );
+    }
     if (isFirstRun.present) {
       map['is_first_run'] = Variable<bool>(isFirstRun.value);
+    }
+    if (userName.present) {
+      map['user_name'] = Variable<String>(userName.value);
+    }
+    if (userEmail.present) {
+      map['user_email'] = Variable<String>(userEmail.value);
+    }
+    if (userGender.present) {
+      map['user_gender'] = Variable<String>(userGender.value);
+    }
+    if (userAvatar.present) {
+      map['user_avatar'] = Variable<String>(userAvatar.value);
     }
     return map;
   }
@@ -1875,13 +2377,22 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsData> {
     return (StringBuffer('AppSettingsCompanion(')
           ..write('id: $id, ')
           ..write('cooldownDays: $cooldownDays, ')
+          ..write('chickenCooldownDays: $chickenCooldownDays, ')
+          ..write('beefCooldownDays: $beefCooldownDays, ')
+          ..write('fishCooldownDays: $fishCooldownDays, ')
+          ..write('meatlessCooldownDays: $meatlessCooldownDays, ')
           ..write('preventRepeatProtein: $preventRepeatProtein, ')
           ..write('preventRepeatCarbs: $preventRepeatCarbs, ')
           ..write('notificationHour: $notificationHour, ')
           ..write('notificationMinute: $notificationMinute, ')
           ..write('notificationsEnabled: $notificationsEnabled, ')
           ..write('themeMode: $themeMode, ')
-          ..write('isFirstRun: $isFirstRun')
+          ..write('language: $language, ')
+          ..write('isFirstRun: $isFirstRun, ')
+          ..write('userName: $userName, ')
+          ..write('userEmail: $userEmail, ')
+          ..write('userGender: $userGender, ')
+          ..write('userAvatar: $userAvatar')
           ..write(')'))
         .toString();
   }
@@ -1938,6 +2449,7 @@ typedef $$MealsTableCreateCompanionBuilder =
       Value<bool> isFavorite,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<String?> cloudId,
     });
 typedef $$MealsTableUpdateCompanionBuilder =
     MealsCompanion Function({
@@ -1953,6 +2465,7 @@ typedef $$MealsTableUpdateCompanionBuilder =
       Value<bool> isFavorite,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<String?> cloudId,
     });
 
 final class $$MealsTableReferences
@@ -2046,6 +2559,11 @@ class $$MealsTableFilterComposer extends Composer<_$AppDatabase, $MealsTable> {
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cloudId => $composableBuilder(
+    column: $table.cloudId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2143,6 +2661,11 @@ class $$MealsTableOrderingComposer
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get cloudId => $composableBuilder(
+    column: $table.cloudId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$MealsTableAnnotationComposer
@@ -2198,6 +2721,9 @@ class $$MealsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get cloudId =>
+      $composableBuilder(column: $table.cloudId, builder: (column) => column);
 
   Expression<T> mealHistoryRefs<T extends Object>(
     Expression<T> Function($$MealHistoryTableAnnotationComposer a) f,
@@ -2265,6 +2791,7 @@ class $$MealsTableTableManager
                 Value<bool> isFavorite = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<String?> cloudId = const Value.absent(),
               }) => MealsCompanion(
                 id: id,
                 name: name,
@@ -2278,6 +2805,7 @@ class $$MealsTableTableManager
                 isFavorite: isFavorite,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                cloudId: cloudId,
               ),
           createCompanionCallback:
               ({
@@ -2293,6 +2821,7 @@ class $$MealsTableTableManager
                 Value<bool> isFavorite = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<String?> cloudId = const Value.absent(),
               }) => MealsCompanion.insert(
                 id: id,
                 name: name,
@@ -2306,6 +2835,7 @@ class $$MealsTableTableManager
                 isFavorite: isFavorite,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                cloudId: cloudId,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -2755,25 +3285,43 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
     AppSettingsCompanion Function({
       Value<int> id,
       Value<int> cooldownDays,
+      Value<int> chickenCooldownDays,
+      Value<int> beefCooldownDays,
+      Value<int> fishCooldownDays,
+      Value<int> meatlessCooldownDays,
       Value<bool> preventRepeatProtein,
       Value<bool> preventRepeatCarbs,
       Value<int> notificationHour,
       Value<int> notificationMinute,
       Value<bool> notificationsEnabled,
       Value<AppThemeModePreference> themeMode,
+      Value<AppLanguagePreference> language,
       Value<bool> isFirstRun,
+      Value<String?> userName,
+      Value<String?> userEmail,
+      Value<String?> userGender,
+      Value<String?> userAvatar,
     });
 typedef $$AppSettingsTableUpdateCompanionBuilder =
     AppSettingsCompanion Function({
       Value<int> id,
       Value<int> cooldownDays,
+      Value<int> chickenCooldownDays,
+      Value<int> beefCooldownDays,
+      Value<int> fishCooldownDays,
+      Value<int> meatlessCooldownDays,
       Value<bool> preventRepeatProtein,
       Value<bool> preventRepeatCarbs,
       Value<int> notificationHour,
       Value<int> notificationMinute,
       Value<bool> notificationsEnabled,
       Value<AppThemeModePreference> themeMode,
+      Value<AppLanguagePreference> language,
       Value<bool> isFirstRun,
+      Value<String?> userName,
+      Value<String?> userEmail,
+      Value<String?> userGender,
+      Value<String?> userAvatar,
     });
 
 class $$AppSettingsTableFilterComposer
@@ -2792,6 +3340,26 @@ class $$AppSettingsTableFilterComposer
 
   ColumnFilters<int> get cooldownDays => $composableBuilder(
     column: $table.cooldownDays,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get chickenCooldownDays => $composableBuilder(
+    column: $table.chickenCooldownDays,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get beefCooldownDays => $composableBuilder(
+    column: $table.beefCooldownDays,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get fishCooldownDays => $composableBuilder(
+    column: $table.fishCooldownDays,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get meatlessCooldownDays => $composableBuilder(
+    column: $table.meatlessCooldownDays,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2830,8 +3398,38 @@ class $$AppSettingsTableFilterComposer
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
+  ColumnWithTypeConverterFilters<
+    AppLanguagePreference,
+    AppLanguagePreference,
+    String
+  >
+  get language => $composableBuilder(
+    column: $table.language,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
   ColumnFilters<bool> get isFirstRun => $composableBuilder(
     column: $table.isFirstRun,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get userName => $composableBuilder(
+    column: $table.userName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get userEmail => $composableBuilder(
+    column: $table.userEmail,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get userGender => $composableBuilder(
+    column: $table.userGender,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get userAvatar => $composableBuilder(
+    column: $table.userAvatar,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2852,6 +3450,26 @@ class $$AppSettingsTableOrderingComposer
 
   ColumnOrderings<int> get cooldownDays => $composableBuilder(
     column: $table.cooldownDays,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get chickenCooldownDays => $composableBuilder(
+    column: $table.chickenCooldownDays,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get beefCooldownDays => $composableBuilder(
+    column: $table.beefCooldownDays,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get fishCooldownDays => $composableBuilder(
+    column: $table.fishCooldownDays,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get meatlessCooldownDays => $composableBuilder(
+    column: $table.meatlessCooldownDays,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -2885,8 +3503,33 @@ class $$AppSettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get language => $composableBuilder(
+    column: $table.language,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get isFirstRun => $composableBuilder(
     column: $table.isFirstRun,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get userName => $composableBuilder(
+    column: $table.userName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get userEmail => $composableBuilder(
+    column: $table.userEmail,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get userGender => $composableBuilder(
+    column: $table.userGender,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get userAvatar => $composableBuilder(
+    column: $table.userAvatar,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -2905,6 +3548,26 @@ class $$AppSettingsTableAnnotationComposer
 
   GeneratedColumn<int> get cooldownDays => $composableBuilder(
     column: $table.cooldownDays,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get chickenCooldownDays => $composableBuilder(
+    column: $table.chickenCooldownDays,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get beefCooldownDays => $composableBuilder(
+    column: $table.beefCooldownDays,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get fishCooldownDays => $composableBuilder(
+    column: $table.fishCooldownDays,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get meatlessCooldownDays => $composableBuilder(
+    column: $table.meatlessCooldownDays,
     builder: (column) => column,
   );
 
@@ -2937,8 +3600,28 @@ class $$AppSettingsTableAnnotationComposer
   get themeMode =>
       $composableBuilder(column: $table.themeMode, builder: (column) => column);
 
+  GeneratedColumnWithTypeConverter<AppLanguagePreference, String>
+  get language =>
+      $composableBuilder(column: $table.language, builder: (column) => column);
+
   GeneratedColumn<bool> get isFirstRun => $composableBuilder(
     column: $table.isFirstRun,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get userName =>
+      $composableBuilder(column: $table.userName, builder: (column) => column);
+
+  GeneratedColumn<String> get userEmail =>
+      $composableBuilder(column: $table.userEmail, builder: (column) => column);
+
+  GeneratedColumn<String> get userGender => $composableBuilder(
+    column: $table.userGender,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get userAvatar => $composableBuilder(
+    column: $table.userAvatar,
     builder: (column) => column,
   );
 }
@@ -2976,45 +3659,81 @@ class $$AppSettingsTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 Value<int> cooldownDays = const Value.absent(),
+                Value<int> chickenCooldownDays = const Value.absent(),
+                Value<int> beefCooldownDays = const Value.absent(),
+                Value<int> fishCooldownDays = const Value.absent(),
+                Value<int> meatlessCooldownDays = const Value.absent(),
                 Value<bool> preventRepeatProtein = const Value.absent(),
                 Value<bool> preventRepeatCarbs = const Value.absent(),
                 Value<int> notificationHour = const Value.absent(),
                 Value<int> notificationMinute = const Value.absent(),
                 Value<bool> notificationsEnabled = const Value.absent(),
                 Value<AppThemeModePreference> themeMode = const Value.absent(),
+                Value<AppLanguagePreference> language = const Value.absent(),
                 Value<bool> isFirstRun = const Value.absent(),
+                Value<String?> userName = const Value.absent(),
+                Value<String?> userEmail = const Value.absent(),
+                Value<String?> userGender = const Value.absent(),
+                Value<String?> userAvatar = const Value.absent(),
               }) => AppSettingsCompanion(
                 id: id,
                 cooldownDays: cooldownDays,
+                chickenCooldownDays: chickenCooldownDays,
+                beefCooldownDays: beefCooldownDays,
+                fishCooldownDays: fishCooldownDays,
+                meatlessCooldownDays: meatlessCooldownDays,
                 preventRepeatProtein: preventRepeatProtein,
                 preventRepeatCarbs: preventRepeatCarbs,
                 notificationHour: notificationHour,
                 notificationMinute: notificationMinute,
                 notificationsEnabled: notificationsEnabled,
                 themeMode: themeMode,
+                language: language,
                 isFirstRun: isFirstRun,
+                userName: userName,
+                userEmail: userEmail,
+                userGender: userGender,
+                userAvatar: userAvatar,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
                 Value<int> cooldownDays = const Value.absent(),
+                Value<int> chickenCooldownDays = const Value.absent(),
+                Value<int> beefCooldownDays = const Value.absent(),
+                Value<int> fishCooldownDays = const Value.absent(),
+                Value<int> meatlessCooldownDays = const Value.absent(),
                 Value<bool> preventRepeatProtein = const Value.absent(),
                 Value<bool> preventRepeatCarbs = const Value.absent(),
                 Value<int> notificationHour = const Value.absent(),
                 Value<int> notificationMinute = const Value.absent(),
                 Value<bool> notificationsEnabled = const Value.absent(),
                 Value<AppThemeModePreference> themeMode = const Value.absent(),
+                Value<AppLanguagePreference> language = const Value.absent(),
                 Value<bool> isFirstRun = const Value.absent(),
+                Value<String?> userName = const Value.absent(),
+                Value<String?> userEmail = const Value.absent(),
+                Value<String?> userGender = const Value.absent(),
+                Value<String?> userAvatar = const Value.absent(),
               }) => AppSettingsCompanion.insert(
                 id: id,
                 cooldownDays: cooldownDays,
+                chickenCooldownDays: chickenCooldownDays,
+                beefCooldownDays: beefCooldownDays,
+                fishCooldownDays: fishCooldownDays,
+                meatlessCooldownDays: meatlessCooldownDays,
                 preventRepeatProtein: preventRepeatProtein,
                 preventRepeatCarbs: preventRepeatCarbs,
                 notificationHour: notificationHour,
                 notificationMinute: notificationMinute,
                 notificationsEnabled: notificationsEnabled,
                 themeMode: themeMode,
+                language: language,
                 isFirstRun: isFirstRun,
+                userName: userName,
+                userEmail: userEmail,
+                userGender: userGender,
+                userAvatar: userAvatar,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

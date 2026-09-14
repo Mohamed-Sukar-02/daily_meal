@@ -555,6 +555,9 @@ void main() {
     setUp(() async {
       db = AppDatabase(NativeDatabase.memory());
       await db.appSettingsDao.ensureSettings();
+      await db.appSettingsDao.updateSettings(
+        const AppSettingsCompanion(isFirstRun: Value(false)),
+      );
     });
 
     tearDown(() async {
@@ -590,6 +593,10 @@ void main() {
           ),
         ),
       );
+      await tester.pumpAndSettle();
+      
+      // Wait for the async splash screen navigation to resolve
+      await tester.pump(const Duration(milliseconds: 500));
       await tester.pumpAndSettle();
 
       final homeTab = find.byKey(const ValueKey('nav_destination_home'));

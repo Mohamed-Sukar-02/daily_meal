@@ -14,37 +14,22 @@ class QuickActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        // Primary Action Button (in RTL, rendered on right side)
-        Expanded(
-          child: FilledButton.icon(
-            key: const ValueKey('btn_cooked_today'),
-            onPressed: onCookedToday,
-            icon: const Icon(Icons.check_circle_outline, size: 18),
-            label: const Text(
-              'طبخت دي النهاردة',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        key: const ValueKey('btn_cooked_today'),
+        onPressed: onCookedToday,
+        icon: const Icon(Icons.soup_kitchen, size: 24, color: Colors.white),
+        label: const Text(
+          'Cook This',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white),
         ),
-
-        const SizedBox(width: 12),
-
-        // Secondary Action Button (in RTL, rendered to the left)
-        Expanded(
-          child: OutlinedButton.icon(
-            key: const ValueKey('btn_leftover'),
-            onPressed: onLeftover,
-            icon: const Icon(Icons.replay_rounded, size: 18),
-            label: const Text(
-              'بواقي أكل',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
+        style: FilledButton.styleFrom(
+          backgroundColor: const Color(0xFF17C97B),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
         ),
-      ],
+      ),
     );
   }
 }

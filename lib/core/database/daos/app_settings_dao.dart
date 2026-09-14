@@ -12,12 +12,16 @@ class AppSettingsDao extends DatabaseAccessor<AppDatabase> with _$AppSettingsDao
   static const defaultSettings = AppSettingsCompanion(
     id: Value(settingsRowId),
     cooldownDays: Value(14),
+    chickenCooldownDays: Value(7),
+    beefCooldownDays: Value(10),
+    fishCooldownDays: Value(5),
     preventRepeatProtein: Value(true),
     preventRepeatCarbs: Value(true),
     notificationHour: Value(12),
     notificationMinute: Value(0),
     notificationsEnabled: Value(true),
     themeMode: Value(AppThemeModePreference.system),
+    language: Value(AppLanguagePreference.ar),
     isFirstRun: Value(true),
   );
 
@@ -67,9 +71,29 @@ class AppSettingsDao extends DatabaseAccessor<AppDatabase> with _$AppSettingsDao
     await updateSettings(AppSettingsCompanion(cooldownDays: Value(clamped)));
   }
 
+  Future<void> updateChickenCooldownDays(int days) async {
+    final clamped = days.clamp(1, 60);
+    await updateSettings(AppSettingsCompanion(chickenCooldownDays: Value(clamped)));
+  }
+
+  Future<void> updateBeefCooldownDays(int days) async {
+    final clamped = days.clamp(1, 60);
+    await updateSettings(AppSettingsCompanion(beefCooldownDays: Value(clamped)));
+  }
+
+  Future<void> updateFishCooldownDays(int days) async {
+    final clamped = days.clamp(1, 60);
+    await updateSettings(AppSettingsCompanion(fishCooldownDays: Value(clamped)));
+  }
+
   /// Update theme mode preference
   Future<void> updateThemeMode(AppThemeModePreference mode) async {
     await updateSettings(AppSettingsCompanion(themeMode: Value(mode)));
+  }
+
+  /// Update language preference
+  Future<void> updateLanguage(AppLanguagePreference lang) async {
+    await updateSettings(AppSettingsCompanion(language: Value(lang)));
   }
 
   /// Update daily notification time
@@ -115,6 +139,24 @@ class AppSettingsDao extends DatabaseAccessor<AppDatabase> with _$AppSettingsDao
   /// Update first run flag
   Future<void> updateFirstRun(bool isFirstRun) async {
     await updateSettings(AppSettingsCompanion(isFirstRun: Value(isFirstRun)));
+  }
+
+  /// Update welcome data (name, email, gender, avatar) and set isFirstRun to false
+  Future<void> updateWelcomeData({
+    required String userName, 
+    String? userEmail,
+    String? userGender,
+    String? userAvatar,
+  }) async {
+    await updateSettings(
+      AppSettingsCompanion(
+        userName: Value(userName),
+        userEmail: Value(userEmail),
+        userGender: Value(userGender),
+        userAvatar: Value(userAvatar),
+        isFirstRun: const Value(false),
+      ),
+    );
   }
 
   /// Reset settings to defaults

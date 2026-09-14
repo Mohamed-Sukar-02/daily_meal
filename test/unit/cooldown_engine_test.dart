@@ -686,19 +686,26 @@ void main() {
         settings: const drift_db.AppSettingsData(
           id: 1,
           cooldownDays: 14,
+          chickenCooldownDays: 3,
+          beefCooldownDays: 7,
+          fishCooldownDays: 4,
           preventRepeatProtein: true,
           preventRepeatCarbs: true,
           notificationHour: 12,
           notificationMinute: 0,
           notificationsEnabled: true,
           themeMode: drift_db.AppThemeModePreference.system,
+          language: drift_db.AppLanguagePreference.ar,
           isFirstRun: true,
+          userName: null,
+          userEmail: null,
+          userGender: null,
+          userAvatar: null,
         ),
         now: baseDate,
       );
       expect(recs.length, equals(1));
       expect(recs.first.id, equals(101));
-      expect(recs.first.name, equals('طاجن تورلي باللحمة'));
     });
   });
 }

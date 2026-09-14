@@ -14,6 +14,34 @@ String formatPrepTime(int minutes) {
   }
 }
 
+Widget _buildCustomChip(String emoji, String label, Color lightBg, Color fgColor, bool isDark) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    decoration: BoxDecoration(
+      color: isDark ? fgColor.withOpacity(0.2) : lightBg,
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(
+        color: isDark ? fgColor.withOpacity(0.5) : fgColor.withOpacity(0.3),
+      ),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(emoji, style: const TextStyle(fontSize: 16)),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            color: isDark ? fgColor.withOpacity(0.9) : fgColor.withOpacity(0.9),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 class MealCard extends StatelessWidget {
   final Meal meal;
   final int cardIndex;
@@ -64,8 +92,34 @@ class MealCard extends StatelessWidget {
             // 1. Priority Banner
             _buildPriorityBanner(context, isPrimary),
 
-            // 2. Photo / Egyptian Graphic Placeholder
-            _buildHeroImage(context),
+            // 2. Photo / Egyptian Graphic Placeholder with Heart Button
+            Stack(
+              children: [
+                _buildHeroImage(context),
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.black.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.8),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: Icon(
+                        meal.isFavorite ? Icons.favorite : Icons.favorite_border,
+                        color: meal.isFavorite ? Colors.red : (isDark ? Colors.white : Colors.grey[700]),
+                      ),
+                      iconSize: 20,
+                      padding: const EdgeInsets.all(8),
+                      constraints: const BoxConstraints(),
+                      onPressed: () {
+                        // TODO: Implement toggle favorite if needed
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
 
             Padding(
               padding: const EdgeInsets.all(16.0),
@@ -96,74 +150,9 @@ class MealCard extends StatelessWidget {
                     spacing: 8,
                     runSpacing: 6,
                     children: [
-                      Chip(
-                        avatar: Icon(
-                          Icons.timer_outlined,
-                          size: 16,
-                          color: theme.colorScheme.primary,
-                        ),
-                        label: Text(formatPrepTime(meal.prepTime)),
-                        visualDensity: VisualDensity.compact,
-                        padding: EdgeInsets.zero,
-                        side: BorderSide(
-                          color: theme.colorScheme.outlineVariant.withValues(alpha: isDark ? 0.35 : 0.5),
-                          width: 0.8,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      Chip(
-                        avatar: Icon(
-                          Icons.category_outlined,
-                          size: 16,
-                          color: theme.colorScheme.secondary,
-                        ),
-                        label: Text(meal.category.labelArabic),
-                        visualDensity: VisualDensity.compact,
-                        padding: EdgeInsets.zero,
-                        side: BorderSide(
-                          color: theme.colorScheme.outlineVariant.withValues(alpha: isDark ? 0.35 : 0.5),
-                          width: 0.8,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      Chip(
-                        avatar: Icon(
-                          Icons.egg_alt_outlined,
-                          size: 16,
-                          color: theme.colorScheme.tertiary,
-                        ),
-                        label: Text(meal.proteinType.labelArabic),
-                        visualDensity: VisualDensity.compact,
-                        padding: EdgeInsets.zero,
-                        side: BorderSide(
-                          color: theme.colorScheme.outlineVariant.withValues(alpha: isDark ? 0.35 : 0.5),
-                          width: 0.8,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      Chip(
-                        avatar: Icon(
-                          Icons.bakery_dining_outlined,
-                          size: 16,
-                          color: theme.colorScheme.primary,
-                        ),
-                        label: Text(meal.carbsType.labelArabic),
-                        visualDensity: VisualDensity.compact,
-                        padding: EdgeInsets.zero,
-                        side: BorderSide(
-                          color: theme.colorScheme.outlineVariant.withValues(alpha: isDark ? 0.35 : 0.5),
-                          width: 0.8,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
+                      _buildCustomChip('⏳', formatPrepTime(meal.prepTime), const Color(0xFFFFF9C4), const Color(0xFFFBC02D), isDark),
+                      _buildCustomChip('🍽️', meal.category.labelArabic, const Color(0xFFE1BEE7), const Color(0xFF8E24AA), isDark),
+                      _buildCustomChip('🥩', meal.proteinType.labelArabic, const Color(0xFFFFCDD2), const Color(0xFFE53935), isDark),
                     ],
                   ),
 
@@ -240,14 +229,32 @@ class MealCard extends StatelessWidget {
 
     if (hasPhoto) {
       return SizedBox(
-        height: cardIndex == 0 ? 180 : 130,
+        height: cardIndex == 0 ? 220 : 160,
         width: double.infinity,
-        child: Image.file(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.file(
           File(meal.photoPath!),
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) =>
               _buildPlaceholder(context, isDark),
         ),
+            if (meal.isFavorite)
+              Positioned(
+                top: 12,
+                right: 12,
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.black54 : Colors.white70,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.favorite, color: Colors.red, size: 20),
+                ),
+              ),
+          ],
+        )
       );
     }
 
@@ -258,7 +265,7 @@ class MealCard extends StatelessWidget {
     final theme = Theme.of(context);
     // Egyptian Kitchen Aesthetic Placeholder
     return Container(
-      height: cardIndex == 0 ? 140 : 100,
+      height: cardIndex == 0 ? 220 : 160,
       width: double.infinity,
       decoration: BoxDecoration(
         gradient: LinearGradient(

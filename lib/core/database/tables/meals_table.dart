@@ -40,6 +40,7 @@ class Meals extends Table {
   BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  TextColumn get cloudId => text().nullable()();
 }
 
 extension ProteinTypeX on ProteinType {

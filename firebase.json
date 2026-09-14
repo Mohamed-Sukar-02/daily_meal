@@ -1,4 +1,4 @@
-{
+﻿{
   "flutter": {
     "platforms": {
       "android": {
@@ -19,7 +19,7 @@
       }
     }
   },
-  "firestore": {
+  "storage": { "rules": "storage.rules" }, "firestore": {
     "rules": "firestore.rules"
   },
   "hosting": {
