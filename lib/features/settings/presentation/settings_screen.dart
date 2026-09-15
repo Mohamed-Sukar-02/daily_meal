@@ -30,6 +30,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final brightness = Theme.of(context).brightness;
 
     return Scaffold(
+      backgroundColor: AppPalette.background(brightness),
       body: SafeArea(
         bottom: false,
         child: settingsAsync.when(
@@ -580,7 +581,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     Brightness brightness,
   ) {
     final controller = ref.read(settingsControllerProvider.notifier);
-    final isDarkMode = settings.themeMode == AppThemeModePreference.dark;
+    // Reflect actual appearance, not just saved pref — so system-dark shows switch on.
+    final isDarkMode = brightness == Brightness.dark;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
