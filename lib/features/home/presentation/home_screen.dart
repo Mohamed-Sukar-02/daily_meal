@@ -5,30 +5,22 @@ import 'package:go_router/go_router.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/app_icons.dart';
-import '../../vault/presentation/discovery_screen.dart';
 import '../domain/cooldown_engine.dart';
 import '../providers/recommendation_provider.dart';
-import 'widgets/home_action_bar.dart';
 import 'widgets/home_header.dart';
-import 'widgets/home_tabs.dart';
 import 'widgets/meal_card.dart';
+import 'widgets/spin_wheel_button.dart';
 import 'widgets/spin_wheel_dialog.dart';
 
-/// Home screen rebuilt 1:1 from the approved mockups:
-/// header → segmented (My Kitchen / Discovery) → 3 recommendation cards →
-/// floating action bar (بواقي الأكل / لف العجلة / توصيل).
-class HomeScreen extends ConsumerStatefulWidget {
+/// Home screen - simplified as requested:
+/// - No top tabs (My Kitchen / Discovery) - removed
+/// - No delivery / leftover pills in bottom bar - removed
+/// - Only recommendations + spin wheel centered at bottom when >=2 meals
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
-  ConsumerState<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends ConsumerState<HomeScreen> {
-  int _tab = 0;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final recsAsync = ref.watch(todayRecommendationsProvider);
 
     return Scaffold(
@@ -38,41 +30,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: Column(
           children: [
             HomeHeader(onProfileTap: () => context.go('/settings')),
-            const SizedBox(height: 12),
-            HomeTabs(
-              index: _tab,
-              onChanged: (index) => setState(() => _tab = index),
-            ),
             const SizedBox(height: 16),
             Expanded(
-              child: _tab == 0
-                  ? recsAsync.when(
-                      data: (result) => result.recommendations.isEmpty
-                          ? _buildEmptyState(context)
-                          : _buildRecommendationsView(context, result),
-                      loading: () => const Center(
-                        child: CircularProgressIndicator.adaptive(),
-                      ),
-                      error: (err, stack) =>
-                          _buildErrorState(context, err),
-                    )
-                  : const DiscoveryScreen(isEmbedded: true),
-            ),
-            if (_tab == 0)
-              recsAsync.maybeWhen(
-                data: (result) => result.recommendations.isNotEmpty
-                    ? HomeActionBar(
-                        onLeftover: () =>
-                            _handleLeftover(context, result.recommendations.first),
-                        onDelivery: () => _showDeliverySoon(context),
-                        onSpin: result.recommendations.length >= 2
-                            ? () => _openSpinWheel(context, result.recommendations)
-                            : null,
-                        canSpin: result.recommendations.length >= 2,
-                      )
-                    : const SizedBox.shrink(),
-                orElse: () => const SizedBox.shrink(),
+              child: recsAsync.when(
+                data: (result) => result.recommendations.isEmpty
+                    ? _buildEmptyState(context)
+                    : _buildRecommendationsView(context, ref, result),
+                loading: () => const Center(
+                  child: CircularProgressIndicator.adaptive(),
+                ),
+                error: (err, stack) => _buildErrorState(context, ref, err),
               ),
+            ),
           ],
         ),
       ),
@@ -80,36 +49,63 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   // ---------------------------------------------------------------------------
-  // Kitchen tab
+  // Recommendations
   // ---------------------------------------------------------------------------
 
   Widget _buildRecommendationsView(
     BuildContext context,
+    WidgetRef ref,
     RecommendationResult<Meal> result,
   ) {
     final brightness = Theme.of(context).brightness;
     final meals = result.recommendations;
+    final canSpin = meals.length >= 2;
 
-    return RefreshIndicator(
-      onRefresh: () async => ref.invalidate(todayRecommendationsProvider),
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
-        children: [
-          if (result.relaxationLevel > 0) ...[
-            _buildRelaxationBanner(context, result, brightness),
-            const SizedBox(height: 12),
-          ],
-          for (int i = 0; i < meals.length; i++) ...[
-            MealCard(
-              meal: meals[i],
-              cardIndex: i,
-              onCookedToday: () => _handleCookedToday(context, meals[i]),
-              onLeftover: () => _handleLeftover(context, meals[i]),
+    return Stack(
+      children: [
+        RefreshIndicator(
+          onRefresh: () async => ref.invalidate(todayRecommendationsProvider),
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(16, 4, 16, canSpin ? 100 : 24),
+            children: [
+              if (result.relaxationLevel > 0) ...[
+                _buildRelaxationBanner(context, result, brightness),
+                const SizedBox(height: 12),
+              ],
+              for (int i = 0; i < meals.length; i++) ...[
+                MealCard(
+                  meal: meals[i],
+                  cardIndex: i,
+                  onCookedToday: () => _handleCookedToday(context, ref, meals[i]),
+                  onLeftover: () => _handleLeftover(context, ref, meals[i]),
+                ),
+                if (i < meals.length - 1) const SizedBox(height: 16),
+              ],
+            ],
+          ),
+        ),
+        if (canSpin)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              color: AppPalette.background(brightness).withValues(alpha: 0.9),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                12,
+                16,
+                12 + MediaQuery.of(context).padding.bottom,
+              ),
+              child: Center(
+                child: SpinWheelButton(
+                  onTap: () => _openSpinWheel(context, ref, meals),
+                  enabled: true,
+                ),
+              ),
             ),
-            if (i < meals.length - 1) const SizedBox(height: 16),
-          ],
-        ],
-      ),
+          ),
+      ],
     );
   }
 
@@ -192,7 +188,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildErrorState(BuildContext context, Object error) {
+  Widget _buildErrorState(BuildContext context, WidgetRef ref, Object error) {
     final brightness = Theme.of(context).brightness;
 
     return Center(
@@ -237,24 +233,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // Actions
   // ---------------------------------------------------------------------------
 
-  void _openSpinWheel(BuildContext context, List<Meal> meals) {
+  void _openSpinWheel(BuildContext context, WidgetRef ref, List<Meal> meals) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => SpinWheelDialog(
         candidates: meals,
-        onWinnerCooked: (winner) => _handleCookedToday(context, winner),
+        onWinnerCooked: (winner) => _handleCookedToday(context, ref, winner),
       ),
     );
   }
 
-  void _showDeliverySoon(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('ميزة التوصيل قادمة قريباً!')),
-    );
-  }
-
-  Future<void> _handleCookedToday(BuildContext context, Meal meal) async {
+  Future<void> _handleCookedToday(BuildContext context, WidgetRef ref, Meal meal) async {
     final controller = ref.read(recommendationControllerProvider.notifier);
     final historyEntryId = await controller.markCookedToday(meal);
 
@@ -275,7 +265,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
-  Future<void> _handleLeftover(BuildContext context, Meal meal) async {
+  Future<void> _handleLeftover(BuildContext context, WidgetRef ref, Meal meal) async {
     final controller = ref.read(recommendationControllerProvider.notifier);
     final historyEntryId = await controller.markLeftover(meal);
 
