@@ -9,6 +9,7 @@ import 'core/theme/app_theme.dart';
 import 'features/settings/providers/settings_providers.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/avatar_service.dart';
+import 'core/providers/orphan_sweep_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,12 +21,11 @@ void main() async {
     debugPrint('Firebase initialization warning: $e');
   }
   await NotificationService.instance.init();
-  // Download avatars in background - don't block app start (optimal for offline-first)
-  // Small size ~1.4MB, but we don't want to delay splash
-  // ignore: unawaited_futures
-  AvatarService.instance.downloadAvatarsIfNeeded().catchError((e) {
-    debugPrint('Avatar download warning: $e');
+
+  AvatarService.instance.downloadAvatarsIfNeeded().catchError((e, st) {
+    debugPrint('Avatar download warning (caught): $e\n$st');
   });
+
   runApp(
     const ProviderScope(
       child: DailyMealApp(),
@@ -33,11 +33,24 @@ void main() async {
   );
 }
 
-class DailyMealApp extends ConsumerWidget {
+class DailyMealApp extends ConsumerStatefulWidget {
   const DailyMealApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DailyMealApp> createState() => _DailyMealAppState();
+}
+
+class _DailyMealAppState extends ConsumerState<DailyMealApp> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(orphanSweepProvider);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
     final router = ref.watch(appRouterProvider);
     final locale = ref.watch(localeProvider);
