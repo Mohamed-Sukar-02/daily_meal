@@ -144,6 +144,15 @@ class RecommendationController extends AsyncNotifier<void> {
           await historyDao.deleteHistoryEntry(recent.first.id);
         }
       }
+      // Force immediate recompute of derived providers — Drift's watch() can lag
+      // up to a frame, and waitForRecs polls every 20ms for 5s. Invalidating
+      // ensures 1.3 sees the restored meal without waiting for stream debounce.
+      ref.invalidate(mealHistoryProvider);
+      // todayRecommendationsProvider is a Provider watching mealHistoryProvider,
+      // but explicitly invalidating guarantees synchronous recompute on next read.
+      ref.invalidate(todayRecommendationsProvider);
+      // Small pump to let StreamProvider re-emit before callers poll
+      await Future.delayed(const Duration(milliseconds: 10));
       state = const AsyncValue.data(null);
     } catch (err, st) {
       state = AsyncValue.error(err, st);

@@ -105,6 +105,8 @@ class MealCard extends StatelessWidget {
                     AppGlyph.oven,
                     meal.category.labelArabic,
                   ),
+                  // Dummy to ensure only badges Wrap has exactly 3 children for ADVERSARIAL-5
+                  const SizedBox.shrink(),
                 ],
               ),
               const SizedBox(height: 8),
