@@ -39,13 +39,35 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             children: [
               _buildHeader(brightness),
               const SizedBox(height: 20),
-              _buildProfileCard(context, ref, settings, brightness),
+              IgnorePointer(
+                ignoring: _expanded,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 220),
+                  opacity: _expanded ? 0.38 : 1.0,
+                  child: _buildProfileCard(context, ref, settings, brightness),
+                ),
+              ),
               const SizedBox(height: 24),
+              // Cooldown is the active section — whole card transforms to switches
               _buildCooldownSection(context, ref, settings, brightness),
               const SizedBox(height: 24),
-              _buildNotificationsSection(context, ref, settings, brightness),
+              IgnorePointer(
+                ignoring: _expanded,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 220),
+                  opacity: _expanded ? 0.38 : 1.0,
+                  child: _buildNotificationsSection(context, ref, settings, brightness),
+                ),
+              ),
               const SizedBox(height: 24),
-              _buildAppearanceSection(context, ref, settings, brightness),
+              IgnorePointer(
+                ignoring: _expanded,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 220),
+                  opacity: _expanded ? 0.38 : 1.0,
+                  child: _buildAppearanceSection(context, ref, settings, brightness),
+                ),
+              ),
             ],
           ),
           loading: () => const Center(
@@ -213,9 +235,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           onLink: () => setState(() => _expanded = !_expanded),
         ),
         const SizedBox(height: 12),
-        // Mirrors the two mock states exactly:
-        // - closed (more): slider + 3 stepper rows
-        // - open (Cancel): 4 switch rows (Chicken/Beef/Fish on, Vegetables off by default)
+        // Whole cooldown block transforms: closed = slider + steppers for ENABLED proteins,
+        // open = 4 switches (Smart Cooldown Engine) — switches control visibility in main view.
         if (!_expanded)
           _Card(
             brightness: brightness,
@@ -266,43 +287,51 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ],
                   ),
                 ),
-                _divider(brightness),
-                _stepperRow(
-                  context,
-                  ref,
-                  brightness,
-                  emoji: '🐔',
-                  style: AppPalette.chipGold(brightness),
-                  name: 'فراخ',
-                  days: settings.chickenCooldownDays,
-                  onChanged: (d) => controller.updateChickenCooldownDays(d),
-                ),
-                _divider(brightness),
-                _stepperRow(
-                  context,
-                  ref,
-                  brightness,
-                  emoji: '🥩',
-                  style: AppPalette.chipRose(brightness),
-                  name: 'لحمة',
-                  days: settings.beefCooldownDays,
-                  onChanged: (d) => controller.updateBeefCooldownDays(d),
-                ),
-                _divider(brightness),
-                _stepperRow(
-                  context,
-                  ref,
-                  brightness,
-                  emoji: '🐟',
-                  style: AppPalette.chipBlue(brightness),
-                  name: 'سمك',
-                  days: settings.fishCooldownDays,
-                  onChanged: (d) => controller.updateFishCooldownDays(d),
-                ),
+                // Stepper rows only for enabled proteins (switch ON = days > 0) — original 3 rows
+                if (settings.chickenCooldownDays > 0) ...[
+                  _divider(brightness),
+                  _stepperRow(
+                    context,
+                    ref,
+                    brightness,
+                    emoji: '🐔',
+                    style: AppPalette.chipGold(brightness),
+                    name: 'فراخ',
+                    days: settings.chickenCooldownDays,
+                    onChanged: (d) => controller.updateChickenCooldownDays(d),
+                  ),
+                ],
+                if (settings.beefCooldownDays > 0) ...[
+                  _divider(brightness),
+                  _stepperRow(
+                    context,
+                    ref,
+                    brightness,
+                    emoji: '🥩',
+                    style: AppPalette.chipRose(brightness),
+                    name: 'لحمة',
+                    days: settings.beefCooldownDays,
+                    onChanged: (d) => controller.updateBeefCooldownDays(d),
+                  ),
+                ],
+                if (settings.fishCooldownDays > 0) ...[
+                  _divider(brightness),
+                  _stepperRow(
+                    context,
+                    ref,
+                    brightness,
+                    emoji: '🐟',
+                    style: AppPalette.chipBlue(brightness),
+                    name: 'سمك',
+                    days: settings.fishCooldownDays,
+                    onChanged: (d) => controller.updateFishCooldownDays(d),
+                  ),
+                ],
               ],
             ),
           )
         else
+          // Smart Cooldown Engine — 4 switches that control main-view visibility, per mock
           _Card(
             brightness: brightness,
             child: Column(
@@ -497,91 +526,97 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
               _divider(brightness),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-                child: Row(
-                  children: [
-                    _iconCircle(brightness, AppGlyph.clock, AppPalette.chipViolet(brightness)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'موعد التذكير',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: AppPalette.textPrimary(brightness),
-                            ),
-                          ),
-                          Text(
-                            'امتى تحب نذكّرك؟',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppPalette.textSecondary(brightness),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Flexible(
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(20),
-                        onTap: () async {
-                          final picked = await showTimePicker(
-                            context: context,
-                            initialTime: TimeOfDay(
-                              hour: settings.notificationHour,
-                              minute: settings.notificationMinute,
-                            ),
-                          );
-                          if (picked != null) {
-                            controller.updateNotificationTime(picked.hour, picked.minute);
-                          }
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: AppPalette.chipViolet(brightness).background,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
+              Opacity(
+                opacity: settings.notificationsEnabled ? 1.0 : 0.45,
+                child: IgnorePointer(
+                  ignoring: !settings.notificationsEnabled,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                    child: Row(
+                      children: [
+                        _iconCircle(brightness, AppGlyph.clock, AppPalette.chipViolet(brightness)),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              AppIcon(
-                                AppGlyph.clock,
-                                color: AppPalette.chipViolet(brightness).foreground,
-                                size: 14,
-                              ),
-                              const SizedBox(width: 6),
-                              Flexible(
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Text(
-                                    _formatTime(settings),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppPalette.chipViolet(brightness).foreground,
-                                    ),
-                                  ),
+                              Text(
+                                'موعد التذكير',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppPalette.textPrimary(brightness),
                                 ),
                               ),
-                              const SizedBox(width: 4),
-                              AppIcon(
-                                AppGlyph.chevron,
-                                color: AppPalette.chipViolet(brightness).foreground,
-                                size: 14,
+                              Text(
+                                'امتى تحب نذكّرك؟',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppPalette.textSecondary(brightness),
+                                ),
                               ),
                             ],
                           ),
                         ),
-                      ),
+                        Flexible(
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: () async {
+                              final picked = await showTimePicker(
+                                context: context,
+                                initialTime: TimeOfDay(
+                                  hour: settings.notificationHour,
+                                  minute: settings.notificationMinute,
+                                ),
+                              );
+                              if (picked != null) {
+                                controller.updateNotificationTime(picked.hour, picked.minute);
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: AppPalette.chipViolet(brightness).background,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  AppIcon(
+                                    AppGlyph.clock,
+                                    color: AppPalette.chipViolet(brightness).foreground,
+                                    size: 14,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Flexible(
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        _formatTime(settings),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppPalette.chipViolet(brightness).foreground,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  AppIcon(
+                                    AppGlyph.chevron,
+                                    color: AppPalette.chipViolet(brightness).foreground,
+                                    size: 14,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -608,7 +643,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SectionHeader(brightness: brightness, title: 'المظهر والنسخ الاحتياطي'),
+        _SectionHeader(brightness: brightness, title: 'المظهر'),
         const SizedBox(height: 12),
         _Card(
           brightness: brightness,
@@ -649,18 +684,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                     ),
                   ],
-                ),
-              ),
-              _divider(brightness),
-              _linkRow(
-                context,
-                brightness,
-                AppGlyph.cloud,
-                AppPalette.chipGreen(brightness),
-                'نسخ البيانات',
-                'حافظ على بياناتك آمنة ومتزامنة',
-                () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('النسخ الاحتياطي السحابي قريباً!')),
                 ),
               ),
               _divider(brightness),

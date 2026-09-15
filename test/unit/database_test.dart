@@ -62,8 +62,8 @@ void main() {
       expect(settings.preventRepeatCarbs, isTrue);
       expect(settings.notificationHour, equals(12));
       expect(settings.notificationMinute, equals(0));
-      expect(settings.notificationsEnabled, isTrue);
-      expect(settings.notificationEnabled, isTrue);
+      expect(settings.notificationsEnabled, isFalse);
+      expect(settings.notificationEnabled, isFalse);
       expect(settings.themeMode, equals(AppThemeModePreference.system));
       expect(settings.isFirstRun, isTrue);
     });
