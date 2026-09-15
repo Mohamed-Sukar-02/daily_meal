@@ -96,14 +96,14 @@ class _GlyphPainter extends CustomPainter {
             ..addRRect(RRect.fromRectAndRadius(
                 const Rect.fromLTRB(3.6, 3.6, 20.4, 20.4),
                 const Radius.circular(5)))
-            ..addOval(const Rect.fromCircle(center: Offset(12, 12), radius: 3))
+            ..addOval(Rect.fromCircle(center: const Offset(12, 12), radius: 3))
             ..fillType = PathFillType.evenOdd,
           fill,
         );
 
       case AppGlyph.history:
         canvas.drawArc(
-          const Rect.fromCircle(center: Offset(12, 12.6), radius: 7.6),
+          Rect.fromCircle(center: const Offset(12, 12.6), radius: 7.6),
           _rad(-55),
           _rad(250),
           false,
@@ -128,8 +128,8 @@ class _GlyphPainter extends CustomPainter {
         }
         canvas.drawPath(
           Path()
-            ..addOval(const Rect.fromCircle(center: Offset(12, 12), radius: 6.6))
-            ..addOval(const Rect.fromCircle(center: Offset(12, 12), radius: 2.7))
+            ..addOval(Rect.fromCircle(center: const Offset(12, 12), radius: 6.6))
+            ..addOval(Rect.fromCircle(center: const Offset(12, 12), radius: 2.7))
             ..fillType = PathFillType.evenOdd,
           fill,
         );
@@ -222,7 +222,7 @@ class _GlyphPainter extends CustomPainter {
 
       case AppGlyph.swap:
         canvas.drawArc(
-          const Rect.fromCircle(center: Offset(12, 12), radius: 6.8),
+          Rect.fromCircle(center: const Offset(12, 12), radius: 6.8),
           _rad(200),
           _rad(140),
           false,
@@ -230,7 +230,7 @@ class _GlyphPainter extends CustomPainter {
         );
         _arrowHead(canvas, fill, const Offset(17.9, 8.6), _rad(35));
         canvas.drawArc(
-          const Rect.fromCircle(center: Offset(12, 12), radius: 6.8),
+          Rect.fromCircle(center: const Offset(12, 12), radius: 6.8),
           _rad(20),
           _rad(140),
           false,

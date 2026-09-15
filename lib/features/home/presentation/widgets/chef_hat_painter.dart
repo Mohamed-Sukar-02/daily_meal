@@ -19,7 +19,7 @@ class ChefHatPainter extends CustomPainter {
       ..color = stroke
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0
-      ..strokeJoin = Join.round
+      ..strokeJoin = StrokeJoin.round
       ..strokeCap = StrokeCap.round;
 
     final fillPaint = Paint()

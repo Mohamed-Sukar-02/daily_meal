@@ -110,7 +110,7 @@ class MealCard extends StatelessWidget {
                               AppGlyph.oven,
                               meal.category.labelArabic,
                             ),
-                            ..._badges(brightness),
+                            ..._badges(context, brightness),
                           ],
                         ),
                       ],
@@ -197,7 +197,7 @@ class MealCard extends StatelessWidget {
     );
   }
 
-  List<Widget> _badges(Brightness brightness) {
+  List<Widget> _badges(BuildContext context, Brightness brightness) {
     final badges = <Widget>[];
 
     if (meal.isFridaySpecial) {
