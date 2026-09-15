@@ -1,21 +1,21 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
+
 import '../../../core/database/app_database.dart';
+import '../../../core/database/database_providers.dart';
+import '../../../core/theme/app_palette.dart';
+import '../../../core/widgets/app_icons.dart';
+import '../../home/presentation/widgets/home_header.dart' show EmphasisMarks;
+import '../../../core/localization/app_strings.dart';
 import '../providers/settings_providers.dart';
 import 'widgets/legal_policies_dialog.dart' as widgets;
+import 'database_management_screen.dart';
 
-// ---------- الألوان المستخدمة في التصميم ----------
-class AppColors {
-  static const background = Color(0xFF0E1220);
-  static const card = Color(0xFF161B2E);
-  static const cardBorder = Color(0xFF232A44);
-  static const textPrimary = Colors.white;
-  static const textSecondary = Color(0xFF8A93B2);
-  static const green = Color(0xFF17C97B);
-  static const purple = Color(0xFF5B4FE9);
-}
-
+/// Settings screen rebuilt from the approved mockups (light + dark):
+/// header with shine marks, profile card, then titled sections whose cards
+/// float on the page background. "more" expands the per-protein cooldown
+/// enable/disable switches (a protein at 0 days = cooldown off).
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
@@ -24,677 +24,1315 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-
+  bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
     final settingsAsync = ref.watch(appSettingsProvider);
+    final brightness = Theme.of(context).brightness;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppPalette.background(brightness),
       body: SafeArea(
+        bottom: false,
         child: settingsAsync.when(
           data: (settings) {
+            final strings = AppStrings(settings.language == AppLanguagePreference.ar ? const Locale('ar') : const Locale('en'));
             return ListView(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
               children: [
-                _buildHeader(),
+                _buildHeader(brightness, strings),
                 const SizedBox(height: 20),
-                _buildProfileCard(),
-                const SizedBox(height: 20),
-                _buildSmartCooldownCard(context, ref, settings),
-                const SizedBox(height: 20),
-                _buildNotificationsCard(context, ref, settings),
-                const SizedBox(height: 20),
-                _buildAppearanceCard(context, ref, settings),
-                const SizedBox(height: 20),
-                _buildExtraCard(context, ref, settings),
+                IgnorePointer(
+                  ignoring: _expanded,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 220),
+                    opacity: _expanded ? 0.38 : 1.0,
+                    child: _buildProfileCard(context, ref, settings, brightness, strings),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                _buildCooldownSection(context, ref, settings, brightness, strings),
+                const SizedBox(height: 24),
+                IgnorePointer(
+                  ignoring: _expanded,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 220),
+                    opacity: _expanded ? 0.38 : 1.0,
+                    child: _buildNotificationsSection(context, ref, settings, brightness, strings),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                IgnorePointer(
+                  ignoring: _expanded,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 220),
+                    opacity: _expanded ? 0.38 : 1.0,
+                    child: _buildAppearanceSection(context, ref, settings, brightness, strings),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                IgnorePointer(
+                  ignoring: _expanded,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 220),
+                    opacity: _expanded ? 0.38 : 1.0,
+                    child: _buildAdminSection(context, brightness, strings),
+                  ),
+                ),
               ],
             );
           },
-          loading: () => const Center(child: CircularProgressIndicator(color: AppColors.green)),
-          error: (err, _) => Center(child: Text('Error: $err', style: const TextStyle(color: Colors.red))),
+          loading: () => const Center(
+            child: CircularProgressIndicator(color: AppPalette.brandGreen),
+          ),
+          error: (err, _) {
+            final fallbackStrings = AppStrings(const Locale('ar'));
+            return Center(
+              child: Text(
+                '${fallbackStrings.errorOccurred}$err',
+                style: TextStyle(color: AppPalette.textSecondary(brightness)),
+              ),
+            );
+          },
         ),
       ),
     );
   }
 
-  // ---------- الهيدر ----------
-  Widget _buildHeader() {
-    return Row(
+  // ---------------------------------------------------------------------------
+  // Header + profile
+  // ---------------------------------------------------------------------------
+
+  Widget _buildHeader(Brightness brightness, AppStrings strings) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Settings',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
+        Row(
+          children: [
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
+                child: Text(
+                  strings.navSettings,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 30,
+                    height: 1.2,
+                    fontWeight: FontWeight.w800,
+                    color: AppPalette.textPrimary(brightness),
+                  ),
                 ),
               ),
-              SizedBox(height: 4),
-              Text(
-                'Make your meals work better for you',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
-              ),
-            ],
+            ),
+            const SizedBox(width: 8),
+            const EmphasisMarks(size: 20),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          strings.settingsSubtitle,
+          style: TextStyle(
+            fontSize: 13,
+            color: AppPalette.textSecondary(brightness),
           ),
         ),
       ],
     );
   }
 
-  // ---------- كارت البروفايل ----------
-  Widget _buildProfileCard() {
-    return _cardContainer(
-      child: Row(
-        children: [
-          Stack(
+  Widget _buildProfileCard(
+    BuildContext context,
+    WidgetRef ref,
+    AppSettingsData settings,
+    Brightness brightness,
+    AppStrings strings,
+  ) {
+    return _Card(
+      brightness: brightness,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () => _showProfileEditDialog(context, ref, settings, strings),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
             children: [
-              const CircleAvatar(
-                radius: 30,
-                backgroundColor: Colors.amber,
-                child: Icon(Icons.face, size: 32, color: Colors.brown),
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
-                    color: AppColors.purple,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.edit, size: 12, color: Colors.white),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 14),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Mohamed Sukar',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  'mohamed@example.com',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                ),
-              ],
-            ),
-          ),
-          const Icon(Icons.chevron_right, color: AppColors.textSecondary),
-        ],
-      ),
-    );
-  }
-
-  // ---------- كارت Smart Cooldown Engine ----------
-  Widget _buildSmartCooldownCard(BuildContext context, WidgetRef ref, AppSetting settings) {
-    return _cardContainer(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sectionTitle(
-            icon: Icons.ac_unit,
-            iconBg: AppColors.purple,
-            title: 'Smart Cooldown Engine',
-            subtitle: "Adjust how often you'll see the same meals",
-          ),
-          const Divider(color: AppColors.cardBorder, height: 28),
-          Row(
-            children: [
-              _iconCircle(Icons.access_time, AppColors.green),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Meal Repeat Delay',
-                        style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.bold)),
-                    Text('Wait time before showing the same meal again',
-                        style: TextStyle(
-                            color: AppColors.textSecondary, fontSize: 12)),
-                  ],
-                ),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.green.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '${settings.cooldownDays} days',
-                  style: const TextStyle(
-                      color: AppColors.green, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-          SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              activeTrackColor: AppColors.green,
-              inactiveTrackColor: AppColors.cardBorder,
-              thumbColor: AppColors.green,
-              overlayColor: AppColors.green.withValues(alpha: 0.2),
-              trackHeight: 6,
-            ),
-            child: Slider(
-              value: settings.cooldownDays.toDouble(),
-              min: 1,
-              max: 30,
-              onChanged: (v) {
-                ref.read(settingsControllerProvider.notifier).updateCooldownDays(v.toInt());
-              },
-            ),
-          ),
-          const Divider(color: AppColors.cardBorder, height: 10),
-          _stepperRow('🐔', 'Chicken', 'Days to wait', settings.chickenCooldownDays,
-              onMinus: () {
-                if (settings.chickenCooldownDays > 1) {
-                  ref.read(settingsControllerProvider.notifier).updateChickenCooldownDays(settings.chickenCooldownDays - 1);
-                }
-              },
-              onPlus: () {
-                ref.read(settingsControllerProvider.notifier).updateChickenCooldownDays(settings.chickenCooldownDays + 1);
-              },
-              iconBg: Colors.amber),
-          const Divider(color: AppColors.cardBorder, height: 24),
-          _stepperRow('🥩', 'Beef', 'Days to wait', settings.beefCooldownDays,
-              onMinus: () {
-                if (settings.beefCooldownDays > 1) {
-                  ref.read(settingsControllerProvider.notifier).updateBeefCooldownDays(settings.beefCooldownDays - 1);
-                }
-              },
-              onPlus: () {
-                ref.read(settingsControllerProvider.notifier).updateBeefCooldownDays(settings.beefCooldownDays + 1);
-              },
-              iconBg: Colors.redAccent),
-          const Divider(color: AppColors.cardBorder, height: 24),
-          _stepperRow('🐟', 'Fish', 'Days to wait', settings.fishCooldownDays,
-              onMinus: () {
-                if (settings.fishCooldownDays > 1) {
-                  ref.read(settingsControllerProvider.notifier).updateFishCooldownDays(settings.fishCooldownDays - 1);
-                }
-              },
-              onPlus: () {
-                ref.read(settingsControllerProvider.notifier).updateFishCooldownDays(settings.fishCooldownDays + 1);
-              },
-              iconBg: Colors.blueAccent),
-        ],
-      ),
-    );
-  }
-
-  // ---------- كارت Notifications ----------
-  Widget _buildNotificationsCard(BuildContext context, WidgetRef ref, AppSetting settings) {
-    return _cardContainer(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sectionTitle(
-            icon: Icons.notifications,
-            iconBg: Colors.orange,
-            title: 'Notifications',
-            subtitle: 'Stay on track with your meal plan',
-          ),
-          const Divider(color: AppColors.cardBorder, height: 28),
-          Row(
-            children: [
-              _iconCircle(Icons.wb_sunny, AppColors.green),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Daily Reminder',
-                        style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.bold)),
-                    Text('Get notified at your preferred time',
-                        style: TextStyle(
-                            color: AppColors.textSecondary, fontSize: 12)),
-                  ],
-                ),
-              ),
-              Switch(
-                value: settings.notificationsEnabled,
-                activeThumbColor: Colors.white,
-                activeTrackColor: AppColors.green,
-                onChanged: (v) {
-                  ref.read(settingsControllerProvider.notifier).toggleNotifications(v);
-                },
-              ),
-            ],
-          ),
-          if (settings.notificationsEnabled) ...[
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _iconCircle(Icons.access_time_filled, AppColors.purple),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Reminder Time',
-                          style: TextStyle(
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.bold)),
-                      Text('When do you want to be reminded?',
-                          style: TextStyle(
-                              color: AppColors.textSecondary, fontSize: 12)),
-                    ],
-                  ),
-                ),
-                InkWell(
-                  onTap: () async {
-                    final picked = await showTimePicker(
-                      context: context,
-                      initialTime: TimeOfDay(
-                        hour: settings.notificationHour,
-                        minute: settings.notificationMinute,
-                      ),
-                    );
-                    if (picked != null) {
-                      ref.read(settingsControllerProvider.notifier).updateNotificationTime(picked.hour, picked.minute);
-                    }
-                  },
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.cardBorder,
-                      borderRadius: BorderRadius.circular(20),
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF3C64F),
+                      shape: BoxShape.circle,
                     ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.access_time, size: 14, color: Colors.white70),
-                        const SizedBox(width: 6),
-                        Text(
-                          '${settings.notificationHour > 12 ? settings.notificationHour - 12 : settings.notificationHour == 0 ? 12 : settings.notificationHour}:${settings.notificationMinute.toString().padLeft(2, '0')} ${settings.notificationHour >= 12 ? 'PM' : 'AM'}',
-                          style: const TextStyle(color: Colors.white)
+                    clipBehavior: Clip.antiAlias,
+                    child: settings.userAvatar != null && settings.userAvatar!.isNotEmpty
+                        ? Image.asset(settings.userAvatar!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Center(child: AppIcon(AppGlyph.person, color: Colors.white, size: 34)))
+                        : const Center(
+                            child: AppIcon(AppGlyph.person, color: Colors.white, size: 34),
+                          ),
+                  ),
+                  Positioned(
+                    bottom: -2,
+                    left: -2,
+                    child: Container(
+                      width: 26,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6C5CE7),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppPalette.card(brightness),
+                          width: 2,
                         ),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.chevron_right,
-                            size: 16, color: AppColors.textSecondary),
-                      ],
+                      ),
+                      child: const Center(
+                        child: AppIcon(AppGlyph.pencil, color: Colors.white, size: 12),
+                      ),
                     ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  // ---------- كارت Appearance & Backup ----------
-  Widget _buildAppearanceCard(BuildContext context, WidgetRef ref, AppSetting settings) {
-    return _cardContainer(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sectionTitle(
-            icon: Icons.settings,
-            iconBg: Colors.blue,
-            title: 'Appearance & Backup',
-            subtitle: 'Customize your app experience',
-          ),
-          const Divider(color: AppColors.cardBorder, height: 28),
-          Row(
-            children: [
-              _iconCircle(Icons.nightlight_round, AppColors.purple),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Dark Mode',
-                        style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.bold)),
-                    Text('Switch between light and dark themes',
-                        style: TextStyle(
-                            color: AppColors.textSecondary, fontSize: 12)),
-                  ],
-                ),
-              ),
-              Switch(
-                value: settings.themeMode == AppThemeModePreference.dark,
-                activeThumbColor: Colors.white,
-                activeTrackColor: AppColors.green,
-                onChanged: (v) {
-                  ref.read(settingsControllerProvider.notifier).updateThemeMode(
-                        v ? AppThemeModePreference.dark : AppThemeModePreference.light,
-                      );
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          InkWell(
-            onTap: () {
-              // Option for data backup
-            },
-            child: Row(
-              children: [
-                _iconCircle(Icons.cloud, AppColors.green),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Data Backup',
-                          style: TextStyle(
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.bold)),
-                      Text('Keep your data safe and synced',
-                          style: TextStyle(
-                              color: AppColors.textSecondary, fontSize: 12)),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.chevron_right, color: AppColors.textSecondary),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          InkWell(
-            onTap: () => _showAdminPasswordDialog(context),
-            child: Row(
-              children: [
-                _iconCircle(Icons.security, Colors.orangeAccent),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Admin Database',
-                          style: TextStyle(
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.bold)),
-                      Text('Access cloud database (Admin only)',
-                          style: TextStyle(
-                              color: AppColors.textSecondary, fontSize: 12)),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.chevron_right, color: AppColors.textSecondary),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ---------- كارت Language & Legal (Extra) ----------
-  Widget _buildExtraCard(BuildContext context, WidgetRef ref, AppSetting settings) {
-    return _cardContainer(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sectionTitle(
-            icon: Icons.language,
-            iconBg: Colors.teal,
-            title: 'Language & More',
-            subtitle: 'Language preferences and legal policies',
-          ),
-          const Divider(color: AppColors.cardBorder, height: 28),
-          Row(
-            children: [
-              _iconCircle(Icons.translate, Colors.teal),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Language',
-                        style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.bold)),
-                    Text('App language (Ar / En)',
-                        style: TextStyle(
-                            color: AppColors.textSecondary, fontSize: 12)),
-                  ],
-                ),
-              ),
-              SegmentedButton<AppLanguagePreference>(
-                segments: const [
-                  ButtonSegment(
-                    value: AppLanguagePreference.ar,
-                    label: Text('عربي'),
-                  ),
-                  ButtonSegment(
-                    value: AppLanguagePreference.en,
-                    label: Text('En'),
                   ),
                 ],
-                selected: {settings.language},
-                onSelectionChanged: (selected) {
-                  if (selected.isNotEmpty) {
-                    ref.read(settingsControllerProvider.notifier).updateLanguage(selected.first);
-                  }
-                },
-                style: SegmentedButton.styleFrom(
-                  backgroundColor: AppColors.cardBorder,
-                  foregroundColor: Colors.white,
-                  selectedForegroundColor: AppColors.background,
-                  selectedBackgroundColor: AppColors.green,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      settings.userName ?? 'Mohamed Sukar',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: AppPalette.textPrimary(brightness),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      settings.userEmail ?? 'mohamed@example.com',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppPalette.textSecondary(brightness),
+                      ),
+                    ),
+                  ],
                 ),
+              ),
+              AppIcon(
+                AppGlyph.chevron,
+                color: AppPalette.textSecondary(brightness),
+                size: 20,
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          InkWell(
-            onTap: () {
-              showDialog(
-                context: context,
-                builder: (_) => const widgets.LegalPoliciesDialog(isPrivacy: true),
-              );
-            },
-            child: Row(
+        ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Smart Cooldown Engine
+  // ---------------------------------------------------------------------------
+
+  Widget _buildCooldownSection(
+    BuildContext context,
+    WidgetRef ref,
+    AppSettingsData settings,
+    Brightness brightness,
+    AppStrings strings,
+  ) {
+    final controller = ref.read(settingsControllerProvider.notifier);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionHeader(
+          brightness: brightness,
+          title: strings.smartCooldownEngine,
+          link: _expanded ? strings.cancel : strings.more,
+          linkColor: _expanded ? AppPalette.heartCoral : const Color(0xFF3E63DD),
+          onLink: () => setState(() => _expanded = !_expanded),
+        ),
+        const SizedBox(height: 12),
+        if (!_expanded)
+          _Card(
+            brightness: brightness,
+            child: Column(
               children: [
-                _iconCircle(Icons.privacy_tip, Colors.blueGrey),
-                const SizedBox(width: 12),
-                const Expanded(
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Privacy Policy',
-                          style: TextStyle(
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.bold)),
-                      Text('Read our privacy policies',
-                          style: TextStyle(
-                              color: AppColors.textSecondary, fontSize: 12)),
+                      Row(
+                        children: [
+                          _iconCircle(brightness, AppGlyph.clock, AppPalette.chipGreen(brightness)),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: AlignmentDirectional.centerStart,
+                              child: Text(
+                                strings.delayMealRepeat,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppPalette.textPrimary(brightness),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: AppPalette.chipGreen(brightness).background,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  strings.daysText(settings.cooldownDays),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppPalette.chipGreen(brightness).foreground,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Slider(
+                        value: settings.cooldownDays.toDouble().clamp(1, 30),
+                        min: 1,
+                        max: 30,
+                        divisions: 29,
+                        onChanged: (v) => controller.updateCooldownDays(v.round()),
+                      ),
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+                if (settings.chickenCooldownDays > 0) ...[
+                  _divider(brightness),
+                  _stepperRow(
+                    context,
+                    ref,
+                    brightness,
+                    strings,
+                    emoji: '🐔',
+                    style: AppPalette.chipGold(brightness),
+                    name: strings.chicken,
+                    days: settings.chickenCooldownDays,
+                    onChanged: (d) => controller.updateChickenCooldownDays(d),
+                  ),
+                ],
+                if (settings.beefCooldownDays > 0) ...[
+                  _divider(brightness),
+                  _stepperRow(
+                    context,
+                    ref,
+                    brightness,
+                    strings,
+                    emoji: '🥩',
+                    style: AppPalette.chipRose(brightness),
+                    name: strings.beef,
+                    days: settings.beefCooldownDays,
+                    onChanged: (d) => controller.updateBeefCooldownDays(d),
+                  ),
+                ],
+                if (settings.fishCooldownDays > 0) ...[
+                  _divider(brightness),
+                  _stepperRow(
+                    context,
+                    ref,
+                    brightness,
+                    strings,
+                    emoji: '🐟',
+                    style: AppPalette.chipBlue(brightness),
+                    name: strings.fish,
+                    days: settings.fishCooldownDays,
+                    onChanged: (d) => controller.updateFishCooldownDays(d),
+                  ),
+                ],
+              ],
+            ),
+          )
+        else
+          _Card(
+            brightness: brightness,
+            child: Column(
+              children: [
+                _proteinSwitch(
+                  ref, brightness, strings, '🐔', AppPalette.chipGold(brightness), strings.chicken,
+                  settings.chickenCooldownDays, 7, controller.updateChickenCooldownDays,
+                ),
+                _divider(brightness),
+                _proteinSwitch(
+                  ref, brightness, strings, '🥩', AppPalette.chipRose(brightness), strings.beef,
+                  settings.beefCooldownDays, 10, controller.updateBeefCooldownDays,
+                ),
+                _divider(brightness),
+                _proteinSwitch(
+                  ref, brightness, strings, '🐟', AppPalette.chipBlue(brightness), strings.fish,
+                  settings.fishCooldownDays, 5, controller.updateFishCooldownDays,
+                ),
+                _divider(brightness),
+                _proteinSwitch(
+                  ref, brightness, strings, '🌿', AppPalette.chipGreen(brightness), strings.veggies,
+                  settings.meatlessCooldownDays, 3,
+                  (d) => ref.read(appSettingsDaoProvider).updateMeatlessCooldownDays(d),
+                ),
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  void _showAdminPasswordDialog(BuildContext context) {
-    final passwordController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.card,
-        title: const Text('تسجيل دخول المسئول', style: TextStyle(color: AppColors.textPrimary)),
-        content: TextField(
-          controller: passwordController,
-          obscureText: true,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            hintText: 'كلمة المرور',
-            hintStyle: TextStyle(color: AppColors.textSecondary),
-            prefixIcon: Icon(Icons.lock, color: AppColors.textSecondary),
-            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.cardBorder)),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('إلغاء', style: TextStyle(color: AppColors.textSecondary)),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.green),
-            onPressed: () {
-              if (passwordController.text == '747474') {
-                Navigator.pop(ctx);
-                launchUrl(Uri.parse('https://daily-meal000.web.app/#/admin'));
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('كلمة المرور غير صحيحة')),
-                );
-              }
-            },
-            child: const Text('دخول', style: TextStyle(color: Colors.black)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ---------- Widgets مساعدة قابلة لإعادة الاستخدام ----------
-  Widget _cardContainer({required Widget child}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: child,
-    );
-  }
-
-  Widget _sectionTitle({
-    required IconData icon,
-    required Color iconBg,
-    required String title,
-    required String subtitle,
-  }) {
-    return Row(
-      children: [
-        _iconCircle(icon, iconBg),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title,
-                  style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold)),
-              Text(subtitle,
-                  style: const TextStyle(
-                      color: AppColors.textSecondary, fontSize: 12)),
-            ],
-          ),
-        ),
       ],
-    );
-  }
-
-  Widget _iconCircle(IconData icon, Color bg) {
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(color: bg.withValues(alpha: 0.2), shape: BoxShape.circle),
-      child: Icon(icon, color: bg, size: 20),
     );
   }
 
   Widget _stepperRow(
-    String emoji,
-    String title,
-    String subtitle,
-    int value, {
-    required VoidCallback onMinus,
-    required VoidCallback onPlus,
-    required Color iconBg,
+    BuildContext context,
+    WidgetRef ref,
+    Brightness brightness,
+    AppStrings strings, {
+    required String emoji,
+    required ChipStyle style,
+    required String name,
+    required int days,
+    required ValueChanged<int> onChanged,
   }) {
-    return Row(
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      child: Row(
+        children: [
+          _emojiCircle(brightness, emoji, style),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: AppPalette.textPrimary(brightness),
+                    ),
+                  ),
+                ),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    strings.waitingDays,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppPalette.textSecondary(brightness),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                _stepButton(brightness, AppGlyph.minus, () => onChanged((days - 1).clamp(0, 30))),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minWidth: 24, maxWidth: 36),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '$days',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppPalette.textPrimary(brightness),
+                      ),
+                    ),
+                  ),
+                ),
+                _stepButton(brightness, AppGlyph.plus, () => onChanged((days + 1).clamp(0, 30))),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _proteinSwitch(
+    WidgetRef ref,
+    Brightness brightness,
+    AppStrings strings,
+    String emoji,
+    ChipStyle style,
+    String name,
+    int days,
+    int defaultDays,
+    ValueChanged<int> onChanged,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      child: Row(
+        children: [
+          _emojiCircle(brightness, emoji, style),
+          const SizedBox(width: 14),
+          Expanded(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: AlignmentDirectional.centerStart,
+              child: Text(
+                name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppPalette.textPrimary(brightness),
+                ),
+              ),
+            ),
+          ),
+          Switch(
+            value: days > 0,
+            onChanged: (on) => onChanged(on ? defaultDays : 0),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Notifications
+  // ---------------------------------------------------------------------------
+
+  Widget _buildNotificationsSection(
+    BuildContext context,
+    WidgetRef ref,
+    AppSettingsData settings,
+    Brightness brightness,
+    AppStrings strings,
+  ) {
+    final controller = ref.read(settingsControllerProvider.notifier);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-              color: iconBg.withValues(alpha: 0.2), shape: BoxShape.circle),
-          alignment: Alignment.center,
-          child: Text(emoji, style: const TextStyle(fontSize: 18)),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
+        _SectionHeader(brightness: brightness, title: strings.notifications),
+        const SizedBox(height: 12),
+        _Card(
+          brightness: brightness,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title,
-                  style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.bold)),
-              Text(subtitle,
-                  style: const TextStyle(
-                      color: AppColors.textSecondary, fontSize: 12)),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                child: Row(
+                  children: [
+                    _iconCircle(brightness, AppGlyph.bell, AppPalette.chipGold(brightness)),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              strings.dailyReminder,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppPalette.textPrimary(brightness),
+                              ),
+                            ),
+                          ),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              strings.dailyReminderDesc,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppPalette.textSecondary(brightness),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: settings.notificationsEnabled,
+                      onChanged: (v) => controller.toggleNotifications(v),
+                    ),
+                  ],
+                ),
+              ),
+              _divider(brightness),
+              Opacity(
+                opacity: settings.notificationsEnabled ? 1.0 : 0.45,
+                child: IgnorePointer(
+                  ignoring: !settings.notificationsEnabled,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                    child: Row(
+                      children: [
+                        _iconCircle(brightness, AppGlyph.clock, AppPalette.chipViolet(brightness)),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: AlignmentDirectional.centerStart,
+                                child: Text(
+                                  strings.reminderTime,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppPalette.textPrimary(brightness),
+                                  ),
+                                ),
+                              ),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: AlignmentDirectional.centerStart,
+                                child: Text(
+                                  strings.reminderTimeDesc,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppPalette.textSecondary(brightness),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Flexible(
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: () async {
+                              final picked = await showTimePicker(
+                                context: context,
+                                initialTime: TimeOfDay(
+                                  hour: settings.notificationHour,
+                                  minute: settings.notificationMinute,
+                                ),
+                              );
+                              if (picked != null) {
+                                controller.updateNotificationTime(picked.hour, picked.minute);
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: AppPalette.chipViolet(brightness).background,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  AppIcon(
+                                    AppGlyph.clock,
+                                    color: AppPalette.chipViolet(brightness).foreground,
+                                    size: 14,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Flexible(
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        _formatTime(settings),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppPalette.chipViolet(brightness).foreground,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  AppIcon(
+                                    AppGlyph.chevron,
+                                    color: AppPalette.chipViolet(brightness).foreground,
+                                    size: 14,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
-        _circleButton(Icons.remove, onMinus),
-        SizedBox(
-          width: 32,
-          child: Text(
-            '$value',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.bold),
-          ),
-        ),
-        _circleButton(Icons.add, onPlus),
       ],
     );
   }
 
-  Widget _circleButton(IconData icon, VoidCallback onTap) {
+  // ---------------------------------------------------------------------------
+  // Appearance & Backup
+  // ---------------------------------------------------------------------------
+
+  Widget _buildAppearanceSection(
+    BuildContext context,
+    WidgetRef ref,
+    AppSettingsData settings,
+    Brightness brightness,
+    AppStrings strings,
+  ) {
+    final controller = ref.read(settingsControllerProvider.notifier);
+
+    String themeLabel(AppThemeModePreference m) {
+      switch (m) {
+        case AppThemeModePreference.dark:
+          return strings.themeDark;
+        case AppThemeModePreference.light:
+          return strings.themeLight;
+        case AppThemeModePreference.system:
+          return strings.themeSystem;
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionHeader(brightness: brightness, title: strings.appearanceAndLanguage),
+        const SizedBox(height: 12),
+        _Card(
+          brightness: brightness,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                child: Row(
+                  children: [
+                    _iconCircle(brightness, AppGlyph.moon, AppPalette.chipViolet(brightness)),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              strings.appearance,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppPalette.textPrimary(brightness),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              strings.chooseAppAppearance,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12,
+                                height: 1.3,
+                                color: AppPalette.textSecondary(brightness),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppPalette.tabContainer(brightness),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppPalette.hairline(brightness)),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<AppThemeModePreference>(
+                              value: settings.themeMode,
+                              isDense: true,
+                              icon: AppIcon(AppGlyph.chevron, color: AppPalette.textSecondary(brightness), size: 14),
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppPalette.textPrimary(brightness),
+                              ),
+                              dropdownColor: AppPalette.card(brightness),
+                              borderRadius: BorderRadius.circular(12),
+                              onChanged: (v) {
+                                if (v != null) controller.updateThemeMode(v);
+                              },
+                              items: [
+                                DropdownMenuItem(value: AppThemeModePreference.system, child: Text(themeLabel(AppThemeModePreference.system))),
+                                DropdownMenuItem(value: AppThemeModePreference.light, child: Text(themeLabel(AppThemeModePreference.light))),
+                                DropdownMenuItem(value: AppThemeModePreference.dark, child: Text(themeLabel(AppThemeModePreference.dark))),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _divider(brightness),
+              // Language Segmented Control - SAME outer shape as switch cards (radius 20, height 44, tabContainer bg, hairline border)
+              // Divided in middle: EN left, AR right - exactly as old design requested
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                child: Row(
+                  children: [
+                    _iconCircle(brightness, AppGlyph.globe, AppPalette.chipBlue(brightness)),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              strings.languageSettings,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppPalette.textPrimary(brightness),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              settings.language == AppLanguagePreference.ar ? strings.languageArabic : strings.languageEnglish,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12,
+                                height: 1.3,
+                                color: AppPalette.textSecondary(brightness),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    // EXACT old shape: same outer shape as switches, divided middle AR right EN left
+                    Container(
+                      height: 44,
+                      width: 124,
+                      decoration: BoxDecoration(
+                        color: AppPalette.tabContainer(brightness),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppPalette.hairline(brightness), width: 1),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _LanguageSegment(
+                              brightness: brightness,
+                              label: 'EN',
+                              isLeft: true,
+                              selected: settings.language == AppLanguagePreference.en,
+                              onTap: () => controller.updateLanguage(AppLanguagePreference.en),
+                            ),
+                          ),
+                          Container(width: 1, color: AppPalette.hairline(brightness)),
+                          Expanded(
+                            child: _LanguageSegment(
+                              brightness: brightness,
+                              label: 'AR',
+                              isRight: true,
+                              selected: settings.language == AppLanguagePreference.ar,
+                              onTap: () => controller.updateLanguage(AppLanguagePreference.ar),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAdminSection(
+    BuildContext context,
+    Brightness brightness,
+    AppStrings strings,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionHeader(brightness: brightness, title: strings.admin),
+        const SizedBox(height: 12),
+        _Card(
+          brightness: brightness,
+          child: Column(
+            children: [
+              _linkRow(
+                context,
+                brightness,
+                AppGlyph.cloud,
+                AppPalette.chipGreen(brightness),
+                strings.databaseManagement,
+                strings.manageLocalData,
+                () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const DatabaseManagementScreen()),
+                ),
+              ),
+              _divider(brightness),
+              _linkRow(
+                context,
+                brightness,
+                AppGlyph.bookmark,
+                AppPalette.chipRose(brightness),
+                strings.legalPolicies,
+                strings.privacyPolicy,
+                () => showDialog(
+                  context: context,
+                  builder: (_) => const widgets.LegalPoliciesDialog(isPrivacy: true),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showProfileEditDialog(BuildContext context, WidgetRef ref, AppSettingsData settings, AppStrings strings) {
+    final nameController = TextEditingController(text: settings.userName ?? '');
+    final emailController = TextEditingController(text: settings.userEmail ?? '');
+    String? selectedAvatar = settings.userAvatar;
+    final avatars = [
+      'assets/avatars/MO1.png', 'assets/avatars/MO2.png', 'assets/avatars/MO3.png', 'assets/avatars/MO4.png', 'assets/avatars/MO5.png',
+      'assets/avatars/MY1.png', 'assets/avatars/MY2.png', 'assets/avatars/MY3.png', 'assets/avatars/MY4.png', 'assets/avatars/MY5.png',
+      'assets/avatars/F01.png', 'assets/avatars/F02.png', 'assets/avatars/F03.png', 'assets/avatars/F04.png', 'assets/avatars/F05.png',
+      'assets/avatars/FY1.png', 'assets/avatars/FY2.png', 'assets/avatars/FY3.png', 'assets/avatars/FY4.png', 'assets/avatars/FY5.png',
+    ];
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: Text(strings.editProfile),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: InputDecoration(labelText: strings.nameField, prefixIcon: const Icon(Icons.person)),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: emailController,
+                  decoration: InputDecoration(labelText: strings.emailField, prefixIcon: const Icon(Icons.email)),
+                  keyboardType: TextInputType.emailAddress,
+                ),
+                const SizedBox(height: 20),
+                Text(strings.chooseAvatar, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: List.generate(avatars.length, (i) {
+                    final isSelected = selectedAvatar == avatars[i];
+                    return GestureDetector(
+                      onTap: () => setState(() => selectedAvatar = avatars[i]),
+                      child: Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent,
+                            width: 2.5,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.asset(avatars[i], fit: BoxFit.cover),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            ),
+          ),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(strings.cancel)),
+            FilledButton(
+              onPressed: () async {
+                final dao = ref.read(appSettingsDaoProvider);
+                await dao.updateWelcomeData(
+                  userName: nameController.text.trim().isEmpty ? 'Mohamed Sukar' : nameController.text.trim(),
+                  userEmail: emailController.text.trim().isEmpty ? null : emailController.text.trim(),
+                  userGender: settings.userGender,
+                  userAvatar: selectedAvatar,
+                );
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(strings.profileSaved)));
+                }
+              },
+              child: Text(strings.save),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _pickLanguage(BuildContext context, WidgetRef ref, AppSettingsData settings, AppStrings strings) {
+    final controller = ref.read(settingsControllerProvider.notifier);
+    showDialog(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: Text(strings.languageSettings),
+        children: [
+          SimpleDialogOption(
+            onPressed: () {
+              controller.updateLanguage(AppLanguagePreference.ar);
+              Navigator.pop(ctx);
+            },
+            child: const Text('العربية'),
+          ),
+          SimpleDialogOption(
+            onPressed: () {
+              controller.updateLanguage(AppLanguagePreference.en);
+              Navigator.pop(ctx);
+            },
+            child: const Text('English'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Shared bits
+  // ---------------------------------------------------------------------------
+
+  String _formatTime(AppSettingsData s) {
+    final hour12 = s.notificationHour > 12
+        ? s.notificationHour - 12
+        : (s.notificationHour == 0 ? 12 : s.notificationHour);
+    final minute = s.notificationMinute.toString().padLeft(2, '0');
+    final period = s.notificationHour >= 12 ? 'م' : 'ص';
+    return '$hour12:$minute $period';
+  }
+
+  Widget _divider(Brightness brightness) {
+    return Divider(
+      height: 1,
+      thickness: 1,
+      color: AppPalette.hairline(brightness),
+    );
+  }
+
+  Widget _iconCircle(Brightness brightness, AppGlyph glyph, ChipStyle style) {
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(color: style.background, shape: BoxShape.circle),
+      child: Center(child: AppIcon(glyph, color: style.foreground, size: 20)),
+    );
+  }
+
+  Widget _emojiCircle(Brightness brightness, String emoji, ChipStyle style) {
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(color: style.background, shape: BoxShape.circle),
+      child: Center(child: Text(emoji, style: const TextStyle(fontSize: 20))),
+    );
+  }
+
+  Widget _stepButton(Brightness brightness, AppGlyph glyph, VoidCallback onTap) {
+    return Material(
+      color: AppPalette.tabContainer(brightness),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: SizedBox(
+          width: 38,
+          height: 38,
+          child: Center(
+            child: AppIcon(glyph, color: AppPalette.textPrimary(brightness), size: 16),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _linkRow(
+    BuildContext context,
+    Brightness brightness,
+    AppGlyph glyph,
+    ChipStyle style,
+    String title,
+    String subtitle,
+    VoidCallback onTap,
+  ) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: const BoxDecoration(
-          color: AppColors.cardBorder,
-          shape: BoxShape.circle,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        child: Row(
+          children: [
+            _iconCircle(brightness, glyph, style),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppPalette.textPrimary(brightness),
+                      ),
+                    ),
+                  ),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppPalette.textSecondary(brightness),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            AppIcon(
+              AppGlyph.chevron,
+              color: AppPalette.textSecondary(brightness),
+              size: 20,
+            ),
+          ],
         ),
-        child: Icon(icon, size: 16, color: Colors.white70),
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final Brightness brightness;
+  final String title;
+  final String? link;
+  final Color? linkColor;
+  final VoidCallback? onLink;
+
+  const _SectionHeader({
+    required this.brightness,
+    required this.title,
+    this.link,
+    this.linkColor,
+    this.onLink,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppPalette.textPrimary(brightness),
+              ),
+            ),
+          ),
+        ),
+        if (link != null) ...[
+          const SizedBox(width: 8),
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: GestureDetector(
+                onTap: onLink,
+                child: Text(
+                  link!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: linkColor ?? AppPalette.brandGreen,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _Card extends StatelessWidget {
+  final Brightness brightness;
+  final Widget child;
+
+  const _Card({required this.brightness, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppPalette.card(brightness),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: brightness == Brightness.dark
+                ? Colors.black.withValues(alpha: 0.3)
+                : AppPalette.lightTextPrimary.withValues(alpha: 0.05),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: child,
+    );
+  }
+}
+
+class _LanguageSegment extends StatelessWidget {
+  final Brightness brightness;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final bool isLeft;
+  final bool isRight;
+
+  const _LanguageSegment({
+    required this.brightness,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.isLeft = false,
+    this.isRight = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        height: 44,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? AppPalette.brandGreen : Colors.transparent,
+          borderRadius: BorderRadius.horizontal(
+            left: isLeft ? const Radius.circular(20) : Radius.zero,
+            right: isRight ? const Radius.circular(20) : Radius.zero,
+          ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: AppPalette.brandGreen.withValues(alpha: 0.35),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.3,
+              color: selected ? Colors.white : AppPalette.textSecondary(brightness),
+            ),
+          ),
+        ),
       ),
     );
   }

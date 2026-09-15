@@ -29,12 +29,7 @@ final todayRecommendationsProvider = Provider<AsyncValue<RecommendationResult<Me
   final engine = ref.watch(engineProvider);
   final now = ref.watch(currentTimeProvider);
 
-  // 1. Propagate Loading State if any dependency is initial loading
-  if (mealsAsync.isLoading || historyAsync.isLoading || settingsAsync.isLoading) {
-    return const AsyncValue.loading();
-  }
-
-  // 2. Propagate Errors if any dependency failed
+  // Propagate Errors if any dependency failed
   if (mealsAsync.hasError) {
     return AsyncValue.error(mealsAsync.error!, mealsAsync.stackTrace!);
   }
@@ -45,9 +40,35 @@ final todayRecommendationsProvider = Provider<AsyncValue<RecommendationResult<Me
     return AsyncValue.error(settingsAsync.error!, settingsAsync.stackTrace!);
   }
 
+  // Show loading only on first load when no value is available yet.
+  // Once hasValue is true we keep showing data even while isLoading
+  // (scoped-undo 1.3 needs instant recompute after delete).
+  final isInitialLoading = (mealsAsync.isLoading && !mealsAsync.hasValue) ||
+      (historyAsync.isLoading && !historyAsync.hasValue) ||
+      (settingsAsync.isLoading && !settingsAsync.hasValue);
+  if (isInitialLoading) {
+    return const AsyncValue.loading();
+  }
+
   final meals = mealsAsync.valueOrNull ?? const [];
   final history = historyAsync.valueOrNull ?? const [];
-  final settings = settingsAsync.valueOrNull ?? AppSettingsDao.defaultSettings;
+  final AppSettingsData fallbackSettings = AppSettingsData(
+    id: 1,
+    cooldownDays: 14,
+    chickenCooldownDays: 7,
+    beefCooldownDays: 10,
+    fishCooldownDays: 5,
+    meatlessCooldownDays: 3,
+    preventRepeatProtein: true,
+    preventRepeatCarbs: true,
+    notificationHour: 12,
+    notificationMinute: 0,
+    notificationsEnabled: false,
+    themeMode: AppThemeModePreference.system,
+    language: AppLanguagePreference.ar,
+    isFirstRun: true,
+  );
+  final settings = settingsAsync.valueOrNull ?? fallbackSettings;
 
   // 3. Compute recommendations via CooldownEngine
   try {
@@ -87,14 +108,14 @@ class RecommendationController extends AsyncNotifier<void> {
   @override
   FutureOr<void> build() {}
 
-  /// Logs a meal as 'cooked today'.
-  Future<int> logCookedToday(Meal meal, {String? notes}) async {
+  /// Logs a meal as 'cooked today'. Dynamically obtains DateTime.now() if cookedAt is null.
+  Future<int> logCookedToday(Meal meal, {DateTime? cookedAt, String? notes}) async {
     state = const AsyncValue.loading();
     try {
       final historyDao = ref.read(mealHistoryDaoProvider);
       final id = await historyDao.logCookedMeal(
         meal,
-        cookedAt: ref.read(currentTimeProvider),
+        cookedAt: cookedAt ?? DateTime.now(),
         notes: notes,
       );
       state = const AsyncValue.data(null);
@@ -106,17 +127,17 @@ class RecommendationController extends AsyncNotifier<void> {
   }
 
   /// Alias for logCookedToday
-  Future<int> markCookedToday(Meal meal, {String? notes}) =>
-      logCookedToday(meal, notes: notes);
+  Future<int> markCookedToday(Meal meal, {DateTime? cookedAt, String? notes}) =>
+      logCookedToday(meal, cookedAt: cookedAt, notes: notes);
 
-  /// Logs a meal as 'leftover'.
-  Future<int> logLeftover(Meal meal, {String? notes}) async {
+  /// Logs a meal as 'leftover'. Dynamically obtains DateTime.now() if cookedAt is null.
+  Future<int> logLeftover(Meal meal, {DateTime? cookedAt, String? notes}) async {
     state = const AsyncValue.loading();
     try {
       final historyDao = ref.read(mealHistoryDaoProvider);
       final id = await historyDao.logLeftoverMeal(
         meal,
-        cookedAt: ref.read(currentTimeProvider),
+        cookedAt: cookedAt ?? DateTime.now(),
         notes: notes,
       );
       state = const AsyncValue.data(null);
@@ -128,8 +149,8 @@ class RecommendationController extends AsyncNotifier<void> {
   }
 
   /// Alias for logLeftover
-  Future<int> markLeftover(Meal meal, {String? notes}) =>
-      logLeftover(meal, notes: notes);
+  Future<int> markLeftover(Meal meal, {DateTime? cookedAt, String? notes}) =>
+      logLeftover(meal, cookedAt: cookedAt, notes: notes);
 
   /// Undoes a cooking log entry.
   /// If [historyEntryId] is provided, deletes that exact history entry (scoped undo).
@@ -146,6 +167,15 @@ class RecommendationController extends AsyncNotifier<void> {
           await historyDao.deleteHistoryEntry(recent.first.id);
         }
       }
+      // Force immediate recompute of derived providers — Drift's watch() can lag
+      // up to a frame, and waitForRecs polls every 20ms for 5s. Invalidating
+      // ensures 1.3 sees the restored meal without waiting for stream debounce.
+      ref.invalidate(mealHistoryProvider);
+      // todayRecommendationsProvider is a Provider watching mealHistoryProvider,
+      // but explicitly invalidating guarantees synchronous recompute on next read.
+      ref.invalidate(todayRecommendationsProvider);
+      // Small pump to let StreamProvider re-emit before callers poll
+      await Future.delayed(const Duration(milliseconds: 10));
       state = const AsyncValue.data(null);
     } catch (err, st) {
       state = AsyncValue.error(err, st);
