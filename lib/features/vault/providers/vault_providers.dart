@@ -3,20 +3,18 @@ import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_providers.dart';
+import '../../../core/utils/arabic_normalizer.dart';
 
-/// Reactive stream watching all meals in the vault ordered alphabetically.
 final allMealsProvider = StreamProvider<List<Meal>>((ref) {
   final dao = ref.watch(mealsDaoProvider);
   return dao.watchAllMeals();
 });
 
-/// Reactive stream watching only favorite meals.
 final favoriteMealsProvider = StreamProvider<List<Meal>>((ref) {
   final dao = ref.watch(mealsDaoProvider);
   return dao.watchFavorites();
 });
 
-/// Filter state model for the Meal Vault list.
 class VaultFilterState {
   final String searchQuery;
   final ProteinType? proteinType;
@@ -87,7 +85,6 @@ class VaultFilterState {
   }
 }
 
-/// Filter state notifier for the Meal Vault.
 class VaultFilterNotifier extends Notifier<VaultFilterState> {
   @override
   VaultFilterState build() => const VaultFilterState();
@@ -141,37 +138,32 @@ final vaultFilterProvider = NotifierProvider<VaultFilterNotifier, VaultFilterSta
   return VaultFilterNotifier();
 });
 
-/// Reactive filtered meals stream based on current filters and search query.
 final filteredMealsProvider = Provider<AsyncValue<List<Meal>>>((ref) {
   final allMealsAsync = ref.watch(allMealsProvider);
   final filter = ref.watch(vaultFilterProvider);
 
   return allMealsAsync.whenData((meals) {
     return meals.where((meal) {
-      // 1. Search Query
       if (filter.searchQuery.trim().isNotEmpty) {
-        final query = filter.searchQuery.trim().toLowerCase();
-        if (!meal.name.toLowerCase().contains(query)) {
+        final normalizedQuery = normalizeArabic(filter.searchQuery.trim());
+        final mealNormalized = meal.nameNormalized ?? normalizeArabic(meal.name);
+        if (!mealNormalized.contains(normalizedQuery)) {
           return false;
         }
       }
 
-      // 2. Protein Filter
       if (filter.proteinType != null && meal.proteinType != filter.proteinType) {
         return false;
       }
 
-      // 3. Carbs Filter
       if (filter.carbsType != null && meal.carbsType != filter.carbsType) {
         return false;
       }
 
-      // 4. Category Filter
       if (filter.category != null && meal.category != filter.category) {
         return false;
       }
 
-      // 5. Flags
       if (filter.isFavoriteOnly && !meal.isFavorite) {
         return false;
       }
@@ -190,12 +182,10 @@ final filteredMealsProvider = Provider<AsyncValue<List<Meal>>>((ref) {
   });
 });
 
-/// Mutation controller for Meal Vault CRUD operations.
 class VaultController extends AsyncNotifier<void> {
   @override
   FutureOr<void> build() {}
 
-  /// Inserts a new meal into the vault via named parameters.
   Future<int> addMeal({
     required String name,
     required ProteinType proteinType,
@@ -239,7 +229,6 @@ class VaultController extends AsyncNotifier<void> {
     }
   }
 
-  /// Inserts a new meal into the vault via MealsCompanion.
   Future<int> addMealCompanion(MealsCompanion companion) async {
     state = const AsyncValue.loading();
     try {
@@ -253,7 +242,6 @@ class VaultController extends AsyncNotifier<void> {
     }
   }
 
-  /// Updates an existing meal entity.
   Future<bool> updateMeal(Meal meal) async {
     state = const AsyncValue.loading();
     try {
@@ -267,8 +255,6 @@ class VaultController extends AsyncNotifier<void> {
     }
   }
 
-  /// Deletes a meal from the vault.
-  /// SQLite foreign key 'ON DELETE SET NULL' preserves existing history records.
   Future<int> deleteMeal(int id) async {
     state = const AsyncValue.loading();
     try {
@@ -282,7 +268,6 @@ class VaultController extends AsyncNotifier<void> {
     }
   }
 
-  /// Toggles favorite status of a meal.
   Future<void> toggleFavorite(int id, [bool? currentStatus]) async {
     try {
       final dao = ref.read(mealsDaoProvider);

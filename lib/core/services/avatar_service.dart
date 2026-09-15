@@ -5,12 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'reachability_service.dart';
 
-/// Professional avatar download service
-/// - Downloads avatars when internet is available (offline-first)
-/// - Small size (~1.4MB total for 20 avatars 256x256)
-/// - Supports limited access, caching, and fallback to bundled assets
-/// - Uses connectivity_plus to detect internet [from existing network_provider]
 class AvatarService {
   AvatarService._();
   static final AvatarService instance = AvatarService._();
@@ -38,26 +34,22 @@ class AvatarService {
     'assets/avatars/FY5.png',
   ];
 
-  static const String _prefsKey = 'avatars_downloaded_v1';
+  static const String _prefsKey = 'avatars_downloaded_v2';
 
-  /// Get local file path for avatar - returns file path if downloaded, else asset path
   Future<String> getAvatarPath(String assetPath) async {
     final localPath = await _getLocalFilePath(assetPath);
     final file = File(localPath);
     if (await file.exists()) {
       return localPath;
     }
-    // Fallback to bundled asset
     return assetPath;
   }
 
-  /// Check if avatar is downloaded as file
   Future<bool> isAvatarDownloaded(String assetPath) async {
     final localPath = await _getLocalFilePath(assetPath);
     return File(localPath).exists();
   }
 
-  /// Get local file path for asset
   Future<String> _getLocalFilePath(String assetPath) async {
     final dir = await getApplicationDocumentsDirectory();
     final avatarsDir = Directory('${dir.path}/avatars');
@@ -65,25 +57,30 @@ class AvatarService {
     return '${avatarsDir.path}/$fileName';
   }
 
-  /// Download avatars when internet is available - called on app start
   Future<void> downloadAvatarsIfNeeded() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final alreadyDownloaded = prefs.getBool(_prefsKey) ?? false;
 
-      // Check connectivity
       final connectivity = await Connectivity().checkConnectivity();
-      final hasInternet = !connectivity.contains(ConnectivityResult.none) && connectivity.isNotEmpty;
+      final hasInterface = !connectivity.contains(ConnectivityResult.none) && connectivity.isNotEmpty;
 
-      if (!hasInternet) {
-        debugPrint('AvatarService: No internet, skipping download, using bundled assets');
-        // Even without internet, copy bundled assets to local storage for file access
+      if (!hasInterface) {
+        debugPrint('AvatarService: No interface, using bundled');
+        await _copyBundledAssetsToLocal();
+        return;
+      }
+
+      final reachable = await ReachabilityService.instance.isInternetReachable(
+        timeout: const Duration(seconds: 2),
+      );
+      if (!reachable) {
+        debugPrint('AvatarService: No internet reachable, using bundled');
         await _copyBundledAssetsToLocal();
         return;
       }
 
       if (alreadyDownloaded) {
-        // Verify files still exist
         var allExist = true;
         for (final asset in avatarAssets) {
           if (!await isAvatarDownloaded(asset)) {
@@ -92,23 +89,22 @@ class AvatarService {
           }
         }
         if (allExist) {
-          debugPrint('AvatarService: Avatars already downloaded and verified');
+          debugPrint('AvatarService: Avatars already downloaded');
           return;
         }
       }
 
-      debugPrint('AvatarService: Internet available, downloading avatars (small size ~1.4MB)...');
+      debugPrint('AvatarService: Downloading avatars...');
       await _downloadAvatars();
 
       await prefs.setBool(_prefsKey, true);
-      debugPrint('AvatarService: Avatars downloaded successfully');
+      debugPrint('AvatarService: Avatars downloaded');
     } catch (e) {
-      debugPrint('AvatarService: Error downloading avatars: $e - falling back to bundled assets');
+      debugPrint('AvatarService: Error $e - fallback to bundled');
       await _copyBundledAssetsToLocal();
     }
   }
 
-  /// Copy bundled assets to local storage - ensures file access even offline
   Future<void> _copyBundledAssetsToLocal() async {
     try {
       final dir = await getApplicationDocumentsDirectory();
@@ -126,17 +122,15 @@ class AvatarService {
           final byteData = await rootBundle.load(assetPath);
           final buffer = byteData.buffer.asUint8List();
           await file.writeAsBytes(buffer);
-          debugPrint('AvatarService: Copied $assetPath to $localPath');
         } catch (e) {
           debugPrint('AvatarService: Failed to copy $assetPath: $e');
         }
       }
     } catch (e) {
-      debugPrint('AvatarService: Error copying bundled assets: $e');
+      debugPrint('AvatarService: Error copying bundled: $e');
     }
   }
 
-  /// Download avatars from remote - tries multiple sources
   Future<void> _downloadAvatars() async {
     final dir = await getApplicationDocumentsDirectory();
     final avatarsDir = Directory('${dir.path}/avatars');
@@ -144,50 +138,31 @@ class AvatarService {
       await avatarsDir.create(recursive: true);
     }
 
-    // For now, copy bundled assets (since remote URLs not yet configured)
-    // In production, you would download from Firebase Storage or CDN:
-    // Example: https://daily-meal000.web.app/avatars/MO1.png or Firebase Storage
-    // This implementation ensures avatars are in file system for better performance
-    // and prepares for future remote download capability
-    
     for (final assetPath in avatarAssets) {
       final localPath = await _getLocalFilePath(assetPath);
       final file = File(localPath);
       if (await file.exists()) continue;
 
       try {
-        // Try to download from remote first (if configured)
         final remoteUrl = _getRemoteUrl(assetPath);
         if (remoteUrl != null) {
           final success = await _downloadFromUrl(remoteUrl, localPath);
-          if (success) {
-            debugPrint('AvatarService: Downloaded $assetPath from $remoteUrl');
-            continue;
-          }
+          if (success) continue;
         }
 
-        // Fallback: copy from bundled assets
         final byteData = await rootBundle.load(assetPath);
         final buffer = byteData.buffer.asUint8List();
         await file.writeAsBytes(buffer);
-        debugPrint('AvatarService: Copied $assetPath to local (fallback)');
       } catch (e) {
         debugPrint('AvatarService: Failed to get $assetPath: $e');
       }
     }
   }
 
-  /// Get remote URL for avatar - can be configured to Firebase Storage, CDN, etc.
   String? _getRemoteUrl(String assetPath) {
-    // In production, return actual remote URL:
-    // return 'https://daily-meal000.web.app/avatars/${assetPath.split('/').last}';
-    // Or Firebase Storage: 'https://firebasestorage.googleapis.com/.../avatars/...'
-    // For now, return null to use bundled assets - but structure is ready for remote
-    // When internet available, app will use this to download fresh avatars
     return null;
   }
 
-  /// Download file from URL using HttpClient (no extra dependency needed)
   Future<bool> _downloadFromUrl(String url, String localPath) async {
     try {
       final httpClient = HttpClient();
@@ -209,7 +184,6 @@ class AvatarService {
     }
   }
 
-  /// Get all local avatar paths (for UI)
   Future<List<String>> getAllLocalAvatarPaths() async {
     final List<String> paths = [];
     for (final asset in avatarAssets) {
@@ -218,7 +192,6 @@ class AvatarService {
     return paths;
   }
 
-  /// Clear downloaded avatars (for testing or reset)
   Future<void> clearDownloadedAvatars() async {
     try {
       final dir = await getApplicationDocumentsDirectory();
@@ -228,14 +201,12 @@ class AvatarService {
       }
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_prefsKey);
-      debugPrint('AvatarService: Cleared downloaded avatars');
     } catch (e) {
-      debugPrint('AvatarService: Error clearing avatars: $e');
+      debugPrint('AvatarService: Error clearing: $e');
     }
   }
 }
 
-/// Helper to consolidate HttpClientResponse bytes
 Future<Uint8List> consolidateHttpClientResponseBytes(HttpClientResponse response) async {
   final completer = BytesBuilder();
   await for (final chunk in response) {

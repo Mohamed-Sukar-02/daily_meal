@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import '../app_database.dart';
+import '../../utils/arabic_normalizer.dart';
 
 part 'meals_dao.g.dart';
 
@@ -7,7 +8,6 @@ part 'meals_dao.g.dart';
 class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
   MealsDao(super.db);
 
-  /// Watch all meals in the vault, ordered alphabetically by name, then by id DESC
   Stream<List<Meal>> watchAllMeals() {
     return (select(meals)
           ..orderBy([
@@ -17,12 +17,10 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
         .watch();
   }
 
-  /// Watch a single meal by primary key ID
   Stream<Meal?> watchMealById(int id) {
     return (select(meals)..where((t) => t.id.equals(id))).watchSingleOrNull();
   }
 
-  /// Watch favorite meals
   Stream<List<Meal>> watchFavorites() {
     return (select(meals)
           ..where((t) => t.isFavorite.equals(true))
@@ -33,13 +31,19 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
         .watch();
   }
 
-  /// Watch meals matching a search query string
   Stream<List<Meal>> watchSearchMeals(String query) {
     final clean = query.trim();
     if (clean.isEmpty) return watchAllMeals();
 
+    final normalized = normalizeArabic(clean);
+    final escaped = escapeLikePattern(normalized);
+    final pattern = '%$escaped%';
+
     return (select(meals)
-          ..where((t) => t.name.like('%$clean%'))
+          ..where((t) => CustomExpression<bool>(
+                "COALESCE(name_normalized, name) LIKE ? ESCAPE '\\'",
+                [Variable<String>(pattern)],
+              ))
           ..orderBy([
             (t) => OrderingTerm.asc(t.name),
             (t) => OrderingTerm.desc(t.id),
@@ -47,7 +51,6 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
         .watch();
   }
 
-  /// Watch meals matching multiple optional tag filters
   Stream<List<Meal>> watchFilterByTag({
     ProteinType? proteinType,
     CarbsType? carbsType,
@@ -68,7 +71,6 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
     ).watch();
   }
 
-  /// One-shot query to fetch all meals
   Future<List<Meal>> getAllMeals() {
     return (select(meals)
           ..orderBy([
@@ -78,18 +80,23 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
         .get();
   }
 
-  /// Fetch a single meal by its primary key ID
   Future<Meal?> getMealById(int id) {
     return (select(meals)..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
-  /// Search meals by name query
   Future<List<Meal>> searchMeals(String query) {
     final clean = query.trim();
     if (clean.isEmpty) return getAllMeals();
 
+    final normalized = normalizeArabic(clean);
+    final escaped = escapeLikePattern(normalized);
+    final pattern = '%$escaped%';
+
     return (select(meals)
-          ..where((t) => t.name.like('%$clean%'))
+          ..where((t) => CustomExpression<bool>(
+                "COALESCE(name_normalized, name) LIKE ? ESCAPE '\\'",
+                [Variable<String>(pattern)],
+              ))
           ..orderBy([
             (t) => OrderingTerm.asc(t.name),
             (t) => OrderingTerm.desc(t.id),
@@ -97,7 +104,6 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
         .get();
   }
 
-  /// Filter meals by multiple optional criteria
   Future<List<Meal>> filterByTag({
     ProteinType? proteinType,
     CarbsType? carbsType,
@@ -118,7 +124,6 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
     ).get();
   }
 
-  /// Insert a new meal into the vault
   Future<int> insertMeal(MealsCompanion meal) {
     if (meal.name.present) {
       if (meal.name.value.trim().isEmpty) {
@@ -130,38 +135,47 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
         throw ArgumentError('Prep time must be a positive integer');
       }
     }
-    return into(meals).insert(meal);
+    final normalizedCompanion = _withNormalizedName(meal);
+    return into(meals).insert(normalizedCompanion);
   }
 
-  /// Batch insert meals
   Future<void> insertMealsBatch(List<MealsCompanion> mealCompanions) {
+    final normalized = mealCompanions.map(_withNormalizedName).toList();
     return batch((b) {
-      b.insertAll(meals, mealCompanions);
+      b.insertAll(meals, normalized);
     });
   }
 
-  /// Replace / update an existing meal
   Future<bool> updateMeal(Meal meal) {
-    return update(meals).replace(meal.copyWith(updatedAt: DateTime.now()));
+    final normalized = normalizeArabic(meal.name);
+    return update(meals).replace(meal.copyWith(
+      updatedAt: DateTime.now(),
+      nameNormalized: Value(normalized),
+    ));
   }
 
-  /// Update meal via companion
   Future<int> updateMealCompanion(int id, MealsCompanion companion) {
+    final normalizedCompanion = _withNormalizedName(companion);
     return (update(meals)..where((t) => t.id.equals(id)))
-        .write(companion.copyWith(updatedAt: Value(DateTime.now())));
+        .write(normalizedCompanion.copyWith(updatedAt: Value(DateTime.now())));
   }
 
-  /// Delete a meal by ID (triggers KeyAction.setNull on MealHistory)
+  MealsCompanion _withNormalizedName(MealsCompanion c) {
+    if (c.name.present) {
+      final normalized = normalizeArabic(c.name.value);
+      return c.copyWith(nameNormalized: Value(normalized));
+    }
+    return c;
+  }
+
   Future<int> deleteMeal(int id) {
     return (delete(meals)..where((t) => t.id.equals(id))).go();
   }
 
-  /// Clear all meals
   Future<int> deleteAllMeals() {
     return delete(meals).go();
   }
 
-  /// Toggle favorite status of a meal
   Future<void> toggleFavorite(int id, [bool? currentStatus]) async {
     bool newStatus;
     if (currentStatus != null) {
@@ -194,7 +208,13 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
     statement.where((t) {
       final predicates = <Expression<bool>>[];
       if (query != null && query.trim().isNotEmpty) {
-        predicates.add(t.name.like('%${query.trim()}%'));
+        final normalized = normalizeArabic(query.trim());
+        final escaped = escapeLikePattern(normalized);
+        final pattern = '%$escaped%';
+        predicates.add(CustomExpression<bool>(
+          "COALESCE(name_normalized, name) LIKE ? ESCAPE '\\'",
+          [Variable<String>(pattern)],
+        ));
       }
       if (proteinType != null) {
         predicates.add(t.proteinType.equalsValue(proteinType));

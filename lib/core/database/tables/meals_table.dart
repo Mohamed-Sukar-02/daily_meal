@@ -30,6 +30,7 @@ enum MealCategory {
 class Meals extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text().withLength(min: 1, max: 120)();
+  TextColumn get nameNormalized => text().nullable()();
   TextColumn get photoPath => text().nullable()();
   TextColumn get proteinType => textEnum<ProteinType>()();
   TextColumn get carbsType => textEnum<CarbsType>()();

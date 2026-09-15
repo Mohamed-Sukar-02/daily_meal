@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/reachability_service.dart';
 
 const String _kWifiOnlyKey = 'wifi_only_cloud_access';
 
@@ -21,7 +23,7 @@ class WifiOnlyCloudNotifier extends StateNotifier<bool> {
 
   Future<void> _loadPreference() async {
     final prefs = await ref.read(sharedPreferencesProvider.future);
-    state = prefs.getBool(_kWifiOnlyKey) ?? true; // Default to true as requested
+    state = prefs.getBool(_kWifiOnlyKey) ?? true;
   }
 
   Future<void> setWifiOnly(bool value) async {
@@ -35,16 +37,12 @@ final connectivityProvider = StreamProvider<List<ConnectivityResult>>((ref) {
   return Connectivity().onConnectivityChanged;
 });
 
-// A provider that checks if the user has access to cloud features based on their current connection and settings
-// Optimal: watches connectivityProvider stream so it reacts instantly to wifi/mobile changes
 final cloudAccessStatusProvider = Provider<CloudAccessStatus>((ref) {
   final connectivityAsync = ref.watch(connectivityProvider);
   final wifiOnly = ref.watch(wifiOnlyCloudProvider);
 
   final connectivity = connectivityAsync.valueOrNull;
-  // If still loading, check one-shot as fallback, but prefer stream value
   if (connectivity == null) {
-    // During initial load, assume allowed to avoid flicker, will update when stream emits
     return CloudAccessStatus.allowed;
   }
 
@@ -59,10 +57,52 @@ final cloudAccessStatusProvider = Provider<CloudAccessStatus>((ref) {
   return CloudAccessStatus.allowed;
 });
 
-// One-shot future version for places that need immediate check (e.g. on button press)
+final _reachabilityCache = _ReachabilityCache();
+
+class _ReachabilityCache {
+  bool? lastResult;
+  DateTime? lastCheck;
+  static const cacheDuration = Duration(seconds: 30);
+
+  bool? getIfValid() {
+    if (lastResult == null || lastCheck == null) return null;
+    if (DateTime.now().difference(lastCheck!) < cacheDuration) {
+      return lastResult;
+    }
+    return null;
+  }
+
+  void set(bool result) {
+    lastResult = result;
+    lastCheck = DateTime.now();
+  }
+}
+
+final reachabilityProvider = FutureProvider<bool>((ref) async {
+  final connectivityAsync = ref.watch(connectivityProvider);
+  final connectivity = connectivityAsync.valueOrNull;
+
+  if (connectivity == null) {
+    return true;
+  }
+
+  final hasInterface = connectivity.isNotEmpty && !connectivity.contains(ConnectivityResult.none);
+  if (!hasInterface) return false;
+
+  final cached = _reachabilityCache.getIfValid();
+  if (cached != null) return cached;
+
+  final reachable = await ReachabilityService.instance.isInternetReachable(
+    timeout: const Duration(seconds: 2),
+  );
+  _reachabilityCache.set(reachable);
+  return reachable;
+});
+
 final cloudAccessStatusFutureProvider = FutureProvider.autoDispose<CloudAccessStatus>((ref) async {
-  final connectivity = await Connectivity().checkConnectivity();
+  final connectivityAsync = ref.watch(connectivityProvider);
   final wifiOnly = ref.watch(wifiOnlyCloudProvider);
+  final connectivity = connectivityAsync.valueOrNull ?? await Connectivity().checkConnectivity();
 
   if (connectivity.contains(ConnectivityResult.none) || connectivity.isEmpty) {
     return CloudAccessStatus.noConnection;
@@ -70,6 +110,24 @@ final cloudAccessStatusFutureProvider = FutureProvider.autoDispose<CloudAccessSt
 
   if (wifiOnly && !connectivity.contains(ConnectivityResult.wifi)) {
     return CloudAccessStatus.requiresWifi;
+  }
+
+  final hasInterface = connectivity.isNotEmpty && !connectivity.contains(ConnectivityResult.none);
+  if (!hasInterface) return CloudAccessStatus.noConnection;
+
+  final cached = _reachabilityCache.getIfValid();
+  bool reachable;
+  if (cached != null) {
+    reachable = cached;
+  } else {
+    reachable = await ReachabilityService.instance.isInternetReachable(
+      timeout: const Duration(seconds: 2),
+    );
+    _reachabilityCache.set(reachable);
+  }
+
+  if (!reachable) {
+    return CloudAccessStatus.noConnection;
   }
 
   return CloudAccessStatus.allowed;
