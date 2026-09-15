@@ -824,8 +824,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
               _divider(brightness),
-              // Language Segmented Control - same outer shape as switch cards (radius 20, height 44, tabContainer bg, hairline)
-              // Divided middle: EN left, AR right, selected brandGreen - restored as requested
+              // Language Segmented Control - SAME outer shape as switch cards (radius 20, height 44, tabContainer bg, hairline border)
+              // Divided in middle: EN left, AR right - exactly as old design requested
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                 child: Row(
@@ -869,29 +869,36 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                     ),
                     const SizedBox(width: 14),
+                    // EXACT old shape: same outer shape as switches, divided middle AR right EN left
                     Container(
                       height: 44,
-                      padding: const EdgeInsets.all(4),
+                      width: 124,
                       decoration: BoxDecoration(
                         color: AppPalette.tabContainer(brightness),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(color: AppPalette.hairline(brightness), width: 1),
                       ),
+                      clipBehavior: Clip.antiAlias,
                       child: Row(
-                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          _LanguageSegment(
-                            brightness: brightness,
-                            label: 'EN',
-                            selected: settings.language == AppLanguagePreference.en,
-                            onTap: () => controller.updateLanguage(AppLanguagePreference.en),
+                          Expanded(
+                            child: _LanguageSegment(
+                              brightness: brightness,
+                              label: 'EN',
+                              isLeft: true,
+                              selected: settings.language == AppLanguagePreference.en,
+                              onTap: () => controller.updateLanguage(AppLanguagePreference.en),
+                            ),
                           ),
-                          const SizedBox(width: 4),
-                          _LanguageSegment(
-                            brightness: brightness,
-                            label: 'AR',
-                            selected: settings.language == AppLanguagePreference.ar,
-                            onTap: () => controller.updateLanguage(AppLanguagePreference.ar),
+                          Container(width: 1, color: AppPalette.hairline(brightness)),
+                          Expanded(
+                            child: _LanguageSegment(
+                              brightness: brightness,
+                              label: 'AR',
+                              isRight: true,
+                              selected: settings.language == AppLanguagePreference.ar,
+                              onTap: () => controller.updateLanguage(AppLanguagePreference.ar),
+                            ),
                           ),
                         ],
                       ),
@@ -1277,12 +1284,16 @@ class _LanguageSegment extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final bool isLeft;
+  final bool isRight;
 
   const _LanguageSegment({
     required this.brightness,
     required this.label,
     required this.selected,
     required this.onTap,
+    this.isLeft = false,
+    this.isRight = false,
   });
 
   @override
@@ -1292,26 +1303,34 @@ class _LanguageSegment extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+        height: 44,
+        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: selected ? AppPalette.brandGreen : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.horizontal(
+            left: isLeft ? const Radius.circular(20) : Radius.zero,
+            right: isRight ? const Radius.circular(20) : Radius.zero,
+          ),
           boxShadow: selected
               ? [
                   BoxShadow(
                     color: AppPalette.brandGreen.withValues(alpha: 0.35),
                     blurRadius: 8,
-                    offset: const Offset(0, 3),
+                    offset: const Offset(0, 2),
                   ),
                 ]
               : null,
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w800,
-            color: selected ? Colors.white : AppPalette.textSecondary(brightness),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.3,
+              color: selected ? Colors.white : AppPalette.textSecondary(brightness),
+            ),
           ),
         ),
       ),
