@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_palette.dart';
-import 'home_header.dart';
+import 'emphasis_marks.dart';
 
 /// Paints the rainbow ring of the roulette button.
 class _RainbowRingPainter extends CustomPainter {

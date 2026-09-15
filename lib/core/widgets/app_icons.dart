@@ -44,6 +44,7 @@ enum AppGlyph {
   bolt,
   globe,
   bell,
+  shield,
 }
 
 class AppIcon extends StatelessWidget {
@@ -498,6 +499,26 @@ class _GlyphPainter extends CustomPainter {
         canvas.drawCircle(const Offset(12, 19.8), 1.4, fill);
         // Top knob
         canvas.drawCircle(const Offset(12, 4.2), 1.2, fill);
+
+      case AppGlyph.shield:
+        canvas.drawPath(
+          Path()
+            ..moveTo(12, 3.2)
+            ..lineTo(19.2, 6.4)
+            ..lineTo(19.2, 12.8)
+            ..cubicTo(19.2, 17.2, 15.6, 19.8, 12, 21.2)
+            ..cubicTo(8.4, 19.8, 4.8, 17.2, 4.8, 12.8)
+            ..lineTo(4.8, 6.4)
+            ..close(),
+          stroke,
+        );
+        canvas.drawPath(
+          Path()
+            ..moveTo(9.2, 12.2)
+            ..lineTo(11.2, 14.2)
+            ..lineTo(15.2, 9.2),
+          stroke,
+        );
     }
 
     canvas.restore();

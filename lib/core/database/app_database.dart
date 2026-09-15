@@ -97,16 +97,4 @@ class AppDatabase extends _$AppDatabase {
   );
 }
 
-extension MealX on Meal {
-  int get prepTimeMinutes => prepTime;
-}
 
-extension MealHistoryDataX on MealHistoryData {
-  DateTime get cookedDate => cookedAt;
-}
-
-typedef AppSetting = AppSettingsData;
-
-extension AppSettingsDataX on AppSettingsData {
-  bool get notificationEnabled => notificationsEnabled;
-}

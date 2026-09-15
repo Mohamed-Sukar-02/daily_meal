@@ -38,14 +38,6 @@ class VaultFilterState {
     this.maxPrepTime,
   });
 
-  // Aliases matching different blueprint conventions
-  ProteinType? get selectedProtein => proteinType;
-  CarbsType? get selectedCarbs => carbsType;
-  MealCategory? get selectedCategory => category;
-  bool get filterFridayOnly => isFridaySpecialOnly;
-  bool get filterBudgetOnly => isBudgetFriendlyOnly;
-  bool get filterFavoriteOnly => isFavoriteOnly;
-
   bool get hasActiveFilters =>
       searchQuery.trim().isNotEmpty ||
       proteinType != null ||
@@ -197,9 +189,6 @@ final filteredMealsProvider = Provider<AsyncValue<List<Meal>>>((ref) {
     }).toList();
   });
 });
-
-/// Alias for compatibility
-final filteredVaultMealsProvider = filteredMealsProvider;
 
 /// Mutation controller for Meal Vault CRUD operations.
 class VaultController extends AsyncNotifier<void> {

@@ -1,4 +1,4 @@
-﻿import 'dart:math';
+import 'dart:math';
 
 import '../../../core/database/app_database.dart';
 
@@ -18,22 +18,6 @@ class RecommendationResult<T> {
 
 class CooldownEngine {
   const CooldownEngine();
-
-  /// Simplified public API for Riverpod Notifier & UI presentation.
-  /// Returns top 3 distinct recommended meals (or min(3, allMeals.length)).
-  List<Meal> getRecommendations({
-    required List<Meal> allMeals,
-    required List<MealHistoryData> history,
-    required AppSetting settings,
-    DateTime? now,
-  }) {
-    return compute<Meal>(
-      meals: allMeals,
-      history: history,
-      settings: settings,
-      today: now,
-    ).recommendations;
-  }
 
   /// Full recommendation engine pipeline returning metadata (relaxationLevel, relaxationReason).
   /// Generic over [T] to support both Drift database entities and generic/contract models.
@@ -221,10 +205,12 @@ class CooldownEngine {
         if (h is _HistoryCandidate) {
           hDate = h.normalizedCookedDate;
         } else {
-          final dynamic rawDate = (h as dynamic).cookedDate ?? (h as dynamic).cookedAt;
-          if (rawDate is DateTime) {
-            hDate = DateTime(rawDate.year, rawDate.month, rawDate.day);
-          }
+          try {
+            final dynamic rawDate = (h as dynamic).cookedAt;
+            if (rawDate is DateTime) {
+              hDate = DateTime(rawDate.year, rawDate.month, rawDate.day);
+            }
+          } catch (_) {}
         }
         if (hDate != null && (lastCookedDate == null || hDate.isAfter(lastCookedDate))) {
           lastCookedDate = hDate;
@@ -398,10 +384,6 @@ class _HistoryCandidate {
 
   static DateTime _extractRawDate(dynamic raw) {
     try {
-      final dynamic d = (raw as dynamic).cookedDate;
-      if (d is DateTime) return d;
-    } catch (_) {}
-    try {
       final dynamic d = (raw as dynamic).cookedAt;
       if (d is DateTime) return d;
     } catch (_) {}
@@ -410,6 +392,3 @@ class _HistoryCandidate {
 
   static DateTime _normalizeDate(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
 }
-
-/// Backwards-compatible alias matching PROJECT.md § Interface Contracts
-typedef RecommendationEngine = CooldownEngine;
