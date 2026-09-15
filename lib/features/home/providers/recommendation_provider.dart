@@ -29,14 +29,7 @@ final todayRecommendationsProvider = Provider<AsyncValue<RecommendationResult<Me
   final engine = ref.watch(engineProvider);
   final now = ref.watch(currentTimeProvider);
 
-  // Meals/history are hard dependencies — if still loading without data, keep loading.
-  final mealsLoading = mealsAsync.isLoading && !mealsAsync.hasValue;
-  final historyLoading = historyAsync.isLoading && !historyAsync.hasValue;
-  if (mealsLoading || historyLoading) {
-    return const AsyncValue.loading();
-  }
-
-  // 2. Propagate Errors if any dependency failed
+  // Propagate Errors if any dependency failed
   if (mealsAsync.hasError) {
     return AsyncValue.error(mealsAsync.error!, mealsAsync.stackTrace!);
   }
@@ -47,10 +40,11 @@ final todayRecommendationsProvider = Provider<AsyncValue<RecommendationResult<Me
     return AsyncValue.error(settingsAsync.error!, settingsAsync.stackTrace!);
   }
 
+  // Always compute with available data — never block on isLoading.
+  // Using valueOrNull with fallbacks ensures scoped-undo 1.3 recovers instantly
+  // even when Drift streams are mid-refresh (fixes waitForRecs polling).
   final meals = mealsAsync.valueOrNull ?? const [];
   final history = historyAsync.valueOrNull ?? const [];
-  // Settings may still be loading from Drift stream on first frame — use defaults
-  // instead of blocking recommendations (fixes scoped-undo 1.3 reactivity).
   final settings = settingsAsync.valueOrNull ?? AppSettingsDao.defaultSettings;
 
   // 3. Compute recommendations via CooldownEngine

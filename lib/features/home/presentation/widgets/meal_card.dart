@@ -246,26 +246,36 @@ class MealCard extends StatelessWidget {
     String label, {
     double fontSize = 12,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: style.background,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AppIcon(glyph, color: style.foreground, size: 15),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  fontSize: fontSize,
-                  fontWeight: FontWeight.w700,
-                  color: style.foreground,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 140),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: style.background,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppIcon(glyph, color: style.foreground, size: 15),
+            const SizedBox(width: 6),
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.w700,
+                        color: style.foreground,
+                      ),
                 ),
-          ),
-        ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
