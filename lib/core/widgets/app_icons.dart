@@ -29,6 +29,10 @@ enum AppGlyph {
   wallet,
   plus,
   alert,
+  grid,
+  search,
+  bookmark,
+  close,
 }
 
 class AppIcon extends StatelessWidget {
@@ -300,6 +304,48 @@ class _GlyphPainter extends CustomPainter {
         );
         canvas.drawLine(const Offset(12, 8.2), const Offset(12, 13.4), stroke);
         canvas.drawCircle(const Offset(12, 16.4), 1.2, fill);
+
+      case AppGlyph.grid:
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+              const Rect.fromLTRB(4.2, 4.2, 10.6, 10.6), const Radius.circular(2)),
+          fill,
+        );
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+              const Rect.fromLTRB(13.4, 4.2, 19.8, 10.6), const Radius.circular(2)),
+          fill,
+        );
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+              const Rect.fromLTRB(4.2, 13.4, 10.6, 19.8), const Radius.circular(2)),
+          fill,
+        );
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+              const Rect.fromLTRB(13.4, 13.4, 19.8, 19.8), const Radius.circular(2)),
+          fill,
+        );
+
+      case AppGlyph.search:
+        canvas.drawCircle(const Offset(10.6, 10.6), 6.4, stroke);
+        canvas.drawLine(const Offset(15.4, 15.4), const Offset(20, 20), stroke);
+
+      case AppGlyph.bookmark:
+        canvas.drawPath(
+          Path()
+            ..moveTo(7, 3.8)
+            ..lineTo(17, 3.8)
+            ..lineTo(17, 20.2)
+            ..lineTo(12, 16.4)
+            ..lineTo(7, 20.2)
+            ..close(),
+          stroke,
+        );
+
+      case AppGlyph.close:
+        canvas.drawLine(const Offset(6.4, 6.4), const Offset(17.6, 17.6), stroke);
+        canvas.drawLine(const Offset(17.6, 6.4), const Offset(6.4, 17.6), stroke);
     }
 
     canvas.restore();

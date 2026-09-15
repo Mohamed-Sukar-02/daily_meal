@@ -283,7 +283,7 @@ void main() {
       await db.close();
     });
 
-    testWidgets('BUG-1: MealVaultCard badge Row overflows by 130px on 320px width + 1.4x textScaler (meal_vault_card.dart:49)', (tester) async {
+    testWidgets('PASS-6: redesigned MealVaultCard no longer overflows on 320px width + 1.4x textScaler', (tester) async {
       tester.view.physicalSize = const Size(320, 550);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -319,8 +319,7 @@ void main() {
       await tester.pumpAndSettle();
       FlutterError.onError = oldHandler;
 
-      expect(overflowError, isNotNull, reason: 'Expected overflow in MealVaultCard badge row');
-      expect(overflowError, contains('130 pixels'));
+      expect(overflowError, isNull, reason: 'Redesigned vault card must not overflow');
     });
 
     testWidgets('BUG-2: AddEditMealDialog header Row & actions Row overflow by 218px and 220px on 320px width + 1.4x textScaler (add_edit_meal_dialog.dart:149, 336)', (tester) async {
@@ -409,7 +408,7 @@ void main() {
       expect(overflowError, contains('932 pixels'));
     });
 
-    testWidgets('BUG-4: VaultEmptyState Column overflows by 131px on 550px height + 1.4x textScaler (vault_empty_state.dart:60)', (tester) async {
+    testWidgets('PASS-7: redesigned VaultEmptyState no longer overflows on 550px height + 1.4x textScaler', (tester) async {
       tester.view.physicalSize = const Size(320, 550);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -439,8 +438,7 @@ void main() {
       await tester.pumpAndSettle();
       FlutterError.onError = oldHandler;
 
-      expect(overflowError, isNotNull, reason: 'Expected vertical overflow in VaultEmptyState');
-      expect(overflowError, contains('131 pixels'));
+      expect(overflowError, isNull, reason: 'Redesigned empty state must not overflow');
     });
 
     testWidgets('BUG-5: HistoryScreen empty state Column overflows by 53px on 550px height + 1.4x textScaler (history_screen.dart:60)', (tester) async {

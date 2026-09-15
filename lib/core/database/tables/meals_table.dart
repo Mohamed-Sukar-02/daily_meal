@@ -60,6 +60,24 @@ extension ProteinTypeX on ProteinType {
         return 'بدون بروتين';
     }
   }
+
+  /// Emoji used by the vault / history badges (matches the mockups).
+  String get emoji {
+    switch (this) {
+      case ProteinType.chicken:
+        return '🐔';
+      case ProteinType.beef:
+        return '🥩';
+      case ProteinType.fish:
+        return '🐟';
+      case ProteinType.legume:
+        return '🫘';
+      case ProteinType.dairy:
+        return '🧀';
+      case ProteinType.none:
+        return '🥗';
+    }
+  }
 }
 
 extension CarbsTypeX on CarbsType {

@@ -109,6 +109,10 @@ class AppPalette {
       ? const ChipStyle(background: Color(0xFF3A2A57), foreground: Color(0xFFA78BFA))
       : const ChipStyle(background: Color(0xFFE7E1F9), foreground: Color(0xFF6C5CE7));
 
+  static ChipStyle chipBlue(Brightness b) => b == Brightness.dark
+      ? const ChipStyle(background: Color(0xFF1A2B3B), foreground: Color(0xFF90CAF9))
+      : const ChipStyle(background: Color(0xFFE3F0FD), foreground: Color(0xFF1565C0));
+
   static ChipStyle chipGreen(Brightness b) => b == Brightness.dark
       ? const ChipStyle(background: Color(0xFF123B2A), foreground: Color(0xFF4ADE80))
       : const ChipStyle(background: Color(0xFFDCF2E7), foreground: Color(0xFF0E6B4A));
