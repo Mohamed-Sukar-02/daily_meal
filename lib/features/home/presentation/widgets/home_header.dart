@@ -108,22 +108,52 @@ class HomeHeader extends StatelessWidget {
                 ],
               ),
             ),
-            // Profile avatar
+            // Notification icon - replaces ugly profile mark as requested
+            // Supports both light and dark mode via AppPalette
             GestureDetector(
               onTap: onProfileTap,
               child: Container(
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: AppPalette.avatarBackground(brightness),
+                  color: AppPalette.tabContainer(brightness),
                   shape: BoxShape.circle,
+                  border: Border.all(color: AppPalette.hairline(brightness)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: brightness == Brightness.dark
+                          ? Colors.black.withValues(alpha: 0.2)
+                          : AppPalette.lightTextPrimary.withValues(alpha: 0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-                child: Center(
-                  child: AppIcon(
-                    AppGlyph.person,
-                    color: AppPalette.avatarForeground(brightness),
-                    size: 22,
-                  ),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Center(
+                      child: AppIcon(
+                        AppGlyph.bell,
+                        color: AppPalette.textPrimary(brightness),
+                        size: 22,
+                      ),
+                    ),
+                    // Small dot indicator for notifications
+                    Positioned(
+                      top: 8,
+                      right: 10,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: AppPalette.heartCoral,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppPalette.card(brightness), width: 1.5),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
