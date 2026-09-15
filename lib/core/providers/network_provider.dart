@@ -36,7 +36,31 @@ final connectivityProvider = StreamProvider<List<ConnectivityResult>>((ref) {
 });
 
 // A provider that checks if the user has access to cloud features based on their current connection and settings
-final cloudAccessStatusProvider = FutureProvider.autoDispose<CloudAccessStatus>((ref) async {
+// Optimal: watches connectivityProvider stream so it reacts instantly to wifi/mobile changes
+final cloudAccessStatusProvider = Provider<CloudAccessStatus>((ref) {
+  final connectivityAsync = ref.watch(connectivityProvider);
+  final wifiOnly = ref.watch(wifiOnlyCloudProvider);
+
+  final connectivity = connectivityAsync.valueOrNull;
+  // If still loading, check one-shot as fallback, but prefer stream value
+  if (connectivity == null) {
+    // During initial load, assume allowed to avoid flicker, will update when stream emits
+    return CloudAccessStatus.allowed;
+  }
+
+  if (connectivity.contains(ConnectivityResult.none) || connectivity.isEmpty) {
+    return CloudAccessStatus.noConnection;
+  }
+
+  if (wifiOnly && !connectivity.contains(ConnectivityResult.wifi)) {
+    return CloudAccessStatus.requiresWifi;
+  }
+
+  return CloudAccessStatus.allowed;
+});
+
+// One-shot future version for places that need immediate check (e.g. on button press)
+final cloudAccessStatusFutureProvider = FutureProvider.autoDispose<CloudAccessStatus>((ref) async {
   final connectivity = await Connectivity().checkConnectivity();
   final wifiOnly = ref.watch(wifiOnlyCloudProvider);
 

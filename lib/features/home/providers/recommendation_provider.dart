@@ -54,7 +54,7 @@ final todayRecommendationsProvider = Provider<AsyncValue<RecommendationResult<Me
     chickenCooldownDays: 7,
     beefCooldownDays: 10,
     fishCooldownDays: 5,
-    meatlessCooldownDays: 3,
+    meatlessCooldownDays: 0, // 0 = disabled by default per migration v8, optimal
     preventRepeatProtein: true,
     preventRepeatCarbs: true,
     notificationHour: 12,
