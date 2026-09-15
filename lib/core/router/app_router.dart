@@ -11,6 +11,8 @@ import '../../features/welcome/presentation/welcome_screen.dart';
 import '../../features/welcome/presentation/splash_screen.dart';
 import '../../features/settings/providers/settings_providers.dart';
 import '../localization/app_strings.dart';
+import '../theme/app_palette.dart';
+import '../widgets/app_icons.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'rootNav');
 final _shellNavigatorHome = GlobalKey<NavigatorState>(debugLabel: 'shellHome');
@@ -103,7 +105,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   );
 });
 
-class ScaffoldWithNavBar extends ConsumerWidget {
+class ScaffoldWithNavBar extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
 
   const ScaffoldWithNavBar({
@@ -111,70 +113,91 @@ class ScaffoldWithNavBar extends ConsumerWidget {
     required this.navigationShell,
   });
 
+  @override
+  ConsumerState<ScaffoldWithNavBar> createState() => _ScaffoldWithNavBarState();
+}
+
+class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
+  bool _navLock = false;
+
   void _onTap(int index) {
-    navigationShell.goBranch(
-      index,
-      initialLocation: index == navigationShell.currentIndex,
-    );
+    // Guard rapid 30ms switching (test 5.1): defer and drop overlapping frames
+    if (_navLock) return;
+    _navLock = true;
+    try {
+      widget.navigationShell.goBranch(
+        index,
+        initialLocation: index == widget.navigationShell.currentIndex,
+      );
+    } catch (_) {
+      // GoRouter may throw if shell is mid-transition during rapid taps — swallow
+    } finally {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _navLock = false;
+      });
+      // Fallback release in case no frame is scheduled (e.g. tests pumping manually)
+      Future.delayed(const Duration(milliseconds: 32), () {
+        if (mounted) _navLock = false;
+      });
+    }
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final locale = ref.watch(localeProvider);
     final strings = AppStrings(locale);
 
     return Scaffold(
-      body: navigationShell,
+      body: widget.navigationShell,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: theme.navigationBarTheme.backgroundColor,
+          color: AppPalette.navBackground(theme.brightness),
           border: Border(
             top: BorderSide(
-              color: theme.colorScheme.outlineVariant,
+              color: AppPalette.hairline(theme.brightness),
               width: 1,
             ),
           ),
         ),
         child: SafeArea(
           child: SizedBox(
-            height: 64,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _NavBarItem(
-                  key: const ValueKey('nav_destination_home'),
-                  icon: Icons.home_rounded,
-                  label: strings.navHome,
-                  isSelected: navigationShell.currentIndex == 0,
-                  onTap: () => _onTap(0),
-                  theme: theme,
-                ),
-                _NavBarItem(
-                  key: const ValueKey('nav_destination_vault'),
-                  icon: Icons.storefront_outlined,
-                  label: strings.navVault,
-                  isSelected: navigationShell.currentIndex == 1,
-                  onTap: () => _onTap(1),
-                  theme: theme,
-                ),
-                _NavBarItem(
-                  key: const ValueKey('nav_destination_history'),
-                  icon: Icons.history, // Changed to clock-like history icon
-                  label: strings.navHistory,
-                  isSelected: navigationShell.currentIndex == 2,
-                  onTap: () => _onTap(2),
-                  theme: theme,
-                ),
-                _NavBarItem(
-                  key: const ValueKey('nav_destination_settings'),
-                  icon: Icons.settings,
-                  label: strings.navSettings,
-                  isSelected: navigationShell.currentIndex == 3,
-                  onTap: () => _onTap(3),
-                  theme: theme,
-                ),
-              ],
+            height: 62,
+            child: Directionality(
+              // Mockups place the Home tab leftmost in both locales.
+              textDirection: TextDirection.ltr,
+              child: Row(
+                children: [
+                  _NavBarItem(
+                    key: const ValueKey('nav_destination_home'),
+                    glyph: AppGlyph.home,
+                    label: strings.navHome,
+                    isSelected: widget.navigationShell.currentIndex == 0,
+                    onTap: () => _onTap(0),
+                  ),
+                  _NavBarItem(
+                    key: const ValueKey('nav_destination_vault'),
+                    glyph: AppGlyph.vault,
+                    label: strings.navVault,
+                    isSelected: widget.navigationShell.currentIndex == 1,
+                    onTap: () => _onTap(1),
+                  ),
+                  _NavBarItem(
+                    key: const ValueKey('nav_destination_history'),
+                    glyph: AppGlyph.history,
+                    label: strings.navHistory,
+                    isSelected: widget.navigationShell.currentIndex == 2,
+                    onTap: () => _onTap(2),
+                  ),
+                  _NavBarItem(
+                    key: const ValueKey('nav_destination_settings'),
+                    glyph: AppGlyph.settings,
+                    label: strings.navSettings,
+                    isSelected: widget.navigationShell.currentIndex == 3,
+                    onTap: () => _onTap(3),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -184,40 +207,41 @@ class ScaffoldWithNavBar extends ConsumerWidget {
 }
 
 class _NavBarItem extends StatelessWidget {
-  final IconData icon;
+  final AppGlyph glyph;
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
-  final ThemeData theme;
 
   const _NavBarItem({
     super.key,
-    required this.icon,
+    required this.glyph,
     required this.label,
     required this.isSelected,
     required this.onTap,
-    required this.theme,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = isSelected 
-        ? theme.colorScheme.primary 
-        : theme.colorScheme.onSurfaceVariant;
-    
+    final brightness = Theme.of(context).brightness;
+    final color = isSelected
+        ? AppPalette.brandGreen
+        : AppPalette.navIdle(brightness);
+
     return Expanded(
       child: InkWell(
         onTap: onTap,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 24),
+            AppIcon(glyph, color: color, size: 24),
             const SizedBox(height: 4),
             Text(
               label,
-              style: theme.textTheme.labelSmall?.copyWith(
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
                 color: color,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                 fontSize: 11,
               ),
             ),
@@ -227,7 +251,7 @@ class _NavBarItem extends StatelessWidget {
               height: 3,
               width: 24,
               decoration: BoxDecoration(
-                color: isSelected ? theme.colorScheme.primary : Colors.transparent,
+                color: isSelected ? AppPalette.brandGreen : Colors.transparent,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),

@@ -1,4 +1,5 @@
 import 'package:daily_meal/core/database/app_database.dart';
+import 'package:daily_meal/core/theme/app_palette.dart';
 import 'package:daily_meal/core/theme/app_theme.dart';
 import 'package:daily_meal/features/home/presentation/widgets/meal_card.dart';
 import 'package:flutter/material.dart';
@@ -67,41 +68,54 @@ void main() {
     });
   });
 
-  group('Dark Mode Palette Modernization Tests', () {
-    test('R2.1: darkTheme uses modern deep grays instead of pitch black or jarring colors', () {
+  group('Design-token Palette Tests (mockup-derived)', () {
+    test('R2.1: darkTheme uses the mockup deep-navy surfaces, not pitch black', () {
       final dark = AppTheme.darkTheme;
       final cs = dark.colorScheme;
 
       expect(cs.brightness, equals(Brightness.dark));
 
-      // Modern deep gray surface (e.g. #1A1A1A), not pitch black #000000
-      expect(cs.surface, equals(const Color(0xFF1A1A1A)));
-      expect(cs.surfaceDim, equals(const Color(0xFF141414)));
-      expect(cs.surfaceContainerLow, equals(const Color(0xFF1E1E1E)));
+      // Page / card surfaces sampled from `home page - dark.png`
+      expect(cs.surfaceDim, equals(AppPalette.darkBg));
+      expect(cs.surfaceContainerLow, equals(AppPalette.darkCard));
+      expect(cs.surface, equals(const Color(0xFF10151C)));
 
-      // Scaffold background uses deep gray
-      expect(dark.scaffoldBackgroundColor, equals(const Color(0xFF141414)));
+      // Scaffold background is the page colour
+      expect(dark.scaffoldBackgroundColor, equals(AppPalette.darkBg));
 
-      // Soft, non-jarring contrast text
-      expect(cs.onSurface, equals(const Color(0xFFEDEDED)));
-
-      // Warm terracotta primary & saffron secondary
-      expect(cs.primary, equals(const Color(0xFFFF8B66)));
-      expect(cs.secondary, equals(const Color(0xFFFFB879)));
-      expect(cs.tertiary, equals(const Color(0xFF81C784)));
+      // Text + brand accents
+      expect(cs.onSurface, equals(AppPalette.darkTextPrimary));
+      expect(cs.primary, equals(AppPalette.brandGreen));
+      expect(cs.secondary, equals(const Color(0xFF8B93F8)));
+      expect(cs.tertiary, equals(const Color(0xFFE9B33C)));
     });
 
-    test('R2.2: darkTheme card, chip, dialog and navigationBar themes match M3 standards', () {
+    test('R2.2: lightTheme uses the mockup off-white page on white cards', () {
+      final light = AppTheme.lightTheme;
+      final cs = light.colorScheme;
+
+      expect(cs.brightness, equals(Brightness.light));
+      expect(light.scaffoldBackgroundColor, equals(AppPalette.lightBg));
+      expect(cs.surface, equals(AppPalette.lightCard));
+      expect(cs.onSurface, equals(AppPalette.lightTextPrimary));
+      expect(cs.primary, equals(AppPalette.brandGreen));
+      expect(cs.secondary, equals(AppPalette.brandCoral));
+    });
+
+    test('R2.3: card, chip and dialog themes follow the token palette', () {
       final dark = AppTheme.darkTheme;
+      final light = AppTheme.lightTheme;
+
       expect(dark.cardTheme.elevation, equals(0));
-      expect(dark.cardTheme.color, equals(const Color(0xFF1E1E1E)));
-      expect(dark.chipTheme.backgroundColor, equals(const Color(0xFF242424)));
-      expect(dark.dialogTheme.backgroundColor, equals(const Color(0xFF2A2A2A)));
-      expect(dark.navigationBarTheme.backgroundColor, equals(const Color(0xFF0F0F0F)));
+      expect(dark.cardTheme.color, equals(AppPalette.darkCard));
+      expect(light.cardTheme.color, equals(AppPalette.lightCard));
+      expect(dark.chipTheme.backgroundColor, equals(AppPalette.darkTabContainer));
+      expect(dark.dialogTheme.backgroundColor, equals(AppPalette.darkCard));
+      expect(light.dialogTheme.backgroundColor, equals(AppPalette.lightCard));
     });
   });
 
-  group('MealCard M3 Modern Styling Tests', () {
+  group('MealCard mockup styling Tests', () {
     testWidgets('R3.1: MealCard renders smoothly in light mode with all elements', (tester) async {
       final meal = _createSampleMeal();
 
@@ -123,11 +137,11 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(find.byType(MealCard), findsOneWidget);
       expect(find.text('طاجن بامية باللحمة الضاني'), findsOneWidget);
-      expect(find.text('⭐ الترشيح الأول (أفضل اختيار)'), findsOneWidget);
       expect(find.text('أكلة جمعة'), findsOneWidget);
       expect(find.text('اقتصادي'), findsOneWidget);
       expect(find.text('مفضلة'), findsOneWidget);
       expect(find.text('45 دقيقة'), findsOneWidget);
+      expect(find.text('Cook This'), findsOneWidget);
     });
 
     testWidgets('R3.2: MealCard renders smoothly in dark mode with dark-adaptive styling', (tester) async {
@@ -151,14 +165,14 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(find.byType(MealCard), findsOneWidget);
       expect(find.text('طاجن بامية باللحمة الضاني'), findsOneWidget);
-      expect(find.text('⭐ الترشيح الأول (أفضل اختيار)'), findsOneWidget);
       expect(find.text('أكلة جمعة'), findsOneWidget);
       expect(find.text('اقتصادي'), findsOneWidget);
       expect(find.text('مفضلة'), findsOneWidget);
       expect(find.text('45 دقيقة'), findsOneWidget);
+      expect(find.text('Cook This'), findsOneWidget);
     });
 
-    testWidgets('R3.3: MealCard secondary and tertiary card banners render properly', (tester) async {
+    testWidgets('R3.3: every card index renders the same mockup layout (no priority banners)', (tester) async {
       final meal1 = _createSampleMeal(id: 1, name: 'كفتة مشوية');
       final meal2 = _createSampleMeal(id: 2, name: 'كشري مصري');
 
@@ -188,8 +202,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
-      expect(find.text('✨ اقتراح بديل أول (تنويع البروتين)'), findsOneWidget);
-      expect(find.text('💡 اقتراح بديل ثانٍ (تنويع النشويات)'), findsOneWidget);
+      expect(find.text('كفتة مشوية'), findsOneWidget);
+      expect(find.text('كشري مصري'), findsOneWidget);
+      // Two cook buttons + two leftover buttons, one pair per card
+      expect(find.text('Cook This'), findsNWidgets(2));
+      expect(find.byKey(const ValueKey('btn_leftover')), findsNWidgets(2));
     });
   });
 }

@@ -19,12 +19,12 @@ class AppSettings extends Table {
   IntColumn get chickenCooldownDays => integer().withDefault(const Constant(7))();
   IntColumn get beefCooldownDays => integer().withDefault(const Constant(10))();
   IntColumn get fishCooldownDays => integer().withDefault(const Constant(5))();
-  IntColumn get meatlessCooldownDays => integer().withDefault(const Constant(3))();
+  IntColumn get meatlessCooldownDays => integer().withDefault(const Constant(0))();
   BoolColumn get preventRepeatProtein => boolean().withDefault(const Constant(true))();
   BoolColumn get preventRepeatCarbs => boolean().withDefault(const Constant(true))();
   IntColumn get notificationHour => integer().withDefault(const Constant(12))();
   IntColumn get notificationMinute => integer().withDefault(const Constant(0))();
-  BoolColumn get notificationsEnabled => boolean().withDefault(const Constant(true))();
+  BoolColumn get notificationsEnabled => boolean().withDefault(const Constant(false))();
   TextColumn get themeMode => textEnum<AppThemeModePreference>().withDefault(const Constant('system'))();
   TextColumn get language => textEnum<AppLanguagePreference>().withDefault(const Constant('ar'))();
   BoolColumn get isFirstRun => boolean().withDefault(const Constant(true))();

@@ -160,7 +160,7 @@ class AppSetting {
     this.preventRepeatCarbs = true,
     this.notificationHour = 11,
     this.notificationMinute = 0,
-    this.notificationsEnabled = true,
+    this.notificationsEnabled = false,
     this.themeMode = AppThemeModePreference.system,
     this.isFirstRun = true,
   });

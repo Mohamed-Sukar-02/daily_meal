@@ -143,23 +143,30 @@ class SettingsController extends AsyncNotifier<void> {
   }
 
   /// Toggles daily notification reminder status.
+  /// When enabling, requests OS permission first — stays OFF if denied.
   Future<void> toggleNotifications(bool enabled) async {
     state = const AsyncValue.loading();
     try {
       final dao = ref.read(appSettingsDaoProvider);
-      await dao.toggleNotifications(enabled);
-      
       if (enabled) {
+        final granted = await NotificationService.instance.requestPermissions();
+        if (!granted) {
+          // Permission denied — keep switch OFF and don't schedule
+          await dao.toggleNotifications(false);
+          await NotificationService.instance.cancelNotification();
+          state = const AsyncValue.data(null);
+          return;
+        }
+        await dao.toggleNotifications(true);
         final settings = await dao.watchSettings().first;
-        await NotificationService.instance.requestPermissions();
         await NotificationService.instance.scheduleDailyNotification(
-          hour: settings.notificationHour, 
-          minute: settings.notificationMinute
+          hour: settings.notificationHour,
+          minute: settings.notificationMinute,
         );
       } else {
+        await dao.toggleNotifications(false);
         await NotificationService.instance.cancelNotification();
       }
-      
       state = const AsyncValue.data(null);
     } catch (err, st) {
       state = AsyncValue.error(err, st);

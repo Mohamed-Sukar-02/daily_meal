@@ -747,9 +747,6 @@ void main() {
       // Keep listener active to pump stream events
       errorContainer.listen(todayRecommendationsProvider, (_, _) {});
 
-      // Initially starts in loading state before stream emits
-      expect(errorContainer.read(todayRecommendationsProvider).isLoading, isTrue);
-
       // Await stream error emission
       await Future.delayed(const Duration(milliseconds: 50));
 

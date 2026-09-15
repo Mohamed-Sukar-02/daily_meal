@@ -15,11 +15,12 @@ class AppSettingsDao extends DatabaseAccessor<AppDatabase> with _$AppSettingsDao
     chickenCooldownDays: Value(7),
     beefCooldownDays: Value(10),
     fishCooldownDays: Value(5),
+    meatlessCooldownDays: Value(0),
     preventRepeatProtein: Value(true),
     preventRepeatCarbs: Value(true),
     notificationHour: Value(12),
     notificationMinute: Value(0),
-    notificationsEnabled: Value(true),
+    notificationsEnabled: Value(false),
     themeMode: Value(AppThemeModePreference.system),
     language: Value(AppLanguagePreference.ar),
     isFirstRun: Value(true),
@@ -65,25 +66,30 @@ class AppSettingsDao extends DatabaseAccessor<AppDatabase> with _$AppSettingsDao
     await (update(appSettings)..where((t) => t.id.equals(settingsRowId))).write(companion);
   }
 
-  /// Update cooldown duration in days (clamped between 1 and 60 days)
+  /// Update cooldown duration in days (clamped between 0 and 60 days, 0 = disabled)
   Future<void> updateCooldownDays(int days) async {
-    final clamped = days.clamp(1, 60);
+    final clamped = days.clamp(0, 60);
     await updateSettings(AppSettingsCompanion(cooldownDays: Value(clamped)));
   }
 
   Future<void> updateChickenCooldownDays(int days) async {
-    final clamped = days.clamp(1, 60);
+    final clamped = days.clamp(0, 60);
     await updateSettings(AppSettingsCompanion(chickenCooldownDays: Value(clamped)));
   }
 
   Future<void> updateBeefCooldownDays(int days) async {
-    final clamped = days.clamp(1, 60);
+    final clamped = days.clamp(0, 60);
     await updateSettings(AppSettingsCompanion(beefCooldownDays: Value(clamped)));
   }
 
   Future<void> updateFishCooldownDays(int days) async {
-    final clamped = days.clamp(1, 60);
+    final clamped = days.clamp(0, 60);
     await updateSettings(AppSettingsCompanion(fishCooldownDays: Value(clamped)));
+  }
+
+  Future<void> updateMeatlessCooldownDays(int days) async {
+    final clamped = days.clamp(0, 60);
+    await updateSettings(AppSettingsCompanion(meatlessCooldownDays: Value(clamped)));
   }
 
   /// Update theme mode preference

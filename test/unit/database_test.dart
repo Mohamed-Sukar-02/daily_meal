@@ -62,8 +62,8 @@ void main() {
       expect(settings.preventRepeatCarbs, isTrue);
       expect(settings.notificationHour, equals(12));
       expect(settings.notificationMinute, equals(0));
-      expect(settings.notificationsEnabled, isTrue);
-      expect(settings.notificationEnabled, isTrue);
+      expect(settings.notificationsEnabled, isFalse);
+      expect(settings.notificationEnabled, isFalse);
       expect(settings.themeMode, equals(AppThemeModePreference.system));
       expect(settings.isFirstRun, isTrue);
     });
@@ -311,6 +311,38 @@ void main() {
 
       history = await db.mealHistoryDao.getAllHistory();
       expect(history, isEmpty);
+    });
+
+    test('entries with identical cookedAt are strictly ordered by id DESC across all history queries (tie-breaker)', () async {
+      final meal = (await db.mealsDao.getMealById(1))!;
+      final fixedTimestamp = DateTime(2026, 9, 7, 12, 0, 0);
+
+      // Log 3 meals with identical timestamps
+      final id1 = await db.mealHistoryDao.logMealFromMeal(meal, cookedAt: fixedTimestamp, notes: 'Entry 1');
+      final id2 = await db.mealHistoryDao.logMealFromMeal(meal, cookedAt: fixedTimestamp, notes: 'Entry 2');
+      final id3 = await db.mealHistoryDao.logMealFromMeal(meal, cookedAt: fixedTimestamp, notes: 'Entry 3');
+
+      // 1. Verify getRecentHistory returns newest first (id DESC)
+      final recent = await db.mealHistoryDao.getRecentHistory(limit: 3);
+      expect(recent.length, equals(3));
+      expect(recent[0].id, equals(id3));
+      expect(recent[1].id, equals(id2));
+      expect(recent[2].id, equals(id1));
+
+      // 2. Verify getLatestCookedMeal returns newest entry (id3)
+      final latest = await db.mealHistoryDao.getLatestCookedMeal();
+      expect(latest, isNotNull);
+      expect(latest!.id, equals(id3));
+
+      // 3. Verify getAllHistory returns newest first (id DESC)
+      final all = await db.mealHistoryDao.getAllHistory();
+      expect(all.length, equals(3));
+      expect(all.map((e) => e.id).toList(), equals([id3, id2, id1]));
+
+      // 4. Verify watchHistory emits newest first
+      final streamList = await db.mealHistoryDao.watchHistory().first;
+      expect(streamList.length, equals(3));
+      expect(streamList.map((e) => e.id).toList(), equals([id3, id2, id1]));
     });
   });
 

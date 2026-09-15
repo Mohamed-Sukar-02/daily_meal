@@ -28,14 +28,15 @@ class DeleteMealDialog extends ConsumerWidget {
           'حذف الأكلة',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'هل أنت متأكد من رغبتك في حذف "${meal.name}" نهائياً من خزانة الأكلات؟',
-              style: theme.textTheme.bodyMedium,
-            ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'هل أنت متأكد من رغبتك في حذف "${meal.name}" نهائياً من خزانة الأكلات؟',
+                style: theme.textTheme.bodyMedium,
+              ),
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(12),
@@ -61,8 +62,11 @@ class DeleteMealDialog extends ConsumerWidget {
                 ],
               ),
             ),
-          ],
+            ],
+          ),
         ),
+        actionsOverflowDirection: VerticalDirection.up,
+        actionsOverflowButtonSpacing: 8,
         actions: [
           TextButton(
             key: const Key('meal_delete_cancel_button'),

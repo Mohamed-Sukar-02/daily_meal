@@ -29,23 +29,27 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? driftDatabase(name: 'daily_meal_db'));
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (Migrator m) async {
       await m.createAll();
 
-      // 1. Seed initial AppSettings singleton row
+      // 1. Seed initial AppSettings singleton row (default off until permission)
       await into(appSettings).insert(
         const AppSettingsCompanion(
           id: Value(1),
           cooldownDays: Value(14),
+          chickenCooldownDays: Value(7),
+          beefCooldownDays: Value(10),
+          fishCooldownDays: Value(5),
+          meatlessCooldownDays: Value(0),
           preventRepeatProtein: Value(true),
           preventRepeatCarbs: Value(true),
           notificationHour: Value(12),
           notificationMinute: Value(0),
-          notificationsEnabled: Value(true),
+          notificationsEnabled: Value(false),
           themeMode: Value(AppThemeModePreference.system),
           language: Value(AppLanguagePreference.ar),
           isFirstRun: Value(true),
@@ -73,6 +77,18 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 6) {
         await m.addColumn(appSettings, appSettings.language);
+      }
+      if (from < 7) {
+        // New spec: notifications default OFF until permission granted
+        await customStatement(
+          'UPDATE app_settings SET notifications_enabled = 0 WHERE id = 1',
+        );
+      }
+      if (from < 8) {
+        // Veggies should be off by default (0 = hidden)
+        await customStatement(
+          'UPDATE app_settings SET meatless_cooldown_days = 0 WHERE id = 1',
+        );
       }
     },
     beforeOpen: (details) async {

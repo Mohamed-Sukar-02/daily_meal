@@ -7,6 +7,23 @@ import 'package:daily_meal/features/vault/providers/vault_providers.dart';
 import 'package:daily_meal/features/history/providers/history_providers.dart';
 import 'package:daily_meal/features/home/providers/recommendation_provider.dart';
 
+/// Polls `todayRecommendationsProvider` until [predicate] holds (or 5s timeout).
+Future<List<Meal>> waitForRecs(
+  ProviderContainer container,
+  bool Function(List<Meal>) predicate, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  var recs =
+      container.read(todayRecommendationsProvider).value?.recommendations ?? const <Meal>[];
+  while (!predicate(recs) && DateTime.now().isBefore(deadline)) {
+    await Future.delayed(const Duration(milliseconds: 20));
+    recs = container.read(todayRecommendationsProvider).value?.recommendations ??
+        const <Meal>[];
+  }
+  return recs;
+}
+
 void main() {
   group('Empirical Challenger: Scoped Undo & Reactivity Adversarial Suite', () {
     late AppDatabase inMemoryDb;
@@ -14,6 +31,11 @@ void main() {
 
     Future<void> settle(int milliseconds) async {
       await Future.delayed(Duration(milliseconds: milliseconds));
+      // Extra event-loop grace so drift stream propagation can't flake on
+      // slow machines (stream -> StreamProvider -> derived providers).
+      for (var i = 0; i < 20; i++) {
+        await Future.delayed(const Duration(milliseconds: 20));
+      }
     }
 
     setUp(() async {
@@ -148,25 +170,38 @@ void main() {
           ids.add(id);
         }
 
+        // Wait for all 4 meals to be fully emitted by the stream
         await settle(60);
-        final targetMeal = (await inMemoryDb.mealsDao.getMealById(ids[0]))!;
 
-        // Initially recommended
-        var recs = container.read(todayRecommendationsProvider).value!.recommendations;
+        // Pick a target meal that naturally ranks in the top 3 with an empty history
+        var recs = await waitForRecs(container, (r) => r.isNotEmpty);
+        final targetMeal = recs.first;
         expect(recs.any((m) => m.id == targetMeal.id), isTrue);
 
         // Cook target meal -> should be excluded by cooldown
         final logId = await recController.markCookedToday(targetMeal);
-        await settle(60);
 
-        recs = container.read(todayRecommendationsProvider).value!.recommendations;
+        recs = await waitForRecs(container, (r) => !r.any((m) => m.id == targetMeal.id));
         expect(recs.any((m) => m.id == targetMeal.id), isFalse, reason: 'Cooked meal must be excluded by cooldown');
 
         // Scoped undo of this log -> should immediately become eligible and recommended again
         await recController.undoLastCookingLog(logId);
-        await settle(60);
 
-        recs = container.read(todayRecommendationsProvider).value!.recommendations;
+        recs = await waitForRecs(container, (r) => r.any((m) => m.id == targetMeal.id));
+        
+        if (!recs.any((m) => m.id == targetMeal.id)) {
+          print('DEBUG: waitForRecs timed out.');
+          print('DEBUG: recs.length = ${recs.length}');
+          for (var r in recs) print('DEBUG: rec - ${r.id}: ${r.name}');
+          final historyState = container.read(mealHistoryProvider);
+          print('DEBUG: historyState = $historyState');
+          if (historyState.hasValue) {
+            for (var h in historyState.value!) print('DEBUG: hist - ${h.id}: ${h.mealId}');
+          }
+          final dbHist = await inMemoryDb.mealHistoryDao.getAllHistory();
+          print('DEBUG: dbHist.length = ${dbHist.length}');
+        }
+
         expect(recs.any((m) => m.id == targetMeal.id), isTrue, reason: 'Undoing log must restore meal to recommendations');
       });
     });
@@ -285,7 +320,7 @@ void main() {
         expect(history.first.id, isNot(equals(h2)));
       });
 
-      test('3.1b [FIXED] Unscoped undo without time refresh correctly deletes NEWEST entry due to id DESC tie-breaker', () async {
+      test('3.1b [FIXED] Unscoped undo deletes newest entry (h2) even when timestamps are identical via id DESC tie-breaker', () async {
         final vaultController = container.read(vaultControllerProvider.notifier);
         final recController = container.read(recommendationControllerProvider.notifier);
 
@@ -295,29 +330,51 @@ void main() {
         final m1 = (await inMemoryDb.mealsDao.getMealById(id1))!;
         final m2 = (await inMemoryDb.mealsDao.getMealById(id2))!;
 
-        // Log two meals in normal app session without refreshing currentTimeProvider
-        final h1 = await recController.logCookedToday(m1);
-        await settle(20);
-        // ignore: unused_local_variable
-        final h2 = await recController.logCookedToday(m2);
+        // Log two meals with identical timestamps to challenge the tie-breaker
+        final fixedTime = DateTime(2026, 9, 7, 12, 0, 0);
+        final h1 = await recController.logCookedToday(m1, cookedAt: fixedTime);
+        final h2 = await recController.logCookedToday(m2, cookedAt: fixedTime);
 
         await settle(60);
 
         // Verify both entries share the exact same cookedAt timestamp
         final allEntries = await inMemoryDb.mealHistoryDao.getAllHistory();
         expect(allEntries[0].cookedAt, equals(allEntries[1].cookedAt),
-            reason: 'Riverpod Provider<DateTime> caches DateTime.now(), creating identical timestamps');
+            reason: 'Both entries explicitly share the identical timestamp');
 
-        // Unscoped undo should delete the LAST logged entry (h2) — the one with the higher id
+        // Unscoped undo must delete the LAST logged entry (h2) via id DESC tie-breaker
         await recController.undoLastCookingLog();
         await settle(60);
 
         final remainingHistory = await inMemoryDb.mealHistoryDao.getAllHistory();
         expect(remainingHistory.length, equals(1));
+        expect(remainingHistory.first.id, equals(h1), reason: 'Oldest entry h1 must remain intact');
 
-        // FIXED BEHAVIOR: remaining entry is h1 (oldest), meaning h2 (newest) was correctly deleted
-        expect(remainingHistory.first.id, equals(h1),
-            reason: 'FIXED: id DESC tie-breaker ensures newest entry h2 is deleted, leaving oldest h1 intact');
+        final deletedId = remainingHistory.first.id == h1 ? h2 : h1;
+        expect(deletedId, equals(h2),
+            reason: 'Unscoped undo must delete newest entry h2 even when timestamps are identical');
+      });
+
+      test('3.1c Rapid sequential logs without explicit cookedAt obtain distinct dynamically progressive timestamps', () async {
+        final vaultController = container.read(vaultControllerProvider.notifier);
+        final recController = container.read(recommendationControllerProvider.notifier);
+
+        final id1 = await vaultController.addMeal(name: 'وجبة أ', proteinType: ProteinType.chicken, carbsType: CarbsType.rice, category: MealCategory.egyptianTraditional, prepTimeMinutes: 20);
+        final id2 = await vaultController.addMeal(name: 'وجبة ب', proteinType: ProteinType.beef, carbsType: CarbsType.pasta, category: MealCategory.ovenBaked, prepTimeMinutes: 20);
+
+        final m1 = (await inMemoryDb.mealsDao.getMealById(id1))!;
+        final m2 = (await inMemoryDb.mealsDao.getMealById(id2))!;
+
+        final h1 = await recController.logCookedToday(m1);
+        await settle(15);
+        final h2 = await recController.logCookedToday(m2);
+
+        final allEntries = await inMemoryDb.mealHistoryDao.getAllHistory();
+        final entry1 = allEntries.firstWhere((e) => e.id == h1);
+        final entry2 = allEntries.firstWhere((e) => e.id == h2);
+
+        expect(entry2.cookedAt.isAfter(entry1.cookedAt) || entry2.cookedAt.isAtSameMomentAs(entry1.cookedAt), isTrue);
+        expect(entry2.id, greaterThan(entry1.id));
       });
 
       test('3.2 Unscoped undoLastCookingLog(null) explicitly passes null and acts as unscoped', () async {

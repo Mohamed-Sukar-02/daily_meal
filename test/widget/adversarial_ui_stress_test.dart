@@ -57,32 +57,37 @@ Widget buildTestApp({
   Size surfaceSize = const Size(390, 844),
   TextScaler textScaler = TextScaler.noScaling,
 }) {
+  final app = MaterialApp(
+    title: 'أكلة النهاردة اختبار',
+    debugShowCheckedModeBanner: false,
+    theme: AppTheme.lightTheme,
+    locale: const Locale('ar'),
+    supportedLocales: const [Locale('ar')],
+    localizationsDelegates: const [
+      GlobalMaterialLocalizations.delegate,
+      GlobalWidgetsLocalizations.delegate,
+      GlobalCupertinoLocalizations.delegate,
+    ],
+    home: Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(body: child),
+    ),
+  );
+
   return MediaQuery(
     data: MediaQueryData(
       size: surfaceSize,
       textScaler: textScaler,
     ),
-    child: ProviderScope(
-      // ignore: deprecated_member_use
-      parent: container,
-      overrides: overrides,
-      child: MaterialApp(
-        title: 'أكلة النهاردة اختبار',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        locale: const Locale('ar'),
-        supportedLocales: const [Locale('ar')],
-        localizationsDelegates: const [
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        home: Directionality(
-          textDirection: TextDirection.rtl,
-          child: Scaffold(body: child),
-        ),
-      ),
-    ),
+    child: container != null
+        ? UncontrolledProviderScope(
+            container: container,
+            child: app,
+          )
+        : ProviderScope(
+            overrides: overrides,
+            child: app,
+          ),
   );
 }
 
@@ -514,13 +519,13 @@ void main() {
       expect(find.text('120 أكلة'), findsOneWidget);
 
       // Fast scroll down 3000px
-      await tester.drag(find.byType(ListView), const Offset(0, -3000));
+      await tester.drag(find.byKey(const Key('vault_grid_view')), const Offset(0, -3000));
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull, reason: 'Virtualized scrolling through 120 items must be error-free');
 
       // Scroll back up
-      await tester.drag(find.byType(ListView), const Offset(0, 3000));
+      await tester.drag(find.byKey(const Key('vault_grid_view')), const Offset(0, 3000));
       await tester.pumpAndSettle();
 
       // Search for specific meal 'رقم 77'

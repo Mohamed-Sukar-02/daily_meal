@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_palette.dart';
+import '../../../../core/widgets/app_icons.dart';
+
+/// Empty / no-results states of the vault, restyled onto the design tokens.
 class VaultEmptyState extends StatelessWidget {
   final bool isSearchResult;
   final VoidCallback onAction;
@@ -12,81 +16,55 @@ class VaultEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    if (isSearchResult) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.search_off_rounded,
-                size: 64,
-                color: theme.colorScheme.outline,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'لا توجد نتائج مطابقة',
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'لم نجد أكلات تطابق كلمات البحث أو الفلاتر المحددة.',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 20),
-              OutlinedButton.icon(
-                key: const Key('vault_clear_filters_button'),
-                onPressed: onAction,
-                icon: const Icon(Icons.clear_all),
-                label: const Text('إعادة ضبط الفلاتر والبحث'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
+    final brightness = Theme.of(context).brightness;
 
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.soup_kitchen_outlined,
+            AppIcon(
+              isSearchResult ? AppGlyph.search : AppGlyph.pot,
               size: 64,
-              color: theme.colorScheme.outline,
+              color: AppPalette.textSecondary(brightness),
             ),
             const SizedBox(height: 16),
             Text(
-              'خزنة الأكلات فارغة!',
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
+              isSearchResult ? 'لا توجد نتائج مطابقة' : 'خزنة الأكلات فارغة!',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppPalette.textPrimary(brightness),
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'ابدأ بإضافة أول أكلة أو حمّل الأكلات المقترحة.',
+              isSearchResult
+                  ? 'لم نجد أكلات تطابق كلمات البحث أو الفلاتر المحددة.'
+                  : 'ابدأ بإضافة أول أكلة أو حمّل الأكلات المقترحة.',
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+              style: TextStyle(
+                fontSize: 13,
+                color: AppPalette.textSecondary(brightness),
               ),
             ),
             const SizedBox(height: 20),
-            FilledButton.icon(
-              key: const Key('vault_empty_add_button'),
-              onPressed: onAction,
-              icon: const Icon(Icons.add),
-              label: const Text('أضف أكلتك الأولى'),
-            ),
+            if (isSearchResult)
+              OutlinedButton.icon(
+                key: const Key('vault_clear_filters_button'),
+                onPressed: onAction,
+                icon: const AppIcon(AppGlyph.close, size: 16, color: AppPalette.brandGreen),
+                label: const Text('إعادة ضبط الفلاتر والبحث'),
+              )
+            else
+              FilledButton.icon(
+                key: const Key('vault_empty_add_button'),
+                onPressed: onAction,
+                icon: const AppIcon(AppGlyph.plus, color: Colors.white, size: 18),
+                label: const Text('أضف أكلتك الأولى'),
+              ),
           ],
         ),
       ),
