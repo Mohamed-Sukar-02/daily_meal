@@ -49,6 +49,12 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>نحتاج للكاميرا لالتقاط صور الأكلات الخاصة بك</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>نحتاج للوصول للصور لاختيار صورة الأكلة - يمكنك اختيار صور محددة فقط (وصول محدود)</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>نحتاج لحفظ صور الأكلات</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
