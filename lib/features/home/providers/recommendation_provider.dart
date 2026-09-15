@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_providers.dart';
@@ -12,9 +11,6 @@ import '../domain/cooldown_engine.dart';
 final engineProvider = Provider<CooldownEngine>((ref) {
   return const CooldownEngine();
 });
-
-/// Alias for compatibility
-final cooldownEngineProvider = engineProvider;
 
 /// Overridable provider for current DateTime (enables deterministic time traveling in tests).
 final currentTimeProvider = Provider<DateTime>((ref) {
@@ -84,24 +80,7 @@ final todayRecommendationsProvider = Provider<AsyncValue<RecommendationResult<Me
   }
 });
 
-/// Alias matching m3_riverpod_plan
-final recommendationProvider = todayRecommendationsProvider;
 
-/// Convenience provider extracting only the `List<Meal>` recommendations
-final recommendationMealsProvider = Provider<AsyncValue<List<Meal>>>((ref) {
-  return ref.watch(todayRecommendationsProvider).whenData((r) => r.recommendations);
-});
-
-/// Provider for Spin the Wheel Roulette candidate pool.
-/// Requires at least 2 distinct recommendation candidates; otherwise returns empty list (disabled).
-final spinWheelCandidatesProvider = Provider<List<Meal>>((ref) {
-  final recsAsync = ref.watch(todayRecommendationsProvider);
-  final recs = recsAsync.valueOrNull?.recommendations ?? const [];
-  if (recs.length < 2) {
-    return const []; // Wheel disabled when candidates count is less than 2
-  }
-  return recs;
-});
 
 /// Recommendation mutation controller for marking cooked/leftovers.
 class RecommendationController extends AsyncNotifier<void> {
@@ -193,20 +172,4 @@ final recommendationControllerProvider =
   return RecommendationController();
 });
 
-/// Controller handling Spin the Wheel randomization
-class HomeController {
-  final Ref _ref;
-  HomeController(this._ref);
 
-  /// Spins the wheel and returns a randomly selected eligible meal, or null if < 2 candidates.
-  Meal? spinTheWheel() {
-    final candidates = _ref.read(spinWheelCandidatesProvider);
-    if (candidates.length < 2) return null;
-    final randomIndex = Random().nextInt(candidates.length);
-    return candidates[randomIndex];
-  }
-}
-
-final homeControllerProvider = Provider<HomeController>((ref) {
-  return HomeController(ref);
-});

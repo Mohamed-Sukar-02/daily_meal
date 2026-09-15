@@ -118,33 +118,6 @@ class AppPalette {
       : const ChipStyle(background: Color(0xFFDCF2E7), foreground: Color(0xFF0E6B4A));
 
   // ---------------------------------------------------------------------------
-  // Bottom action-bar pills
-  // ---------------------------------------------------------------------------
-  static PillStyle leftoverPill(Brightness b) => b == Brightness.dark
-      ? const PillStyle(
-          background: Color(0xFF1B242C),
-          icon: brandGreen,
-          text: Color(0xFFE8EDF4),
-        )
-      : const PillStyle(
-          background: Color(0xFFDCF2E7),
-          icon: Color(0xFF12A86B),
-          text: Color(0xFF0E6B4A),
-        );
-
-  static PillStyle deliveryPill(Brightness b) => b == Brightness.dark
-      ? const PillStyle(
-          background: Color(0xFF262C45),
-          icon: Color(0xFF8B93F8),
-          text: Color(0xFF8B93F8),
-        )
-      : const PillStyle(
-          background: Color(0xFFDEE8FB),
-          icon: Color(0xFF3E63DD),
-          text: Color(0xFF3E63DD),
-        );
-
-  // ---------------------------------------------------------------------------
   // Spin-the-wheel rainbow
   // ---------------------------------------------------------------------------
   static const List<Color> wheelRainbow = [
@@ -164,17 +137,4 @@ class ChipStyle {
   final Color foreground;
 
   const ChipStyle({required this.background, required this.foreground});
-}
-
-/// Background + icon/text colours used by the action-bar pills.
-class PillStyle {
-  final Color background;
-  final Color icon;
-  final Color text;
-
-  const PillStyle({
-    required this.background,
-    required this.icon,
-    required this.text,
-  });
 }

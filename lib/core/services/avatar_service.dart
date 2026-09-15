@@ -39,7 +39,6 @@ class AvatarService {
   ];
 
   static const String _prefsKey = 'avatars_downloaded_v1';
-  static const String _prefsPathKey = 'avatars_local_paths_v1';
 
   /// Get local file path for avatar - returns file path if downloaded, else asset path
   Future<String> getAvatarPath(String assetPath) async {

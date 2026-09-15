@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/app_icons.dart';
 import '../providers/vault_providers.dart';
-import 'add_edit_meal_dialog.dart';
 import 'discovery_screen.dart';
 import 'widgets/delete_meal_dialog.dart';
 import 'widgets/meal_vault_card.dart';

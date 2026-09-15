@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
@@ -9,7 +8,7 @@ import '../../../core/database/app_database.dart';
 import '../../../core/database/database_providers.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/app_icons.dart';
-import '../../home/presentation/widgets/home_header.dart' show EmphasisMarks;
+import '../../home/presentation/widgets/emphasis_marks.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/services/avatar_service.dart';
 import '../providers/settings_providers.dart';
@@ -1236,32 +1235,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _pickLanguage(BuildContext context, WidgetRef ref, AppSettingsData settings, AppStrings strings) {
-    final controller = ref.read(settingsControllerProvider.notifier);
-    showDialog(
-      context: context,
-      builder: (ctx) => SimpleDialog(
-        title: Text(strings.languageSettings),
-        children: [
-          SimpleDialogOption(
-            onPressed: () {
-              controller.updateLanguage(AppLanguagePreference.ar);
-              Navigator.pop(ctx);
-            },
-            child: const Text('العربية'),
-          ),
-          SimpleDialogOption(
-            onPressed: () {
-              controller.updateLanguage(AppLanguagePreference.en);
-              Navigator.pop(ctx);
-            },
-            child: const Text('English'),
-          ),
-        ],
       ),
     );
   }
