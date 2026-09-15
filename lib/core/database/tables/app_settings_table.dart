@@ -19,7 +19,7 @@ class AppSettings extends Table {
   IntColumn get chickenCooldownDays => integer().withDefault(const Constant(7))();
   IntColumn get beefCooldownDays => integer().withDefault(const Constant(10))();
   IntColumn get fishCooldownDays => integer().withDefault(const Constant(5))();
-  IntColumn get meatlessCooldownDays => integer().withDefault(const Constant(3))();
+  IntColumn get meatlessCooldownDays => integer().withDefault(const Constant(0))();
   BoolColumn get preventRepeatProtein => boolean().withDefault(const Constant(true))();
   BoolColumn get preventRepeatCarbs => boolean().withDefault(const Constant(true))();
   IntColumn get notificationHour => integer().withDefault(const Constant(12))();

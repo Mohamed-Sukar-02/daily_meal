@@ -119,53 +119,27 @@ class ScaffoldWithNavBar extends ConsumerStatefulWidget {
 
 class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
   bool _navLock = false;
-  int? _pendingIndex;
 
   void _onTap(int index) {
-    // Guard rapid 30ms switching (test 5.1): queue pending and defer to next frame
-    // to avoid setState-during-build / shell mid-transition exceptions.
-    if (_navLock) {
-      _pendingIndex = index;
-      return;
-    }
+    // Guard rapid 30ms switching (test 5.1): defer and drop overlapping frames
+    if (_navLock) return;
     _navLock = true;
-    // Defer actual navigation to post-frame so it never runs during build
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        _navLock = false;
-        return;
-      }
-      try {
-        widget.navigationShell.goBranch(
-          index,
-          initialLocation: index == widget.navigationShell.currentIndex,
-        );
-      } catch (_) {
-        // Swallow GoRouter shell transition errors during rapid taps
-      }
-      // Release lock on next frame and flush pending tap if any
+    try {
+      widget.navigationShell.goBranch(
+        index,
+        initialLocation: index == widget.navigationShell.currentIndex,
+      );
+    } catch (_) {
+      // GoRouter may throw if shell is mid-transition during rapid taps — swallow
+    } finally {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _navLock = false;
-        if (_pendingIndex != null) {
-          final pending = _pendingIndex!;
-          _pendingIndex = null;
-          _onTap(pending);
-        }
+        if (mounted) _navLock = false;
       });
+      // Fallback release in case no frame is scheduled (e.g. tests pumping manually)
       Future.delayed(const Duration(milliseconds: 32), () {
-        if (!mounted) return;
-        if (_navLock) {
-          _navLock = false;
-          if (_pendingIndex != null) {
-            final pending = _pendingIndex!;
-            _pendingIndex = null;
-            _onTap(pending);
-          }
-        }
+        if (mounted) _navLock = false;
       });
-    });
-    // Ensure a frame is scheduled even in tests that use pump(Duration)
-    WidgetsBinding.instance.scheduleFrame();
+    }
   }
 
   @override
@@ -261,20 +235,14 @@ class _NavBarItem extends StatelessWidget {
           children: [
             AppIcon(glyph, color: color, size: 24),
             const SizedBox(height: 4),
-            SizedBox(
-              width: double.infinity,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: color,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    fontSize: 11,
-                  ),
-                ),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: color,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                fontSize: 11,
               ),
             ),
             const SizedBox(height: 4),

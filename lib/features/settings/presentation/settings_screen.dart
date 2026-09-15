@@ -7,6 +7,7 @@ import '../../../core/database/database_providers.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/app_icons.dart';
 import '../../home/presentation/widgets/home_header.dart' show EmphasisMarks;
+import '../../../core/localization/app_strings.dart';
 import '../providers/settings_providers.dart';
 import 'widgets/legal_policies_dialog.dart' as widgets;
 
@@ -66,6 +67,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   duration: const Duration(milliseconds: 220),
                   opacity: _expanded ? 0.38 : 1.0,
                   child: _buildAppearanceSection(context, ref, settings, brightness),
+                ),
+              ),
+              const SizedBox(height: 24),
+              IgnorePointer(
+                ignoring: _expanded,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 220),
+                  opacity: _expanded ? 0.38 : 1.0,
+                  child: _buildAdminSection(context, brightness),
                 ),
               ),
             ],
@@ -137,9 +147,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       brightness: brightness,
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تعديل الملف الشخصي قريباً!')),
-        ),
+        onTap: () => _showProfileEditDialog(context, ref, settings),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Row(
@@ -154,9 +162,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       color: Color(0xFFF3C64F),
                       shape: BoxShape.circle,
                     ),
-                    child: const Center(
-                      child: AppIcon(AppGlyph.person, color: Colors.white, size: 34),
-                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: settings.userAvatar != null && settings.userAvatar!.isNotEmpty
+                        ? Image.asset(settings.userAvatar!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Center(child: AppIcon(AppGlyph.person, color: Colors.white, size: 34)))
+                        : const Center(
+                            child: AppIcon(AppGlyph.person, color: Colors.white, size: 34),
+                          ),
                   ),
                   Positioned(
                     bottom: -2,
@@ -375,9 +386,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 _proteinSwitch(
                   ref, brightness, '🌿', AppPalette.chipGreen(brightness), 'خضار',
                   settings.meatlessCooldownDays, 3,
-                  (d) => ref.read(databaseProvider).appSettingsDao.updateSettings(
-                        AppSettingsCompanion(meatlessCooldownDays: Value(d)),
-                      ),
+                  (d) => ref.read(appSettingsDaoProvider).updateMeatlessCooldownDays(d),
                 ),
               ],
             ),
@@ -500,15 +509,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Switch(
-                value: days > 0,
-                onChanged: (on) => onChanged(on ? defaultDays : 0),
-              ),
-            ),
+          Switch(
+            value: days > 0,
+            onChanged: (on) => onChanged(on ? defaultDays : 0),
           ),
         ],
       ),
@@ -540,7 +543,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
                 child: Row(
                   children: [
-                    _iconCircle(brightness, AppGlyph.sun, AppPalette.chipGreen(brightness)),
+                    _iconCircle(brightness, AppGlyph.bell, AppPalette.chipGold(brightness)),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -576,15 +579,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Switch(
-                          value: settings.notificationsEnabled,
-                          onChanged: (v) => controller.toggleNotifications(v),
-                        ),
-                      ),
+                    Switch(
+                      value: settings.notificationsEnabled,
+                      onChanged: (v) => controller.toggleNotifications(v),
                     ),
                   ],
                 ),
@@ -713,13 +710,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     Brightness brightness,
   ) {
     final controller = ref.read(settingsControllerProvider.notifier);
-    // Reflect actual appearance, not just saved pref — so system-dark shows switch on.
-    final isDarkMode = brightness == Brightness.dark;
+
+    String themeLabel(AppThemeModePreference m) {
+      switch (m) {
+        case AppThemeModePreference.dark:
+          return 'داكن';
+        case AppThemeModePreference.light:
+          return 'فاتح';
+        case AppThemeModePreference.system:
+          return 'حسب الجهاز';
+      }
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SectionHeader(brightness: brightness, title: 'المظهر'),
+        _SectionHeader(brightness: brightness, title: 'المظهر واللغة'),
         const SizedBox(height: 12),
         _Card(
           brightness: brightness,
@@ -739,7 +745,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             fit: BoxFit.scaleDown,
                             alignment: AlignmentDirectional.centerStart,
                             child: Text(
-                              'الوضع الداكن',
+                              'المظهر',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -753,7 +759,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             fit: BoxFit.scaleDown,
                             alignment: AlignmentDirectional.centerStart,
                             child: Text(
-                              'بدّل بين الوضع الفاتح والداكن',
+                              'اختر مظهر التطبيق',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -765,14 +771,38 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 12),
                     Flexible(
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
-                        child: Switch(
-                          value: isDarkMode,
-                          onChanged: (v) => controller.updateThemeMode(
-                            v ? AppThemeModePreference.dark : AppThemeModePreference.light,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppPalette.tabContainer(brightness),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppPalette.hairline(brightness)),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<AppThemeModePreference>(
+                              value: settings.themeMode,
+                              isDense: true,
+                              icon: AppIcon(AppGlyph.chevron, color: AppPalette.textSecondary(brightness), size: 14),
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppPalette.textPrimary(brightness),
+                              ),
+                              dropdownColor: AppPalette.card(brightness),
+                              borderRadius: BorderRadius.circular(12),
+                              onChanged: (v) {
+                                if (v != null) controller.updateThemeMode(v);
+                              },
+                              items: const [
+                                DropdownMenuItem(value: AppThemeModePreference.system, child: Text('حسب الجهاز')),
+                                DropdownMenuItem(value: AppThemeModePreference.light, child: Text('فاتح')),
+                                DropdownMenuItem(value: AppThemeModePreference.dark, child: Text('داكن')),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -789,6 +819,37 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 'اللغة',
                 settings.language == AppLanguagePreference.ar ? 'العربية' : 'English',
                 () => _pickLanguage(context, ref, settings),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAdminSection(
+    BuildContext context,
+    Brightness brightness,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionHeader(brightness: brightness, title: 'الإدارة'),
+        const SizedBox(height: 12),
+        _Card(
+          brightness: brightness,
+          child: Column(
+            children: [
+              _linkRow(
+                context,
+                brightness,
+                AppGlyph.cloud,
+                AppPalette.chipGreen(brightness),
+                'إدارة قاعدة البيانات',
+                'عرض وإدارة البيانات المحلية',
+                () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('إدارة قاعدة البيانات قريباً!')),
+                ),
               ),
               _divider(brightness),
               _linkRow(
@@ -810,26 +871,109 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  void _showProfileEditDialog(BuildContext context, WidgetRef ref, AppSettingsData settings) {
+    final nameController = TextEditingController(text: settings.userName ?? '');
+    final emailController = TextEditingController(text: settings.userEmail ?? '');
+    String? selectedAvatar = settings.userAvatar;
+    // List of available avatars
+    final avatars = [
+      'assets/avatars/MO1.png', 'assets/avatars/MO2.png', 'assets/avatars/MO3.png', 'assets/avatars/MO4.png', 'assets/avatars/MO5.png',
+      'assets/avatars/MY1.png', 'assets/avatars/MY2.png', 'assets/avatars/MY3.png', 'assets/avatars/MY4.png', 'assets/avatars/MY5.png',
+      'assets/avatars/F01.png', 'assets/avatars/F02.png', 'assets/avatars/F03.png', 'assets/avatars/F04.png', 'assets/avatars/F05.png',
+      'assets/avatars/FY1.png', 'assets/avatars/FY2.png', 'assets/avatars/FY3.png', 'assets/avatars/FY4.png', 'assets/avatars/FY5.png',
+    ];
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('تعديل الملف الشخصي'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'الاسم', prefixIcon: Icon(Icons.person)),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: emailController,
+                  decoration: const InputDecoration(labelText: 'البريد الإلكتروني', prefixIcon: Icon(Icons.email)),
+                  keyboardType: TextInputType.emailAddress,
+                ),
+                const SizedBox(height: 16),
+                const Text('اختر الصورة الرمزية', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 120,
+                  child: GridView.builder(
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 5, mainAxisSpacing: 8, crossAxisSpacing: 8),
+                    itemCount: avatars.length,
+                    itemBuilder: (c, i) => GestureDetector(
+                      onTap: () => setState(() => selectedAvatar = avatars[i]),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: selectedAvatar == avatars[i] ? Theme.of(context).colorScheme.primary : Colors.transparent, width: 2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: ClipRRect(borderRadius: BorderRadius.circular(6), child: Image.asset(avatars[i], fit: BoxFit.cover)),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+            FilledButton(
+              onPressed: () async {
+                final dao = ref.read(appSettingsDaoProvider);
+                await dao.updateWelcomeData(
+                  userName: nameController.text.trim().isEmpty ? 'Mohamed Sukar' : nameController.text.trim(),
+                  userEmail: emailController.text.trim().isEmpty ? null : emailController.text.trim(),
+                  userGender: settings.userGender,
+                  userAvatar: selectedAvatar,
+                );
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حفظ الملف الشخصي')));
+                }
+              },
+              child: const Text('حفظ'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _pickLanguage(BuildContext context, WidgetRef ref, AppSettingsData settings) {
     final controller = ref.read(settingsControllerProvider.notifier);
     showDialog(
       context: context,
       builder: (ctx) => SimpleDialog(
-        title: const Text('اللغة'),
+        title: const Text('اختر اللغة / Choose Language'),
         children: [
           SimpleDialogOption(
-            onPressed: () {
-              controller.updateLanguage(AppLanguagePreference.ar);
-              Navigator.pop(ctx);
+            onPressed: () async {
+              await controller.updateLanguage(AppLanguagePreference.ar);
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تغيير اللغة إلى العربية')));
+              }
             },
-            child: const Text('العربية'),
+            child: const Text('العربية 🇪🇬'),
           ),
           SimpleDialogOption(
-            onPressed: () {
-              controller.updateLanguage(AppLanguagePreference.en);
-              Navigator.pop(ctx);
+            onPressed: () async {
+              await controller.updateLanguage(AppLanguagePreference.en);
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Language changed to English')));
+              }
             },
-            child: const Text('English'),
+            child: const Text('English 🇺🇸'),
           ),
         ],
       ),
@@ -944,16 +1088,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: AppIcon(
-                  AppGlyph.chevron,
-                  color: AppPalette.textSecondary(brightness),
-                  size: 20,
-                ),
-              ),
+            AppIcon(
+              AppGlyph.chevron,
+              color: AppPalette.textSecondary(brightness),
+              size: 20,
             ),
           ],
         ),
