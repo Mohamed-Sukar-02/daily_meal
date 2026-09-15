@@ -40,12 +40,35 @@ final todayRecommendationsProvider = Provider<AsyncValue<RecommendationResult<Me
     return AsyncValue.error(settingsAsync.error!, settingsAsync.stackTrace!);
   }
 
-  // Always compute with available data — never block on isLoading.
-  // Using valueOrNull with fallbacks ensures scoped-undo 1.3 recovers instantly
-  // even when Drift streams are mid-refresh (fixes waitForRecs polling).
+  // Show loading only on first load when no value is available yet.
+  // Once hasValue is true we keep showing data even while isLoading
+  // (scoped-undo 1.3 needs instant recompute after delete).
+  final isInitialLoading = (mealsAsync.isLoading && !mealsAsync.hasValue) ||
+      (historyAsync.isLoading && !historyAsync.hasValue) ||
+      (settingsAsync.isLoading && !settingsAsync.hasValue);
+  if (isInitialLoading) {
+    return const AsyncValue.loading();
+  }
+
   final meals = mealsAsync.valueOrNull ?? const [];
   final history = historyAsync.valueOrNull ?? const [];
-  final settings = settingsAsync.valueOrNull ?? AppSettingsDao.defaultSettings;
+  final AppSettingsData fallbackSettings = AppSettingsData(
+    id: 1,
+    cooldownDays: 14,
+    chickenCooldownDays: 7,
+    beefCooldownDays: 10,
+    fishCooldownDays: 5,
+    meatlessCooldownDays: 3,
+    preventRepeatProtein: true,
+    preventRepeatCarbs: true,
+    notificationHour: 12,
+    notificationMinute: 0,
+    notificationsEnabled: false,
+    themeMode: AppThemeModePreference.system,
+    language: AppLanguagePreference.ar,
+    isFirstRun: true,
+  );
+  final settings = settingsAsync.valueOrNull ?? fallbackSettings;
 
   // 3. Compute recommendations via CooldownEngine
   try {

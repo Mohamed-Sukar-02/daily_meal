@@ -93,7 +93,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(todayRecommendationsProvider),
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
         children: [
           if (result.relaxationLevel > 0) ...[
             _buildRelaxationBanner(context, result, brightness),
