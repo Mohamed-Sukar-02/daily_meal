@@ -6,6 +6,7 @@ import '../../features/home/presentation/home_screen.dart';
 import '../../features/vault/presentation/meal_vault_screen.dart';
 import '../../features/history/presentation/history_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
+import '../../features/notifications/presentation/notifications_screen.dart';
 
 import '../../features/welcome/presentation/welcome_screen.dart';
 import '../../features/welcome/presentation/splash_screen.dart';
@@ -54,6 +55,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 pageBuilder: (context, state) => const NoTransitionPage(
                   child: HomeScreen(),
                 ),
+                routes: [
+                  GoRoute(
+                    path: 'notifications',
+                    name: 'notifications',
+                    pageBuilder: (context, state) => const NoTransitionPage(
+                      child: NotificationsScreen(),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
