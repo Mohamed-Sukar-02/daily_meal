@@ -514,13 +514,13 @@ void main() {
       expect(find.text('120 أكلة'), findsOneWidget);
 
       // Fast scroll down 3000px
-      await tester.drag(find.byType(ListView), const Offset(0, -3000));
+      await tester.drag(find.byType(Scrollable), const Offset(0, -3000));
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull, reason: 'Virtualized scrolling through 120 items must be error-free');
 
       // Scroll back up
-      await tester.drag(find.byType(ListView), const Offset(0, 3000));
+      await tester.drag(find.byType(Scrollable), const Offset(0, 3000));
       await tester.pumpAndSettle();
 
       // Search for specific meal 'رقم 77'

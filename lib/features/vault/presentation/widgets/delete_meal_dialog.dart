@@ -62,7 +62,7 @@ class DeleteMealDialog extends ConsumerWidget {
                 ],
               ),
             ),
-          ),
+            ],
           ),
         ),
         actionsOverflowDirection: VerticalDirection.up,

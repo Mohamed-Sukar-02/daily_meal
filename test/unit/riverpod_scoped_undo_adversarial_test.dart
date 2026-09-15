@@ -170,10 +170,12 @@ void main() {
           ids.add(id);
         }
 
-        final targetMeal = (await inMemoryDb.mealsDao.getMealById(ids[0]))!;
+        // Wait for all 4 meals to be fully emitted by the stream
+        await settle(60);
 
-        // Initially recommended (poll until stream propagates)
-        var recs = await waitForRecs(container, (r) => r.any((m) => m.id == targetMeal.id));
+        // Pick a target meal that naturally ranks in the top 3 with an empty history
+        var recs = await waitForRecs(container, (r) => r.isNotEmpty);
+        final targetMeal = recs.first;
         expect(recs.any((m) => m.id == targetMeal.id), isTrue);
 
         // Cook target meal -> should be excluded by cooldown
@@ -186,6 +188,20 @@ void main() {
         await recController.undoLastCookingLog(logId);
 
         recs = await waitForRecs(container, (r) => r.any((m) => m.id == targetMeal.id));
+        
+        if (!recs.any((m) => m.id == targetMeal.id)) {
+          print('DEBUG: waitForRecs timed out.');
+          print('DEBUG: recs.length = ${recs.length}');
+          for (var r in recs) print('DEBUG: rec - ${r.id}: ${r.name}');
+          final historyState = container.read(mealHistoryProvider);
+          print('DEBUG: historyState = $historyState');
+          if (historyState.hasValue) {
+            for (var h in historyState.value!) print('DEBUG: hist - ${h.id}: ${h.mealId}');
+          }
+          final dbHist = await inMemoryDb.mealHistoryDao.getAllHistory();
+          print('DEBUG: dbHist.length = ${dbHist.length}');
+        }
+
         expect(recs.any((m) => m.id == targetMeal.id), isTrue, reason: 'Undoing log must restore meal to recommendations');
       });
     });
