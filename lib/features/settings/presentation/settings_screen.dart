@@ -213,93 +213,96 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           onLink: () => setState(() => _expanded = !_expanded),
         ),
         const SizedBox(height: 12),
-        _Card(
-          brightness: brightness,
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 14, 14, 4),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        _iconCircle(brightness, AppGlyph.clock, AppPalette.chipGreen(brightness)),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'تأخير تكرار الأكلة',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: AppPalette.textPrimary(brightness),
+        // Mirrors the two mock states exactly:
+        // - closed (more): slider + 3 stepper rows
+        // - open (Cancel): 4 switch rows (Chicken/Beef/Fish on, Vegetables off by default)
+        if (!_expanded)
+          _Card(
+            brightness: brightness,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 4),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          _iconCircle(brightness, AppGlyph.clock, AppPalette.chipGreen(brightness)),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'تأخير تكرار الأكلة',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppPalette.textPrimary(brightness),
+                              ),
                             ),
                           ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: AppPalette.chipGreen(brightness).background,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            '${settings.cooldownDays} يوم',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: AppPalette.chipGreen(brightness).foreground,
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppPalette.chipGreen(brightness).background,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '${settings.cooldownDays} يوم',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: AppPalette.chipGreen(brightness).foreground,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    Slider(
-                      value: settings.cooldownDays.toDouble().clamp(1, 30),
-                      min: 1,
-                      max: 30,
-                      divisions: 29,
-                      onChanged: (v) => controller.updateCooldownDays(v.round()),
-                    ),
-                  ],
+                        ],
+                      ),
+                      Slider(
+                        value: settings.cooldownDays.toDouble().clamp(1, 30),
+                        min: 1,
+                        max: 30,
+                        divisions: 29,
+                        onChanged: (v) => controller.updateCooldownDays(v.round()),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              _divider(brightness),
-              _stepperRow(
-                context,
-                ref,
-                brightness,
-                emoji: '🐔',
-                style: AppPalette.chipGold(brightness),
-                name: 'فراخ',
-                days: settings.chickenCooldownDays,
-                onChanged: (d) => controller.updateChickenCooldownDays(d),
-              ),
-              _divider(brightness),
-              _stepperRow(
-                context,
-                ref,
-                brightness,
-                emoji: '🥩',
-                style: AppPalette.chipRose(brightness),
-                name: 'لحمة',
-                days: settings.beefCooldownDays,
-                onChanged: (d) => controller.updateBeefCooldownDays(d),
-              ),
-              _divider(brightness),
-              _stepperRow(
-                context,
-                ref,
-                brightness,
-                emoji: '🐟',
-                style: AppPalette.chipBlue(brightness),
-                name: 'سمك',
-                days: settings.fishCooldownDays,
-                onChanged: (d) => controller.updateFishCooldownDays(d),
-              ),
-            ],
-          ),
-        ),
-        if (_expanded) ...[
-          const SizedBox(height: 12),
+                _divider(brightness),
+                _stepperRow(
+                  context,
+                  ref,
+                  brightness,
+                  emoji: '🐔',
+                  style: AppPalette.chipGold(brightness),
+                  name: 'فراخ',
+                  days: settings.chickenCooldownDays,
+                  onChanged: (d) => controller.updateChickenCooldownDays(d),
+                ),
+                _divider(brightness),
+                _stepperRow(
+                  context,
+                  ref,
+                  brightness,
+                  emoji: '🥩',
+                  style: AppPalette.chipRose(brightness),
+                  name: 'لحمة',
+                  days: settings.beefCooldownDays,
+                  onChanged: (d) => controller.updateBeefCooldownDays(d),
+                ),
+                _divider(brightness),
+                _stepperRow(
+                  context,
+                  ref,
+                  brightness,
+                  emoji: '🐟',
+                  style: AppPalette.chipBlue(brightness),
+                  name: 'سمك',
+                  days: settings.fishCooldownDays,
+                  onChanged: (d) => controller.updateFishCooldownDays(d),
+                ),
+              ],
+            ),
+          )
+        else
           _Card(
             brightness: brightness,
             child: Column(
@@ -329,7 +332,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ],
             ),
           ),
-        ],
       ],
     );
   }
