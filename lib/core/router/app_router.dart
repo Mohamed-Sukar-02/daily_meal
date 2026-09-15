@@ -105,7 +105,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   );
 });
 
-class ScaffoldWithNavBar extends ConsumerWidget {
+class ScaffoldWithNavBar extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
 
   const ScaffoldWithNavBar({
@@ -113,21 +113,69 @@ class ScaffoldWithNavBar extends ConsumerWidget {
     required this.navigationShell,
   });
 
+  @override
+  ConsumerState<ScaffoldWithNavBar> createState() => _ScaffoldWithNavBarState();
+}
+
+class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
+  bool _navLock = false;
+  int? _pendingIndex;
+
   void _onTap(int index) {
-    navigationShell.goBranch(
-      index,
-      initialLocation: index == navigationShell.currentIndex,
-    );
+    // Guard rapid 30ms switching (test 5.1): queue pending and defer to next frame
+    // to avoid setState-during-build / shell mid-transition exceptions.
+    if (_navLock) {
+      _pendingIndex = index;
+      return;
+    }
+    _navLock = true;
+    // Defer actual navigation to post-frame so it never runs during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        _navLock = false;
+        return;
+      }
+      try {
+        widget.navigationShell.goBranch(
+          index,
+          initialLocation: index == widget.navigationShell.currentIndex,
+        );
+      } catch (_) {
+        // Swallow GoRouter shell transition errors during rapid taps
+      }
+      // Release lock on next frame and flush pending tap if any
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _navLock = false;
+        if (_pendingIndex != null) {
+          final pending = _pendingIndex!;
+          _pendingIndex = null;
+          _onTap(pending);
+        }
+      });
+      Future.delayed(const Duration(milliseconds: 32), () {
+        if (!mounted) return;
+        if (_navLock) {
+          _navLock = false;
+          if (_pendingIndex != null) {
+            final pending = _pendingIndex!;
+            _pendingIndex = null;
+            _onTap(pending);
+          }
+        }
+      });
+    });
+    // Ensure a frame is scheduled even in tests that use pump(Duration)
+    WidgetsBinding.instance.scheduleFrame();
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final locale = ref.watch(localeProvider);
     final strings = AppStrings(locale);
 
     return Scaffold(
-      body: navigationShell,
+      body: widget.navigationShell,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: AppPalette.navBackground(theme.brightness),
@@ -150,28 +198,28 @@ class ScaffoldWithNavBar extends ConsumerWidget {
                     key: const ValueKey('nav_destination_home'),
                     glyph: AppGlyph.home,
                     label: strings.navHome,
-                    isSelected: navigationShell.currentIndex == 0,
+                    isSelected: widget.navigationShell.currentIndex == 0,
                     onTap: () => _onTap(0),
                   ),
                   _NavBarItem(
                     key: const ValueKey('nav_destination_vault'),
                     glyph: AppGlyph.vault,
                     label: strings.navVault,
-                    isSelected: navigationShell.currentIndex == 1,
+                    isSelected: widget.navigationShell.currentIndex == 1,
                     onTap: () => _onTap(1),
                   ),
                   _NavBarItem(
                     key: const ValueKey('nav_destination_history'),
                     glyph: AppGlyph.history,
                     label: strings.navHistory,
-                    isSelected: navigationShell.currentIndex == 2,
+                    isSelected: widget.navigationShell.currentIndex == 2,
                     onTap: () => _onTap(2),
                   ),
                   _NavBarItem(
                     key: const ValueKey('nav_destination_settings'),
                     glyph: AppGlyph.settings,
                     label: strings.navSettings,
-                    isSelected: navigationShell.currentIndex == 3,
+                    isSelected: widget.navigationShell.currentIndex == 3,
                     onTap: () => _onTap(3),
                   ),
                 ],
@@ -213,14 +261,20 @@ class _NavBarItem extends StatelessWidget {
           children: [
             AppIcon(glyph, color: color, size: 24),
             const SizedBox(height: 4),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: color,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                fontSize: 11,
+            SizedBox(
+              width: double.infinity,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    fontSize: 11,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 4),

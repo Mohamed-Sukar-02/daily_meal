@@ -19,7 +19,7 @@ class AppSettingsDao extends DatabaseAccessor<AppDatabase> with _$AppSettingsDao
     preventRepeatCarbs: Value(true),
     notificationHour: Value(12),
     notificationMinute: Value(0),
-    notificationsEnabled: Value(true),
+    notificationsEnabled: Value(false),
     themeMode: Value(AppThemeModePreference.system),
     language: Value(AppLanguagePreference.ar),
     isFirstRun: Value(true),

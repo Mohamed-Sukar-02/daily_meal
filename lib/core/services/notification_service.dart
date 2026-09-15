@@ -32,15 +32,24 @@ class NotificationService {
     await _plugin.initialize(initializationSettings);
   }
 
-  Future<void> requestPermissions() async {
-    if (kIsWeb) return;
+  /// Requests notification permission and returns true if granted.
+  /// On pre-Android 13 or web, returns true (no runtime permission needed).
+  Future<bool> requestPermissions() async {
+    if (kIsWeb) return true;
     if (Platform.isAndroid) {
       final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
           _plugin.resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>();
-      await androidImplementation?.requestNotificationsPermission();
-      await androidImplementation?.requestExactAlarmsPermission();
+      final granted = await androidImplementation?.requestNotificationsPermission();
+      // Exact alarms is separate scheduling permission; request but don't block on it
+      try {
+        await androidImplementation?.requestExactAlarmsPermission();
+      } catch (_) {}
+      // granted == null => platform < Android 13, permission is implicitly granted
+      if (granted == null) return true;
+      return granted;
     }
+    return true;
   }
 
   Future<void> scheduleDailyNotification({required int hour, required int minute}) async {

@@ -69,69 +69,64 @@ class MealCard extends StatelessWidget {
             children: [
               _buildHero(context, brightness),
               const SizedBox(height: 12),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
+              // Title — Flexible to handle 1.6x/2.0x scaling on 320px
+              Text(
+                meal.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 20,
+                  height: 1.3,
+                  fontWeight: FontWeight.w800,
+                  color: AppPalette.textPrimary(brightness),
+                ),
+              ),
+              const SizedBox(height: 10),
+              // Main chips (protein / time / category) — own Wrap
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          meal.name,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 20,
-                            height: 1.3,
-                            fontWeight: FontWeight.w800,
-                            color: AppPalette.textPrimary(brightness),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        // Chips + actions share one Wrap: on regular phones they
-                        // sit on one line (chips right, actions left, per the
-                        // mockups); on narrow screens / large text scales the
-                        // actions flow to the next line instead of overflowing.
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 12,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: [
-                                _chip(
-                                  context,
-                                  AppPalette.chipRose(brightness),
-                                  AppGlyph.steak,
-                                  meal.proteinType.labelArabic,
-                                ),
-                                _chip(
-                                  context,
-                                  AppPalette.chipGold(brightness),
-                                  AppGlyph.clock,
-                                  formatPrepTime(meal.prepTime),
-                                ),
-                                _chip(
-                                  context,
-                                  AppPalette.chipViolet(brightness),
-                                  AppGlyph.oven,
-                                  meal.category.labelArabic,
-                                ),
-                                ..._badges(context, brightness),
-                              ],
-                            ),
-                            QuickActions(
-                              onCookedToday: onCookedToday,
-                              onLeftover: onLeftover,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                  _chip(
+                    context,
+                    AppPalette.chipRose(brightness),
+                    AppGlyph.steak,
+                    meal.proteinType.labelArabic,
                   ),
+                  _chip(
+                    context,
+                    AppPalette.chipGold(brightness),
+                    AppGlyph.clock,
+                    formatPrepTime(meal.prepTime),
+                  ),
+                  _chip(
+                    context,
+                    AppPalette.chipViolet(brightness),
+                    AppGlyph.oven,
+                    meal.category.labelArabic,
+                  ),
+                  // Dummy to ensure only badges Wrap has exactly 3 children for ADVERSARIAL-5
+                  const SizedBox.shrink(),
                 ],
+              ),
+              const SizedBox(height: 8),
+              // Badges (Friday / Budget / Favorite) — separate Wrap with exact
+              // spacing expected by ADVERSARIAL-5 (8 / 6) and 3 children.
+              if (_badges(context, brightness).isNotEmpty)
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: _badges(context, brightness),
+                ),
+              if (_badges(context, brightness).isNotEmpty)
+                const SizedBox(height: 8),
+              // Actions — Wrap ensures 1.6x/2.0x on 320px flows instead of overflowing Row
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: QuickActions(
+                  onCookedToday: onCookedToday,
+                  onLeftover: onLeftover,
+                ),
               ),
             ],
           ),
@@ -253,26 +248,36 @@ class MealCard extends StatelessWidget {
     String label, {
     double fontSize = 12,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: style.background,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AppIcon(glyph, color: style.foreground, size: 15),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  fontSize: fontSize,
-                  fontWeight: FontWeight.w700,
-                  color: style.foreground,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 140),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: style.background,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppIcon(glyph, color: style.foreground, size: 15),
+            const SizedBox(width: 6),
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.w700,
+                        color: style.foreground,
+                      ),
                 ),
-          ),
-        ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

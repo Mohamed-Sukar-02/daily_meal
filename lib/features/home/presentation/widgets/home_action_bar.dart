@@ -40,11 +40,13 @@ class HomeActionBar extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            _Pill(
-              glyph: AppGlyph.fridge,
-              label: 'بواقي الأكل',
-              style: leftover,
-              onTap: onLeftover,
+            Flexible(
+              child: _Pill(
+                glyph: AppGlyph.fridge,
+                label: 'بواقي الأكل',
+                style: leftover,
+                onTap: onLeftover,
+              ),
             ),
             Expanded(
               child: Center(
@@ -54,11 +56,13 @@ class HomeActionBar extends StatelessWidget {
                 ),
               ),
             ),
-            _Pill(
-              glyph: AppGlyph.scooter,
-              label: 'توصيل',
-              style: delivery,
-              onTap: onDelivery,
+            Flexible(
+              child: _Pill(
+                glyph: AppGlyph.scooter,
+                label: 'توصيل',
+                style: delivery,
+                onTap: onDelivery,
+              ),
             ),
           ],
         ),
@@ -91,23 +95,26 @@ class _Pill extends StatelessWidget {
         onTap: onTap,
         child: Container(
           height: 46,
-          padding: const EdgeInsets.symmetric(horizontal: 18),
-          constraints: const BoxConstraints(minWidth: 118),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          constraints: const BoxConstraints(minWidth: 88, maxWidth: 150),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              AppIcon(glyph, color: style.icon, size: 20),
-              const SizedBox(width: 8),
+              AppIcon(glyph, color: style.icon, size: 18),
+              const SizedBox(width: 6),
               Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: style.text,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: style.text,
+                    ),
                   ),
                 ),
               ),

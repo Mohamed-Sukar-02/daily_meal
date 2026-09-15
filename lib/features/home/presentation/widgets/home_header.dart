@@ -75,15 +75,18 @@ class HomeHeader extends StatelessWidget {
                       const EmphasisMarks(size: 18, mirrored: true),
                       const SizedBox(width: 6),
                       Flexible(
-                        child: Text(
-                          'أكلة النهاردة',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 26,
-                            height: 1.2,
-                            fontWeight: FontWeight.w800,
-                            color: AppPalette.textPrimary(brightness),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            'أكلة النهاردة',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 26,
+                              height: 1.2,
+                              fontWeight: FontWeight.w800,
+                              color: AppPalette.textPrimary(brightness),
+                            ),
                           ),
                         ),
                       ),

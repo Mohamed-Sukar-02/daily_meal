@@ -43,6 +43,7 @@ enum AppGlyph {
   flame,
   bolt,
   globe,
+  bell,
 }
 
 class AppIcon extends StatelessWidget {
@@ -473,6 +474,30 @@ class _GlyphPainter extends CustomPainter {
         canvas.drawOval(
             const Rect.fromLTRB(8.4, 3.6, 15.6, 20.4), stroke);
         canvas.drawLine(const Offset(3.6, 12), const Offset(20.4, 12), stroke);
+
+      case AppGlyph.bell:
+        // Bell body
+        canvas.drawPath(
+          Path()
+            ..moveTo(7.2, 17.8)
+            ..lineTo(7.2, 12.2)
+            ..cubicTo(7.2, 8.2, 9.2, 5.2, 12, 5.2)
+            ..cubicTo(14.8, 5.2, 16.8, 8.2, 16.8, 12.2)
+            ..lineTo(16.8, 17.8)
+            ..close(),
+          fill,
+        );
+        // Bell rim
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+              const Rect.fromLTRB(6.6, 17.2, 17.4, 19.4),
+              const Radius.circular(1.4)),
+          fill,
+        );
+        // Clapper
+        canvas.drawCircle(const Offset(12, 19.8), 1.4, fill);
+        // Top knob
+        canvas.drawCircle(const Offset(12, 4.2), 1.2, fill);
     }
 
     canvas.restore();

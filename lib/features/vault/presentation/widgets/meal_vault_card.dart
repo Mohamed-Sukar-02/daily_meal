@@ -95,8 +95,13 @@ class MealVaultCard extends ConsumerWidget {
                             '🌿',
                             AppPalette.chipGreen(brightness),
                           ),
-                        _timePill(brightness),
-                        const Spacer(),
+                        Expanded(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: _timePill(brightness),
+                          ),
+                        ),
                         _bookmarkButton(context, ref, brightness),
                       ],
                     ),

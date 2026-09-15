@@ -30,6 +30,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final brightness = Theme.of(context).brightness;
 
     return Scaffold(
+      backgroundColor: AppPalette.background(brightness),
       body: SafeArea(
         bottom: false,
         child: settingsAsync.when(
@@ -38,13 +39,44 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             children: [
               _buildHeader(brightness),
               const SizedBox(height: 20),
-              _buildProfileCard(context, ref, settings, brightness),
+              IgnorePointer(
+                ignoring: _expanded,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 220),
+                  opacity: _expanded ? 0.38 : 1.0,
+                  child: _buildProfileCard(context, ref, settings, brightness),
+                ),
+              ),
               const SizedBox(height: 24),
+              // Cooldown is the active section — whole card transforms to switches
               _buildCooldownSection(context, ref, settings, brightness),
               const SizedBox(height: 24),
-              _buildNotificationsSection(context, ref, settings, brightness),
+              IgnorePointer(
+                ignoring: _expanded,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 220),
+                  opacity: _expanded ? 0.38 : 1.0,
+                  child: _buildNotificationsSection(context, ref, settings, brightness),
+                ),
+              ),
               const SizedBox(height: 24),
-              _buildAppearanceSection(context, ref, settings, brightness),
+              IgnorePointer(
+                ignoring: _expanded,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 220),
+                  opacity: _expanded ? 0.38 : 1.0,
+                  child: _buildAppearanceSection(context, ref, settings, brightness),
+                ),
+              ),
+              const SizedBox(height: 24),
+              IgnorePointer(
+                ignoring: _expanded,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 220),
+                  opacity: _expanded ? 0.38 : 1.0,
+                  child: _buildAdminSection(context, brightness),
+                ),
+              ),
             ],
           ),
           loading: () => const Center(
@@ -70,15 +102,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              'الإعدادات',
-              style: TextStyle(
-                fontSize: 30,
-                height: 1.2,
-                fontWeight: FontWeight.w800,
-                color: AppPalette.textPrimary(brightness),
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
+                child: Text(
+                  'الإعدادات',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 30,
+                    height: 1.2,
+                    fontWeight: FontWeight.w800,
+                    color: AppPalette.textPrimary(brightness),
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -212,93 +251,117 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           onLink: () => setState(() => _expanded = !_expanded),
         ),
         const SizedBox(height: 12),
-        _Card(
-          brightness: brightness,
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 14, 14, 4),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        _iconCircle(brightness, AppGlyph.clock, AppPalette.chipGreen(brightness)),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'تأخير تكرار الأكلة',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: AppPalette.textPrimary(brightness),
+        // Whole cooldown block transforms: closed = slider + steppers for ENABLED proteins,
+        // open = 4 switches (Smart Cooldown Engine) — switches control visibility in main view.
+        if (!_expanded)
+          _Card(
+            brightness: brightness,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 4),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          _iconCircle(brightness, AppGlyph.clock, AppPalette.chipGreen(brightness)),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: AlignmentDirectional.centerStart,
+                              child: Text(
+                                'تأخير تكرار الأكلة',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppPalette.textPrimary(brightness),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: AppPalette.chipGreen(brightness).background,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            '${settings.cooldownDays} يوم',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: AppPalette.chipGreen(brightness).foreground,
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: AppPalette.chipGreen(brightness).background,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  '${settings.cooldownDays} يوم',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppPalette.chipGreen(brightness).foreground,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    Slider(
-                      value: settings.cooldownDays.toDouble().clamp(1, 30),
-                      min: 1,
-                      max: 30,
-                      divisions: 29,
-                      onChanged: (v) => controller.updateCooldownDays(v.round()),
-                    ),
-                  ],
+                        ],
+                      ),
+                      Slider(
+                        value: settings.cooldownDays.toDouble().clamp(1, 30),
+                        min: 1,
+                        max: 30,
+                        divisions: 29,
+                        onChanged: (v) => controller.updateCooldownDays(v.round()),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              _divider(brightness),
-              _stepperRow(
-                context,
-                ref,
-                brightness,
-                emoji: '🐔',
-                style: AppPalette.chipGold(brightness),
-                name: 'فراخ',
-                days: settings.chickenCooldownDays,
-                onChanged: (d) => controller.updateChickenCooldownDays(d),
-              ),
-              _divider(brightness),
-              _stepperRow(
-                context,
-                ref,
-                brightness,
-                emoji: '🥩',
-                style: AppPalette.chipRose(brightness),
-                name: 'لحمة',
-                days: settings.beefCooldownDays,
-                onChanged: (d) => controller.updateBeefCooldownDays(d),
-              ),
-              _divider(brightness),
-              _stepperRow(
-                context,
-                ref,
-                brightness,
-                emoji: '🐟',
-                style: AppPalette.chipBlue(brightness),
-                name: 'سمك',
-                days: settings.fishCooldownDays,
-                onChanged: (d) => controller.updateFishCooldownDays(d),
-              ),
-            ],
-          ),
-        ),
-        if (_expanded) ...[
-          const SizedBox(height: 12),
+                // Stepper rows only for enabled proteins (switch ON = days > 0) — original 3 rows
+                if (settings.chickenCooldownDays > 0) ...[
+                  _divider(brightness),
+                  _stepperRow(
+                    context,
+                    ref,
+                    brightness,
+                    emoji: '🐔',
+                    style: AppPalette.chipGold(brightness),
+                    name: 'فراخ',
+                    days: settings.chickenCooldownDays,
+                    onChanged: (d) => controller.updateChickenCooldownDays(d),
+                  ),
+                ],
+                if (settings.beefCooldownDays > 0) ...[
+                  _divider(brightness),
+                  _stepperRow(
+                    context,
+                    ref,
+                    brightness,
+                    emoji: '🥩',
+                    style: AppPalette.chipRose(brightness),
+                    name: 'لحمة',
+                    days: settings.beefCooldownDays,
+                    onChanged: (d) => controller.updateBeefCooldownDays(d),
+                  ),
+                ],
+                if (settings.fishCooldownDays > 0) ...[
+                  _divider(brightness),
+                  _stepperRow(
+                    context,
+                    ref,
+                    brightness,
+                    emoji: '🐟',
+                    style: AppPalette.chipBlue(brightness),
+                    name: 'سمك',
+                    days: settings.fishCooldownDays,
+                    onChanged: (d) => controller.updateFishCooldownDays(d),
+                  ),
+                ],
+              ],
+            ),
+          )
+        else
+          // Smart Cooldown Engine — 4 switches that control main-view visibility, per mock
           _Card(
             brightness: brightness,
             child: Column(
@@ -328,7 +391,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ],
             ),
           ),
-        ],
       ],
     );
   }
@@ -353,40 +415,63 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  name,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: AppPalette.textPrimary(brightness),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: AppPalette.textPrimary(brightness),
+                    ),
                   ),
                 ),
-                Text(
-                  'أيام انتظار',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppPalette.textSecondary(brightness),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    'أيام انتظار',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppPalette.textSecondary(brightness),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          _stepButton(brightness, AppGlyph.minus, () => onChanged((days - 1).clamp(0, 30))),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 28,
-            child: Text(
-              '$days',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: AppPalette.textPrimary(brightness),
-              ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                _stepButton(brightness, AppGlyph.minus, () => onChanged((days - 1).clamp(0, 30))),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minWidth: 24, maxWidth: 36),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '$days',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppPalette.textPrimary(brightness),
+                      ),
+                    ),
+                  ),
+                ),
+                _stepButton(brightness, AppGlyph.plus, () => onChanged((days + 1).clamp(0, 30))),
+              ],
             ),
           ),
-          const SizedBox(width: 10),
-          _stepButton(brightness, AppGlyph.plus, () => onChanged((days + 1).clamp(0, 30))),
         ],
       ),
     );
@@ -409,12 +494,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _emojiCircle(brightness, emoji, style),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              name,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: AppPalette.textPrimary(brightness),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: AlignmentDirectional.centerStart,
+              child: Text(
+                name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppPalette.textPrimary(brightness),
+                ),
               ),
             ),
           ),
@@ -452,25 +543,37 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
                 child: Row(
                   children: [
-                    _iconCircle(brightness, AppGlyph.sun, AppPalette.chipGreen(brightness)),
+                    _iconCircle(brightness, AppGlyph.bell, AppPalette.chipGold(brightness)),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'تذكير يومي',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: AppPalette.textPrimary(brightness),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              'تذكير يومي',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppPalette.textPrimary(brightness),
+                              ),
                             ),
                           ),
-                          Text(
-                            'هيصلك إشعار في الوقت اللي تختاره',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppPalette.textSecondary(brightness),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              'هيصلك إشعار في الوقت اللي تختاره',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppPalette.textSecondary(brightness),
+                              ),
                             ),
                           ),
                         ],
@@ -484,82 +587,109 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
               _divider(brightness),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-                child: Row(
-                  children: [
-                    _iconCircle(brightness, AppGlyph.clock, AppPalette.chipViolet(brightness)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'موعد التذكير',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: AppPalette.textPrimary(brightness),
-                            ),
+              Opacity(
+                opacity: settings.notificationsEnabled ? 1.0 : 0.45,
+                child: IgnorePointer(
+                  ignoring: !settings.notificationsEnabled,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                    child: Row(
+                      children: [
+                        _iconCircle(brightness, AppGlyph.clock, AppPalette.chipViolet(brightness)),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: AlignmentDirectional.centerStart,
+                                child: Text(
+                                  'موعد التذكير',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppPalette.textPrimary(brightness),
+                                  ),
+                                ),
+                              ),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: AlignmentDirectional.centerStart,
+                                child: Text(
+                                  'امتى تحب نذكّرك؟',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppPalette.textSecondary(brightness),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          Text(
-                            'امتى تحب نذكّرك؟',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppPalette.textSecondary(brightness),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    InkWell(
-                      borderRadius: BorderRadius.circular(20),
-                      onTap: () async {
-                        final picked = await showTimePicker(
-                          context: context,
-                          initialTime: TimeOfDay(
-                            hour: settings.notificationHour,
-                            minute: settings.notificationMinute,
-                          ),
-                        );
-                        if (picked != null) {
-                          controller.updateNotificationTime(picked.hour, picked.minute);
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: AppPalette.chipViolet(brightness).background,
-                          borderRadius: BorderRadius.circular(20),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            AppIcon(
-                              AppGlyph.clock,
-                              color: AppPalette.chipViolet(brightness).foreground,
-                              size: 14,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              _formatTime(settings),
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: AppPalette.chipViolet(brightness).foreground,
+                        Flexible(
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: () async {
+                              final picked = await showTimePicker(
+                                context: context,
+                                initialTime: TimeOfDay(
+                                  hour: settings.notificationHour,
+                                  minute: settings.notificationMinute,
+                                ),
+                              );
+                              if (picked != null) {
+                                controller.updateNotificationTime(picked.hour, picked.minute);
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: AppPalette.chipViolet(brightness).background,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  AppIcon(
+                                    AppGlyph.clock,
+                                    color: AppPalette.chipViolet(brightness).foreground,
+                                    size: 14,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Flexible(
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        _formatTime(settings),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppPalette.chipViolet(brightness).foreground,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  AppIcon(
+                                    AppGlyph.chevron,
+                                    color: AppPalette.chipViolet(brightness).foreground,
+                                    size: 14,
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(width: 4),
-                            AppIcon(
-                              AppGlyph.chevron,
-                              color: AppPalette.chipViolet(brightness).foreground,
-                              size: 14,
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -580,12 +710,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     Brightness brightness,
   ) {
     final controller = ref.read(settingsControllerProvider.notifier);
-    final isDarkMode = settings.themeMode == AppThemeModePreference.dark;
+
+    String themeLabel(AppThemeModePreference m) {
+      switch (m) {
+        case AppThemeModePreference.dark:
+          return 'داكن';
+        case AppThemeModePreference.light:
+          return 'فاتح';
+        case AppThemeModePreference.system:
+          return 'حسب الجهاز';
+      }
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SectionHeader(brightness: brightness, title: 'المظهر والنسخ الاحتياطي'),
+        _SectionHeader(brightness: brightness, title: 'المظهر واللغة'),
         const SizedBox(height: 12),
         _Card(
           brightness: brightness,
@@ -602,7 +742,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'الوضع الداكن',
+                            'المظهر',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
@@ -610,7 +750,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             ),
                           ),
                           Text(
-                            'بدّل بين الوضع الفاتح والداكن',
+                            'اختر مظهر التطبيق',
                             style: TextStyle(
                               fontSize: 12,
                               color: AppPalette.textSecondary(brightness),
@@ -619,25 +759,38 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ],
                       ),
                     ),
-                    Switch(
-                      value: isDarkMode,
-                      onChanged: (v) => controller.updateThemeMode(
-                        v ? AppThemeModePreference.dark : AppThemeModePreference.light,
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppPalette.tabContainer(brightness),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppPalette.hairline(brightness)),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<AppThemeModePreference>(
+                          value: settings.themeMode,
+                          isDense: true,
+                          icon: AppIcon(AppGlyph.chevron, color: AppPalette.textSecondary(brightness), size: 14),
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppPalette.textPrimary(brightness),
+                          ),
+                          dropdownColor: AppPalette.card(brightness),
+                          borderRadius: BorderRadius.circular(12),
+                          onChanged: (v) {
+                            if (v != null) controller.updateThemeMode(v);
+                          },
+                          items: const [
+                            DropdownMenuItem(value: AppThemeModePreference.system, child: Text('حسب الجهاز')),
+                            DropdownMenuItem(value: AppThemeModePreference.light, child: Text('فاتح')),
+                            DropdownMenuItem(value: AppThemeModePreference.dark, child: Text('داكن')),
+                          ],
+                        ),
                       ),
                     ),
                   ],
-                ),
-              ),
-              _divider(brightness),
-              _linkRow(
-                context,
-                brightness,
-                AppGlyph.cloud,
-                AppPalette.chipGreen(brightness),
-                'نسخ البيانات',
-                'حافظ على بياناتك آمنة ومتزامنة',
-                () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('النسخ الاحتياطي السحابي قريباً!')),
                 ),
               ),
               _divider(brightness),
@@ -649,6 +802,37 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 'اللغة',
                 settings.language == AppLanguagePreference.ar ? 'العربية' : 'English',
                 () => _pickLanguage(context, ref, settings),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAdminSection(
+    BuildContext context,
+    Brightness brightness,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionHeader(brightness: brightness, title: 'الإدارة'),
+        const SizedBox(height: 12),
+        _Card(
+          brightness: brightness,
+          child: Column(
+            children: [
+              _linkRow(
+                context,
+                brightness,
+                AppGlyph.cloud,
+                AppPalette.chipGreen(brightness),
+                'إدارة قاعدة البيانات',
+                'عرض وإدارة البيانات المحلية',
+                () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('إدارة قاعدة البيانات قريباً!')),
+                ),
               ),
               _divider(brightness),
               _linkRow(
@@ -774,19 +958,31 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: AppPalette.textPrimary(brightness),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppPalette.textPrimary(brightness),
+                      ),
                     ),
                   ),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppPalette.textSecondary(brightness),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppPalette.textSecondary(brightness),
+                      ),
                     ),
                   ),
                 ],
@@ -824,27 +1020,42 @@ class _SectionHeader extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: Text(
-            title,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: AppPalette.textPrimary(brightness),
-            ),
-          ),
-        ),
-        if (link != null)
-          GestureDetector(
-            onTap: onLink,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.centerStart,
             child: Text(
-              link!,
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: linkColor ?? AppPalette.brandGreen,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppPalette.textPrimary(brightness),
               ),
             ),
           ),
+        ),
+        if (link != null) ...[
+          const SizedBox(width: 8),
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: GestureDetector(
+                onTap: onLink,
+                child: Text(
+                  link!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: linkColor ?? AppPalette.brandGreen,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }

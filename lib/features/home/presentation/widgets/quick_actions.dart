@@ -21,8 +21,13 @@ class QuickActions extends StatelessWidget {
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    // Wrap ensures that on 320px with 2.0x text scaling the two actions
+    // flow to the next line instead of throwing RenderFlex overflow.
+    // Cook button uses Flexible + FittedBox so long scaled text shrinks.
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         Material(
           key: const ValueKey('btn_cooked_today'),
@@ -48,24 +53,32 @@ class QuickActions extends StatelessWidget {
               onTap: onCookedToday,
               child: Container(
                 height: 46,
-                padding: const EdgeInsets.symmetric(horizontal: 18),
+                constraints: const BoxConstraints(minWidth: 96, maxWidth: 220),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CustomPaint(
-                      size: const Size(20, 20),
-                      painter: const ChefHatPainter(
+                    const CustomPaint(
+                      size: Size(20, 20),
+                      painter: ChefHatPainter(
                         stroke: Colors.white,
                         heart: Colors.white,
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Text(
-                      'Cook This',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'Cook This',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -74,7 +87,6 @@ class QuickActions extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(width: 10),
         Material(
           key: const ValueKey('btn_leftover'),
           color: Colors.transparent,

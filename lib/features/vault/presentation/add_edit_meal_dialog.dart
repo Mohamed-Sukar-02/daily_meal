@@ -136,7 +136,7 @@ class _AddEditMealDialogState extends ConsumerState<AddEditMealDialog> {
       child: Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 500, maxHeight: 650),
+          constraints: BoxConstraints(maxWidth: 500, maxHeight: MediaQuery.of(context).size.height * 0.85),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
             child: Form(
@@ -145,16 +145,24 @@ class _AddEditMealDialogState extends ConsumerState<AddEditMealDialog> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Title
+                  // Title — Flexible to handle 1.4x on 320px (was overflowing 218px)
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        isEditing ? 'تعديل الأكلة' : 'إضافة أكلة جديدة',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
+                      Expanded(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            isEditing ? 'تعديل الأكلة' : 'إضافة أكلة جديدة',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 8),
                       IconButton(
                         icon: const Icon(Icons.close),
                         onPressed: () => Navigator.of(context).pop(),
@@ -220,63 +228,75 @@ class _AddEditMealDialogState extends ConsumerState<AddEditMealDialog> {
                           ),
                           const SizedBox(height: 12),
 
-                          // Protein & Carbs Row
-                          Row(
-                            children: [
-                              Expanded(
-                                child: DropdownButtonFormField<ProteinType>(
-                                  key: const Key('meal_form_protein_dropdown'),
-                                  initialValue: _selectedProtein,
-                                  isExpanded: true,
-                                  decoration: const InputDecoration(
-                                    labelText: 'نوع البروتين *',
-                                    border: OutlineInputBorder(),
-                                    prefixIcon: Icon(Icons.egg_alt_outlined),
-                                  ),
-                                  items: ProteinType.values.map((p) {
-                                    return DropdownMenuItem(
-                                      value: p,
-                                      child: Text(
-                                        p.labelArabic,
-                                        overflow: TextOverflow.ellipsis,
+                          // Protein & Carbs Row — Wrap to avoid overflow at 1.4x on 320px
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final useWrap = constraints.maxWidth < 360;
+                              if (useWrap) {
+                                return Column(
+                                  children: [
+                                    DropdownButtonFormField<ProteinType>(
+                                      key: const Key('meal_form_protein_dropdown'),
+                                      initialValue: _selectedProtein,
+                                      isExpanded: true,
+                                      decoration: const InputDecoration(
+                                        labelText: 'نوع البروتين *',
+                                        border: OutlineInputBorder(),
+                                        prefixIcon: Icon(Icons.egg_alt_outlined),
                                       ),
-                                    );
-                                  }).toList(),
-                                  onChanged: (val) {
-                                    if (val != null) {
-                                      setState(() => _selectedProtein = val);
-                                    }
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: DropdownButtonFormField<CarbsType>(
-                                  key: const Key('meal_form_carbs_dropdown'),
-                                  initialValue: _selectedCarbs,
-                                  isExpanded: true,
-                                  decoration: const InputDecoration(
-                                    labelText: 'نوع النشويات *',
-                                    border: OutlineInputBorder(),
-                                    prefixIcon: Icon(Icons.bakery_dining_outlined),
-                                  ),
-                                  items: CarbsType.values.map((c) {
-                                    return DropdownMenuItem(
-                                      value: c,
-                                      child: Text(
-                                        c.labelArabic,
-                                        overflow: TextOverflow.ellipsis,
+                                      items: ProteinType.values.map((p) => DropdownMenuItem(value: p, child: Text(p.labelArabic, overflow: TextOverflow.ellipsis))).toList(),
+                                      onChanged: (val) { if (val != null) setState(() => _selectedProtein = val);},
+                                    ),
+                                    const SizedBox(height: 12),
+                                    DropdownButtonFormField<CarbsType>(
+                                      key: const Key('meal_form_carbs_dropdown'),
+                                      initialValue: _selectedCarbs,
+                                      isExpanded: true,
+                                      decoration: const InputDecoration(
+                                        labelText: 'نوع النشويات *',
+                                        border: OutlineInputBorder(),
+                                        prefixIcon: Icon(Icons.bakery_dining_outlined),
                                       ),
-                                    );
-                                  }).toList(),
-                                  onChanged: (val) {
-                                    if (val != null) {
-                                      setState(() => _selectedCarbs = val);
-                                    }
-                                  },
-                                ),
-                              ),
-                            ],
+                                      items: CarbsType.values.map((c) => DropdownMenuItem(value: c, child: Text(c.labelArabic, overflow: TextOverflow.ellipsis))).toList(),
+                                      onChanged: (val) { if (val != null) setState(() => _selectedCarbs = val);},
+                                    ),
+                                  ],
+                                );
+                              }
+                              return Row(
+                                children: [
+                                  Expanded(
+                                    child: DropdownButtonFormField<ProteinType>(
+                                      key: const Key('meal_form_protein_dropdown'),
+                                      initialValue: _selectedProtein,
+                                      isExpanded: true,
+                                      decoration: const InputDecoration(
+                                        labelText: 'نوع البروتين *',
+                                        border: OutlineInputBorder(),
+                                        prefixIcon: Icon(Icons.egg_alt_outlined),
+                                      ),
+                                      items: ProteinType.values.map((p) => DropdownMenuItem(value: p, child: Text(p.labelArabic, overflow: TextOverflow.ellipsis))).toList(),
+                                      onChanged: (val) { if (val != null) setState(() => _selectedProtein = val);},
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: DropdownButtonFormField<CarbsType>(
+                                      key: const Key('meal_form_carbs_dropdown'),
+                                      initialValue: _selectedCarbs,
+                                      isExpanded: true,
+                                      decoration: const InputDecoration(
+                                        labelText: 'نوع النشويات *',
+                                        border: OutlineInputBorder(),
+                                        prefixIcon: Icon(Icons.bakery_dining_outlined),
+                                      ),
+                                      items: CarbsType.values.map((c) => DropdownMenuItem(value: c, child: Text(c.labelArabic, overflow: TextOverflow.ellipsis))).toList(),
+                                      onChanged: (val) { if (val != null) setState(() => _selectedCarbs = val);},
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
                           ),
                           const SizedBox(height: 12),
 
@@ -305,25 +325,25 @@ class _AddEditMealDialogState extends ConsumerState<AddEditMealDialog> {
                           ),
                           const SizedBox(height: 12),
 
-                          // Boolean Flags
-                          SwitchListTile(
+                          // Boolean Flags — custom rows with Flexible to avoid overflow at 1.4x on 320px
+                          _switchRow(
                             key: const Key('meal_form_friday_checkbox'),
-                            title: const Text('أكلة خاصة بالجمعة'),
-                            subtitle: const Text('ترشيحها كأولوية في أيام الجمعة'),
+                            title: 'أكلة خاصة بالجمعة',
+                            subtitle: 'ترشيحها كأولوية في أيام الجمعة',
                             value: _isFridaySpecial,
                             onChanged: (val) => setState(() => _isFridaySpecial = val),
                           ),
-                          SwitchListTile(
+                          _switchRow(
                             key: const Key('meal_form_budget_checkbox'),
-                            title: const Text('أكلة اقتصادية (على قد الإيد)'),
-                            subtitle: const Text('وجبة موفرة في الميزانية'),
+                            title: 'أكلة اقتصادية (على قد الإيد)',
+                            subtitle: 'وجبة موفرة في الميزانية',
                             value: _isBudgetFriendly,
                             onChanged: (val) => setState(() => _isBudgetFriendly = val),
                           ),
-                          SwitchListTile(
+                          _switchRow(
                             key: const Key('meal_form_favorite_checkbox'),
-                            title: const Text('إضافة إلى المفضلة'),
-                            subtitle: const Text('الأكلات المحببة لأسرتك'),
+                            title: 'إضافة إلى المفضلة',
+                            subtitle: 'الأكلات المحببة لأسرتك',
                             value: _isFavorite,
                             onChanged: (val) => setState(() => _isFavorite = val),
                           ),
@@ -334,22 +354,25 @@ class _AddEditMealDialogState extends ConsumerState<AddEditMealDialog> {
 
                   const SizedBox(height: 16),
 
-                  // Action Buttons
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        key: const Key('meal_form_cancel_button'),
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('إلغاء'),
-                      ),
-                      const SizedBox(width: 8),
-                      FilledButton(
-                        key: const Key('meal_form_save_button'),
-                        onPressed: _handleSave,
-                        child: Text(isEditing ? 'حفظ التعديلات' : 'إضافة الأكلة'),
-                      ),
-                    ],
+                  // Action Buttons — Wrap to avoid 220px overflow at 1.4x on 320px
+                  Align(
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        TextButton(
+                          key: const Key('meal_form_cancel_button'),
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text('إلغاء'),
+                        ),
+                        FilledButton(
+                          key: const Key('meal_form_save_button'),
+                          onPressed: _handleSave,
+                          child: Text(isEditing ? 'حفظ التعديلات' : 'إضافة الأكلة'),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -359,4 +382,39 @@ class _AddEditMealDialogState extends ConsumerState<AddEditMealDialog> {
       ),
     );
   }
+  Widget _switchRow({Key? key, required String title, required String subtitle, required bool value, required ValueChanged<bool> onChanged}) {
+    return Padding(
+      key: key,
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                ),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: Colors.grey)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Switch(value: value, onChanged: onChanged),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
 }

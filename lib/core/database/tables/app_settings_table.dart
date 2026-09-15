@@ -24,7 +24,7 @@ class AppSettings extends Table {
   BoolColumn get preventRepeatCarbs => boolean().withDefault(const Constant(true))();
   IntColumn get notificationHour => integer().withDefault(const Constant(12))();
   IntColumn get notificationMinute => integer().withDefault(const Constant(0))();
-  BoolColumn get notificationsEnabled => boolean().withDefault(const Constant(true))();
+  BoolColumn get notificationsEnabled => boolean().withDefault(const Constant(false))();
   TextColumn get themeMode => textEnum<AppThemeModePreference>().withDefault(const Constant('system'))();
   TextColumn get language => textEnum<AppLanguagePreference>().withDefault(const Constant('ar'))();
   BoolColumn get isFirstRun => boolean().withDefault(const Constant(true))();
