@@ -248,10 +248,11 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
 
   Widget _emptyState(Brightness b, String title, String subtitle) {
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             AppIcon(AppGlyph.cloud, color: AppPalette.textSecondary(b), size: 64),
             const SizedBox(height: 16),
@@ -266,10 +267,11 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
 
   Widget _errorState(Brightness b, AppGlyph glyph, String title, String subtitle) {
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               width: 72,

@@ -93,7 +93,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(todayRecommendationsProvider),
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
         children: [
           if (result.relaxationLevel > 0) ...[
             _buildRelaxationBanner(context, result, brightness),
@@ -151,10 +151,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final brightness = Theme.of(context).brightness;
 
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             AppIcon(
               AppGlyph.pot,
@@ -195,10 +196,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final brightness = Theme.of(context).brightness;
 
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             AppIcon(AppGlyph.alert, size: 56, color: AppPalette.heartCoral),
             const SizedBox(height: 16),

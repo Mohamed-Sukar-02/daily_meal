@@ -10,6 +10,7 @@ import '../../home/presentation/widgets/home_header.dart' show EmphasisMarks;
 import '../../../core/localization/app_strings.dart';
 import '../providers/settings_providers.dart';
 import 'widgets/legal_policies_dialog.dart' as widgets;
+import 'database_management_screen.dart';
 
 /// Settings screen rebuilt from the approved mockups (light + dark):
 /// header with shine marks, profile card, then titled sections whose cards
@@ -149,7 +150,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         borderRadius: BorderRadius.circular(20),
         onTap: () => _showProfileEditDialog(context, ref, settings),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(16),
           child: Row(
             children: [
               Stack(
@@ -190,7 +191,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ],
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -261,13 +262,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 4),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
                   child: Column(
                     children: [
                       Row(
                         children: [
                           _iconCircle(brightness, AppGlyph.clock, AppPalette.chipGreen(brightness)),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 14),
                           Expanded(
                             child: FittedBox(
                               fit: BoxFit.scaleDown,
@@ -406,11 +407,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     required ValueChanged<int> onChanged,
   }) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       child: Row(
         children: [
           _emojiCircle(brightness, emoji, style),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -488,11 +489,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ValueChanged<int> onChanged,
   ) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       child: Row(
         children: [
           _emojiCircle(brightness, emoji, style),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(
             child: FittedBox(
               fit: BoxFit.scaleDown,
@@ -540,11 +541,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                 child: Row(
                   children: [
                     _iconCircle(brightness, AppGlyph.bell, AppPalette.chipGold(brightness)),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -592,11 +593,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 child: IgnorePointer(
                   ignoring: !settings.notificationsEnabled,
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                     child: Row(
                       children: [
                         _iconCircle(brightness, AppGlyph.clock, AppPalette.chipViolet(brightness)),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 14),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -711,17 +712,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   ) {
     final controller = ref.read(settingsControllerProvider.notifier);
 
-    String themeLabel(AppThemeModePreference m) {
-      switch (m) {
-        case AppThemeModePreference.dark:
-          return 'داكن';
-        case AppThemeModePreference.light:
-          return 'فاتح';
-        case AppThemeModePreference.system:
-          return 'حسب الجهاز';
-      }
-    }
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -732,11 +722,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                 child: Row(
                   children: [
                     _iconCircle(brightness, AppGlyph.moon, AppPalette.chipViolet(brightness)),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -755,6 +745,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               ),
                             ),
                           ),
+                          const SizedBox(height: 2),
                           FittedBox(
                             fit: BoxFit.scaleDown,
                             alignment: AlignmentDirectional.centerStart,
@@ -764,6 +755,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 12,
+                                height: 1.3,
                                 color: AppPalette.textSecondary(brightness),
                               ),
                             ),
@@ -771,7 +763,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                     Flexible(
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
@@ -811,14 +803,81 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
               _divider(brightness),
-              _linkRow(
-                context,
-                brightness,
-                AppGlyph.globe,
-                AppPalette.chipBlue(brightness),
-                'اللغة',
-                settings.language == AppLanguagePreference.ar ? 'العربية' : 'English',
-                () => _pickLanguage(context, ref, settings),
+              // Language Segmented Control - same outer shape as switch cards (radius 20, height 44, tabContainer bg, hairline)
+              // Divided middle: EN left, AR right, selected brandGreen
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                child: Row(
+                  children: [
+                    _iconCircle(brightness, AppGlyph.globe, AppPalette.chipBlue(brightness)),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              'اللغة',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppPalette.textPrimary(brightness),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              'اختر لغة التطبيق',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12,
+                                height: 1.3,
+                                color: AppPalette.textSecondary(brightness),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    // Segmented Control: EN left, AR right - same outer shape as _Card (radius 20)
+                    Container(
+                      height: 44,
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: AppPalette.tabContainer(brightness),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppPalette.hairline(brightness), width: 1),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _LanguageSegment(
+                            brightness: brightness,
+                            label: 'EN',
+                            selected: settings.language == AppLanguagePreference.en,
+                            onTap: () => controller.updateLanguage(AppLanguagePreference.en),
+                          ),
+                          const SizedBox(width: 4),
+                          _LanguageSegment(
+                            brightness: brightness,
+                            label: 'AR',
+                            selected: settings.language == AppLanguagePreference.ar,
+                            onTap: () => controller.updateLanguage(AppLanguagePreference.ar),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -847,8 +906,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 AppPalette.chipGreen(brightness),
                 'إدارة قاعدة البيانات',
                 'عرض وإدارة البيانات المحلية',
-                () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('إدارة قاعدة البيانات قريباً!')),
+                () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const DatabaseManagementScreen()),
                 ),
               ),
               _divider(brightness),
@@ -875,7 +934,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final nameController = TextEditingController(text: settings.userName ?? '');
     final emailController = TextEditingController(text: settings.userEmail ?? '');
     String? selectedAvatar = settings.userAvatar;
-    // List of available avatars
     final avatars = [
       'assets/avatars/MO1.png', 'assets/avatars/MO2.png', 'assets/avatars/MO3.png', 'assets/avatars/MO4.png', 'assets/avatars/MO5.png',
       'assets/avatars/MY1.png', 'assets/avatars/MY2.png', 'assets/avatars/MY3.png', 'assets/avatars/MY4.png', 'assets/avatars/MY5.png',
@@ -890,40 +948,50 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 TextField(
                   controller: nameController,
                   decoration: const InputDecoration(labelText: 'الاسم', prefixIcon: Icon(Icons.person)),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 TextField(
                   controller: emailController,
                   decoration: const InputDecoration(labelText: 'البريد الإلكتروني', prefixIcon: Icon(Icons.email)),
                   keyboardType: TextInputType.emailAddress,
                 ),
-                const SizedBox(height: 16),
-                const Text('اختر الصورة الرمزية', style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: 120,
-                  child: GridView.builder(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 5, mainAxisSpacing: 8, crossAxisSpacing: 8),
-                    itemCount: avatars.length,
-                    itemBuilder: (c, i) => GestureDetector(
+                const SizedBox(height: 20),
+                const Text('اختر الصورة الرمزية', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: List.generate(avatars.length, (i) {
+                    final isSelected = selectedAvatar == avatars[i];
+                    return GestureDetector(
                       onTap: () => setState(() => selectedAvatar = avatars[i]),
                       child: Container(
+                        width: 48,
+                        height: 48,
                         decoration: BoxDecoration(
-                          border: Border.all(color: selectedAvatar == avatars[i] ? Theme.of(context).colorScheme.primary : Colors.transparent, width: 2),
-                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent,
+                            width: 2.5,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        child: ClipRRect(borderRadius: BorderRadius.circular(6), child: Image.asset(avatars[i], fit: BoxFit.cover)),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.asset(avatars[i], fit: BoxFit.cover),
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  }),
                 ),
               ],
             ),
           ),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
             FilledButton(
@@ -1049,11 +1117,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
         child: Row(
           children: [
             _iconCircle(brightness, glyph, style),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1185,6 +1253,53 @@ class _Card extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: child,
+    );
+  }
+}
+
+class _LanguageSegment extends StatelessWidget {
+  final Brightness brightness;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _LanguageSegment({
+    required this.brightness,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? AppPalette.brandGreen : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: AppPalette.brandGreen.withValues(alpha: 0.35),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            color: selected ? Colors.white : AppPalette.textSecondary(brightness),
+          ),
+        ),
+      ),
     );
   }
 }

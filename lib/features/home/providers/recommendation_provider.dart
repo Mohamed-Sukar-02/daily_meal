@@ -108,14 +108,14 @@ class RecommendationController extends AsyncNotifier<void> {
   @override
   FutureOr<void> build() {}
 
-  /// Logs a meal as 'cooked today'.
-  Future<int> logCookedToday(Meal meal, {String? notes}) async {
+  /// Logs a meal as 'cooked today'. Dynamically obtains DateTime.now() if cookedAt is null.
+  Future<int> logCookedToday(Meal meal, {DateTime? cookedAt, String? notes}) async {
     state = const AsyncValue.loading();
     try {
       final historyDao = ref.read(mealHistoryDaoProvider);
       final id = await historyDao.logCookedMeal(
         meal,
-        cookedAt: ref.read(currentTimeProvider),
+        cookedAt: cookedAt ?? DateTime.now(),
         notes: notes,
       );
       state = const AsyncValue.data(null);
@@ -127,17 +127,17 @@ class RecommendationController extends AsyncNotifier<void> {
   }
 
   /// Alias for logCookedToday
-  Future<int> markCookedToday(Meal meal, {String? notes}) =>
-      logCookedToday(meal, notes: notes);
+  Future<int> markCookedToday(Meal meal, {DateTime? cookedAt, String? notes}) =>
+      logCookedToday(meal, cookedAt: cookedAt, notes: notes);
 
-  /// Logs a meal as 'leftover'.
-  Future<int> logLeftover(Meal meal, {String? notes}) async {
+  /// Logs a meal as 'leftover'. Dynamically obtains DateTime.now() if cookedAt is null.
+  Future<int> logLeftover(Meal meal, {DateTime? cookedAt, String? notes}) async {
     state = const AsyncValue.loading();
     try {
       final historyDao = ref.read(mealHistoryDaoProvider);
       final id = await historyDao.logLeftoverMeal(
         meal,
-        cookedAt: ref.read(currentTimeProvider),
+        cookedAt: cookedAt ?? DateTime.now(),
         notes: notes,
       );
       state = const AsyncValue.data(null);
@@ -149,8 +149,8 @@ class RecommendationController extends AsyncNotifier<void> {
   }
 
   /// Alias for logLeftover
-  Future<int> markLeftover(Meal meal, {String? notes}) =>
-      logLeftover(meal, notes: notes);
+  Future<int> markLeftover(Meal meal, {DateTime? cookedAt, String? notes}) =>
+      logLeftover(meal, cookedAt: cookedAt, notes: notes);
 
   /// Undoes a cooking log entry.
   /// If [historyEntryId] is provided, deletes that exact history entry (scoped undo).

@@ -57,32 +57,37 @@ Widget buildTestApp({
   Size surfaceSize = const Size(320, 550),
   TextScaler textScaler = const TextScaler.linear(1.4),
 }) {
+  final app = MaterialApp(
+    title: 'Challenger UI Stress Test',
+    debugShowCheckedModeBanner: false,
+    theme: AppTheme.lightTheme,
+    locale: const Locale('ar'),
+    supportedLocales: const [Locale('ar')],
+    localizationsDelegates: const [
+      GlobalMaterialLocalizations.delegate,
+      GlobalWidgetsLocalizations.delegate,
+      GlobalCupertinoLocalizations.delegate,
+    ],
+    home: Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(body: child),
+    ),
+  );
+
   return MediaQuery(
     data: MediaQueryData(
       size: surfaceSize,
       textScaler: textScaler,
     ),
-    child: ProviderScope(
-      // ignore: deprecated_member_use
-      parent: container,
-      overrides: overrides,
-      child: MaterialApp(
-        title: 'Challenger UI Stress Test',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        locale: const Locale('ar'),
-        supportedLocales: const [Locale('ar')],
-        localizationsDelegates: const [
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        home: Directionality(
-          textDirection: TextDirection.rtl,
-          child: Scaffold(body: child),
-        ),
-      ),
-    ),
+    child: container != null
+        ? UncontrolledProviderScope(
+            container: container,
+            child: app,
+          )
+        : ProviderScope(
+            overrides: overrides,
+            child: app,
+          ),
   );
 }
 
@@ -173,11 +178,13 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
 
-      final validLongName = extremeArabicLongName.substring(0, 115);
       for (int i = 1; i <= 3; i++) {
+        // Construct exact 120-character string (maximum valid length for MealsTable.name schema: min 1, max 120)
+        final exact120CharName = '${extremeArabicLongName.substring(0, 118)} $i';
+        expect(exact120CharName.length, equals(120), reason: 'Must test maximum allowed schema boundary of 120 chars');
         await db.mealsDao.insertMeal(
           MealsCompanion.insert(
-            name: '$validLongName $i',
+            name: exact120CharName,
             proteinType: ProteinType.values[i % ProteinType.values.length],
             carbsType: CarbsType.values[i % CarbsType.values.length],
             category: MealCategory.values[i % MealCategory.values.length],
@@ -265,7 +272,7 @@ void main() {
     });
   });
 
-  group('CHALLENGER EMPIRICAL DEFECTS: RenderFlex Overflows Detected in UI', () {
+  group('CHALLENGER REGRESSION: Verified Zero RenderFlex Overflows in Constrained Viewports', () {
     late AppDatabase db;
     late ProviderContainer container;
 
@@ -320,9 +327,10 @@ void main() {
       FlutterError.onError = oldHandler;
 
       expect(overflowError, isNull, reason: 'Redesigned vault card must not overflow');
+      expect(tester.takeException(), isNull);
     });
 
-    testWidgets('BUG-2: AddEditMealDialog header Row & actions Row overflow by 218px and 220px on 320px width + 1.4x textScaler (add_edit_meal_dialog.dart:149, 336)', (tester) async {
+    testWidgets('PASS-2: AddEditMealDialog header & actions no longer overflow on 320px width + 1.4x textScaler', (tester) async {
       tester.view.physicalSize = const Size(320, 550);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -363,10 +371,11 @@ void main() {
       await tester.pumpAndSettle();
       FlutterError.onError = oldHandler;
 
-      expect(overflows.isEmpty, isTrue, reason: 'Expected NO overflow in AddEditMealDialog');
+      expect(overflows.isEmpty, isTrue, reason: 'AddEditMealDialog header and action rows must not overflow');
+      expect(tester.takeException(), isNull);
     });
 
-    testWidgets('PASS-3: DeleteMealDialog content Column NO LONGER overflows by 932px on 550px height + 1.4x textScaler (delete_meal_dialog.dart:31)', (tester) async {
+    testWidgets('PASS-3: DeleteMealDialog content no longer overflows on 550px height + 1.4x textScaler', (tester) async {
       tester.view.physicalSize = const Size(320, 550);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -403,7 +412,8 @@ void main() {
       await tester.pumpAndSettle();
       FlutterError.onError = oldHandler;
 
-      expect(overflowError, isNull, reason: 'Expected NO vertical overflow in DeleteMealDialog');
+      expect(overflowError, isNull, reason: 'DeleteMealDialog must scroll cleanly without vertical overflow');
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('PASS-7: redesigned VaultEmptyState no longer overflows on 550px height + 1.4x textScaler', (tester) async {
@@ -437,9 +447,10 @@ void main() {
       FlutterError.onError = oldHandler;
 
       expect(overflowError, isNull, reason: 'Redesigned empty state must not overflow');
+      expect(tester.takeException(), isNull);
     });
 
-    testWidgets('PASS-5: HistoryScreen empty state Column NO LONGER overflows by 53px on 550px height + 1.4x textScaler (history_screen.dart:60)', (tester) async {
+    testWidgets('PASS-5: HistoryScreen empty state no longer overflows on 550px height + 1.4x textScaler', (tester) async {
       tester.view.physicalSize = const Size(320, 550);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -466,7 +477,8 @@ void main() {
       await tester.pumpAndSettle();
       FlutterError.onError = oldHandler;
 
-      expect(overflowError, isNull, reason: 'Expected NO vertical overflow in HistoryScreen');
+      expect(overflowError, isNull, reason: 'HistoryScreen empty state must fit or scroll without vertical overflow');
+      expect(tester.takeException(), isNull);
     });
   });
 }

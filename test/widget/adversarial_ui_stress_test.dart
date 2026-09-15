@@ -57,32 +57,37 @@ Widget buildTestApp({
   Size surfaceSize = const Size(390, 844),
   TextScaler textScaler = TextScaler.noScaling,
 }) {
+  final app = MaterialApp(
+    title: 'أكلة النهاردة اختبار',
+    debugShowCheckedModeBanner: false,
+    theme: AppTheme.lightTheme,
+    locale: const Locale('ar'),
+    supportedLocales: const [Locale('ar')],
+    localizationsDelegates: const [
+      GlobalMaterialLocalizations.delegate,
+      GlobalWidgetsLocalizations.delegate,
+      GlobalCupertinoLocalizations.delegate,
+    ],
+    home: Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(body: child),
+    ),
+  );
+
   return MediaQuery(
     data: MediaQueryData(
       size: surfaceSize,
       textScaler: textScaler,
     ),
-    child: ProviderScope(
-      // ignore: deprecated_member_use
-      parent: container,
-      overrides: overrides,
-      child: MaterialApp(
-        title: 'أكلة النهاردة اختبار',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        locale: const Locale('ar'),
-        supportedLocales: const [Locale('ar')],
-        localizationsDelegates: const [
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        home: Directionality(
-          textDirection: TextDirection.rtl,
-          child: Scaffold(body: child),
-        ),
-      ),
-    ),
+    child: container != null
+        ? UncontrolledProviderScope(
+            container: container,
+            child: app,
+          )
+        : ProviderScope(
+            overrides: overrides,
+            child: app,
+          ),
   );
 }
 

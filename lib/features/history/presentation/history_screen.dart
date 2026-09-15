@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/database/tables/meals_table.dart';
+import '../../../core/theme/app_palette.dart';
+import '../../../core/widgets/app_icons.dart';
 import '../../../core/widgets/meal_image.dart';
 import '../providers/history_providers.dart';
 
@@ -9,15 +12,12 @@ class HistoryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final historyAsync = ref.watch(mealHistoryWithMealProvider);
-    final theme = Theme.of(context);
+    final brightness = Theme.of(context).brightness;
 
     return Scaffold(
-      appBar: AppBar(
-        toolbarHeight: 0,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
+      backgroundColor: AppPalette.background(brightness),
       body: SafeArea(
+        bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -30,22 +30,34 @@ class HistoryScreen extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'History',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.displaySmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.onSurface,
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            'سجل الأكلات',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w900,
+                              color: AppPalette.textPrimary(brightness),
+                              height: 1.2,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          'Your meals journey this month',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: Colors.green[600],
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            'رحلة وجباتك خلال هذا الشهر',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppPalette.brandGreen,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -53,22 +65,24 @@ class HistoryScreen extends ConsumerWidget {
                           width: 40,
                           height: 4,
                           decoration: BoxDecoration(
-                            color: Colors.green[500],
+                            color: AppPalette.brandGreen,
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
                       ],
                     ),
                   ),
+                  const SizedBox(width: 12),
                   IconButton(
                     tooltip: 'مسح السجل بالكامل',
                     icon: Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.errorContainer.withValues(alpha: 0.5),
+                        color: Colors.red.shade50,
                         shape: BoxShape.circle,
+                        border: Border.all(color: Colors.red.shade100),
                       ),
-                      child: Icon(Icons.delete_sweep_outlined, color: theme.colorScheme.error),
+                      child: Icon(Icons.delete_sweep_outlined, color: Colors.red.shade700, size: 20),
                     ),
                     onPressed: () async {
                       final confirmed = await showDialog<bool>(
@@ -84,16 +98,14 @@ class HistoryScreen extends ConsumerWidget {
                               child: const Text('إلغاء'),
                             ),
                             FilledButton(
-                              style: FilledButton.styleFrom(
-                                backgroundColor: theme.colorScheme.error,
-                              ),
+                              style: FilledButton.styleFrom(backgroundColor: Colors.red),
                               onPressed: () => Navigator.of(ctx).pop(true),
                               child: const Text('مسح الكل'),
                             ),
                           ],
                         ),
                       );
-        
+
                       if (confirmed == true) {
                         await ref.read(historyControllerProvider.notifier).clearAllHistory();
                         if (context.mounted) {
@@ -107,101 +119,105 @@ class HistoryScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             historyAsync.when(
               data: (entries) {
                 if (entries.isEmpty) {
                   return Expanded(
                     child: Center(
                       child: SingleChildScrollView(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24.0),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.history_toggle_off,
-                                size: 64,
-                                color: theme.colorScheme.outline,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            AppIcon(
+                              AppGlyph.history,
+                              size: 64,
+                              color: AppPalette.textSecondary(brightness),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'سجل الطبخ فارغ!',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                color: AppPalette.textPrimary(brightness),
                               ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'سجل الطبخ فارغ!',
-                                style: theme.textTheme.headlineSmall?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'عندما تسجل وجباتك من الصفحة الرئيسية ستظهر هنا مرتبة بالتواريخ.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 13,
+                                height: 1.5,
+                                color: AppPalette.textSecondary(brightness),
                               ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'عندما تسجل وجباتك من الصفحة الرئيسية ستظهر هنا مرتبة بالتواريخ.',
-                                textAlign: TextAlign.center,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   );
                 }
-        
-                // Calculate stats
-                int chickenDays = entries.where((e) => e.history.proteinType.name.contains('chicken') || e.history.proteinType.name.contains('دجاج')).length;
-                int meatlessDays = entries.where((e) => e.history.proteinType.name.contains('plant') || e.history.proteinType.name.contains('نباتي')).length;
-                int beefDays = entries.where((e) => e.history.proteinType.name.contains('meat') || e.history.proteinType.name.contains('لحم') || e.history.proteinType.name.contains('beef')).length;
-        
+
+                // Calculate stats with Arabic labels
+                int chickenDays = entries.where((e) => e.history.proteinType.name.contains('chicken')).length;
+                int meatlessDays = entries.where((e) => e.history.proteinType == ProteinType.legume || e.history.proteinType == ProteinType.none).length;
+                int beefDays = entries.where((e) => e.history.proteinType.name.contains('beef')).length;
+
                 return Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Stats Row
+                      // Stats Row - Arabic
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: Row(
                           children: [
-                            _buildStatCard(context, '🐔', 'Chicken', chickenDays, const Color(0xFFFDF5E6)),
+                            _buildStatCard(context, brightness, '🐔', 'فراخ', chickenDays, const Color(0xFFFDF5E6)),
                             const SizedBox(width: 12),
-                            _buildStatCard(context, '🌿', 'Meatless', meatlessDays, const Color(0xFFE8F5E9)),
+                            _buildStatCard(context, brightness, '🌿', 'نباتي', meatlessDays, const Color(0xFFE8F5E9)),
                             const SizedBox(width: 12),
-                            _buildStatCard(context, '🥩', 'Beef', beefDays, const Color(0xFFFFEBEE)),
+                            _buildStatCard(context, brightness, '🥩', 'لحمة', beefDays, const Color(0xFFFFEBEE)),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 20),
                       // Timeline List
                       Expanded(
-                        child: ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                           itemCount: entries.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 4),
                           itemBuilder: (context, index) {
                             final entry = entries[index].history;
                             final meal = entries[index].meal;
-                            
-                            // Grouping dates simply by using Yesterday / May 12 etc.
+
                             final date = entry.cookedAt;
                             final now = DateTime.now();
                             String dateStr;
                             if (date.year == now.year && date.month == now.month && date.day == now.day) {
-                              dateStr = 'Today';
+                              dateStr = 'اليوم';
                             } else if (date.year == now.year && date.month == now.month && date.day == now.day - 1) {
-                              dateStr = 'Yesterday';
+                              dateStr = 'أمس';
                             } else {
                               dateStr = '${date.day}/${date.month}/${date.year}';
                             }
-        
-                            // Determine dot color
-                            Color dotColor = Colors.green;
-                            if (entry.proteinType.name.contains('meat') || entry.proteinType.name.contains('لحم') || entry.proteinType.name.contains('beef')) {
-                              dotColor = Colors.pink;
-                            } else if (entry.proteinType.name.contains('fish') || entry.proteinType.name.contains('سمك')) {
-                              dotColor = Colors.blue;
+
+                            Color dotColor = AppPalette.brandGreen;
+                            if (entry.proteinType == ProteinType.beef) {
+                              dotColor = Colors.pink.shade400;
+                            } else if (entry.proteinType == ProteinType.fish) {
+                              dotColor = Colors.blue.shade400;
+                            } else if (entry.proteinType == ProteinType.chicken) {
+                              dotColor = Colors.amber.shade700;
                             }
-        
+
                             return Padding(
-                              padding: const EdgeInsets.only(bottom: 20),
+                              padding: const EdgeInsets.only(bottom: 16),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -209,13 +225,13 @@ class HistoryScreen extends ConsumerWidget {
                                   Column(
                                     children: [
                                       Container(
-                                        margin: const EdgeInsets.only(top: 4, right: 12),
+                                        margin: const EdgeInsets.only(top: 4),
                                         width: 12,
                                         height: 12,
                                         decoration: BoxDecoration(
                                           color: dotColor,
                                           shape: BoxShape.circle,
-                                          border: Border.all(color: Colors.white, width: 2),
+                                          border: Border.all(color: AppPalette.card(brightness), width: 2),
                                           boxShadow: [
                                             BoxShadow(
                                               color: dotColor.withValues(alpha: 0.4),
@@ -226,13 +242,14 @@ class HistoryScreen extends ConsumerWidget {
                                       ),
                                       if (index != entries.length - 1)
                                         Container(
-                                          margin: const EdgeInsets.only(right: 12),
+                                          margin: const EdgeInsets.only(top: 4),
                                           width: 2,
-                                          height: 80,
-                                          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                                          height: 72,
+                                          color: AppPalette.hairline(brightness),
                                         ),
                                     ],
                                   ),
+                                  const SizedBox(width: 12),
                                   // Content
                                   Expanded(
                                     child: Column(
@@ -240,66 +257,83 @@ class HistoryScreen extends ConsumerWidget {
                                       children: [
                                         Text(
                                           dateStr,
-                                          style: theme.textTheme.labelMedium?.copyWith(
-                                            color: theme.colorScheme.onSurfaceVariant,
-                                            fontWeight: FontWeight.bold,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppPalette.textSecondary(brightness),
                                           ),
                                         ),
                                         const SizedBox(height: 8),
                                         Container(
                                           decoration: BoxDecoration(
-                                            color: theme.colorScheme.surface,
+                                            color: AppPalette.card(brightness),
                                             borderRadius: BorderRadius.circular(16),
                                             boxShadow: [
                                               BoxShadow(
-                                                color: Colors.black.withValues(alpha: 0.05),
+                                                color: brightness == Brightness.dark
+                                                    ? Colors.black.withValues(alpha: 0.3)
+                                                    : AppPalette.lightTextPrimary.withValues(alpha: 0.05),
                                                 blurRadius: 10,
                                                 offset: const Offset(0, 2),
                                               ),
                                             ],
                                           ),
-                                          child: ListTile(
-                                            contentPadding: const EdgeInsets.all(12),
-                                            leading: ClipOval(
-                                              child: MealImage(
-                                                photoPath: meal?.photoPath,
-                                                width: 48,
-                                                height: 48,
-                                                cacheWidth: 144,
-                                                fallback: Container(
-                                                  width: 48,
-                                                  height: 48,
-                                                  color: theme.colorScheme.surfaceContainerHighest,
-                                                  alignment: Alignment.center,
-                                                  child: const Text('🍲', style: TextStyle(fontSize: 24)),
-                                                ),
-                                              ),
-                                            ),
-                                            title: Text(
-                                              entry.mealName,
-                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                            ),
-                                            subtitle: Padding(
-                                              padding: const EdgeInsets.only(top: 8.0),
-                                              child: Row(
-                                                children: [
-                                                  Container(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                                    decoration: BoxDecoration(
-                                                      color: dotColor.withValues(alpha: 0.1),
-                                                      borderRadius: BorderRadius.circular(8),
-                                                    ),
-                                                    child: Text(
-                                                      entry.proteinType.name,
-                                                      style: TextStyle(color: dotColor, fontSize: 12, fontWeight: FontWeight.bold),
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(12),
+                                            child: Row(
+                                              children: [
+                                                ClipOval(
+                                                  child: MealImage(
+                                                    photoPath: meal?.photoPath,
+                                                    width: 48,
+                                                    height: 48,
+                                                    cacheWidth: 144,
+                                                    fallback: Container(
+                                                      width: 48,
+                                                      height: 48,
+                                                      color: AppPalette.tabContainer(brightness),
+                                                      alignment: Alignment.center,
+                                                      child: const Text('🍲', style: TextStyle(fontSize: 24)),
                                                     ),
                                                   ),
-                                                ],
-                                              ),
-                                            ),
-                                            trailing: IconButton(
-                                              icon: const Icon(Icons.chevron_right),
-                                              onPressed: () {},
+                                                ),
+                                                const SizedBox(width: 12),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Text(
+                                                        entry.mealName,
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow.ellipsis,
+                                                        style: TextStyle(
+                                                          fontWeight: FontWeight.w800,
+                                                          fontSize: 15,
+                                                          color: AppPalette.textPrimary(brightness),
+                                                        ),
+                                                      ),
+                                                      const SizedBox(height: 6),
+                                                      Container(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                        decoration: BoxDecoration(
+                                                          color: dotColor.withValues(alpha: 0.12),
+                                                          borderRadius: BorderRadius.circular(8),
+                                                        ),
+                                                        child: Text(
+                                                          entry.proteinType.labelArabic,
+                                                          style: TextStyle(
+                                                            color: dotColor,
+                                                            fontSize: 11,
+                                                            fontWeight: FontWeight.w700,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                AppIcon(AppGlyph.chevron, color: AppPalette.textSecondary(brightness), size: 16),
+                                              ],
                                             ),
                                           ),
                                         ),
@@ -316,8 +350,17 @@ class HistoryScreen extends ConsumerWidget {
                   ),
                 );
               },
-              loading: () => const Expanded(child: Center(child: CircularProgressIndicator.adaptive())),
-              error: (err, _) => Expanded(child: Center(child: Text('حدث خطأ: $err'))),
+              loading: () => Expanded(
+                child: Center(child: CircularProgressIndicator(color: AppPalette.brandGreen)),
+              ),
+              error: (err, _) => Expanded(
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: Text('حدث خطأ: $err', textAlign: TextAlign.center),
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -325,43 +368,58 @@ class HistoryScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatCard(BuildContext context, String emoji, String title, int count, Color bgColor) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final finalBg = isDark ? bgColor.withValues(alpha: 0.1) : bgColor;
+  Widget _buildStatCard(BuildContext context, Brightness brightness, String emoji, String title, int count, Color bgColor) {
+    final isDark = brightness == Brightness.dark;
+    final finalBg = isDark ? bgColor.withValues(alpha: 0.12) : bgColor;
     return Container(
-      width: 140,
-      padding: const EdgeInsets.all(16),
+      width: 130,
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: finalBg,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppPalette.hairline(brightness).withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
+            decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+            child: Text(emoji, style: const TextStyle(fontSize: 18)),
+          ),
+          const SizedBox(height: 14),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              '$count يوم',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 18,
+                color: AppPalette.textPrimary(brightness),
+              ),
             ),
-            child: Text(emoji, style: const TextStyle(fontSize: 20)),
           ),
-          const SizedBox(height: 16),
-          Text(
-            '$count Days',
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-          ),
-          Text(
-            title,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-              fontSize: 14,
+          const SizedBox(height: 2),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: AppPalette.textPrimary(brightness).withValues(alpha: 0.8),
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
+          const SizedBox(height: 2),
           Text(
-            'cooked this month',
+            'هذا الشهر',
             style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+              color: AppPalette.textSecondary(brightness),
               fontSize: 10,
             ),
           ),
