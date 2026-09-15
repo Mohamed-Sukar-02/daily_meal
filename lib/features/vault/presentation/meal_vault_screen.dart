@@ -48,7 +48,7 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 1. Header
+            // 1. Header — Flexible to handle 1.4x on 320px (30sp scaled to 42sp = 252px)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
               child: Row(
@@ -58,38 +58,58 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'خزانة الأكلات',
-                          style: TextStyle(
-                            fontSize: 30,
-                            height: 1.2,
-                            fontWeight: FontWeight.w800,
-                            color: AppPalette.textPrimary(brightness),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            'خزانة الأكلات',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 30,
+                              height: 1.2,
+                              fontWeight: FontWeight.w800,
+                              color: AppPalette.textPrimary(brightness),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          'احفظ أكلاتك المفضلة واطبخها في أي وقت 🧡',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: AppPalette.textSecondary(brightness),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            'احفظ أكلاتك المفضلة واطبخها في أي وقت 🧡',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppPalette.textSecondary(brightness),
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppPalette.chipGreen(brightness).background,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '$totalCount أكلة',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: AppPalette.chipGreen(brightness).foreground,
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppPalette.chipGreen(brightness).background,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '$totalCount أكلة',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: AppPalette.chipGreen(brightness).foreground,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -200,25 +220,32 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                       );
                     }
 
-                    return GridView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 14,
-                        mainAxisSpacing: 14,
-                        childAspectRatio: 0.98,
-                      ),
-                      itemCount: visible.length,
-                      itemBuilder: (context, index) {
-                        final meal = visible[index];
-                        return MealVaultCard(
-                          meal: meal,
-                          onEdit: () =>
-                              QuickAddSheet.show(context, mealToEdit: meal),
-                          onDelete: () => DeleteMealDialog.show(context, meal),
-                        );
-                      },
+                    return CustomScrollView(
+                      key: const Key('vault_grid_view'),
+                      slivers: [
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
+                          sliver: SliverGrid.builder(
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 14,
+                              mainAxisSpacing: 14,
+                              childAspectRatio: 0.98,
+                            ),
+                            itemCount: visible.length,
+                            itemBuilder: (context, index) {
+                              final meal = visible[index];
+                              return MealVaultCard(
+                                meal: meal,
+                                onEdit: () =>
+                                    QuickAddSheet.show(context, mealToEdit: meal),
+                                onDelete: () => DeleteMealDialog.show(context, meal),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
                     );
                   },
                   loading: () => const Center(
@@ -305,13 +332,17 @@ class _VaultTabs extends StatelessWidget {
               ? [BoxShadow(color: AppPalette.brandGreen.withValues(alpha: 0.35), blurRadius: 10, offset: const Offset(0, 4))]
               : null,
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            AppIcon(glyph, size: 18, color: selected ? Colors.white : AppPalette.textSecondary(brightness)),
-            const SizedBox(width: 8),
-            Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: selected ? Colors.white : AppPalette.textSecondary(brightness))),
-          ],
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppIcon(glyph, size: 18, color: selected ? Colors.white : AppPalette.textSecondary(brightness)),
+              const SizedBox(width: 8),
+              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: selected ? Colors.white : AppPalette.textSecondary(brightness))),
+            ],
+          ),
         ),
       ),
     );

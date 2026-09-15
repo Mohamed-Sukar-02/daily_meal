@@ -93,15 +93,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              'الإعدادات',
-              style: TextStyle(
-                fontSize: 30,
-                height: 1.2,
-                fontWeight: FontWeight.w800,
-                color: AppPalette.textPrimary(brightness),
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
+                child: Text(
+                  'الإعدادات',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 30,
+                    height: 1.2,
+                    fontWeight: FontWeight.w800,
+                    color: AppPalette.textPrimary(brightness),
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -251,27 +258,41 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           _iconCircle(brightness, AppGlyph.clock, AppPalette.chipGreen(brightness)),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: Text(
-                              'تأخير تكرار الأكلة',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: AppPalette.textPrimary(brightness),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: AlignmentDirectional.centerStart,
+                              child: Text(
+                                'تأخير تكرار الأكلة',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppPalette.textPrimary(brightness),
+                                ),
                               ),
                             ),
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: AppPalette.chipGreen(brightness).background,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              '${settings.cooldownDays} يوم',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                                color: AppPalette.chipGreen(brightness).foreground,
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: AppPalette.chipGreen(brightness).background,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  '${settings.cooldownDays} يوم',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppPalette.chipGreen(brightness).foreground,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
@@ -399,36 +420,49 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                   ),
                 ),
-                Text(
-                  'أيام انتظار',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppPalette.textSecondary(brightness),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    'أيام انتظار',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppPalette.textSecondary(brightness),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          _stepButton(brightness, AppGlyph.minus, () => onChanged((days - 1).clamp(0, 30))),
           const SizedBox(width: 8),
           Flexible(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                '$days',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: AppPalette.textPrimary(brightness),
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                _stepButton(brightness, AppGlyph.minus, () => onChanged((days - 1).clamp(0, 30))),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minWidth: 24, maxWidth: 36),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '$days',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppPalette.textPrimary(brightness),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+                _stepButton(brightness, AppGlyph.plus, () => onChanged((days + 1).clamp(0, 30))),
+              ],
             ),
           ),
-          const SizedBox(width: 8),
-          _stepButton(brightness, AppGlyph.plus, () => onChanged((days + 1).clamp(0, 30))),
         ],
       ),
     );
@@ -451,18 +485,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _emojiCircle(brightness, emoji, style),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              name,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: AppPalette.textPrimary(brightness),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: AlignmentDirectional.centerStart,
+              child: Text(
+                name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppPalette.textPrimary(brightness),
+                ),
               ),
             ),
           ),
-          Switch(
-            value: days > 0,
-            onChanged: (on) => onChanged(on ? defaultDays : 0),
+          const SizedBox(width: 8),
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Switch(
+                value: days > 0,
+                onChanged: (on) => onChanged(on ? defaultDays : 0),
+              ),
+            ),
           ),
         ],
       ),
@@ -500,27 +546,45 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'تذكير يومي',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: AppPalette.textPrimary(brightness),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              'تذكير يومي',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppPalette.textPrimary(brightness),
+                              ),
                             ),
                           ),
-                          Text(
-                            'هيصلك إشعار في الوقت اللي تختاره',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppPalette.textSecondary(brightness),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              'هيصلك إشعار في الوقت اللي تختاره',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppPalette.textSecondary(brightness),
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    Switch(
-                      value: settings.notificationsEnabled,
-                      onChanged: (v) => controller.toggleNotifications(v),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Switch(
+                          value: settings.notificationsEnabled,
+                          onChanged: (v) => controller.toggleNotifications(v),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -540,19 +604,31 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'موعد التذكير',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppPalette.textPrimary(brightness),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: AlignmentDirectional.centerStart,
+                                child: Text(
+                                  'موعد التذكير',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppPalette.textPrimary(brightness),
+                                  ),
                                 ),
                               ),
-                              Text(
-                                'امتى تحب نذكّرك؟',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppPalette.textSecondary(brightness),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: AlignmentDirectional.centerStart,
+                                child: Text(
+                                  'امتى تحب نذكّرك؟',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppPalette.textSecondary(brightness),
+                                  ),
                                 ),
                               ),
                             ],
@@ -659,28 +735,46 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'الوضع الداكن',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: AppPalette.textPrimary(brightness),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              'الوضع الداكن',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppPalette.textPrimary(brightness),
+                              ),
                             ),
                           ),
-                          Text(
-                            'بدّل بين الوضع الفاتح والداكن',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppPalette.textSecondary(brightness),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              'بدّل بين الوضع الفاتح والداكن',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppPalette.textSecondary(brightness),
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    Switch(
-                      value: isDarkMode,
-                      onChanged: (v) => controller.updateThemeMode(
-                        v ? AppThemeModePreference.dark : AppThemeModePreference.light,
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Switch(
+                          value: isDarkMode,
+                          onChanged: (v) => controller.updateThemeMode(
+                            v ? AppThemeModePreference.dark : AppThemeModePreference.light,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -820,28 +914,46 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: AppPalette.textPrimary(brightness),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppPalette.textPrimary(brightness),
+                      ),
                     ),
                   ),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppPalette.textSecondary(brightness),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppPalette.textSecondary(brightness),
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            AppIcon(
-              AppGlyph.chevron,
-              color: AppPalette.textSecondary(brightness),
-              size: 20,
+            const SizedBox(width: 8),
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: AppIcon(
+                  AppGlyph.chevron,
+                  color: AppPalette.textSecondary(brightness),
+                  size: 20,
+                ),
+              ),
             ),
           ],
         ),
@@ -870,27 +982,42 @@ class _SectionHeader extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: Text(
-            title,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: AppPalette.textPrimary(brightness),
-            ),
-          ),
-        ),
-        if (link != null)
-          GestureDetector(
-            onTap: onLink,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.centerStart,
             child: Text(
-              link!,
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: linkColor ?? AppPalette.brandGreen,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppPalette.textPrimary(brightness),
               ),
             ),
           ),
+        ),
+        if (link != null) ...[
+          const SizedBox(width: 8),
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: GestureDetector(
+                onTap: onLink,
+                child: Text(
+                  link!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: linkColor ?? AppPalette.brandGreen,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }

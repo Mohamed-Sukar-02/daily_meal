@@ -136,7 +136,7 @@ class _AddEditMealDialogState extends ConsumerState<AddEditMealDialog> {
       child: Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 500, maxHeight: 650),
+          constraints: BoxConstraints(maxWidth: 500, maxHeight: MediaQuery.of(context).size.height * 0.85),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
             child: Form(
@@ -325,25 +325,25 @@ class _AddEditMealDialogState extends ConsumerState<AddEditMealDialog> {
                           ),
                           const SizedBox(height: 12),
 
-                          // Boolean Flags
-                          SwitchListTile(
+                          // Boolean Flags — custom rows with Flexible to avoid overflow at 1.4x on 320px
+                          _switchRow(
                             key: const Key('meal_form_friday_checkbox'),
-                            title: const Text('أكلة خاصة بالجمعة'),
-                            subtitle: const Text('ترشيحها كأولوية في أيام الجمعة'),
+                            title: 'أكلة خاصة بالجمعة',
+                            subtitle: 'ترشيحها كأولوية في أيام الجمعة',
                             value: _isFridaySpecial,
                             onChanged: (val) => setState(() => _isFridaySpecial = val),
                           ),
-                          SwitchListTile(
+                          _switchRow(
                             key: const Key('meal_form_budget_checkbox'),
-                            title: const Text('أكلة اقتصادية (على قد الإيد)'),
-                            subtitle: const Text('وجبة موفرة في الميزانية'),
+                            title: 'أكلة اقتصادية (على قد الإيد)',
+                            subtitle: 'وجبة موفرة في الميزانية',
                             value: _isBudgetFriendly,
                             onChanged: (val) => setState(() => _isBudgetFriendly = val),
                           ),
-                          SwitchListTile(
+                          _switchRow(
                             key: const Key('meal_form_favorite_checkbox'),
-                            title: const Text('إضافة إلى المفضلة'),
-                            subtitle: const Text('الأكلات المحببة لأسرتك'),
+                            title: 'إضافة إلى المفضلة',
+                            subtitle: 'الأكلات المحببة لأسرتك',
                             value: _isFavorite,
                             onChanged: (val) => setState(() => _isFavorite = val),
                           ),
@@ -382,4 +382,39 @@ class _AddEditMealDialogState extends ConsumerState<AddEditMealDialog> {
       ),
     );
   }
+  Widget _switchRow({Key? key, required String title, required String subtitle, required bool value, required ValueChanged<bool> onChanged}) {
+    return Padding(
+      key: key,
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                ),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: Colors.grey)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Switch(value: value, onChanged: onChanged),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
 }
