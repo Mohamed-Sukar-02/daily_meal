@@ -356,16 +356,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  name,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: AppPalette.textPrimary(brightness),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: AppPalette.textPrimary(brightness),
+                    ),
                   ),
                 ),
                 Text(
                   'أيام انتظار',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 12,
                     color: AppPalette.textSecondary(brightness),
@@ -375,20 +383,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
           _stepButton(brightness, AppGlyph.minus, () => onChanged((days - 1).clamp(0, 30))),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 28,
-            child: Text(
-              '$days',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: AppPalette.textPrimary(brightness),
+          const SizedBox(width: 8),
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                '$days',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppPalette.textPrimary(brightness),
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           _stepButton(brightness, AppGlyph.plus, () => onChanged((days + 1).clamp(0, 30))),
         ],
       ),
@@ -515,50 +525,59 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ],
                       ),
                     ),
-                    InkWell(
-                      borderRadius: BorderRadius.circular(20),
-                      onTap: () async {
-                        final picked = await showTimePicker(
-                          context: context,
-                          initialTime: TimeOfDay(
-                            hour: settings.notificationHour,
-                            minute: settings.notificationMinute,
+                    Flexible(
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(20),
+                        onTap: () async {
+                          final picked = await showTimePicker(
+                            context: context,
+                            initialTime: TimeOfDay(
+                              hour: settings.notificationHour,
+                              minute: settings.notificationMinute,
+                            ),
+                          );
+                          if (picked != null) {
+                            controller.updateNotificationTime(picked.hour, picked.minute);
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: AppPalette.chipViolet(brightness).background,
+                            borderRadius: BorderRadius.circular(20),
                           ),
-                        );
-                        if (picked != null) {
-                          controller.updateNotificationTime(picked.hour, picked.minute);
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: AppPalette.chipViolet(brightness).background,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            AppIcon(
-                              AppGlyph.clock,
-                              color: AppPalette.chipViolet(brightness).foreground,
-                              size: 14,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              _formatTime(settings),
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              AppIcon(
+                                AppGlyph.clock,
                                 color: AppPalette.chipViolet(brightness).foreground,
+                                size: 14,
                               ),
-                            ),
-                            const SizedBox(width: 4),
-                            AppIcon(
-                              AppGlyph.chevron,
-                              color: AppPalette.chipViolet(brightness).foreground,
-                              size: 14,
-                            ),
-                          ],
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    _formatTime(settings),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppPalette.chipViolet(brightness).foreground,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              AppIcon(
+                                AppGlyph.chevron,
+                                color: AppPalette.chipViolet(brightness).foreground,
+                                size: 14,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),

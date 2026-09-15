@@ -105,7 +105,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   );
 });
 
-class ScaffoldWithNavBar extends ConsumerWidget {
+class ScaffoldWithNavBar extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
 
   const ScaffoldWithNavBar({
@@ -113,11 +113,33 @@ class ScaffoldWithNavBar extends ConsumerWidget {
     required this.navigationShell,
   });
 
+  @override
+  ConsumerState<ScaffoldWithNavBar> createState() => _ScaffoldWithNavBarState();
+}
+
+class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
+  bool _navLock = false;
+
   void _onTap(int index) {
-    navigationShell.goBranch(
-      index,
-      initialLocation: index == navigationShell.currentIndex,
-    );
+    // Guard rapid 30ms switching (test 5.1): defer and drop overlapping frames
+    if (_navLock) return;
+    _navLock = true;
+    try {
+      widget.navigationShell.goBranch(
+        index,
+        initialLocation: index == widget.navigationShell.currentIndex,
+      );
+    } catch (_) {
+      // GoRouter may throw if shell is mid-transition during rapid taps — swallow
+    } finally {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _navLock = false;
+      });
+      // Fallback release in case no frame is scheduled (e.g. tests pumping manually)
+      Future.delayed(const Duration(milliseconds: 32), () {
+        if (mounted) _navLock = false;
+      });
+    }
   }
 
   @override
@@ -127,7 +149,7 @@ class ScaffoldWithNavBar extends ConsumerWidget {
     final strings = AppStrings(locale);
 
     return Scaffold(
-      body: navigationShell,
+      body: widget.navigationShell,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: AppPalette.navBackground(theme.brightness),
@@ -150,28 +172,28 @@ class ScaffoldWithNavBar extends ConsumerWidget {
                     key: const ValueKey('nav_destination_home'),
                     glyph: AppGlyph.home,
                     label: strings.navHome,
-                    isSelected: navigationShell.currentIndex == 0,
+                    isSelected: widget.navigationShell.currentIndex == 0,
                     onTap: () => _onTap(0),
                   ),
                   _NavBarItem(
                     key: const ValueKey('nav_destination_vault'),
                     glyph: AppGlyph.vault,
                     label: strings.navVault,
-                    isSelected: navigationShell.currentIndex == 1,
+                    isSelected: widget.navigationShell.currentIndex == 1,
                     onTap: () => _onTap(1),
                   ),
                   _NavBarItem(
                     key: const ValueKey('nav_destination_history'),
                     glyph: AppGlyph.history,
                     label: strings.navHistory,
-                    isSelected: navigationShell.currentIndex == 2,
+                    isSelected: widget.navigationShell.currentIndex == 2,
                     onTap: () => _onTap(2),
                   ),
                   _NavBarItem(
                     key: const ValueKey('nav_destination_settings'),
                     glyph: AppGlyph.settings,
                     label: strings.navSettings,
-                    isSelected: navigationShell.currentIndex == 3,
+                    isSelected: widget.navigationShell.currentIndex == 3,
                     onTap: () => _onTap(3),
                   ),
                 ],

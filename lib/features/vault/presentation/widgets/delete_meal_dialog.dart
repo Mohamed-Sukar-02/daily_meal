@@ -63,6 +63,8 @@ class DeleteMealDialog extends ConsumerWidget {
             ),
           ],
         ),
+        actionsOverflowDirection: VerticalDirection.up,
+        actionsOverflowButtonSpacing: 8,
         actions: [
           TextButton(
             key: const Key('meal_delete_cancel_button'),

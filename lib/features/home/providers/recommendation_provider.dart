@@ -29,8 +29,10 @@ final todayRecommendationsProvider = Provider<AsyncValue<RecommendationResult<Me
   final engine = ref.watch(engineProvider);
   final now = ref.watch(currentTimeProvider);
 
-  // 1. Propagate Loading State if any dependency is initial loading
-  if (mealsAsync.isLoading || historyAsync.isLoading || settingsAsync.isLoading) {
+  // Meals/history are hard dependencies — if still loading without data, keep loading.
+  final mealsLoading = mealsAsync.isLoading && !mealsAsync.hasValue;
+  final historyLoading = historyAsync.isLoading && !historyAsync.hasValue;
+  if (mealsLoading || historyLoading) {
     return const AsyncValue.loading();
   }
 
@@ -47,6 +49,8 @@ final todayRecommendationsProvider = Provider<AsyncValue<RecommendationResult<Me
 
   final meals = mealsAsync.valueOrNull ?? const [];
   final history = historyAsync.valueOrNull ?? const [];
+  // Settings may still be loading from Drift stream on first frame — use defaults
+  // instead of blocking recommendations (fixes scoped-undo 1.3 reactivity).
   final settings = settingsAsync.valueOrNull ?? AppSettingsDao.defaultSettings;
 
   // 3. Compute recommendations via CooldownEngine
