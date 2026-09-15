@@ -160,22 +160,6 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                             ],
                           ),
                         ),
-                        // chef hat spark
-                        const SizedBox(width: 8),
-                        Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            Container(
-                              width: 36, height: 36,
-                              decoration: BoxDecoration(color: isDark ? Colors.white10 : const Color(0xFFFFF7E6), shape: BoxShape.circle, border: Border.all(color: isDark ? Colors.white24 : const Color(0xFFFFE8B0))),
-                              child: const Center(child: Text('👨‍🍳', style: TextStyle(fontSize: 18))),
-                            ),
-                            Positioned(
-                              top: -4, right: -6,
-                              child: Text('✨', style: TextStyle(fontSize: 12, color: Colors.amber.shade600)),
-                            ),
-                          ],
-                        ),
                       ],
                     ),
                   ),
