@@ -29,7 +29,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? driftDatabase(name: 'daily_meal_db'));
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -41,6 +41,10 @@ class AppDatabase extends _$AppDatabase {
         const AppSettingsCompanion(
           id: Value(1),
           cooldownDays: Value(14),
+          chickenCooldownDays: Value(7),
+          beefCooldownDays: Value(10),
+          fishCooldownDays: Value(5),
+          meatlessCooldownDays: Value(0),
           preventRepeatProtein: Value(true),
           preventRepeatCarbs: Value(true),
           notificationHour: Value(12),
@@ -78,6 +82,12 @@ class AppDatabase extends _$AppDatabase {
         // New spec: notifications default OFF until permission granted
         await customStatement(
           'UPDATE app_settings SET notifications_enabled = 0 WHERE id = 1',
+        );
+      }
+      if (from < 8) {
+        // Veggies should be off by default (0 = hidden)
+        await customStatement(
+          'UPDATE app_settings SET meatless_cooldown_days = 0 WHERE id = 1',
         );
       }
     },

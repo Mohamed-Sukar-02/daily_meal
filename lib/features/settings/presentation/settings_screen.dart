@@ -7,6 +7,7 @@ import '../../../core/database/database_providers.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/app_icons.dart';
 import '../../home/presentation/widgets/home_header.dart' show EmphasisMarks;
+import '../../../core/localization/app_strings.dart';
 import '../providers/settings_providers.dart';
 import 'widgets/legal_policies_dialog.dart' as widgets;
 
@@ -146,9 +147,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       brightness: brightness,
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تعديل الملف الشخصي قريباً!')),
-        ),
+        onTap: () => _showProfileEditDialog(context, ref, settings),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Row(
@@ -163,9 +162,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       color: Color(0xFFF3C64F),
                       shape: BoxShape.circle,
                     ),
-                    child: const Center(
-                      child: AppIcon(AppGlyph.person, color: Colors.white, size: 34),
-                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: settings.userAvatar != null && settings.userAvatar!.isNotEmpty
+                        ? Image.asset(settings.userAvatar!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Center(child: AppIcon(AppGlyph.person, color: Colors.white, size: 34)))
+                        : const Center(
+                            child: AppIcon(AppGlyph.person, color: Colors.white, size: 34),
+                          ),
                   ),
                   Positioned(
                     bottom: -2,
@@ -384,9 +386,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 _proteinSwitch(
                   ref, brightness, '🌿', AppPalette.chipGreen(brightness), 'خضار',
                   settings.meatlessCooldownDays, 3,
-                  (d) => ref.read(databaseProvider).appSettingsDao.updateSettings(
-                        AppSettingsCompanion(meatlessCooldownDays: Value(d)),
-                      ),
+                  (d) => ref.read(appSettingsDaoProvider).updateMeatlessCooldownDays(d),
                 ),
               ],
             ),
@@ -854,26 +854,109 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  void _showProfileEditDialog(BuildContext context, WidgetRef ref, AppSettingsData settings) {
+    final nameController = TextEditingController(text: settings.userName ?? '');
+    final emailController = TextEditingController(text: settings.userEmail ?? '');
+    String? selectedAvatar = settings.userAvatar;
+    // List of available avatars
+    final avatars = [
+      'assets/avatars/MO1.png', 'assets/avatars/MO2.png', 'assets/avatars/MO3.png', 'assets/avatars/MO4.png', 'assets/avatars/MO5.png',
+      'assets/avatars/MY1.png', 'assets/avatars/MY2.png', 'assets/avatars/MY3.png', 'assets/avatars/MY4.png', 'assets/avatars/MY5.png',
+      'assets/avatars/F01.png', 'assets/avatars/F02.png', 'assets/avatars/F03.png', 'assets/avatars/F04.png', 'assets/avatars/F05.png',
+      'assets/avatars/FY1.png', 'assets/avatars/FY2.png', 'assets/avatars/FY3.png', 'assets/avatars/FY4.png', 'assets/avatars/FY5.png',
+    ];
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('تعديل الملف الشخصي'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'الاسم', prefixIcon: Icon(Icons.person)),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: emailController,
+                  decoration: const InputDecoration(labelText: 'البريد الإلكتروني', prefixIcon: Icon(Icons.email)),
+                  keyboardType: TextInputType.emailAddress,
+                ),
+                const SizedBox(height: 16),
+                const Text('اختر الصورة الرمزية', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 120,
+                  child: GridView.builder(
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 5, mainAxisSpacing: 8, crossAxisSpacing: 8),
+                    itemCount: avatars.length,
+                    itemBuilder: (c, i) => GestureDetector(
+                      onTap: () => setState(() => selectedAvatar = avatars[i]),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: selectedAvatar == avatars[i] ? Theme.of(context).colorScheme.primary : Colors.transparent, width: 2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: ClipRRect(borderRadius: BorderRadius.circular(6), child: Image.asset(avatars[i], fit: BoxFit.cover)),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+            FilledButton(
+              onPressed: () async {
+                final dao = ref.read(appSettingsDaoProvider);
+                await dao.updateWelcomeData(
+                  userName: nameController.text.trim().isEmpty ? 'Mohamed Sukar' : nameController.text.trim(),
+                  userEmail: emailController.text.trim().isEmpty ? null : emailController.text.trim(),
+                  userGender: settings.userGender,
+                  userAvatar: selectedAvatar,
+                );
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حفظ الملف الشخصي')));
+                }
+              },
+              child: const Text('حفظ'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _pickLanguage(BuildContext context, WidgetRef ref, AppSettingsData settings) {
     final controller = ref.read(settingsControllerProvider.notifier);
     showDialog(
       context: context,
       builder: (ctx) => SimpleDialog(
-        title: const Text('اللغة'),
+        title: const Text('اختر اللغة / Choose Language'),
         children: [
           SimpleDialogOption(
-            onPressed: () {
-              controller.updateLanguage(AppLanguagePreference.ar);
-              Navigator.pop(ctx);
+            onPressed: () async {
+              await controller.updateLanguage(AppLanguagePreference.ar);
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تغيير اللغة إلى العربية')));
+              }
             },
-            child: const Text('العربية'),
+            child: const Text('العربية 🇪🇬'),
           ),
           SimpleDialogOption(
-            onPressed: () {
-              controller.updateLanguage(AppLanguagePreference.en);
-              Navigator.pop(ctx);
+            onPressed: () async {
+              await controller.updateLanguage(AppLanguagePreference.en);
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Language changed to English')));
+              }
             },
-            child: const Text('English'),
+            child: const Text('English 🇺🇸'),
           ),
         ],
       ),
