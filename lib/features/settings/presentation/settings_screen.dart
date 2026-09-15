@@ -163,19 +163,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFF3C64F),
-                      shape: BoxShape.circle,
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: settings.userAvatar != null && settings.userAvatar!.isNotEmpty
-                        ? Image.asset(settings.userAvatar!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Center(child: AppIcon(AppGlyph.person, color: Colors.white, size: 34)))
-                        : const Center(
-                            child: AppIcon(AppGlyph.person, color: Colors.white, size: 34),
-                          ),
+                  _AvatarWidget(
+                    avatarPath: settings.userAvatar,
+                    size: 72,
+                    brightness: brightness,
                   ),
                   Positioned(
                     bottom: -2,
@@ -1160,25 +1151,51 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 Text(strings.chooseAvatar, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
                 const SizedBox(height: 12),
                 Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: 10,
+                  runSpacing: 10,
                   children: List.generate(avatars.length, (i) {
                     final isSelected = selectedAvatar == avatars[i];
                     return GestureDetector(
                       onTap: () => setState(() => selectedAvatar = avatars[i]),
                       child: Container(
-                        width: 48,
-                        height: 48,
+                        width: 56,
+                        height: 56,
                         decoration: BoxDecoration(
+                          color: AppPalette.tabContainer(Theme.of(context).brightness),
                           border: Border.all(
-                            color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent,
-                            width: 2.5,
+                            color: isSelected ? AppPalette.brandGreen : Colors.transparent,
+                            width: 3,
                           ),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: AppPalette.brandGreen.withValues(alpha: 0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                              : null,
                         ),
+                        clipBehavior: Clip.antiAlias,
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: Image.asset(avatars[i], fit: BoxFit.cover),
+                          borderRadius: BorderRadius.circular(11),
+                          child: Image.asset(
+                            avatars[i],
+                            fit: BoxFit.cover,
+                            width: 56,
+                            height: 56,
+                            cacheWidth: 112,
+                            errorBuilder: (ctx, err, st) {
+                              debugPrint('Avatar grid load error ${avatars[i]}: $err');
+                              return Container(
+                                color: const Color(0xFFF3C64F),
+                                child: Center(
+                                  child: AppIcon(AppGlyph.person, color: Colors.white, size: 24),
+                                ),
+                              );
+                            },
+                          ),
                         ),
                       ),
                     );
@@ -1353,6 +1370,63 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AvatarWidget extends StatelessWidget {
+  final String? avatarPath;
+  final double size;
+  final Brightness brightness;
+
+  const _AvatarWidget({
+    required this.avatarPath,
+    required this.size,
+    required this.brightness,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3C64F),
+        shape: BoxShape.circle,
+        border: Border.all(color: AppPalette.hairline(brightness), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: avatarPath != null && avatarPath!.isNotEmpty
+          ? Image.asset(
+              avatarPath!,
+              fit: BoxFit.cover,
+              width: size,
+              height: size,
+              cacheWidth: (size * 2).toInt(),
+              errorBuilder: (ctx, err, st) {
+                debugPrint('Avatar load error for $avatarPath: $err');
+                return _fallback();
+              },
+            )
+          : _fallback(),
+    );
+  }
+
+  Widget _fallback() {
+    return Container(
+      width: size,
+      height: size,
+      color: const Color(0xFFF3C64F),
+      child: Center(
+        child: AppIcon(AppGlyph.person, color: Colors.white, size: size * 0.47),
       ),
     );
   }
