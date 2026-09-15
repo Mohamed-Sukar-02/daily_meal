@@ -33,6 +33,16 @@ enum AppGlyph {
   search,
   bookmark,
   close,
+  sun,
+  moon,
+  cloud,
+  cloudDown,
+  pencil,
+  chevron,
+  minus,
+  flame,
+  bolt,
+  globe,
 }
 
 class AppIcon extends StatelessWidget {
@@ -345,7 +355,124 @@ class _GlyphPainter extends CustomPainter {
 
       case AppGlyph.close:
         canvas.drawLine(const Offset(6.4, 6.4), const Offset(17.6, 17.6), stroke);
-        canvas.drawLine(const Offset(17.6, 6.4), const Offset(6.4, 17.6), stroke);
+        canvas.drawLine(const Offset(6.4, 17.6), const Offset(17.6, 6.4), stroke);
+
+      case AppGlyph.sun:
+        canvas.drawCircle(const Offset(12, 12), 4.2, stroke);
+        for (var i = 0; i < 8; i++) {
+          canvas.save();
+          canvas.translate(12, 12);
+          canvas.rotate(i * math.pi / 4);
+          canvas.drawLine(const Offset(0, -6.8), const Offset(0, -8.8), stroke);
+          canvas.restore();
+        }
+
+      case AppGlyph.moon:
+        canvas.drawPath(
+          Path()
+            ..moveTo(15.8, 3.6)
+            ..arcToPoint(const Offset(15.8, 20.4),
+                radius: const Radius.circular(9.2),
+                clockwise: false,
+                largeArc: true)
+            ..arcToPoint(const Offset(15.8, 3.6),
+                radius: const Radius.circular(7.4),
+                clockwise: true,
+                largeArc: false)
+            ..close(),
+          fill,
+        );
+
+      case AppGlyph.cloud:
+        canvas.drawPath(
+          Path()
+            ..moveTo(7.4, 17.6)
+            ..arcToPoint(const Offset(7.4, 10.4),
+                radius: const Radius.circular(3.6), clockwise: false)
+            ..arcToPoint(const Offset(14.6, 8.6),
+                radius: const Radius.circular(4.4), clockwise: true)
+            ..arcToPoint(const Offset(17.4, 17.6),
+                radius: const Radius.circular(3.8), clockwise: true)
+            ..close(),
+          fill,
+        );
+
+      case AppGlyph.cloudDown:
+        canvas.drawPath(
+          Path()
+            ..moveTo(7.4, 15.2)
+            ..arcToPoint(const Offset(7.4, 8.4),
+                radius: const Radius.circular(3.4), clockwise: false)
+            ..arcToPoint(const Offset(14.6, 6.6),
+                radius: const Radius.circular(4.2), clockwise: true)
+            ..arcToPoint(const Offset(17.4, 15.2),
+                radius: const Radius.circular(3.6), clockwise: true)
+            ..close(),
+          stroke,
+        );
+        canvas.drawLine(const Offset(12, 11.4), const Offset(12, 19.4), stroke);
+        canvas.drawLine(const Offset(9.2, 16.8), const Offset(12, 19.6), stroke);
+        canvas.drawLine(const Offset(14.8, 16.8), const Offset(12, 19.6), stroke);
+
+      case AppGlyph.pencil:
+        canvas.save();
+        canvas.translate(12, 12);
+        canvas.rotate(_rad(45));
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+              const Rect.fromLTRB(-2.2, -7.4, 2.2, 5.2),
+              const Radius.circular(1.2)),
+          stroke,
+        );
+        canvas.drawPath(
+          Path()
+            ..moveTo(-2.2, 5.2)
+            ..lineTo(0, 8.6)
+            ..lineTo(2.2, 5.2)
+            ..close(),
+          fill,
+        );
+        canvas.restore();
+
+      case AppGlyph.chevron:
+        canvas.drawLine(const Offset(9.4, 6.4), const Offset(15, 12), stroke);
+        canvas.drawLine(const Offset(15, 12), const Offset(9.4, 17.6), stroke);
+
+      case AppGlyph.minus:
+        canvas.drawLine(const Offset(6.4, 12), const Offset(17.6, 12), stroke);
+
+      case AppGlyph.flame:
+        canvas.drawPath(
+          Path()
+            ..moveTo(12, 3.4)
+            ..cubicTo(13.6, 6.6, 17.6, 8.6, 17.6, 13.4)
+            ..cubicTo(17.6, 17.4, 15, 20.4, 12, 20.4)
+            ..cubicTo(9, 20.4, 6.4, 17.4, 6.4, 13.4)
+            ..cubicTo(6.4, 10.6, 8.2, 9.2, 9.2, 7.2)
+            ..cubicTo(9.8, 8.8, 10.8, 9.6, 11.6, 9.8)
+            ..cubicTo(11.2, 7.6, 11.4, 5.4, 12, 3.4)
+            ..close(),
+          fill,
+        );
+
+      case AppGlyph.bolt:
+        canvas.drawPath(
+          Path()
+            ..moveTo(13.4, 3.2)
+            ..lineTo(6.6, 13.2)
+            ..lineTo(11, 13.2)
+            ..lineTo(9.8, 20.8)
+            ..lineTo(17.4, 10.4)
+            ..lineTo(12.8, 10.4)
+            ..close(),
+          fill,
+        );
+
+      case AppGlyph.globe:
+        canvas.drawCircle(const Offset(12, 12), 8.4, stroke);
+        canvas.drawOval(
+            const Rect.fromLTRB(8.4, 3.6, 15.6, 20.4), stroke);
+        canvas.drawLine(const Offset(3.6, 12), const Offset(20.4, 12), stroke);
     }
 
     canvas.restore();
