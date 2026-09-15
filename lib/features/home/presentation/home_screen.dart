@@ -32,6 +32,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final recsAsync = ref.watch(todayRecommendationsProvider);
 
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -57,25 +58,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     )
                   : const DiscoveryScreen(isEmbedded: true),
             ),
+            if (_tab == 0)
+              recsAsync.maybeWhen(
+                data: (result) => result.recommendations.isNotEmpty
+                    ? HomeActionBar(
+                        onLeftover: () =>
+                            _handleLeftover(context, result.recommendations.first),
+                        onDelivery: () => _showDeliverySoon(context),
+                        onSpin: result.recommendations.length >= 2
+                            ? () => _openSpinWheel(context, result.recommendations)
+                            : null,
+                        canSpin: result.recommendations.length >= 2,
+                      )
+                    : const SizedBox.shrink(),
+                orElse: () => const SizedBox.shrink(),
+              ),
           ],
         ),
       ),
-      bottomNavigationBar: _tab == 0
-          ? recsAsync.maybeWhen(
-              data: (result) => result.recommendations.isNotEmpty
-                  ? HomeActionBar(
-                      onLeftover: () =>
-                          _handleLeftover(context, result.recommendations.first),
-                      onDelivery: () => _showDeliverySoon(context),
-                      onSpin: result.recommendations.length >= 2
-                          ? () => _openSpinWheel(context, result.recommendations)
-                          : null,
-                      canSpin: result.recommendations.length >= 2,
-                    )
-                  : null,
-              orElse: () => null,
-            )
-          : null,
     );
   }
 
