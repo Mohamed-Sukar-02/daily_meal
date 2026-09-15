@@ -363,11 +363,10 @@ void main() {
       await tester.pumpAndSettle();
       FlutterError.onError = oldHandler;
 
-      expect(overflows.isNotEmpty, isTrue, reason: 'Expected overflow in AddEditMealDialog');
-      expect(overflows.any((e) => e.contains('218 pixels') || e.contains('220 pixels')), isTrue);
+      expect(overflows.isEmpty, isTrue, reason: 'Expected NO overflow in AddEditMealDialog');
     });
 
-    testWidgets('BUG-3: DeleteMealDialog content Column overflows by 932px on 550px height + 1.4x textScaler (delete_meal_dialog.dart:31)', (tester) async {
+    testWidgets('PASS-3: DeleteMealDialog content Column NO LONGER overflows by 932px on 550px height + 1.4x textScaler (delete_meal_dialog.dart:31)', (tester) async {
       tester.view.physicalSize = const Size(320, 550);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -404,8 +403,7 @@ void main() {
       await tester.pumpAndSettle();
       FlutterError.onError = oldHandler;
 
-      expect(overflowError, isNotNull, reason: 'Expected vertical overflow in DeleteMealDialog');
-      expect(overflowError, contains('932 pixels'));
+      expect(overflowError, isNull, reason: 'Expected NO vertical overflow in DeleteMealDialog');
     });
 
     testWidgets('PASS-7: redesigned VaultEmptyState no longer overflows on 550px height + 1.4x textScaler', (tester) async {
@@ -441,7 +439,7 @@ void main() {
       expect(overflowError, isNull, reason: 'Redesigned empty state must not overflow');
     });
 
-    testWidgets('BUG-5: HistoryScreen empty state Column overflows by 53px on 550px height + 1.4x textScaler (history_screen.dart:60)', (tester) async {
+    testWidgets('PASS-5: HistoryScreen empty state Column NO LONGER overflows by 53px on 550px height + 1.4x textScaler (history_screen.dart:60)', (tester) async {
       tester.view.physicalSize = const Size(320, 550);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -468,8 +466,7 @@ void main() {
       await tester.pumpAndSettle();
       FlutterError.onError = oldHandler;
 
-      expect(overflowError, isNotNull, reason: 'Expected vertical overflow in HistoryScreen');
-      expect(overflowError, contains('bottom'));
+      expect(overflowError, isNull, reason: 'Expected NO vertical overflow in HistoryScreen');
     });
   });
 }

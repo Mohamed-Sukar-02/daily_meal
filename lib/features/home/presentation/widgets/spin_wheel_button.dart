@@ -77,46 +77,49 @@ class SpinWheelButton extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const EmphasisMarks(size: 16, mirrored: true),
-            const SizedBox(width: 4),
-            Opacity(
-              opacity: enabled ? 1 : 0.45,
-              child: GestureDetector(
-                onTap: enabled ? onTap : null,
-                child: Container(
-                  width: 68,
-                  height: 68,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.25),
-                        blurRadius: 14,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: CustomPaint(
-                    painter: _RainbowRingPainter(
-                      colors: AppPalette.wheelRainbow,
-                      thickness: 9,
-                    ),
-                    child: Center(
-                      child: Container(
-                        width: 48,
-                        height: 48,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const EmphasisMarks(size: 16, mirrored: true),
+              const SizedBox(width: 4),
+              Opacity(
+                opacity: enabled ? 1 : 0.45,
+                child: GestureDetector(
+                  onTap: enabled ? onTap : null,
+                  child: Container(
+                    width: 68,
+                    height: 68,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.25),
+                          blurRadius: 14,
+                          offset: const Offset(0, 5),
                         ),
-                        child: Center(
-                          child: ClipOval(
-                            child: CustomPaint(
-                              size: const Size(34, 34),
-                              painter: _PiePainter(AppPalette.wheelRainbow),
+                      ],
+                    ),
+                    child: CustomPaint(
+                      painter: _RainbowRingPainter(
+                        colors: AppPalette.wheelRainbow,
+                        thickness: 9,
+                      ),
+                      child: Center(
+                        child: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: ClipOval(
+                              child: CustomPaint(
+                                size: const Size(34, 34),
+                                painter: _PiePainter(AppPalette.wheelRainbow),
+                              ),
                             ),
                           ),
                         ),
@@ -125,10 +128,10 @@ class SpinWheelButton extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 4),
-            const EmphasisMarks(size: 16),
-          ],
+              const SizedBox(width: 4),
+              const EmphasisMarks(size: 16),
+            ],
+          ),
         ),
         const SizedBox(height: 4),
         Text(
