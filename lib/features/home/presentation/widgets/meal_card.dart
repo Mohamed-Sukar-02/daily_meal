@@ -88,38 +88,48 @@ class MealCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 10),
+                        // Chips + actions share one Wrap: on regular phones they
+                        // sit on one line (chips right, actions left, per the
+                        // mockups); on narrow screens / large text scales the
+                        // actions flow to the next line instead of overflowing.
                         Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
+                          spacing: 10,
+                          runSpacing: 12,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
-                            _chip(
-                              context,
-                              AppPalette.chipRose(brightness),
-                              AppGlyph.steak,
-                              meal.proteinType.labelArabic,
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                _chip(
+                                  context,
+                                  AppPalette.chipRose(brightness),
+                                  AppGlyph.steak,
+                                  meal.proteinType.labelArabic,
+                                ),
+                                _chip(
+                                  context,
+                                  AppPalette.chipGold(brightness),
+                                  AppGlyph.clock,
+                                  formatPrepTime(meal.prepTime),
+                                ),
+                                _chip(
+                                  context,
+                                  AppPalette.chipViolet(brightness),
+                                  AppGlyph.oven,
+                                  meal.category.labelArabic,
+                                ),
+                                ..._badges(context, brightness),
+                              ],
                             ),
-                            _chip(
-                              context,
-                              AppPalette.chipGold(brightness),
-                              AppGlyph.clock,
-                              formatPrepTime(meal.prepTime),
+                            QuickActions(
+                              onCookedToday: onCookedToday,
+                              onLeftover: onLeftover,
                             ),
-                            _chip(
-                              context,
-                              AppPalette.chipViolet(brightness),
-                              AppGlyph.oven,
-                              meal.category.labelArabic,
-                            ),
-                            ..._badges(context, brightness),
                           ],
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  QuickActions(
-                    onCookedToday: onCookedToday,
-                    onLeftover: onLeftover,
                   ),
                 ],
               ),

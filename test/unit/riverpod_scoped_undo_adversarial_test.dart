@@ -7,6 +7,23 @@ import 'package:daily_meal/features/vault/providers/vault_providers.dart';
 import 'package:daily_meal/features/history/providers/history_providers.dart';
 import 'package:daily_meal/features/home/providers/recommendation_provider.dart';
 
+/// Polls `todayRecommendationsProvider` until [predicate] holds (or 5s timeout).
+Future<List<Meal>> waitForRecs(
+  ProviderContainer container,
+  bool Function(List<Meal>) predicate, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  var recs =
+      container.read(todayRecommendationsProvider).value?.recommendations ?? const <Meal>[];
+  while (!predicate(recs) && DateTime.now().isBefore(deadline)) {
+    await Future.delayed(const Duration(milliseconds: 20));
+    recs = container.read(todayRecommendationsProvider).value?.recommendations ??
+        const <Meal>[];
+  }
+  return recs;
+}
+
 void main() {
   group('Empirical Challenger: Scoped Undo & Reactivity Adversarial Suite', () {
     late AppDatabase inMemoryDb;
@@ -14,6 +31,11 @@ void main() {
 
     Future<void> settle(int milliseconds) async {
       await Future.delayed(Duration(milliseconds: milliseconds));
+      // Extra event-loop grace so drift stream propagation can't flake on
+      // slow machines (stream -> StreamProvider -> derived providers).
+      for (var i = 0; i < 20; i++) {
+        await Future.delayed(const Duration(milliseconds: 20));
+      }
     }
 
     setUp(() async {
@@ -148,25 +170,22 @@ void main() {
           ids.add(id);
         }
 
-        await settle(60);
         final targetMeal = (await inMemoryDb.mealsDao.getMealById(ids[0]))!;
 
-        // Initially recommended
-        var recs = container.read(todayRecommendationsProvider).value!.recommendations;
+        // Initially recommended (poll until stream propagates)
+        var recs = await waitForRecs(container, (r) => r.any((m) => m.id == targetMeal.id));
         expect(recs.any((m) => m.id == targetMeal.id), isTrue);
 
         // Cook target meal -> should be excluded by cooldown
         final logId = await recController.markCookedToday(targetMeal);
-        await settle(60);
 
-        recs = container.read(todayRecommendationsProvider).value!.recommendations;
+        recs = await waitForRecs(container, (r) => !r.any((m) => m.id == targetMeal.id));
         expect(recs.any((m) => m.id == targetMeal.id), isFalse, reason: 'Cooked meal must be excluded by cooldown');
 
         // Scoped undo of this log -> should immediately become eligible and recommended again
         await recController.undoLastCookingLog(logId);
-        await settle(60);
 
-        recs = container.read(todayRecommendationsProvider).value!.recommendations;
+        recs = await waitForRecs(container, (r) => r.any((m) => m.id == targetMeal.id));
         expect(recs.any((m) => m.id == targetMeal.id), isTrue, reason: 'Undoing log must restore meal to recommendations');
       });
     });

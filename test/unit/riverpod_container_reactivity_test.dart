@@ -8,6 +8,38 @@ import 'package:daily_meal/features/vault/providers/vault_providers.dart';
 import 'package:daily_meal/features/history/providers/history_providers.dart';
 import 'package:daily_meal/features/home/providers/recommendation_provider.dart';
 
+/// Polls `recommendationProvider` until [predicate] holds (or 5s timeout).
+/// Replaces fixed sleeps so slow drift stream propagation can't flake.
+Future<List<Meal>> waitForRecs(
+  ProviderContainer container,
+  bool Function(List<Meal>) predicate, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  var recs =
+      container.read(recommendationProvider).value?.recommendations ?? const <Meal>[];
+  while (!predicate(recs) && DateTime.now().isBefore(deadline)) {
+    await Future.delayed(const Duration(milliseconds: 20));
+    recs =
+        container.read(recommendationProvider).value?.recommendations ?? const <Meal>[];
+  }
+  return recs;
+}
+
+Future<List<Meal>> waitForFiltered(
+  ProviderContainer container,
+  bool Function(List<Meal>) predicate, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  var filtered = container.read(filteredMealsProvider).value ?? const <Meal>[];
+  while (!predicate(filtered) && DateTime.now().isBefore(deadline)) {
+    await Future.delayed(const Duration(milliseconds: 20));
+    filtered = container.read(filteredMealsProvider).value ?? const <Meal>[];
+  }
+  return filtered;
+}
+
 void main() {
   group('Riverpod Provider Reactivity Verification', () {
     late AppDatabase inMemoryDb;
@@ -101,9 +133,8 @@ void main() {
 
       final meal = await inMemoryDb.mealsDao.getMealById(mealId);
 
-      // Await next stream event
-      await Future.delayed(const Duration(milliseconds: 60));
-      var recs = container.read(recommendationProvider).value?.recommendations ?? [];
+      // Await next stream event (poll until the meal shows up)
+      var recs = await waitForRecs(container, (r) => r.any((m) => m.id == meal!.id));
       expect(recs.any((m) => m.id == meal!.id), isTrue);
 
       final historyCompleter = Completer<List<MealHistoryData>>();
@@ -123,8 +154,7 @@ void main() {
       await historyCompleter.future;
       historySub.close();
 
-      await Future.delayed(const Duration(milliseconds: 60));
-      recs = container.read(recommendationProvider).value?.recommendations ?? [];
+      recs = await waitForRecs(container, (r) => !r.any((m) => m.id == meal.id));
       expect(recs.any((m) => m.id == meal.id), isFalse);
     });
 
@@ -148,9 +178,7 @@ void main() {
         prepTimeMinutes: 35,
       );
 
-      await Future.delayed(const Duration(milliseconds: 60));
-
-      var filtered = container.read(filteredMealsProvider).value ?? [];
+      var filtered = await waitForFiltered(container, (f) => f.length == 2);
       expect(filtered.length, equals(2));
 
       // Filter by protein: fish
