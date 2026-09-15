@@ -8,6 +8,7 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/settings/providers/settings_providers.dart';
 import 'core/services/notification_service.dart';
+import 'core/services/avatar_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,6 +20,13 @@ void main() async {
     debugPrint('Firebase initialization warning: $e');
   }
   await NotificationService.instance.init();
+  // Download avatars when internet available - small size, offline-first fallback to bundled assets
+  // This ensures avatars are in file system for better performance and future remote updates
+  try {
+    await AvatarService.instance.downloadAvatarsIfNeeded();
+  } catch (e) {
+    debugPrint('Avatar download warning: $e');
+  }
   runApp(
     const ProviderScope(
       child: DailyMealApp(),

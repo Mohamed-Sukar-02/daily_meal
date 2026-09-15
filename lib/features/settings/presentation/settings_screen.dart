@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +11,7 @@ import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/app_icons.dart';
 import '../../home/presentation/widgets/home_header.dart' show EmphasisMarks;
 import '../../../core/localization/app_strings.dart';
+import '../../../core/services/avatar_service.dart';
 import '../providers/settings_providers.dart';
 import 'widgets/legal_policies_dialog.dart' as widgets;
 
@@ -1127,6 +1129,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       'assets/avatars/F01.png', 'assets/avatars/F02.png', 'assets/avatars/F03.png', 'assets/avatars/F04.png', 'assets/avatars/F05.png',
       'assets/avatars/FY1.png', 'assets/avatars/FY2.png', 'assets/avatars/FY3.png', 'assets/avatars/FY4.png', 'assets/avatars/FY5.png',
     ];
+    // Trigger avatar download when internet available - small size, improves performance
+    // This ensures avatars are in file system for faster loading and future remote updates
+    Future.microtask(() async {
+      try {
+        await AvatarService.instance.downloadAvatarsIfNeeded();
+      } catch (e) {
+        debugPrint('Avatar download on dialog open failed: $e');
+      }
+    });
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -1404,19 +1415,50 @@ class _AvatarWidget extends StatelessWidget {
         ],
       ),
       clipBehavior: Clip.antiAlias,
-      child: avatarPath != null && avatarPath!.isNotEmpty
-          ? Image.asset(
-              avatarPath!,
-              fit: BoxFit.cover,
-              width: size,
-              height: size,
-              cacheWidth: (size * 2).toInt(),
-              errorBuilder: (ctx, err, st) {
-                debugPrint('Avatar load error for $avatarPath: $err');
-                return _fallback();
-              },
-            )
-          : _fallback(),
+      child: _buildImage(),
+    );
+  }
+
+  Widget _buildImage() {
+    if (avatarPath == null || avatarPath!.isEmpty) {
+      return _fallback();
+    }
+
+    // If path is from local file system (downloaded avatars), use Image.file
+    if (!avatarPath!.startsWith('assets/')) {
+      final file = File(avatarPath!);
+      return Image.file(
+        file,
+        fit: BoxFit.cover,
+        width: size,
+        height: size,
+        cacheWidth: (size * 2).toInt(),
+        errorBuilder: (ctx, err, st) {
+          debugPrint('Avatar file load error for $avatarPath: $err - falling back to asset');
+          // Try to load as asset if file fails
+          return Image.asset(
+            avatarPath!.contains('assets/') ? avatarPath! : 'assets/avatars/MO1.png',
+            fit: BoxFit.cover,
+            width: size,
+            height: size,
+            cacheWidth: (size * 2).toInt(),
+            errorBuilder: (_, __, ___) => _fallback(),
+          );
+        },
+      );
+    }
+
+    // Bundled asset path
+    return Image.asset(
+      avatarPath!,
+      fit: BoxFit.cover,
+      width: size,
+      height: size,
+      cacheWidth: (size * 2).toInt(),
+      errorBuilder: (ctx, err, st) {
+        debugPrint('Avatar asset load error for $avatarPath: $err');
+        return _fallback();
+      },
     );
   }
 
