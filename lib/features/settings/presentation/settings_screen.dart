@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart' show Value;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -35,60 +35,67 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       body: SafeArea(
         bottom: false,
         child: settingsAsync.when(
-          data: (settings) => ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-            children: [
-              _buildHeader(brightness),
-              const SizedBox(height: 20),
-              IgnorePointer(
-                ignoring: _expanded,
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 220),
-                  opacity: _expanded ? 0.38 : 1.0,
-                  child: _buildProfileCard(context, ref, settings, brightness),
+          data: (settings) {
+            final strings = AppStrings(settings.language == AppLanguagePreference.ar ? const Locale('ar') : const Locale('en'));
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              children: [
+                _buildHeader(brightness, strings),
+                const SizedBox(height: 20),
+                IgnorePointer(
+                  ignoring: _expanded,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 220),
+                    opacity: _expanded ? 0.38 : 1.0,
+                    child: _buildProfileCard(context, ref, settings, brightness, strings),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              // Cooldown is the active section — whole card transforms to switches
-              _buildCooldownSection(context, ref, settings, brightness),
-              const SizedBox(height: 24),
-              IgnorePointer(
-                ignoring: _expanded,
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 220),
-                  opacity: _expanded ? 0.38 : 1.0,
-                  child: _buildNotificationsSection(context, ref, settings, brightness),
+                const SizedBox(height: 24),
+                // Cooldown is the active section — whole card transforms to switches
+                _buildCooldownSection(context, ref, settings, brightness, strings),
+                const SizedBox(height: 24),
+                IgnorePointer(
+                  ignoring: _expanded,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 220),
+                    opacity: _expanded ? 0.38 : 1.0,
+                    child: _buildNotificationsSection(context, ref, settings, brightness, strings),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              IgnorePointer(
-                ignoring: _expanded,
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 220),
-                  opacity: _expanded ? 0.38 : 1.0,
-                  child: _buildAppearanceSection(context, ref, settings, brightness),
+                const SizedBox(height: 24),
+                IgnorePointer(
+                  ignoring: _expanded,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 220),
+                    opacity: _expanded ? 0.38 : 1.0,
+                    child: _buildAppearanceSection(context, ref, settings, brightness, strings),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              IgnorePointer(
-                ignoring: _expanded,
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 220),
-                  opacity: _expanded ? 0.38 : 1.0,
-                  child: _buildAdminSection(context, brightness),
+                const SizedBox(height: 24),
+                IgnorePointer(
+                  ignoring: _expanded,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 220),
+                    opacity: _expanded ? 0.38 : 1.0,
+                    child: _buildAdminSection(context, brightness, strings),
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            );
+          },
           loading: () => const Center(
             child: CircularProgressIndicator(color: AppPalette.brandGreen),
           ),
-          error: (err, _) => Center(
-            child: Text(
-              'حدث خطأ: $err',
-              style: TextStyle(color: AppPalette.textSecondary(brightness)),
-            ),
-          ),
+          error: (err, _) {
+            // Need a fallback for strings if settings fails to load
+            final fallbackStrings = AppStrings(const Locale('ar'));
+            return Center(
+              child: Text(
+                '${fallbackStrings.errorOccurred}$err',
+                style: TextStyle(color: AppPalette.textSecondary(brightness)),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -98,7 +105,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   // Header + profile
   // ---------------------------------------------------------------------------
 
-  Widget _buildHeader(Brightness brightness) {
+  Widget _buildHeader(Brightness brightness, AppStrings strings) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -109,7 +116,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 fit: BoxFit.scaleDown,
                 alignment: AlignmentDirectional.centerStart,
                 child: Text(
-                  'الإعدادات',
+                  strings.navSettings,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -127,7 +134,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         const SizedBox(height: 4),
         Text(
-          'خلّي أكلاتك تشتغل لمصلحتك',
+          strings.settingsSubtitle,
           style: TextStyle(
             fontSize: 13,
             color: AppPalette.textSecondary(brightness),
@@ -142,12 +149,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     WidgetRef ref,
     AppSettingsData settings,
     Brightness brightness,
+    AppStrings strings,
   ) {
     return _Card(
       brightness: brightness,
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        onTap: () => _showProfileEditDialog(context, ref, settings),
+        onTap: () => _showProfileEditDialog(context, ref, settings, strings),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Row(
@@ -239,6 +247,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     WidgetRef ref,
     AppSettingsData settings,
     Brightness brightness,
+    AppStrings strings,
   ) {
     final controller = ref.read(settingsControllerProvider.notifier);
 
@@ -247,8 +256,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       children: [
         _SectionHeader(
           brightness: brightness,
-          title: 'محرك الكولداون الذكي',
-          link: _expanded ? 'إلغاء' : 'المزيد',
+          title: strings.smartCooldownEngine,
+          link: _expanded ? strings.cancel : strings.more,
           linkColor: _expanded ? AppPalette.heartCoral : const Color(0xFF3E63DD),
           onLink: () => setState(() => _expanded = !_expanded),
         ),
@@ -273,7 +282,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               fit: BoxFit.scaleDown,
                               alignment: AlignmentDirectional.centerStart,
                               child: Text(
-                                'تأخير تكرار الأكلة',
+                                strings.delayMealRepeat,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -295,7 +304,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Text(
-                                  '${settings.cooldownDays} يوم',
+                                  strings.daysText(settings.cooldownDays),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
@@ -326,9 +335,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     context,
                     ref,
                     brightness,
+                    strings,
                     emoji: '🐔',
                     style: AppPalette.chipGold(brightness),
-                    name: 'فراخ',
+                    name: strings.chicken,
                     days: settings.chickenCooldownDays,
                     onChanged: (d) => controller.updateChickenCooldownDays(d),
                   ),
@@ -339,9 +349,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     context,
                     ref,
                     brightness,
+                    strings,
                     emoji: '🥩',
                     style: AppPalette.chipRose(brightness),
-                    name: 'لحمة',
+                    name: strings.beef,
                     days: settings.beefCooldownDays,
                     onChanged: (d) => controller.updateBeefCooldownDays(d),
                   ),
@@ -352,9 +363,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     context,
                     ref,
                     brightness,
+                    strings,
                     emoji: '🐟',
                     style: AppPalette.chipBlue(brightness),
-                    name: 'سمك',
+                    name: strings.fish,
                     days: settings.fishCooldownDays,
                     onChanged: (d) => controller.updateFishCooldownDays(d),
                   ),
@@ -369,22 +381,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Column(
               children: [
                 _proteinSwitch(
-                  ref, brightness, '🐔', AppPalette.chipGold(brightness), 'فراخ',
+                  ref, brightness, strings, '🐔', AppPalette.chipGold(brightness), strings.chicken,
                   settings.chickenCooldownDays, 7, controller.updateChickenCooldownDays,
                 ),
                 _divider(brightness),
                 _proteinSwitch(
-                  ref, brightness, '🥩', AppPalette.chipRose(brightness), 'لحمة',
+                  ref, brightness, strings, '🥩', AppPalette.chipRose(brightness), strings.beef,
                   settings.beefCooldownDays, 10, controller.updateBeefCooldownDays,
                 ),
                 _divider(brightness),
                 _proteinSwitch(
-                  ref, brightness, '🐟', AppPalette.chipBlue(brightness), 'سمك',
+                  ref, brightness, strings, '🐟', AppPalette.chipBlue(brightness), strings.fish,
                   settings.fishCooldownDays, 5, controller.updateFishCooldownDays,
                 ),
                 _divider(brightness),
                 _proteinSwitch(
-                  ref, brightness, '🌿', AppPalette.chipGreen(brightness), 'خضار',
+                  ref, brightness, strings, '🌿', AppPalette.chipGreen(brightness), strings.veggies,
                   settings.meatlessCooldownDays, 3,
                   (d) => ref.read(appSettingsDaoProvider).updateMeatlessCooldownDays(d),
                 ),
@@ -398,7 +410,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget _stepperRow(
     BuildContext context,
     WidgetRef ref,
-    Brightness brightness, {
+    Brightness brightness,
+    AppStrings strings, {
     required String emoji,
     required ChipStyle style,
     required String name,
@@ -433,7 +446,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   fit: BoxFit.scaleDown,
                   alignment: AlignmentDirectional.centerStart,
                   child: Text(
-                    'أيام انتظار',
+                    strings.waitingDays,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -480,6 +493,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget _proteinSwitch(
     WidgetRef ref,
     Brightness brightness,
+    AppStrings strings,
     String emoji,
     ChipStyle style,
     String name,
@@ -527,13 +541,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     WidgetRef ref,
     AppSettingsData settings,
     Brightness brightness,
+    AppStrings strings,
   ) {
     final controller = ref.read(settingsControllerProvider.notifier);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SectionHeader(brightness: brightness, title: 'التنبيهات'),
+        _SectionHeader(brightness: brightness, title: strings.notifications),
         const SizedBox(height: 12),
         _Card(
           brightness: brightness,
@@ -553,7 +568,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             fit: BoxFit.scaleDown,
                             alignment: AlignmentDirectional.centerStart,
                             child: Text(
-                              'تذكير يومي',
+                              strings.dailyReminder,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -567,7 +582,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             fit: BoxFit.scaleDown,
                             alignment: AlignmentDirectional.centerStart,
                             child: Text(
-                              'هيصلك إشعار في الوقت اللي تختاره',
+                              strings.dailyReminderDesc,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -605,7 +620,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 fit: BoxFit.scaleDown,
                                 alignment: AlignmentDirectional.centerStart,
                                 child: Text(
-                                  'موعد التذكير',
+                                  strings.reminderTime,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
@@ -619,7 +634,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 fit: BoxFit.scaleDown,
                                 alignment: AlignmentDirectional.centerStart,
                                 child: Text(
-                                  'امتى تحب نذكّرك؟',
+                                  strings.reminderTimeDesc,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
@@ -708,24 +723,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     WidgetRef ref,
     AppSettingsData settings,
     Brightness brightness,
+    AppStrings strings,
   ) {
     final controller = ref.read(settingsControllerProvider.notifier);
 
     String themeLabel(AppThemeModePreference m) {
       switch (m) {
         case AppThemeModePreference.dark:
-          return 'داكن';
+          return strings.themeDark;
         case AppThemeModePreference.light:
-          return 'فاتح';
+          return strings.themeLight;
         case AppThemeModePreference.system:
-          return 'حسب الجهاز';
+          return strings.themeSystem;
       }
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SectionHeader(brightness: brightness, title: 'المظهر واللغة'),
+        _SectionHeader(brightness: brightness, title: strings.appearanceAndLanguage),
         const SizedBox(height: 12),
         _Card(
           brightness: brightness,
@@ -745,7 +761,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             fit: BoxFit.scaleDown,
                             alignment: AlignmentDirectional.centerStart,
                             child: Text(
-                              'المظهر',
+                              strings.appearance,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -759,7 +775,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             fit: BoxFit.scaleDown,
                             alignment: AlignmentDirectional.centerStart,
                             child: Text(
-                              'اختر مظهر التطبيق',
+                              strings.chooseAppAppearance,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -797,10 +813,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               onChanged: (v) {
                                 if (v != null) controller.updateThemeMode(v);
                               },
-                              items: const [
-                                DropdownMenuItem(value: AppThemeModePreference.system, child: Text('حسب الجهاز')),
-                                DropdownMenuItem(value: AppThemeModePreference.light, child: Text('فاتح')),
-                                DropdownMenuItem(value: AppThemeModePreference.dark, child: Text('داكن')),
+                              items: [
+                                DropdownMenuItem(value: AppThemeModePreference.system, child: Text(themeLabel(AppThemeModePreference.system))),
+                                DropdownMenuItem(value: AppThemeModePreference.light, child: Text(themeLabel(AppThemeModePreference.light))),
+                                DropdownMenuItem(value: AppThemeModePreference.dark, child: Text(themeLabel(AppThemeModePreference.dark))),
                               ],
                             ),
                           ),
@@ -816,9 +832,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 brightness,
                 AppGlyph.globe,
                 AppPalette.chipBlue(brightness),
-                'اللغة',
-                settings.language == AppLanguagePreference.ar ? 'العربية' : 'English',
-                () => _pickLanguage(context, ref, settings),
+                strings.languageSettings,
+                settings.language == AppLanguagePreference.ar ? strings.languageArabic : strings.languageEnglish,
+                () => _pickLanguage(context, ref, settings, strings),
               ),
             ],
           ),
@@ -830,11 +846,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget _buildAdminSection(
     BuildContext context,
     Brightness brightness,
+    AppStrings strings,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SectionHeader(brightness: brightness, title: 'الإدارة'),
+        _SectionHeader(brightness: brightness, title: strings.admin),
         const SizedBox(height: 12),
         _Card(
           brightness: brightness,
@@ -845,10 +862,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 brightness,
                 AppGlyph.cloud,
                 AppPalette.chipGreen(brightness),
-                'إدارة قاعدة البيانات',
-                'عرض وإدارة البيانات المحلية',
+                strings.databaseManagement,
+                strings.manageLocalData,
                 () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('إدارة قاعدة البيانات قريباً!')),
+                  SnackBar(content: Text(strings.databaseComingSoon)),
                 ),
               ),
               _divider(brightness),
@@ -857,8 +874,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 brightness,
                 AppGlyph.bookmark,
                 AppPalette.chipRose(brightness),
-                'السياسات القانونية',
-                'الخصوصية والشروط',
+                strings.legalPolicies,
+                strings.privacyPolicy,
                 () => showDialog(
                   context: context,
                   builder: (_) => const widgets.LegalPoliciesDialog(isPrivacy: true),
@@ -871,7 +888,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  void _showProfileEditDialog(BuildContext context, WidgetRef ref, AppSettingsData settings) {
+  void _showProfileEditDialog(BuildContext context, WidgetRef ref, AppSettingsData settings, AppStrings strings) {
     final nameController = TextEditingController(text: settings.userName ?? '');
     final emailController = TextEditingController(text: settings.userEmail ?? '');
     String? selectedAvatar = settings.userAvatar;
@@ -886,23 +903,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setState) => AlertDialog(
-          title: const Text('تعديل الملف الشخصي'),
+          title: Text(strings.editProfile),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: nameController,
-                  decoration: const InputDecoration(labelText: 'الاسم', prefixIcon: Icon(Icons.person)),
+                  decoration: InputDecoration(labelText: strings.nameField, prefixIcon: const Icon(Icons.person)),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: emailController,
-                  decoration: const InputDecoration(labelText: 'البريد الإلكتروني', prefixIcon: Icon(Icons.email)),
+                  decoration: InputDecoration(labelText: strings.emailField, prefixIcon: const Icon(Icons.email)),
                   keyboardType: TextInputType.emailAddress,
                 ),
                 const SizedBox(height: 16),
-                const Text('اختر الصورة الرمزية', style: TextStyle(fontWeight: FontWeight.bold)),
+                Text(strings.chooseAvatar, style: const TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 SizedBox(
                   height: 120,
@@ -925,7 +942,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(strings.cancel)),
             FilledButton(
               onPressed: () async {
                 final dao = ref.read(appSettingsDaoProvider);
@@ -937,10 +954,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 );
                 if (ctx.mounted) Navigator.pop(ctx);
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حفظ الملف الشخصي')));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(strings.profileSaved)));
                 }
               },
-              child: const Text('حفظ'),
+              child: Text(strings.save),
             ),
           ],
         ),
@@ -948,32 +965,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  void _pickLanguage(BuildContext context, WidgetRef ref, AppSettingsData settings) {
+  void _pickLanguage(BuildContext context, WidgetRef ref, AppSettingsData settings, AppStrings strings) {
     final controller = ref.read(settingsControllerProvider.notifier);
     showDialog(
       context: context,
       builder: (ctx) => SimpleDialog(
-        title: const Text('اختر اللغة / Choose Language'),
+        title: Text(strings.languageSettings),
         children: [
           SimpleDialogOption(
-            onPressed: () async {
-              await controller.updateLanguage(AppLanguagePreference.ar);
-              if (ctx.mounted) Navigator.pop(ctx);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تغيير اللغة إلى العربية')));
-              }
+            onPressed: () {
+              controller.updateLanguage(AppLanguagePreference.ar);
+              Navigator.pop(ctx);
             },
-            child: const Text('العربية 🇪🇬'),
+            child: const Text('العربية'),
           ),
           SimpleDialogOption(
-            onPressed: () async {
-              await controller.updateLanguage(AppLanguagePreference.en);
-              if (ctx.mounted) Navigator.pop(ctx);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Language changed to English')));
-              }
+            onPressed: () {
+              controller.updateLanguage(AppLanguagePreference.en);
+              Navigator.pop(ctx);
             },
-            child: const Text('English 🇺🇸'),
+            child: const Text('English'),
           ),
         ],
       ),

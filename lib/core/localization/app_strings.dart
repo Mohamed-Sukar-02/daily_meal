@@ -70,6 +70,42 @@ class AppStrings {
   String leftoverSuccess(String mealName) => isEn ? 'Logged leftover for "$mealName".' : 'تم تسجيل بواقي أكل "$mealName".';
   String get undo => isEn ? 'Undo' : 'تراجع';
 
+  // Profile Settings
+  String get settingsSubtitle => isEn ? 'Make your meals work for you' : 'خلّي أكلاتك تشتغل لمصلحتك';
+  String get editProfile => isEn ? 'Edit Profile' : 'تعديل الملف الشخصي';
+  String get nameField => isEn ? 'Name' : 'الاسم';
+  String get emailField => isEn ? 'Email' : 'البريد الإلكتروني';
+  String get chooseAvatar => isEn ? 'Choose Avatar' : 'اختر الصورة الرمزية';
+  String get profileSaved => isEn ? 'Profile saved' : 'تم حفظ الملف الشخصي';
+  String get cancel => isEn ? 'Cancel' : 'إلغاء';
+  String get save => isEn ? 'Save' : 'حفظ';
+
+  // Cooldown Settings
+  String get smartCooldownEngine => isEn ? 'Smart Cooldown Engine' : 'محرك الكولداون الذكي';
+  String get more => isEn ? 'More' : 'المزيد';
+  String get delayMealRepeat => isEn ? 'Delay Meal Repeat' : 'تأخير تكرار الأكلة';
+  String get chicken => isEn ? 'Chicken' : 'فراخ';
+  String get beef => isEn ? 'Beef' : 'لحمة';
+  String get fish => isEn ? 'Fish' : 'سمك';
+  String get veggies => isEn ? 'Veggies' : 'خضار';
+  String get waitingDays => isEn ? 'Waiting days' : 'أيام انتظار';
+
+  // Notifications
+  String get notifications => isEn ? 'Notifications' : 'التنبيهات';
+  String get dailyReminderDesc => isEn ? 'Get notified at your preferred time' : 'هيصلك إشعار في الوقت اللي تختاره';
+  String get reminderTimeDesc => isEn ? 'When should we remind you?' : 'امتى تحب نذكّرك؟';
+
+  // Appearance & Admin
+  String get appearanceAndLanguage => isEn ? 'Appearance & Language' : 'المظهر واللغة';
+  String get appearance => isEn ? 'Appearance' : 'المظهر';
+  String get chooseAppAppearance => isEn ? 'Choose app appearance' : 'اختر مظهر التطبيق';
+  String get admin => isEn ? 'Administration' : 'الإدارة';
+  String get databaseManagement => isEn ? 'Database Management' : 'إدارة قاعدة البيانات';
+  String get manageLocalData => isEn ? 'View and manage local data' : 'عرض وإدارة البيانات المحلية';
+  String get databaseComingSoon => isEn ? 'Database management coming soon!' : 'إدارة قاعدة البيانات قريباً!';
+  String get languageEnglish => isEn ? 'English' : 'English';
+  String get languageArabic => isEn ? 'Arabic' : 'العربية';
+
   // Other common
   String daysText(int days) {
     if (isEn) return '$days days';
