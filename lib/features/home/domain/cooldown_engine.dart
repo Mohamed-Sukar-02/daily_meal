@@ -21,6 +21,8 @@ class CooldownEngine {
 
   /// Full recommendation engine pipeline returning metadata (relaxationLevel, relaxationReason).
   /// Generic over [T] to support both Drift database entities and generic/contract models.
+  /// Optimal: uses typed settings when possible, falls back to dynamic for tests.
+  /// Implements per-protein cooldowns (chicken/beef/fish/meatless) that were previously dead UI.
   RecommendationResult<T> compute<T>({
     required List<T> meals,
     required List<dynamic> history,
@@ -40,12 +42,24 @@ class CooldownEngine {
     }
 
     // 1. Adapt and sort history descending (primary: rawCookedDate, secondary: createdAt)
+    // Optimal: O(n log n) once, then O(n) map for last cooked per meal
     final adaptedHistory = history.map((h) => _HistoryCandidate.from(h)).toList()
       ..sort((a, b) {
         final dateCmp = b.rawCookedDate.compareTo(a.rawCookedDate);
         if (dateCmp != 0) return dateCmp;
         return b.createdAt.compareTo(a.createdAt);
       });
+
+    // Precompute mealId -> lastCookedDate map for O(1) lookup (optimal)
+    final Map<int, DateTime> lastCookedByMealId = {};
+    for (final h in adaptedHistory) {
+      final id = h.mealId;
+      if (id == null) continue;
+      final existing = lastCookedByMealId[id];
+      if (existing == null || h.normalizedCookedDate.isAfter(existing)) {
+        lastCookedByMealId[id] = h.normalizedCookedDate;
+      }
+    }
 
     // 2. Identify latest cooked meal context (within <= 1 calendar day)
     _HistoryCandidate? lastCooked;
@@ -62,9 +76,33 @@ class CooldownEngine {
 
     // Adapt meals
     final adaptedMeals = meals.map((m) => _MealCandidate.from(m)).toList();
-    final int configCooldown = settings != null ? ((settings as dynamic).cooldownDays as int? ?? 14) : 14;
-    final bool preventProtein = settings != null ? ((settings as dynamic).preventRepeatProtein as bool? ?? true) : true;
-    final bool preventCarbs = settings != null ? ((settings as dynamic).preventRepeatCarbs as bool? ?? true) : true;
+
+    // Parse settings - typed optimal, fallback dynamic for tests
+    final int configCooldown;
+    final int chickenCooldown;
+    final int beefCooldown;
+    final int fishCooldown;
+    final int meatlessCooldown;
+    final bool preventProtein;
+    final bool preventCarbs;
+
+    if (settings is AppSettingsData) {
+      configCooldown = settings.cooldownDays;
+      chickenCooldown = settings.chickenCooldownDays;
+      beefCooldown = settings.beefCooldownDays;
+      fishCooldown = settings.fishCooldownDays;
+      meatlessCooldown = settings.meatlessCooldownDays;
+      preventProtein = settings.preventRepeatProtein;
+      preventCarbs = settings.preventRepeatCarbs;
+    } else {
+      configCooldown = (settings as dynamic)?.cooldownDays as int? ?? 14;
+      chickenCooldown = (settings as dynamic)?.chickenCooldownDays as int? ?? 7;
+      beefCooldown = (settings as dynamic)?.beefCooldownDays as int? ?? 10;
+      fishCooldown = (settings as dynamic)?.fishCooldownDays as int? ?? 5;
+      meatlessCooldown = (settings as dynamic)?.meatlessCooldownDays as int? ?? 0;
+      preventProtein = (settings as dynamic)?.preventRepeatProtein as bool? ?? true;
+      preventCarbs = (settings as dynamic)?.preventRepeatCarbs as bool? ?? true;
+    }
 
     final targetCount = min(3, meals.length);
 
@@ -72,9 +110,13 @@ class CooldownEngine {
     for (int level = 0; level <= 5; level++) {
       final candidates = _filterCandidates(
         meals: adaptedMeals,
-        history: adaptedHistory,
+        lastCookedByMealId: lastCookedByMealId,
         today: normalizedToday,
         cooldownDays: configCooldown,
+        chickenCooldownDays: chickenCooldown,
+        beefCooldownDays: beefCooldown,
+        fishCooldownDays: fishCooldown,
+        meatlessCooldownDays: meatlessCooldown,
         preventProtein: preventProtein,
         preventCarbs: preventCarbs,
         lastProtein: lastProtein,
@@ -84,9 +126,13 @@ class CooldownEngine {
 
       final ranked = _rankAndSelectDiversity(
         candidates: candidates,
-        history: adaptedHistory,
+        lastCookedByMealId: lastCookedByMealId,
         today: normalizedToday,
         cooldownDays: configCooldown,
+        chickenCooldownDays: chickenCooldown,
+        beefCooldownDays: beefCooldown,
+        fishCooldownDays: fishCooldown,
+        meatlessCooldownDays: meatlessCooldown,
       );
 
       // Termination Condition
@@ -112,57 +158,73 @@ class CooldownEngine {
   }
 
   /// Filters candidate meals based on the strictness rules of the given relaxation level.
+  /// Optimal: uses precomputed map instead of scanning history per meal.
+  /// Implements per-protein cooldowns (0 = disabled).
   List<_MealCandidate> _filterCandidates({
     required List<_MealCandidate> meals,
-    required List<_HistoryCandidate> history,
+    required Map<int, DateTime> lastCookedByMealId,
     required DateTime today,
     required int cooldownDays,
+    required int chickenCooldownDays,
+    required int beefCooldownDays,
+    required int fishCooldownDays,
+    required int meatlessCooldownDays,
     required bool preventProtein,
     required bool preventCarbs,
     required String? lastProtein,
     required String? lastCarbs,
     required int level,
   }) {
-    final effectiveCooldown = _calculateEffectiveCooldown(cooldownDays, level);
-
     return meals.where((meal) {
-      // Find the most recent cooking date for this meal
-      DateTime? lastCookedDate;
-      for (final h in history) {
-        if (h.mealId == meal.id) {
-          if (lastCookedDate == null || h.normalizedCookedDate.isAfter(lastCookedDate)) {
-            lastCookedDate = h.normalizedCookedDate;
-          }
-        }
+      // Determine per-protein specific cooldown (0 = disabled, optimal feature)
+      final int specificCooldown;
+      switch (meal.proteinName) {
+        case 'chicken':
+          specificCooldown = chickenCooldownDays;
+          break;
+        case 'beef':
+          specificCooldown = beefCooldownDays;
+          break;
+        case 'fish':
+          specificCooldown = fishCooldownDays;
+          break;
+        default:
+          specificCooldown = meatlessCooldownDays;
+          break;
       }
 
+      // If specific cooldown is 0, that protein type is disabled (no cooldown) - respect UI
+      // But still apply global cooldown if specific is 0? Spec says 0 = off, so skip both.
+      // We treat 0 as completely off for that protein, but global still applies if >0 and protein is not meatless?
+      // Optimal: if specific ==0, skip cooldown check for this meal (allow repeat)
+      final bool isCooldownDisabled = specificCooldown == 0;
+
+      // Find last cooked date via map O(1)
+      final DateTime? lastCookedDate = lastCookedByMealId[meal.id];
+
       // A. Cooldown Exclusion Evaluation
-      if (lastCookedDate != null) {
+      if (lastCookedDate != null && !isCooldownDisabled) {
         final deltaDays = _daysBetween(lastCookedDate, today);
 
         if (level == 4) {
           // Level 4 Emergency Mode: Exclude meals cooked today only
           if (deltaDays == 0) return false;
         } else if (level < 5) {
-          // Levels 0..3: Exclude if within effective cooldown window
+          // Levels 0..3: use per-protein cooldown if set, else global, with relaxation
+          final int baseCooldown = specificCooldown > 0 ? specificCooldown : cooldownDays;
+          final effectiveCooldown = _calculateEffectiveCooldown(baseCooldown, level);
           if (deltaDays <= effectiveCooldown) return false;
         }
         // Level 5: Cooldown is completely bypassed
       }
 
       // B. Carbohydrate Repeat Evaluation
-      if (level == 0 &&
-          preventCarbs &&
-          lastCarbs != null &&
-          lastCarbs != 'none') {
+      if (level == 0 && preventCarbs && lastCarbs != null && lastCarbs != 'none') {
         if (meal.carbsName == lastCarbs) return false;
       }
 
       // C. Protein Repeat Evaluation
-      if (level <= 2 &&
-          preventProtein &&
-          lastProtein != null &&
-          lastProtein != 'none') {
+      if (level <= 2 && preventProtein && lastProtein != null && lastProtein != 'none') {
         if (meal.proteinName == lastProtein) return false;
       }
 
@@ -188,35 +250,70 @@ class CooldownEngine {
   }
 
   /// Calculates individual meal ranking score based on recency, Friday, favorite, budget, and jitter.
+  /// Optimal: uses precomputed map if provided, else builds map from history list (backward compat for tests).
   double calculateMealScore({
     required dynamic meal,
-    required List<dynamic> history,
+    dynamic history = const [],
     required DateTime today,
     required int cooldownDays,
+    int chickenCooldownDays = 7,
+    int beefCooldownDays = 10,
+    int fishCooldownDays = 5,
+    int meatlessCooldownDays = 0,
+    Map<int, DateTime>? lastCookedByMealId,
   }) {
     final candidate = meal is _MealCandidate ? meal : _MealCandidate.from(meal);
     final normalizedToday = DateTime(today.year, today.month, today.day);
 
-    DateTime? lastCookedDate;
-    for (final h in history) {
-      final hMealId = (h as dynamic).mealId as int?;
-      if (hMealId == candidate.id) {
-        DateTime? hDate;
-        if (h is _HistoryCandidate) {
-          hDate = h.normalizedCookedDate;
-        } else {
+    // Optimal: use precomputed map if available, else build from history list
+    Map<int, DateTime> effectiveMap;
+    if (lastCookedByMealId != null) {
+      effectiveMap = lastCookedByMealId;
+    } else if (history is Map<int, DateTime>) {
+      effectiveMap = history;
+    } else {
+      // Build map from history list (O(n)) - backward compat
+      effectiveMap = {};
+      if (history is List) {
+        for (final h in history) {
           try {
-            final dynamic rawDate = (h as dynamic).cookedAt;
-            if (rawDate is DateTime) {
-              hDate = DateTime(rawDate.year, rawDate.month, rawDate.day);
+            final int? hMealId = (h as dynamic).mealId as int?;
+            if (hMealId == null) continue;
+            DateTime? hDate;
+            if (h is _HistoryCandidate) {
+              hDate = h.normalizedCookedDate;
+            } else {
+              final dynamic raw = (h as dynamic).cookedAt;
+              if (raw is DateTime) hDate = DateTime(raw.year, raw.month, raw.day);
+            }
+            if (hDate != null) {
+              final existing = effectiveMap[hMealId];
+              if (existing == null || hDate.isAfter(existing)) effectiveMap[hMealId] = hDate;
             }
           } catch (_) {}
         }
-        if (hDate != null && (lastCookedDate == null || hDate.isAfter(lastCookedDate))) {
-          lastCookedDate = hDate;
-        }
       }
     }
+
+    final DateTime? lastCookedDate = effectiveMap[candidate.id];
+
+    // Determine per-protein cooldown for scoring (use specific if >0)
+    final int specificCooldown;
+    switch (candidate.proteinName) {
+      case 'chicken':
+        specificCooldown = chickenCooldownDays;
+        break;
+      case 'beef':
+        specificCooldown = beefCooldownDays;
+        break;
+      case 'fish':
+        specificCooldown = fishCooldownDays;
+        break;
+      default:
+        specificCooldown = meatlessCooldownDays;
+        break;
+    }
+    final int effectiveBaseCooldown = specificCooldown > 0 ? specificCooldown : cooldownDays;
 
     // 1. Recency Component
     double sRecency;
@@ -224,7 +321,7 @@ class CooldownEngine {
       sRecency = 25.0; // Rewards untried meals
     } else {
       final deltaDays = _daysBetween(lastCookedDate, normalizedToday);
-      sRecency = min(20.0, (deltaDays - cooldownDays) / 2.0);
+      sRecency = min(20.0, (deltaDays - effectiveBaseCooldown) / 2.0);
     }
 
     // 2. Friday Special Component
@@ -251,21 +348,29 @@ class CooldownEngine {
   /// Greedy selection of top 3 cards ensuring protein and carbohydrate diversity.
   List<_MealCandidate> _rankAndSelectDiversity({
     required List<_MealCandidate> candidates,
-    required List<dynamic> history,
+    required Map<int, DateTime> lastCookedByMealId,
     required DateTime today,
     required int cooldownDays,
+    int chickenCooldownDays = 7,
+    int beefCooldownDays = 10,
+    int fishCooldownDays = 5,
+    int meatlessCooldownDays = 0,
   }) {
     if (candidates.isEmpty) return const [];
 
-    // Sort descending by score (passing history for accurate recency evaluation)
+    // Sort descending by score (passing map for O(1) lookup)
     final scored = candidates.map((m) {
       return MapEntry(
         m,
         calculateMealScore(
           meal: m,
-          history: history,
+          lastCookedByMealId: lastCookedByMealId,
           today: today,
           cooldownDays: cooldownDays,
+          chickenCooldownDays: chickenCooldownDays,
+          beefCooldownDays: beefCooldownDays,
+          fishCooldownDays: fishCooldownDays,
+          meatlessCooldownDays: meatlessCooldownDays,
         ),
       );
     }).toList()

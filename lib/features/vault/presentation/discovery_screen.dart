@@ -114,51 +114,46 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
         Expanded(
           child: Consumer(
             builder: (context, ref, child) {
-              final accessStatusAsync = ref.watch(cloudAccessStatusProvider);
-              return accessStatusAsync.when(
-                data: (status) {
-                  if (status == CloudAccessStatus.noConnection) {
-                    return _errorState(brightness, AppGlyph.cloud, 'أنت غير متصل بالإنترنت', 'تحقّق من اتصالك بالشبكة لمشاهدة الوصفات السحابية.');
+              // Optimal: cloudAccessStatusProvider now is synchronous Provider watching connectivity stream
+              final status = ref.watch(cloudAccessStatusProvider);
+              if (status == CloudAccessStatus.noConnection) {
+                return _errorState(brightness, AppGlyph.cloud, 'أنت غير متصل بالإنترنت', 'تحقّق من اتصالك بالشبكة لمشاهدة الوصفات السحابية.');
+              }
+              if (status == CloudAccessStatus.requiresWifi) {
+                return _errorState(brightness, AppGlyph.cloudDown, 'مطلوب اتصال Wi-Fi', 'فعّلت خيار التحميل عبر الواي فاي فقط.');
+              }
+              return publicMealsAsync.when(
+                data: (cloudMeals) {
+                  final filtered = _filterCloudMeals(cloudMeals);
+                  if (cloudMeals.isEmpty) {
+                    return _emptyState(brightness, 'لا توجد وصفات سحابية حالياً', 'جرّب لاحقاً أو أضف وصفاتك الخاصة.');
                   }
-                  if (status == CloudAccessStatus.requiresWifi) {
-                    return _errorState(brightness, AppGlyph.cloudDown, 'مطلوب اتصال Wi-Fi', 'فعّلت خيار التحميل عبر الواي فاي فقط.');
+                  if (filtered.isEmpty) {
+                    return _emptyState(brightness, 'لا توجد نتائج مطابقة', 'جرّب كلمات بحث مختلفة أو غيّر الفلتر.');
                   }
-                  return publicMealsAsync.when(
-                    data: (cloudMeals) {
-                      final filtered = _filterCloudMeals(cloudMeals);
-                      if (cloudMeals.isEmpty) {
-                        return _emptyState(brightness, 'لا توجد وصفات سحابية حالياً', 'جرّب لاحقاً أو أضف وصفاتك الخاصة.');
-                      }
-                      if (filtered.isEmpty) {
-                        return _emptyState(brightness, 'لا توجد نتائج مطابقة', 'جرّب كلمات بحث مختلفة أو غيّر الفلتر.');
-                      }
-                      final localMeals = allMealsAsync.valueOrNull ?? [];
-                      return GridView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 14,
-                          mainAxisSpacing: 14,
-                          childAspectRatio: 0.92,
-                        ),
-                        itemCount: filtered.length,
-                        itemBuilder: (context, index) {
-                          final cloudMeal = filtered[index];
-                          final linked = localMeals.where((m) => m.cloudId == cloudMeal.id).toList();
-                          return _CloudMealCard(
-                            cloudMeal: cloudMeal,
-                            linkedMeal: linked.isNotEmpty ? linked.first : null,
-                            index: index,
-                          );
-                        },
+                  final localMeals = allMealsAsync.valueOrNull ?? [];
+                  return GridView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 14,
+                      mainAxisSpacing: 14,
+                      childAspectRatio: 0.92,
+                    ),
+                    itemCount: filtered.length,
+                    itemBuilder: (context, index) {
+                      final cloudMeal = filtered[index];
+                      final linked = localMeals.where((m) => m.cloudId == cloudMeal.id).toList();
+                      return _CloudMealCard(
+                        cloudMeal: cloudMeal,
+                        linkedMeal: linked.isNotEmpty ? linked.first : null,
+                        index: index,
                       );
                     },
-                    loading: () => Center(child: CircularProgressIndicator(color: AppPalette.brandGreen)),
-                    error: (err, _) => _errorState(brightness, AppGlyph.alert, 'حدث خطأ', '$err'),
                   );
                 },
                 loading: () => Center(child: CircularProgressIndicator(color: AppPalette.brandGreen)),
-                error: (err, _) => _errorState(brightness, AppGlyph.alert, 'خطأ في الشبكة', '$err'),
+                error: (err, _) => _errorState(brightness, AppGlyph.alert, 'حدث خطأ', '$err'),
               );
             },
           ),

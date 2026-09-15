@@ -20,13 +20,12 @@ void main() async {
     debugPrint('Firebase initialization warning: $e');
   }
   await NotificationService.instance.init();
-  // Download avatars when internet available - small size, offline-first fallback to bundled assets
-  // This ensures avatars are in file system for better performance and future remote updates
-  try {
-    await AvatarService.instance.downloadAvatarsIfNeeded();
-  } catch (e) {
+  // Download avatars in background - don't block app start (optimal for offline-first)
+  // Small size ~1.4MB, but we don't want to delay splash
+  // ignore: unawaited_futures
+  AvatarService.instance.downloadAvatarsIfNeeded().catchError((e) {
     debugPrint('Avatar download warning: $e');
-  }
+  });
   runApp(
     const ProviderScope(
       child: DailyMealApp(),

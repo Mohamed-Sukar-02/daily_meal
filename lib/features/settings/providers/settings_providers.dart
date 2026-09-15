@@ -195,9 +195,14 @@ class SettingsController extends AsyncNotifier<void> {
       if (gender == 'male' || gender == 'female') {
         final random = math.Random();
         final num = random.nextInt(5) + 1; // 1 to 5
-        final agePrefix = random.nextBool() ? 'Y' : 'O'; // Young or Old
-        final genderPrefix = gender == 'male' ? 'M' : 'F';
-        avatarPath = 'assets/avatars/$genderPrefix$agePrefix$num.png';
+        final isYoung = random.nextBool();
+        if (gender == 'male') {
+          // Male: MO1-5 (Old) and MY1-5 (Young) - both exist
+          avatarPath = isYoung ? 'assets/avatars/MY$num.png' : 'assets/avatars/MO$num.png';
+        } else {
+          // Female: F01-05 (Old) and FY1-5 (Young) - note zero-padded old
+          avatarPath = isYoung ? 'assets/avatars/FY$num.png' : 'assets/avatars/F0$num.png';
+        }
       }
 
       final dao = ref.read(appSettingsDaoProvider);

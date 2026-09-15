@@ -163,29 +163,30 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                             ),
                           ),
                           onChanged: (val) {
-                            ref
-                                .read(vaultFilterProvider.notifier)
-                                .setSearchQuery(val);
-                            setState(() {});
+                            ref.read(vaultFilterProvider.notifier).setSearchQuery(val);
+                            // No setState needed - provider already triggers rebuild, optimal
                           },
                         ),
                       ),
-                      if (_searchController.text.isNotEmpty)
-                        IconButton(
-                          key: const Key('vault_search_clear_button'),
-                          icon: AppIcon(
-                            AppGlyph.close,
-                            color: AppPalette.textSecondary(brightness),
-                            size: 16,
-                          ),
-                          onPressed: () {
-                            _searchController.clear();
-                            ref
-                                .read(vaultFilterProvider.notifier)
-                                .setSearchQuery('');
-                            setState(() {});
-                          },
-                        ),
+                      // Use ValueListenableBuilder to avoid setState on every keystroke
+                      ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: _searchController,
+                        builder: (context, value, child) {
+                          if (value.text.isEmpty) return const SizedBox.shrink();
+                          return IconButton(
+                            key: const Key('vault_search_clear_button'),
+                            icon: AppIcon(
+                              AppGlyph.close,
+                              color: AppPalette.textSecondary(brightness),
+                              size: 16,
+                            ),
+                            onPressed: () {
+                              _searchController.clear();
+                              ref.read(vaultFilterProvider.notifier).setSearchQuery('');
+                            },
+                          );
+                        },
+                      ),
                       const SizedBox(width: 6),
                     ],
                   ),
