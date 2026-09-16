@@ -52,6 +52,7 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
                     child: Column(
@@ -89,26 +90,19 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppPalette.chipGreen(brightness).background,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '$totalCount أكلة',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: AppPalette.chipGreen(brightness).foreground,
-                          ),
-                        ),
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppPalette.chipGreen(brightness).background,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '$totalCount أكلة',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: AppPalette.chipGreen(brightness).foreground,
                       ),
                     ),
                   ),
@@ -298,8 +292,18 @@ class _VaultTabs extends StatelessWidget {
       height: 48,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppPalette.tabContainer(brightness),
+        color: AppPalette.card(brightness),
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppPalette.hairline(brightness), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: brightness == Brightness.dark
+                ? Colors.black.withValues(alpha: 0.2)
+                : AppPalette.lightTextPrimary.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Directionality(
         textDirection: TextDirection.ltr,

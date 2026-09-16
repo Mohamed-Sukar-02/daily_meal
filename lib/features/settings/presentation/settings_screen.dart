@@ -12,8 +12,10 @@ import '../../../core/widgets/app_icons.dart';
 import '../../home/presentation/widgets/emphasis_marks.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/services/avatar_service.dart';
+import '../../../core/services/admin_auth_service.dart';
 import '../providers/settings_providers.dart';
 import 'widgets/legal_policies_dialog.dart' as widgets;
+import 'widgets/time_wheel_picker.dart';
 
 /// Settings screen rebuilt from the approved mockups (light + dark):
 /// header with shine marks, profile card, then titled sections whose cards
@@ -28,6 +30,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _expanded = false;
+  // حفظ القيم السابقة للمستخدم عند إيقاف السويتش حتى لا تضيع
+  final Map<String, int> _previousDays = {};
 
   @override
   Widget build(BuildContext context) {
@@ -56,6 +60,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 const SizedBox(height: 24),
                 _buildCooldownSection(context, ref, settings, brightness, strings),
+                const SizedBox(height: 24),
+                IgnorePointer(
+                  ignoring: _expanded,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 220),
+                    opacity: _expanded ? 0.38 : 1.0,
+                    child: _buildDietaryRulesSection(context, ref, settings, brightness, strings),
+                  ),
+                ),
                 const SizedBox(height: 24),
                 IgnorePointer(
                   ignoring: _expanded,
@@ -112,6 +125,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
             Flexible(
               child: FittedBox(
@@ -161,6 +175,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Stack(
                 clipBehavior: Clip.none,
@@ -219,6 +234,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               AppIcon(
                 AppGlyph.chevron,
                 color: AppPalette.textSecondary(brightness),
@@ -265,6 +281,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   child: Column(
                     children: [
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           _iconCircle(brightness, AppGlyph.clock, AppPalette.chipGreen(brightness)),
                           const SizedBox(width: 14),
@@ -284,26 +301,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Flexible(
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: AppPalette.chipGreen(brightness).background,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  strings.daysText(settings.cooldownDays),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppPalette.chipGreen(brightness).foreground,
-                                  ),
-                                ),
+                          const SizedBox(width: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppPalette.chipGreen(brightness).background,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              strings.daysText(settings.cooldownDays),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: AppPalette.chipGreen(brightness).foreground,
                               ),
                             ),
                           ),
@@ -410,6 +420,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           _emojiCircle(brightness, emoji, style),
           const SizedBox(width: 14),
@@ -447,32 +458,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Wrap(
-              spacing: 6,
-              runSpacing: 4,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                _stepButton(brightness, AppGlyph.minus, () => onChanged((days - 1).clamp(0, 30))),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(minWidth: 24, maxWidth: 36),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      '$days',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: AppPalette.textPrimary(brightness),
-                      ),
+          const SizedBox(width: 12),
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              _stepButton(brightness, AppGlyph.minus, () => onChanged((days - 1).clamp(0, 30))),
+              ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 24, maxWidth: 36),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    '$days',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: AppPalette.textPrimary(brightness),
                     ),
                   ),
                 ),
-                _stepButton(brightness, AppGlyph.plus, () => onChanged((days + 1).clamp(0, 30))),
-              ],
-            ),
+              ),
+              _stepButton(brightness, AppGlyph.plus, () => onChanged((days + 1).clamp(0, 30))),
+            ],
           ),
         ],
       ),
@@ -490,6 +499,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     int defaultDays,
     ValueChanged<int> onChanged,
   ) {
+    final key = name; // استخدام الاسم كمفتاح مؤقت للحفظ
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       child: Row(
@@ -512,12 +522,122 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
           ),
+          const Spacer(),
           Switch(
             value: days > 0,
-            onChanged: (on) => onChanged(on ? defaultDays : 0),
+            onChanged: (on) {
+              if (on) {
+                // استرجاع القيمة المحفوظة للمستخدم أو الافتراضي
+                final restored = _previousDays[key] ?? defaultDays;
+                onChanged(restored);
+              } else {
+                // حفظ القيمة الحالية قبل الإيقاف
+                if (days > 0) {
+                  _previousDays[key] = days;
+                }
+                onChanged(0);
+              }
+            },
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDietaryRulesSection(
+    BuildContext context,
+    WidgetRef ref,
+    AppSettingsData settings,
+    Brightness brightness,
+    AppStrings strings,
+  ) {
+    final controller = ref.read(settingsControllerProvider.notifier);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionHeader(brightness: brightness, title: 'قواعد التنوع الغذائي'),
+        const SizedBox(height: 12),
+        _Card(
+          brightness: brightness,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                child: Row(
+                  children: [
+                    _iconCircle(brightness, AppGlyph.steak, AppPalette.chipRose(brightness)),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            strings.preventProteinRepeat,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: AppPalette.textPrimary(brightness),
+                            ),
+                          ),
+                          Text(
+                            strings.preventProteinRepeatDesc,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppPalette.textSecondary(brightness),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    Switch(
+                      value: settings.preventRepeatProtein,
+                      onChanged: (v) => controller.updateDietaryRules(preventProtein: v),
+                    ),
+                  ],
+                ),
+              ),
+              _divider(brightness),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                child: Row(
+                  children: [
+                    _iconCircle(brightness, AppGlyph.pot, AppPalette.chipGold(brightness)),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            strings.preventCarbRepeat,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: AppPalette.textPrimary(brightness),
+                            ),
+                          ),
+                          Text(
+                            strings.preventCarbRepeatDesc,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppPalette.textSecondary(brightness),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    Switch(
+                      value: settings.preventRepeatCarbs,
+                      onChanged: (v) => controller.updateDietaryRules(preventCarbs: v),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -546,6 +666,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _iconCircle(brightness, AppGlyph.bell, AppPalette.chipGold(brightness)),
                     const SizedBox(width: 14),
@@ -583,6 +704,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ],
                       ),
                     ),
+                    const SizedBox(width: 12),
                     Switch(
                       value: settings.notificationsEnabled,
                       onChanged: (v) => controller.toggleNotifications(v),
@@ -598,6 +720,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                     child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         _iconCircle(brightness, AppGlyph.clock, AppPalette.chipViolet(brightness)),
                         const SizedBox(width: 14),
@@ -635,59 +758,52 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             ],
                           ),
                         ),
-                        Flexible(
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(20),
-                            onTap: () async {
-                              final picked = await showTimePicker(
-                                context: context,
-                                initialTime: TimeOfDay(
-                                  hour: settings.notificationHour,
-                                  minute: settings.notificationMinute,
+                        const SizedBox(width: 12),
+                        InkWell(
+                          borderRadius: BorderRadius.circular(20),
+                          onTap: () async {
+                            final picked = await _showWheelTimePicker(
+                              context,
+                              brightness,
+                              TimeOfDay(
+                                hour: settings.notificationHour,
+                                minute: settings.notificationMinute,
+                              ),
+                            );
+                            if (picked != null) {
+                              controller.updateNotificationTime(picked.hour, picked.minute);
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: AppPalette.chipViolet(brightness).background,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                AppIcon(
+                                  AppGlyph.clock,
+                                  color: AppPalette.chipViolet(brightness).foreground,
+                                  size: 14,
                                 ),
-                              );
-                              if (picked != null) {
-                                controller.updateNotificationTime(picked.hour, picked.minute);
-                              }
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: AppPalette.chipViolet(brightness).background,
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  AppIcon(
-                                    AppGlyph.clock,
+                                const SizedBox(width: 6),
+                                Text(
+                                  _formatTime(settings),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
                                     color: AppPalette.chipViolet(brightness).foreground,
-                                    size: 14,
                                   ),
-                                  const SizedBox(width: 6),
-                                  Flexible(
-                                    child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      child: Text(
-                                        _formatTime(settings),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppPalette.chipViolet(brightness).foreground,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  AppIcon(
-                                    AppGlyph.chevron,
-                                    color: AppPalette.chipViolet(brightness).foreground,
-                                    size: 14,
-                                  ),
-                                ],
-                              ),
+                                ),
+                                const SizedBox(width: 4),
+                                AppIcon(
+                                  AppGlyph.chevron,
+                                  color: AppPalette.chipViolet(brightness).foreground,
+                                  size: 14,
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -739,6 +855,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _iconCircle(brightness, AppGlyph.moon, AppPalette.chipViolet(brightness)),
                     const SizedBox(width: 14),
@@ -778,39 +895,34 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 14),
-                    Flexible(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppPalette.tabContainer(brightness),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppPalette.hairline(brightness)),
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppPalette.tabContainer(brightness),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppPalette.hairline(brightness)),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<AppThemeModePreference>(
+                          value: settings.themeMode,
+                          isDense: true,
+                          icon: AppIcon(AppGlyph.chevron, color: AppPalette.textSecondary(brightness), size: 14),
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppPalette.textPrimary(brightness),
                           ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<AppThemeModePreference>(
-                              value: settings.themeMode,
-                              isDense: true,
-                              icon: AppIcon(AppGlyph.chevron, color: AppPalette.textSecondary(brightness), size: 14),
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: AppPalette.textPrimary(brightness),
-                              ),
-                              dropdownColor: AppPalette.card(brightness),
-                              borderRadius: BorderRadius.circular(12),
-                              onChanged: (v) {
-                                if (v != null) controller.updateThemeMode(v);
-                              },
-                              items: [
-                                DropdownMenuItem(value: AppThemeModePreference.system, child: Text(themeLabel(AppThemeModePreference.system))),
-                                DropdownMenuItem(value: AppThemeModePreference.light, child: Text(themeLabel(AppThemeModePreference.light))),
-                                DropdownMenuItem(value: AppThemeModePreference.dark, child: Text(themeLabel(AppThemeModePreference.dark))),
-                              ],
-                            ),
-                          ),
+                          dropdownColor: AppPalette.card(brightness),
+                          borderRadius: BorderRadius.circular(12),
+                          onChanged: (v) {
+                            if (v != null) controller.updateThemeMode(v);
+                          },
+                          items: [
+                            DropdownMenuItem(value: AppThemeModePreference.system, child: Text(themeLabel(AppThemeModePreference.system))),
+                            DropdownMenuItem(value: AppThemeModePreference.light, child: Text(themeLabel(AppThemeModePreference.light))),
+                            DropdownMenuItem(value: AppThemeModePreference.dark, child: Text(themeLabel(AppThemeModePreference.dark))),
+                          ],
                         ),
                       ),
                     ),
@@ -823,6 +935,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _iconCircle(brightness, AppGlyph.globe, AppPalette.chipBlue(brightness)),
                     const SizedBox(width: 14),
@@ -862,7 +975,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                     // EXACT old shape: same outer shape as switches, divided middle AR right EN left
                     Container(
                       height: 44,
@@ -874,6 +987,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                       clipBehavior: Clip.antiAlias,
                       child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Expanded(
                             child: _LanguageSegment(
@@ -907,35 +1021,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  // Secure admin password handling - highly protected
-  // Password is obfuscated and verified via hash comparison, not stored as plain text in UI
-  // Original: 747474 - stored as DJB2 hash + obfuscated bytes
-  static const int _adminHash = 2348205798; // DJB2 hash of '747474'
-  static const List<int> _obfuscated = [0x37, 0x34, 0x37, 0x34, 0x37, 0x34]; // '747474' obfuscated
-
-  static int _hashPassword(String input) {
-    int hash = 5381;
-    for (final c in input.codeUnits) {
-      hash = ((hash << 5) + hash) + c;
-      hash = hash & 0xFFFFFFFF;
-    }
-    return hash;
+  Future<TimeOfDay?> _showWheelTimePicker(
+    BuildContext context,
+    Brightness brightness,
+    TimeOfDay initial,
+  ) {
+    return showWheelTimePicker(context, brightness, initial);
   }
 
-  static bool _verifyAdminPassword(String input) {
-    if (input.isEmpty) return false;
-    // Constant-time comparison via hash
-    final inputHash = _hashPassword(input);
-    if (inputHash != _adminHash) return false;
-    // Double-check via deobfuscated string to prevent hash collision
-    final deobfuscated = String.fromCharCodes(_obfuscated);
-    if (input.length != deobfuscated.length) return false;
-    var result = 0;
-    for (var i = 0; i < input.length; i++) {
-      result |= input.codeUnitAt(i) ^ deobfuscated.codeUnitAt(i);
-    }
-    return result == 0;
-  }
+  // Secure admin password handling - replaced by AdminAuthService (see lib/core/services/admin_auth_service.dart)
+  // Uses env var ADMIN_PASSWORD_HASH + Firebase Auth + rate limiting, no plain text
 
   void _showAdminPasswordDialog(BuildContext context, Brightness brightness, AppStrings strings) {
     final passwordController = TextEditingController();
@@ -1054,11 +1149,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _attemptAdminLogin(BuildContext dialogCtx, BuildContext context, String input, Brightness brightness, AppStrings strings, ValueChanged<String> onError) async {
-    if (!_verifyAdminPassword(input.trim())) {
-      onError('كلمة المرور غير صحيحة');
+    // Use secure AdminAuthService with rate limiting and env hash
+    final result = await AdminAuthService.instance.verifyPassword(input.trim());
+    if (!result.isSuccess) {
+      onError(result.errorMessage ?? 'كلمة المرور غير صحيحة');
       return;
     }
-    Navigator.pop(dialogCtx);
+    if (dialogCtx.mounted) Navigator.pop(dialogCtx);
     final uri = Uri.parse('https://daily-meal000.web.app/#/admin');
     try {
       final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -1311,6 +1408,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             _iconCircle(brightness, glyph, style),
             const SizedBox(width: 14),
@@ -1348,6 +1446,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ],
               ),
             ),
+            const SizedBox(width: 8),
             AppIcon(
               AppGlyph.chevron,
               color: AppPalette.textSecondary(brightness),
@@ -1466,6 +1565,7 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Expanded(
           child: FittedBox(
@@ -1484,7 +1584,7 @@ class _SectionHeader extends StatelessWidget {
           ),
         ),
         if (link != null) ...[
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
           Flexible(
             child: FittedBox(
               fit: BoxFit.scaleDown,

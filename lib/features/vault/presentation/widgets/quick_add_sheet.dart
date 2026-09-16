@@ -612,21 +612,27 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                             ],
                           ),
                           const SizedBox(height: 16),
-                          // Protein Type
+                          // Protein Type - عرض كل الأنواع بما فيها الخضار
                           _labelRow(isDark, AppGlyph.steak, const Color(0xFF6C5CE7), 'Protein Type'),
                           const SizedBox(height: 8),
                           Wrap(
                             spacing: 8, runSpacing: 8,
-                            children: [
-                              _pill(isDark, label: 'Chicken', emoji: '🍗', selected: _selectedProtein == ProteinType.chicken, color: const Color(0xFFFFF3E0), fg: const Color(0xFF8D6E00), onTap: () => setState(() => _selectedProtein = ProteinType.chicken)),
-                              _pill(isDark, label: 'Beef', emoji: '🥩', selected: _selectedProtein == ProteinType.beef, color: const Color(0xFFFBE3E5), fg: const Color(0xFF8A2733), onTap: () => setState(() => _selectedProtein = ProteinType.beef)),
-                              _pill(isDark, label: 'Fish', emoji: '🐟', selected: _selectedProtein == ProteinType.fish, color: const Color(0xFFE3F0FD), fg: const Color(0xFF1565C0), onTap: () => setState(() => _selectedProtein = ProteinType.fish)),
-                              if (_selectedProtein == ProteinType.legume || _selectedProtein == ProteinType.dairy || _selectedProtein == ProteinType.none)
-                                _pill(isDark, label: _selectedProtein.labelArabic, emoji: _selectedProtein.emoji, selected: true, color: const Color(0xFFDCF2E7), fg: const Color(0xFF0E6B4A), onTap: () {}),
-                            ],
+                            children: ProteinType.values.map((p) {
+                              final isSelected = _selectedProtein == p;
+                              final (color, fg) = _proteinColors(p);
+                              return _pill(
+                                isDark,
+                                label: p.labelArabic,
+                                emoji: p.emoji,
+                                selected: isSelected,
+                                color: color,
+                                fg: fg,
+                                onTap: () => setState(() => _selectedProtein = p),
+                              );
+                            }).toList(),
                           ),
                           const SizedBox(height: 14),
-                          // Carb Type
+                          // Carb Type - عرض كل الأنواع
                           Row(
                             children: [
                               Container(width: 28, height: 28, decoration: BoxDecoration(color: isDark ? Colors.white10 : const Color(0xFFFFF3E0), shape: BoxShape.circle), child: const Center(child: Text('🍚', style: TextStyle(fontSize: 14)))),
@@ -639,13 +645,38 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                           const SizedBox(height: 8),
                           Wrap(
                             spacing: 8, runSpacing: 8,
-                            children: [
-                              _pill(isDark, label: 'أرز', emoji: '🍚', selected: _selectedCarbs == CarbsType.rice, color: const Color(0xFFE8F5E9), fg: const Color(0xFF2E7D32), onTap: () => setState(() => _selectedCarbs = CarbsType.rice)),
-                              _pill(isDark, label: 'مكرونة', emoji: '🍝', selected: _selectedCarbs == CarbsType.pasta, color: const Color(0xFFFFF3E0), fg: const Color(0xFFEF6C00), onTap: () => setState(() => _selectedCarbs = CarbsType.pasta)),
-                              _pill(isDark, label: 'بطاطس', emoji: '🥔', selected: _selectedCarbs == CarbsType.potato, color: const Color(0xFFFFF8E1), fg: const Color(0xFFF9A825), onTap: () => setState(() => _selectedCarbs = CarbsType.potato)),
-                              if (_selectedCarbs == CarbsType.bread || _selectedCarbs == CarbsType.grains || _selectedCarbs == CarbsType.none)
-                                _pill(isDark, label: _selectedCarbs.labelArabic, emoji: '🍞', selected: true, color: const Color(0xFFE3F0FD), fg: const Color(0xFF1565C0), onTap: () {}),
-                            ],
+                            children: CarbsType.values.map((c) {
+                              final isSelected = _selectedCarbs == c;
+                              final (color, fg) = _carbsColors(c);
+                              return _pill(
+                                isDark,
+                                label: c.labelArabic,
+                                emoji: _carbsEmoji(c),
+                                selected: isSelected,
+                                color: color,
+                                fg: fg,
+                                onTap: () => setState(() => _selectedCarbs = c),
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 14),
+                          // Category Type
+                          _labelRow(isDark, AppGlyph.pot, const Color(0xFF6C5CE7), 'Category'),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8, runSpacing: 8,
+                            children: MealCategory.values.map((cat) {
+                              final isSelected = _selectedCategory == cat;
+                              return _pill(
+                                isDark,
+                                label: cat.labelArabic,
+                                emoji: '🍲',
+                                selected: isSelected,
+                                color: const Color(0xFFE7E1F9),
+                                fg: const Color(0xFF6C5CE7),
+                                onTap: () => setState(() => _selectedCategory = cat),
+                              );
+                            }).toList(),
                           ),
                           const SizedBox(height: 14),
                           // Time
@@ -749,12 +780,69 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     );
   }
 
+  (Color, Color) _proteinColors(ProteinType p) {
+    switch (p) {
+      case ProteinType.chicken:
+        return (const Color(0xFFFFF3E0), const Color(0xFF8D6E00));
+      case ProteinType.beef:
+        return (const Color(0xFFFBE3E5), const Color(0xFF8A2733));
+      case ProteinType.fish:
+        return (const Color(0xFFE3F0FD), const Color(0xFF1565C0));
+      case ProteinType.legume:
+        return (const Color(0xFFDCF2E7), const Color(0xFF0E6B4A));
+      case ProteinType.dairy:
+        return (const Color(0xFFE7E1F9), const Color(0xFF6C5CE7));
+      case ProteinType.none:
+        return (const Color(0xFFE8F5E9), const Color(0xFF2E7D32));
+    }
+  }
+
+  (Color, Color) _carbsColors(CarbsType c) {
+    switch (c) {
+      case CarbsType.rice:
+        return (const Color(0xFFE8F5E9), const Color(0xFF2E7D32));
+      case CarbsType.pasta:
+        return (const Color(0xFFFFF3E0), const Color(0xFFEF6C00));
+      case CarbsType.bread:
+        return (const Color(0xFFE3F0FD), const Color(0xFF1565C0));
+      case CarbsType.potato:
+        return (const Color(0xFFFFF8E1), const Color(0xFFF9A825));
+      case CarbsType.grains:
+        return (const Color(0xFFF3E5F5), const Color(0xFF7B1FA2));
+      case CarbsType.none:
+        return (const Color(0xFFF5F5F5), const Color(0xFF616161));
+    }
+  }
+
+  String _carbsEmoji(CarbsType c) {
+    switch (c) {
+      case CarbsType.rice:
+        return '🍚';
+      case CarbsType.pasta:
+        return '🍝';
+      case CarbsType.bread:
+        return '🍞';
+      case CarbsType.potato:
+        return '🥔';
+      case CarbsType.grains:
+        return '🌾';
+      case CarbsType.none:
+        return '🥗';
+    }
+  }
+
   Widget _labelRow(bool isDark, AppGlyph glyph, Color bg, String label) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Container(width: 28, height: 28, decoration: BoxDecoration(color: isDark ? Colors.white10 : bg.withValues(alpha: 0.15), shape: BoxShape.circle), child: Center(child: AppIcon(glyph, color: isDark ? Colors.white70 : bg, size: 16))),
-        const SizedBox(width: 8),
-        Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? Colors.white70 : const Color(0xFF16283B))),
+        Row(
+          children: [
+            Container(width: 28, height: 28, decoration: BoxDecoration(color: isDark ? Colors.white10 : bg.withValues(alpha: 0.15), shape: BoxShape.circle), child: Center(child: AppIcon(glyph, color: isDark ? Colors.white70 : bg, size: 16))),
+            const SizedBox(width: 8),
+            Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? Colors.white70 : const Color(0xFF16283B))),
+          ],
+        ),
+        const Spacer(),
       ],
     );
   }

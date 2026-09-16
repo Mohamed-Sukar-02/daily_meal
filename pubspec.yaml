@@ -62,6 +62,7 @@ dependencies:
   otp: ^3.1.4
   shared_preferences: ^2.5.5
   connectivity_plus: ^7.3.1
+  crypto: ^3.0.6
 
 dev_dependencies:
   flutter_test:

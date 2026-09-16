@@ -21,6 +21,7 @@ class HomeHeader extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Notification icon - left side
           GestureDetector(
@@ -137,40 +138,54 @@ class HomeHeader extends ConsumerWidget {
   }
 
   Widget _buildAvatarImage(String? avatarPath, Brightness brightness) {
-    if (avatarPath == null || avatarPath.isEmpty) {
-      return Center(
-        child: AppIcon(
-          AppGlyph.person,
-          color: AppPalette.avatarForeground(brightness),
-          size: 22,
-        ),
-      );
-    }
-    if (avatarPath.startsWith('assets/')) {
-      return Image.asset(
-        avatarPath,
-        width: 44,
-        height: 44,
-        fit: BoxFit.cover,
-      );
-    } else {
-      final file = File(avatarPath);
-      if (file.existsSync()) {
-        return Image.file(
-          file,
-          width: 44,
-          height: 44,
-          fit: BoxFit.cover,
-        );
-      } else {
-        return Center(
+    Widget fallback() => Center(
           child: AppIcon(
             AppGlyph.person,
             color: AppPalette.avatarForeground(brightness),
             size: 22,
           ),
         );
-      }
+
+    if (avatarPath == null || avatarPath.isEmpty) {
+      return fallback();
     }
+
+    if (avatarPath.startsWith('assets/')) {
+      return Image.asset(
+        avatarPath,
+        width: 44,
+        height: 44,
+        fit: BoxFit.cover,
+        errorBuilder: (ctx, err, st) {
+          debugPrint('HomeHeader avatar asset error $avatarPath: $err');
+          return fallback();
+        },
+      );
+    }
+
+    // File path: use Image.file with errorBuilder, avoid existsSync in build
+    // If file doesn't exist, errorBuilder will show fallback
+    // For robustness, also handle async existence via FutureBuilder for remote downloaded avatars
+    return Image.file(
+      File(avatarPath),
+      width: 44,
+      height: 44,
+      fit: BoxFit.cover,
+      errorBuilder: (ctx, err, st) {
+        debugPrint('HomeHeader avatar file error $avatarPath: $err - trying asset fallback');
+        // If file path contains assets segment, try as asset
+        if (avatarPath.contains('assets/')) {
+          final assetPart = avatarPath.substring(avatarPath.indexOf('assets/'));
+          return Image.asset(
+            assetPart,
+            width: 44,
+            height: 44,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => fallback(),
+          );
+        }
+        return fallback();
+      },
+    );
   }
 }
