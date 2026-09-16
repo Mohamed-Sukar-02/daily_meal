@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -1015,34 +1015,39 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 onSubmitted: (_) => _attemptAdminLogin(ctx, context, passwordController.text, brightness, strings, (err) => setState(() => errorText = err)),
               ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  AppIcon(AppGlyph.shield, color: AppPalette.textSecondary(brightness), size: 12),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'محمية بتشفير آمن - لا يتم تخزين كلمة المرور كنص واضح',
-                      style: TextStyle(fontSize: 10, color: AppPalette.textSecondary(brightness)),
-                    ),
-                  ),
-                ],
-              ),
             ],
           ),
+          actionsAlignment: MainAxisAlignment.spaceBetween,
           actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(strings.cancel),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AppIcon(AppGlyph.shield, color: AppPalette.textSecondary(brightness), size: 14),
+                const SizedBox(width: 4),
+                Text(
+                  strings.encrypted,
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppPalette.textSecondary(brightness)),
+                ),
+              ],
             ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: AppPalette.brandGreen,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              onPressed: () => _attemptAdminLogin(ctx, context, passwordController.text, brightness, strings, (err) => setState(() => errorText = err)),
-              child: Text(strings.save == 'Save' ? 'دخول' : 'دخول', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(strings.cancel),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppPalette.brandGreen,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () => _attemptAdminLogin(ctx, context, passwordController.text, brightness, strings, (err) => setState(() => errorText = err)),
+                  child: Text(strings.adminLogin, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                ),
+              ],
             ),
           ],
         ),

@@ -264,12 +264,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                 'اختر صورة الأكلة',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppPalette.textPrimary(brightness)),
               ),
-              const SizedBox(height: 4),
-              Text(
-                'يمكنك اختيار صورة محددة فقط (وصول محدود) - النظام يدعم ذلك تلقائياً',
-                style: TextStyle(fontSize: 12, color: AppPalette.textSecondary(brightness)),
-              ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               _sourceOption(
                 brightness: brightness,
                 icon: Icons.photo_camera_rounded,
@@ -285,7 +280,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                 brightness: brightness,
                 icon: Icons.photo_library_rounded,
                 title: 'اختيار من المعرض',
-                subtitle: 'يدعم الوصول المحدود - اختر صور معينة فقط',
+                subtitle: 'اختر صورة من ألبوم الصور',
                 onTap: () {
                   Navigator.pop(ctx);
                   _pickImage(ImageSource.gallery);
@@ -308,26 +303,6 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                   },
                 ),
               ],
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppPalette.chipBlue(brightness).background,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    AppIcon(AppGlyph.shield, color: AppPalette.chipBlue(brightness).foreground, size: 16),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'يستخدم منتقي الصور النظامي - آمن ويدعم الوصول المحدود تلقائياً (iOS 14+ و Android 13+)',
-                        style: TextStyle(fontSize: 11, height: 1.4, color: AppPalette.chipBlue(brightness).foreground),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ],
           ),
         ),
@@ -543,15 +518,6 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                                               ),
                                               const SizedBox(height: 6),
                                               Text(_isPicking ? 'جاري التحميل...' : 'Add Photo', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isDark ? Colors.white70 : const Color(0xFF16283B))),
-                                              const SizedBox(height: 2),
-                                              Padding(
-                                                padding: const EdgeInsets.symmetric(horizontal: 6),
-                                                child: Text(
-                                                  'يدعم وصول محدود',
-                                                  textAlign: TextAlign.center,
-                                                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: AppPalette.brandGreen),
-                                                ),
-                                              ),
                                             ],
                                           ),
                                         ),

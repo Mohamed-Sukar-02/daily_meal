@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 class AppStrings {
   final Locale locale;
@@ -110,6 +110,8 @@ class AppStrings {
   String get databaseComingSoon => isEn ? 'Database management coming soon!' : 'إدارة قاعدة البيانات قريباً!';
   String get languageEnglish => isEn ? 'English' : 'English';
   String get languageArabic => isEn ? 'Arabic' : 'العربية';
+  String get encrypted => isEn ? 'Encrypted' : 'مشفر';
+  String get adminLogin => isEn ? 'Login' : 'دخول';
 
   // Other common
   String daysText(int days) {
