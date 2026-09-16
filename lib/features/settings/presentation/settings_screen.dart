@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -59,16 +59,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 const SizedBox(height: 24),
                 _buildCooldownSection(context, ref, settings, brightness, strings),
-                const SizedBox(height: 24),
-                IgnorePointer(
-                  ignoring: _expanded,
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 220),
-                    opacity: _expanded ? 0.38 : 1.0,
-                    child: _buildDietaryRulesSection(context, ref, settings, brightness, strings),
-                  ),
-                ),
-                const SizedBox(height: 24),
                 IgnorePointer(
                   ignoring: _expanded,
                   child: AnimatedOpacity(
@@ -540,103 +530,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildDietaryRulesSection(
-    BuildContext context,
-    WidgetRef ref,
-    AppSettingsData settings,
-    Brightness brightness,
-    AppStrings strings,
-  ) {
-    final controller = ref.read(settingsControllerProvider.notifier);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _SectionHeader(brightness: brightness, title: 'قواعد التنوع الغذائي'),
-        const SizedBox(height: 12),
-        _Card(
-          brightness: brightness,
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                child: Row(
-                  children: [
-                    _iconCircle(brightness, AppGlyph.steak, AppPalette.chipRose(brightness)),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            strings.preventProteinRepeat,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: AppPalette.textPrimary(brightness),
-                            ),
-                          ),
-                          Text(
-                            strings.preventProteinRepeatDesc,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppPalette.textSecondary(brightness),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Spacer(),
-                    Switch(
-                      value: settings.preventRepeatProtein,
-                      onChanged: (v) => controller.updateDietaryRules(preventProtein: v),
-                    ),
-                  ],
-                ),
-              ),
-              _divider(brightness),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                child: Row(
-                  children: [
-                    _iconCircle(brightness, AppGlyph.pot, AppPalette.chipGold(brightness)),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            strings.preventCarbRepeat,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: AppPalette.textPrimary(brightness),
-                            ),
-                          ),
-                          Text(
-                            strings.preventCarbRepeatDesc,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppPalette.textSecondary(brightness),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Spacer(),
-                    Switch(
-                      value: settings.preventRepeatCarbs,
-                      onChanged: (v) => controller.updateDietaryRules(preventCarbs: v),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 

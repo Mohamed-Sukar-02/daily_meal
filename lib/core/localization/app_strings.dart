@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 class AppStrings {
   final Locale locale;
@@ -30,10 +30,6 @@ class AppStrings {
   String get themeLight => isEn ? 'Light' : 'فاتح';
   String get themeDark => isEn ? 'Dark' : 'داكن';
   String get dietaryRules => isEn ? 'Dietary Rules' : 'قواعد التنوع الغذائي';
-  String get preventProteinRepeat => isEn ? 'Prevent Consecutive Protein' : 'منع تكرار نوع البروتين المتتالي';
-  String get preventProteinRepeatDesc => isEn ? 'Exclude same protein cooked today or yesterday' : 'استبعاد نفس البروتين المطبوخ بالأمس أو اليوم';
-  String get preventCarbRepeat => isEn ? 'Prevent Consecutive Carbs' : 'منع تكرار نوع النشويات المتتالي';
-  String get preventCarbRepeatDesc => isEn ? 'Avoid repeating rice or pasta consecutively' : 'تجنب تكرار الأرز أو المكرونة يومين وراء بعض';
   String get dailyReminder => isEn ? 'Daily Reminder' : 'تنبيه الاقتراح اليومي';
   String get enableReminder => isEn ? 'Enable Daily Reminder' : 'تفعيل التذكير اليومي';
   String get enableReminderDesc => isEn ? 'Notification to check today\'s meal suggestions' : 'إشعار تذكير لتفقد اقتراحات وجبة اليوم';

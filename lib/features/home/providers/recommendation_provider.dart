@@ -48,8 +48,6 @@ final todayRecommendationsProvider = Provider<AsyncValue<RecommendationResult<Me
     beefCooldownDays: 10,
     fishCooldownDays: 5,
     meatlessCooldownDays: 0,
-    preventRepeatProtein: true,
-    preventRepeatCarbs: true,
     notificationHour: 12,
     notificationMinute: 0,
     notificationsEnabled: false,

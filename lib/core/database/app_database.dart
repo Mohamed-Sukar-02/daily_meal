@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart';
+﻿import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
 import 'tables/meals_table.dart';
@@ -48,8 +48,6 @@ class AppDatabase extends _$AppDatabase {
           beefCooldownDays: Value(10),
           fishCooldownDays: Value(5),
           meatlessCooldownDays: Value(0),
-          preventRepeatProtein: Value(true),
-          preventRepeatCarbs: Value(true),
           notificationHour: Value(12),
           notificationMinute: Value(0),
           notificationsEnabled: Value(false),

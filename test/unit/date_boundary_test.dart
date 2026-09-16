@@ -1,4 +1,4 @@
-import 'package:flutter_test/flutter_test.dart';
+﻿import 'package:flutter_test/flutter_test.dart';
 import 'package:daily_meal/core/utils/app_date_utils.dart' as app_date_utils;
 import 'package:daily_meal/features/home/domain/cooldown_engine.dart';
 import 'package:daily_meal/core/database/app_database.dart';
@@ -77,8 +77,6 @@ void main() {
           beefCooldownDays: 10,
           fishCooldownDays: 5,
           meatlessCooldownDays: 0,
-          preventRepeatProtein: true,
-          preventRepeatCarbs: true,
           notificationHour: 12,
           notificationMinute: 0,
           notificationsEnabled: false,

@@ -1470,34 +1470,6 @@ class $AppSettingsTable extends AppSettings
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
-  static const VerificationMeta _preventRepeatProteinMeta =
-      const VerificationMeta('preventRepeatProtein');
-  @override
-  late final GeneratedColumn<bool> preventRepeatProtein = GeneratedColumn<bool>(
-    'prevent_repeat_protein',
-    aliasedName,
-    false,
-    type: DriftSqlType.bool,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("prevent_repeat_protein" IN (0, 1))',
-    ),
-    defaultValue: const Constant(true),
-  );
-  static const VerificationMeta _preventRepeatCarbsMeta =
-      const VerificationMeta('preventRepeatCarbs');
-  @override
-  late final GeneratedColumn<bool> preventRepeatCarbs = GeneratedColumn<bool>(
-    'prevent_repeat_carbs',
-    aliasedName,
-    false,
-    type: DriftSqlType.bool,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("prevent_repeat_carbs" IN (0, 1))',
-    ),
-    defaultValue: const Constant(true),
-  );
   static const VerificationMeta _notificationHourMeta = const VerificationMeta(
     'notificationHour',
   );
@@ -1625,8 +1597,6 @@ class $AppSettingsTable extends AppSettings
     beefCooldownDays,
     fishCooldownDays,
     meatlessCooldownDays,
-    preventRepeatProtein,
-    preventRepeatCarbs,
     notificationHour,
     notificationMinute,
     notificationsEnabled,
@@ -1695,24 +1665,6 @@ class $AppSettingsTable extends AppSettings
         meatlessCooldownDays.isAcceptableOrUnknown(
           data['meatless_cooldown_days']!,
           _meatlessCooldownDaysMeta,
-        ),
-      );
-    }
-    if (data.containsKey('prevent_repeat_protein')) {
-      context.handle(
-        _preventRepeatProteinMeta,
-        preventRepeatProtein.isAcceptableOrUnknown(
-          data['prevent_repeat_protein']!,
-          _preventRepeatProteinMeta,
-        ),
-      );
-    }
-    if (data.containsKey('prevent_repeat_carbs')) {
-      context.handle(
-        _preventRepeatCarbsMeta,
-        preventRepeatCarbs.isAcceptableOrUnknown(
-          data['prevent_repeat_carbs']!,
-          _preventRepeatCarbsMeta,
         ),
       );
     }
@@ -1809,14 +1761,6 @@ class $AppSettingsTable extends AppSettings
         DriftSqlType.int,
         data['${effectivePrefix}meatless_cooldown_days'],
       )!,
-      preventRepeatProtein: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}prevent_repeat_protein'],
-      )!,
-      preventRepeatCarbs: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}prevent_repeat_carbs'],
-      )!,
       notificationHour: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}notification_hour'],
@@ -1886,8 +1830,6 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
   final int beefCooldownDays;
   final int fishCooldownDays;
   final int meatlessCooldownDays;
-  final bool preventRepeatProtein;
-  final bool preventRepeatCarbs;
   final int notificationHour;
   final int notificationMinute;
   final bool notificationsEnabled;
@@ -1905,8 +1847,6 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
     required this.beefCooldownDays,
     required this.fishCooldownDays,
     required this.meatlessCooldownDays,
-    required this.preventRepeatProtein,
-    required this.preventRepeatCarbs,
     required this.notificationHour,
     required this.notificationMinute,
     required this.notificationsEnabled,
@@ -1927,8 +1867,6 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
     map['beef_cooldown_days'] = Variable<int>(beefCooldownDays);
     map['fish_cooldown_days'] = Variable<int>(fishCooldownDays);
     map['meatless_cooldown_days'] = Variable<int>(meatlessCooldownDays);
-    map['prevent_repeat_protein'] = Variable<bool>(preventRepeatProtein);
-    map['prevent_repeat_carbs'] = Variable<bool>(preventRepeatCarbs);
     map['notification_hour'] = Variable<int>(notificationHour);
     map['notification_minute'] = Variable<int>(notificationMinute);
     map['notifications_enabled'] = Variable<bool>(notificationsEnabled);
@@ -1966,8 +1904,6 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
       beefCooldownDays: Value(beefCooldownDays),
       fishCooldownDays: Value(fishCooldownDays),
       meatlessCooldownDays: Value(meatlessCooldownDays),
-      preventRepeatProtein: Value(preventRepeatProtein),
-      preventRepeatCarbs: Value(preventRepeatCarbs),
       notificationHour: Value(notificationHour),
       notificationMinute: Value(notificationMinute),
       notificationsEnabled: Value(notificationsEnabled),
@@ -2005,10 +1941,6 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
       meatlessCooldownDays: serializer.fromJson<int>(
         json['meatlessCooldownDays'],
       ),
-      preventRepeatProtein: serializer.fromJson<bool>(
-        json['preventRepeatProtein'],
-      ),
-      preventRepeatCarbs: serializer.fromJson<bool>(json['preventRepeatCarbs']),
       notificationHour: serializer.fromJson<int>(json['notificationHour']),
       notificationMinute: serializer.fromJson<int>(json['notificationMinute']),
       notificationsEnabled: serializer.fromJson<bool>(
@@ -2037,8 +1969,6 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
       'beefCooldownDays': serializer.toJson<int>(beefCooldownDays),
       'fishCooldownDays': serializer.toJson<int>(fishCooldownDays),
       'meatlessCooldownDays': serializer.toJson<int>(meatlessCooldownDays),
-      'preventRepeatProtein': serializer.toJson<bool>(preventRepeatProtein),
-      'preventRepeatCarbs': serializer.toJson<bool>(preventRepeatCarbs),
       'notificationHour': serializer.toJson<int>(notificationHour),
       'notificationMinute': serializer.toJson<int>(notificationMinute),
       'notificationsEnabled': serializer.toJson<bool>(notificationsEnabled),
@@ -2063,8 +1993,6 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
     int? beefCooldownDays,
     int? fishCooldownDays,
     int? meatlessCooldownDays,
-    bool? preventRepeatProtein,
-    bool? preventRepeatCarbs,
     int? notificationHour,
     int? notificationMinute,
     bool? notificationsEnabled,
@@ -2082,8 +2010,6 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
     beefCooldownDays: beefCooldownDays ?? this.beefCooldownDays,
     fishCooldownDays: fishCooldownDays ?? this.fishCooldownDays,
     meatlessCooldownDays: meatlessCooldownDays ?? this.meatlessCooldownDays,
-    preventRepeatProtein: preventRepeatProtein ?? this.preventRepeatProtein,
-    preventRepeatCarbs: preventRepeatCarbs ?? this.preventRepeatCarbs,
     notificationHour: notificationHour ?? this.notificationHour,
     notificationMinute: notificationMinute ?? this.notificationMinute,
     notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
@@ -2113,12 +2039,6 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
       meatlessCooldownDays: data.meatlessCooldownDays.present
           ? data.meatlessCooldownDays.value
           : this.meatlessCooldownDays,
-      preventRepeatProtein: data.preventRepeatProtein.present
-          ? data.preventRepeatProtein.value
-          : this.preventRepeatProtein,
-      preventRepeatCarbs: data.preventRepeatCarbs.present
-          ? data.preventRepeatCarbs.value
-          : this.preventRepeatCarbs,
       notificationHour: data.notificationHour.present
           ? data.notificationHour.value
           : this.notificationHour,
@@ -2153,8 +2073,6 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
           ..write('beefCooldownDays: $beefCooldownDays, ')
           ..write('fishCooldownDays: $fishCooldownDays, ')
           ..write('meatlessCooldownDays: $meatlessCooldownDays, ')
-          ..write('preventRepeatProtein: $preventRepeatProtein, ')
-          ..write('preventRepeatCarbs: $preventRepeatCarbs, ')
           ..write('notificationHour: $notificationHour, ')
           ..write('notificationMinute: $notificationMinute, ')
           ..write('notificationsEnabled: $notificationsEnabled, ')
@@ -2177,8 +2095,6 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
     beefCooldownDays,
     fishCooldownDays,
     meatlessCooldownDays,
-    preventRepeatProtein,
-    preventRepeatCarbs,
     notificationHour,
     notificationMinute,
     notificationsEnabled,
@@ -2200,8 +2116,6 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
           other.beefCooldownDays == this.beefCooldownDays &&
           other.fishCooldownDays == this.fishCooldownDays &&
           other.meatlessCooldownDays == this.meatlessCooldownDays &&
-          other.preventRepeatProtein == this.preventRepeatProtein &&
-          other.preventRepeatCarbs == this.preventRepeatCarbs &&
           other.notificationHour == this.notificationHour &&
           other.notificationMinute == this.notificationMinute &&
           other.notificationsEnabled == this.notificationsEnabled &&
@@ -2221,8 +2135,6 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsData> {
   final Value<int> beefCooldownDays;
   final Value<int> fishCooldownDays;
   final Value<int> meatlessCooldownDays;
-  final Value<bool> preventRepeatProtein;
-  final Value<bool> preventRepeatCarbs;
   final Value<int> notificationHour;
   final Value<int> notificationMinute;
   final Value<bool> notificationsEnabled;
@@ -2240,8 +2152,6 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsData> {
     this.beefCooldownDays = const Value.absent(),
     this.fishCooldownDays = const Value.absent(),
     this.meatlessCooldownDays = const Value.absent(),
-    this.preventRepeatProtein = const Value.absent(),
-    this.preventRepeatCarbs = const Value.absent(),
     this.notificationHour = const Value.absent(),
     this.notificationMinute = const Value.absent(),
     this.notificationsEnabled = const Value.absent(),
@@ -2260,8 +2170,6 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsData> {
     this.beefCooldownDays = const Value.absent(),
     this.fishCooldownDays = const Value.absent(),
     this.meatlessCooldownDays = const Value.absent(),
-    this.preventRepeatProtein = const Value.absent(),
-    this.preventRepeatCarbs = const Value.absent(),
     this.notificationHour = const Value.absent(),
     this.notificationMinute = const Value.absent(),
     this.notificationsEnabled = const Value.absent(),
@@ -2280,8 +2188,6 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsData> {
     Expression<int>? beefCooldownDays,
     Expression<int>? fishCooldownDays,
     Expression<int>? meatlessCooldownDays,
-    Expression<bool>? preventRepeatProtein,
-    Expression<bool>? preventRepeatCarbs,
     Expression<int>? notificationHour,
     Expression<int>? notificationMinute,
     Expression<bool>? notificationsEnabled,
@@ -2302,10 +2208,6 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsData> {
       if (fishCooldownDays != null) 'fish_cooldown_days': fishCooldownDays,
       if (meatlessCooldownDays != null)
         'meatless_cooldown_days': meatlessCooldownDays,
-      if (preventRepeatProtein != null)
-        'prevent_repeat_protein': preventRepeatProtein,
-      if (preventRepeatCarbs != null)
-        'prevent_repeat_carbs': preventRepeatCarbs,
       if (notificationHour != null) 'notification_hour': notificationHour,
       if (notificationMinute != null) 'notification_minute': notificationMinute,
       if (notificationsEnabled != null)
@@ -2327,8 +2229,6 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsData> {
     Value<int>? beefCooldownDays,
     Value<int>? fishCooldownDays,
     Value<int>? meatlessCooldownDays,
-    Value<bool>? preventRepeatProtein,
-    Value<bool>? preventRepeatCarbs,
     Value<int>? notificationHour,
     Value<int>? notificationMinute,
     Value<bool>? notificationsEnabled,
@@ -2347,8 +2247,6 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsData> {
       beefCooldownDays: beefCooldownDays ?? this.beefCooldownDays,
       fishCooldownDays: fishCooldownDays ?? this.fishCooldownDays,
       meatlessCooldownDays: meatlessCooldownDays ?? this.meatlessCooldownDays,
-      preventRepeatProtein: preventRepeatProtein ?? this.preventRepeatProtein,
-      preventRepeatCarbs: preventRepeatCarbs ?? this.preventRepeatCarbs,
       notificationHour: notificationHour ?? this.notificationHour,
       notificationMinute: notificationMinute ?? this.notificationMinute,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
@@ -2382,14 +2280,6 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsData> {
     }
     if (meatlessCooldownDays.present) {
       map['meatless_cooldown_days'] = Variable<int>(meatlessCooldownDays.value);
-    }
-    if (preventRepeatProtein.present) {
-      map['prevent_repeat_protein'] = Variable<bool>(
-        preventRepeatProtein.value,
-      );
-    }
-    if (preventRepeatCarbs.present) {
-      map['prevent_repeat_carbs'] = Variable<bool>(preventRepeatCarbs.value);
     }
     if (notificationHour.present) {
       map['notification_hour'] = Variable<int>(notificationHour.value);
@@ -2437,8 +2327,6 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsData> {
           ..write('beefCooldownDays: $beefCooldownDays, ')
           ..write('fishCooldownDays: $fishCooldownDays, ')
           ..write('meatlessCooldownDays: $meatlessCooldownDays, ')
-          ..write('preventRepeatProtein: $preventRepeatProtein, ')
-          ..write('preventRepeatCarbs: $preventRepeatCarbs, ')
           ..write('notificationHour: $notificationHour, ')
           ..write('notificationMinute: $notificationMinute, ')
           ..write('notificationsEnabled: $notificationsEnabled, ')
@@ -3366,8 +3254,6 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<int> beefCooldownDays,
       Value<int> fishCooldownDays,
       Value<int> meatlessCooldownDays,
-      Value<bool> preventRepeatProtein,
-      Value<bool> preventRepeatCarbs,
       Value<int> notificationHour,
       Value<int> notificationMinute,
       Value<bool> notificationsEnabled,
@@ -3387,8 +3273,6 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<int> beefCooldownDays,
       Value<int> fishCooldownDays,
       Value<int> meatlessCooldownDays,
-      Value<bool> preventRepeatProtein,
-      Value<bool> preventRepeatCarbs,
       Value<int> notificationHour,
       Value<int> notificationMinute,
       Value<bool> notificationsEnabled,
@@ -3437,16 +3321,6 @@ class $$AppSettingsTableFilterComposer
 
   ColumnFilters<int> get meatlessCooldownDays => $composableBuilder(
     column: $table.meatlessCooldownDays,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<bool> get preventRepeatProtein => $composableBuilder(
-    column: $table.preventRepeatProtein,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<bool> get preventRepeatCarbs => $composableBuilder(
-    column: $table.preventRepeatCarbs,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3550,16 +3424,6 @@ class $$AppSettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<bool> get preventRepeatProtein => $composableBuilder(
-    column: $table.preventRepeatProtein,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<bool> get preventRepeatCarbs => $composableBuilder(
-    column: $table.preventRepeatCarbs,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<int> get notificationHour => $composableBuilder(
     column: $table.notificationHour,
     builder: (column) => ColumnOrderings(column),
@@ -3648,16 +3512,6 @@ class $$AppSettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<bool> get preventRepeatProtein => $composableBuilder(
-    column: $table.preventRepeatProtein,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<bool> get preventRepeatCarbs => $composableBuilder(
-    column: $table.preventRepeatCarbs,
-    builder: (column) => column,
-  );
-
   GeneratedColumn<int> get notificationHour => $composableBuilder(
     column: $table.notificationHour,
     builder: (column) => column,
@@ -3740,8 +3594,6 @@ class $$AppSettingsTableTableManager
                 Value<int> beefCooldownDays = const Value.absent(),
                 Value<int> fishCooldownDays = const Value.absent(),
                 Value<int> meatlessCooldownDays = const Value.absent(),
-                Value<bool> preventRepeatProtein = const Value.absent(),
-                Value<bool> preventRepeatCarbs = const Value.absent(),
                 Value<int> notificationHour = const Value.absent(),
                 Value<int> notificationMinute = const Value.absent(),
                 Value<bool> notificationsEnabled = const Value.absent(),
@@ -3759,8 +3611,6 @@ class $$AppSettingsTableTableManager
                 beefCooldownDays: beefCooldownDays,
                 fishCooldownDays: fishCooldownDays,
                 meatlessCooldownDays: meatlessCooldownDays,
-                preventRepeatProtein: preventRepeatProtein,
-                preventRepeatCarbs: preventRepeatCarbs,
                 notificationHour: notificationHour,
                 notificationMinute: notificationMinute,
                 notificationsEnabled: notificationsEnabled,
@@ -3780,8 +3630,6 @@ class $$AppSettingsTableTableManager
                 Value<int> beefCooldownDays = const Value.absent(),
                 Value<int> fishCooldownDays = const Value.absent(),
                 Value<int> meatlessCooldownDays = const Value.absent(),
-                Value<bool> preventRepeatProtein = const Value.absent(),
-                Value<bool> preventRepeatCarbs = const Value.absent(),
                 Value<int> notificationHour = const Value.absent(),
                 Value<int> notificationMinute = const Value.absent(),
                 Value<bool> notificationsEnabled = const Value.absent(),
@@ -3799,8 +3647,6 @@ class $$AppSettingsTableTableManager
                 beefCooldownDays: beefCooldownDays,
                 fishCooldownDays: fishCooldownDays,
                 meatlessCooldownDays: meatlessCooldownDays,
-                preventRepeatProtein: preventRepeatProtein,
-                preventRepeatCarbs: preventRepeatCarbs,
                 notificationHour: notificationHour,
                 notificationMinute: notificationMinute,
                 notificationsEnabled: notificationsEnabled,

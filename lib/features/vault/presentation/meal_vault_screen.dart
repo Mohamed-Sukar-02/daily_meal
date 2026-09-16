@@ -289,8 +289,7 @@ class _VaultTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 48,
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: AppPalette.card(brightness),
         borderRadius: BorderRadius.circular(24),
@@ -329,6 +328,8 @@ class _VaultTabs extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: selected ? AppPalette.brandGreen : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
@@ -342,9 +343,9 @@ class _VaultTabs extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              AppIcon(glyph, size: 18, color: selected ? Colors.white : AppPalette.textSecondary(brightness)),
+              AppIcon(glyph, size: 20, color: selected ? Colors.white : AppPalette.textSecondary(brightness)),
               const SizedBox(width: 8),
-              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: selected ? Colors.white : AppPalette.textSecondary(brightness))),
+              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: selected ? Colors.white : AppPalette.textSecondary(brightness))),
             ],
           ),
         ),

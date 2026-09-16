@@ -16,8 +16,6 @@ class AppSettingsDao extends DatabaseAccessor<AppDatabase> with _$AppSettingsDao
     beefCooldownDays: Value(10),
     fishCooldownDays: Value(5),
     meatlessCooldownDays: Value(0),
-    preventRepeatProtein: Value(true),
-    preventRepeatCarbs: Value(true),
     notificationHour: Value(12),
     notificationMinute: Value(0),
     notificationsEnabled: Value(false),
@@ -120,26 +118,6 @@ class AppSettingsDao extends DatabaseAccessor<AppDatabase> with _$AppSettingsDao
   /// Alias for toggleNotifications
   Future<void> updateNotificationsEnabled(bool enabled) async {
     await toggleNotifications(enabled);
-  }
-
-  /// Toggle protein repetition prevention
-  Future<void> togglePreventRepeatProtein(bool value) async {
-    await updateSettings(AppSettingsCompanion(preventRepeatProtein: Value(value)));
-  }
-
-  /// Toggle carbs repetition prevention
-  Future<void> togglePreventRepeatCarbs(bool value) async {
-    await updateSettings(AppSettingsCompanion(preventRepeatCarbs: Value(value)));
-  }
-
-  /// Update both dietary rules together
-  Future<void> updateDietaryRules({bool? preventProtein, bool? preventCarbs}) async {
-    await updateSettings(
-      AppSettingsCompanion(
-        preventRepeatProtein: preventProtein != null ? Value(preventProtein) : const Value.absent(),
-        preventRepeatCarbs: preventCarbs != null ? Value(preventCarbs) : const Value.absent(),
-      ),
-    );
   }
 
   /// Update first run flag

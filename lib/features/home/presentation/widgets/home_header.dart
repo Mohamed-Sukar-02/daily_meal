@@ -24,6 +24,8 @@ class HomeHeader extends ConsumerWidget {
     final settingsAsync = ref.watch(appSettingsProvider);
     final avatarPath = settingsAsync.valueOrNull?.userAvatar;
     final bool isUnread = (hasUnreadNotifications ?? ref.watch(unreadNotificationsProvider)) == true;
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
+    final tiltAngle = isRtl ? 0.15 : -0.15;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -36,47 +38,39 @@ class HomeHeader extends ConsumerWidget {
               ref.read(unreadNotificationsProvider.notifier).state = false;
               context.push('/notifications');
             },
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppPalette.tabContainer(brightness),
-                shape: BoxShape.circle,
-                border: Border.all(color: AppPalette.hairline(brightness)),
-                boxShadow: [
-                  BoxShadow(
-                    color: brightness == Brightness.dark
-                        ? Colors.black.withValues(alpha: 0.2)
-                        : AppPalette.lightTextPrimary.withValues(alpha: 0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+            child: Padding(
+              padding: const EdgeInsets.only(left: 4.0),
+              child: Transform.rotate(
+                angle: tiltAngle, // Adaptive tilt depending on layout direction
+                child: SizedBox(
+                  width: 52,
+                  height: 52,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    clipBehavior: Clip.none,
+                    children: [
+                      Image.asset(
+                        'assets/icons/notification_bell.png',
+                        width: 52,
+                        height: 52,
+                        fit: BoxFit.contain,
+                        color: AppPalette.textPrimary(brightness),
+                        errorBuilder: (context, error, stackTrace) => AppIcon(
+                          AppGlyph.bell,
+                          color: AppPalette.textPrimary(brightness),
+                          size: 40,
+                        ),
+                      ),
+                      if (isUnread)
+                        Image.asset(
+                          'assets/icons/notification_around.png',
+                          width: 52,
+                          height: 52,
+                          fit: BoxFit.contain,
+                        ),
+                    ],
                   ),
-                ],
-              ),
-              child: Stack(
-                alignment: Alignment.center,
-                clipBehavior: Clip.none,
-                children: [
-                  Image.asset(
-                    'assets/icons/notification_bell.png',
-                    width: 24,
-                    height: 24,
-                    fit: BoxFit.contain,
-                    color: AppPalette.textPrimary(brightness),
-                    errorBuilder: (context, error, stackTrace) => AppIcon(
-                      AppGlyph.bell,
-                      color: AppPalette.textPrimary(brightness),
-                      size: 22,
-                    ),
-                  ),
-                  if (isUnread)
-                    Image.asset(
-                      'assets/icons/notification_around.png',
-                      width: 24,
-                      height: 24,
-                      fit: BoxFit.contain,
-                    ),
-                ],
+                ),
               ),
             ),
           ),

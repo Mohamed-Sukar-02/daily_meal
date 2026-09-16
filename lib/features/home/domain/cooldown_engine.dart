@@ -64,9 +64,6 @@ class CooldownEngine {
       }
     }
 
-    final lastProtein = lastCooked?.proteinName;
-    final lastCarbs = lastCooked?.carbsName;
-
     final adaptedMeals = meals.map((m) => _MealCandidate.from(m)).toList();
 
     final int configCooldown;
@@ -74,8 +71,6 @@ class CooldownEngine {
     final int beefCooldown;
     final int fishCooldown;
     final int meatlessCooldown;
-    final bool preventProtein;
-    final bool preventCarbs;
 
     if (settings is AppSettingsData) {
       configCooldown = settings.cooldownDays;
@@ -83,16 +78,12 @@ class CooldownEngine {
       beefCooldown = settings.beefCooldownDays;
       fishCooldown = settings.fishCooldownDays;
       meatlessCooldown = settings.meatlessCooldownDays;
-      preventProtein = settings.preventRepeatProtein;
-      preventCarbs = settings.preventRepeatCarbs;
     } else {
       configCooldown = (settings as dynamic)?.cooldownDays as int? ?? 14;
       chickenCooldown = (settings as dynamic)?.chickenCooldownDays as int? ?? 7;
       beefCooldown = (settings as dynamic)?.beefCooldownDays as int? ?? 10;
       fishCooldown = (settings as dynamic)?.fishCooldownDays as int? ?? 5;
       meatlessCooldown = (settings as dynamic)?.meatlessCooldownDays as int? ?? 0;
-      preventProtein = (settings as dynamic)?.preventRepeatProtein as bool? ?? true;
-      preventCarbs = (settings as dynamic)?.preventRepeatCarbs as bool? ?? true;
     }
 
     final targetCount = min(3, meals.length);
@@ -107,10 +98,6 @@ class CooldownEngine {
         beefCooldownDays: beefCooldown,
         fishCooldownDays: fishCooldown,
         meatlessCooldownDays: meatlessCooldown,
-        preventProtein: preventProtein,
-        preventCarbs: preventCarbs,
-        lastProtein: lastProtein,
-        lastCarbs: lastCarbs,
         level: level,
       );
 
@@ -154,10 +141,6 @@ class CooldownEngine {
     required int beefCooldownDays,
     required int fishCooldownDays,
     required int meatlessCooldownDays,
-    required bool preventProtein,
-    required bool preventCarbs,
-    required String? lastProtein,
-    required String? lastCarbs,
     required int level,
   }) {
     return meals.where((meal) {
@@ -181,14 +164,6 @@ class CooldownEngine {
           final effectiveCooldown = _calculateEffectiveCooldown(specificCooldown, level);
           if (deltaDays <= effectiveCooldown) return false;
         }
-      }
-
-      if (level == 0 && preventCarbs && lastCarbs != null && lastCarbs != 'none') {
-        if (meal.carbsName == lastCarbs) return false;
-      }
-
-      if (level <= 2 && preventProtein && lastProtein != null && lastProtein != 'none') {
-        if (meal.proteinName == lastProtein) return false;
       }
 
       return true;
