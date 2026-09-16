@@ -129,6 +129,12 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                   decoration: BoxDecoration(
                     color: AppPalette.tabContainer(brightness),
                     borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: brightness == Brightness.dark
+                          ? Colors.white.withValues(alpha: 0.06)
+                          : AppPalette.hairline(brightness),
+                      width: 1,
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -288,22 +294,22 @@ class _VaultTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // خلفية موحدة بدون لون أزرق/رمادي غريب - تستخدم tabContainer المحايد
+    // بعد إصلاح darkTabContainer من #1A212B الأزرق إلى #1E1E20 المحايد
+    // لتتماشى مع تصميم الكروت الداكنة المدمجة بشكل ناعم
+    final containerColor = AppPalette.tabContainer(brightness);
     return Container(
-      height: 48,
+      height: 52,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppPalette.card(brightness),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppPalette.hairline(brightness), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: brightness == Brightness.dark
-                ? Colors.black.withValues(alpha: 0.2)
-                : AppPalette.lightTextPrimary.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: containerColor,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(
+          color: brightness == Brightness.dark
+              ? Colors.white.withValues(alpha: 0.06)
+              : AppPalette.hairline(brightness),
+          width: 1,
+        ),
       ),
       child: Directionality(
         textDirection: TextDirection.ltr,
