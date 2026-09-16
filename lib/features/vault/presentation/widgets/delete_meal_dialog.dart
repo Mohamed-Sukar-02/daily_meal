@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/widgets/app_toast.dart';
 import '../../../../core/database/app_database.dart';
 import '../../providers/vault_providers.dart';
 
@@ -80,12 +81,7 @@ class DeleteMealDialog extends ConsumerWidget {
               await ref.read(vaultControllerProvider.notifier).deleteMeal(meal.id);
               if (context.mounted) {
                 Navigator.of(context).pop(true);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('تم حذف "${meal.name}" مع الاحتفاظ بسجل طبخها السابق'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
+                AppToast.show(context, message: 'تم حذف "${meal.name}" مع الاحتفاظ بسجل طبخها السابق', type: AppToastType.info);
               }
             },
             child: const Text('حذف الأكلة'),

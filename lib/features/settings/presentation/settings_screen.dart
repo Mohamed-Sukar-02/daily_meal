@@ -9,6 +9,7 @@ import '../../../core/database/app_database.dart';
 import '../../../core/database/database_providers.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/app_icons.dart';
+import '../../../core/widgets/app_toast.dart';
 import '../../home/presentation/widgets/emphasis_marks.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/services/avatar_service.dart';
@@ -1160,15 +1161,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     try {
       final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!launched && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تعذر فتح صفحة الإدارة')),
-        );
+        AppToast.showError(context, 'تعذر فتح صفحة الإدارة');
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e')),
-        );
+        AppToast.showError(context, 'خطأ: $e');
       }
     }
   }
@@ -1326,7 +1323,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 );
                 if (ctx.mounted) Navigator.pop(ctx);
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(strings.profileSaved)));
+                  AppToast.showSuccess(context, strings.profileSaved);
                 }
               },
               child: Text(strings.save),

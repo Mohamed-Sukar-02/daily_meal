@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/app_icons.dart';
+import '../../../core/widgets/app_toast.dart';
 import '../../../core/widgets/meal_image.dart';
 import '../data/models/cloud_meal.dart';
 import '../providers/discovery_providers.dart';
@@ -353,7 +354,7 @@ class _CloudMealCard extends ConsumerWidget {
                             _showUpdateOptions(context, ref);
                           } else {
                             ref.read(discoveryControllerProvider.notifier).downloadMeal(cloudMeal);
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم تنزيل: ${cloudMeal.name}')));
+                            AppToast.showSuccess(context, 'تم تنزيل: ${cloudMeal.name}');
                           }
                         },
                         icon: AppIcon(isLinked ? AppGlyph.swap : AppGlyph.cloudDown, color: isLinked ? AppPalette.textSecondary(brightness) : Colors.white, size: 14),
@@ -450,7 +451,7 @@ class _CloudMealCard extends ConsumerWidget {
                   onTap: () {
                     Navigator.pop(ctx);
                     ref.read(discoveryControllerProvider.notifier).updateMeal(linkedMeal!.id, cloudMeal);
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم التحديث: ${cloudMeal.name}')));
+                    AppToast.showSuccess(context, 'تم التحديث: ${cloudMeal.name}');
                   },
                   child: Container(
                     padding: const EdgeInsets.all(14),
@@ -470,7 +471,7 @@ class _CloudMealCard extends ConsumerWidget {
                   onTap: () {
                     Navigator.pop(ctx);
                     ref.read(discoveryControllerProvider.notifier).downloadAsNew(linkedMeal!.id, cloudMeal);
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم تنزيل نسخة جديدة: ${cloudMeal.name}')));
+                    AppToast.showSuccess(context, 'تم تنزيل نسخة جديدة: ${cloudMeal.name}');
                   },
                   child: Container(
                     padding: const EdgeInsets.all(14),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/tables/meals_table.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/app_icons.dart';
+import '../../../core/widgets/app_toast.dart';
 import '../../../core/widgets/meal_image.dart';
 import '../providers/history_providers.dart';
 
@@ -109,9 +110,7 @@ class HistoryScreen extends ConsumerWidget {
                       if (confirmed == true) {
                         await ref.read(historyControllerProvider.notifier).clearAllHistory();
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('تم مسح السجل بالكامل')),
-                          );
+                          AppToast.showSuccess(context, 'تم مسح السجل بالكامل');
                         }
                       }
                     },

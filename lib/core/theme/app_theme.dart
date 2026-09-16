@@ -154,14 +154,17 @@ class AppTheme {
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: isDark
-            ? colorScheme.surfaceContainerHighest
-            : colorScheme.inverseSurface,
+            ? const Color(0xFFF2F2F7).withValues(alpha: 0.96)
+            : const Color(0xFF1C1C1E).withValues(alpha: 0.96),
         contentTextStyle: GoogleFonts.cairo(
-          color: isDark ? colorScheme.onSurface : colorScheme.onInverseSurface,
+          color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
         ),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(999),
         ),
+        elevation: 12,
       ),
       dividerTheme: DividerThemeData(
         color: AppPalette.hairline(colorScheme.brightness),

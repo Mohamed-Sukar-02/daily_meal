@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/app_icons.dart';
+import '../../../core/widgets/app_toast.dart';
 import '../domain/cooldown_engine.dart';
 import '../providers/recommendation_provider.dart';
 import 'widgets/home_header.dart';
@@ -249,18 +250,13 @@ class HomeScreen extends ConsumerWidget {
     final historyEntryId = await controller.markCookedToday(meal);
 
     if (context.mounted) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('بالهنا والشفا! تم تسجيل "${meal.name}" في السجل.'),
-          action: SnackBarAction(
-            label: 'تراجع',
-            onPressed: () {
-              controller.undoLastCookingLog(historyEntryId);
-            },
-          ),
-          behavior: SnackBarBehavior.floating,
-        ),
+      AppToast.showUndo(
+        context,
+        message: 'بالهنا والشفا! تم تسجيل "${meal.name}"',
+        actionLabel: 'تراجع',
+        onUndo: () {
+          controller.undoLastCookingLog(historyEntryId);
+        },
       );
     }
   }
@@ -270,18 +266,13 @@ class HomeScreen extends ConsumerWidget {
     final historyEntryId = await controller.markLeftover(meal);
 
     if (context.mounted) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('تم تسجيل بواقي أكل "${meal.name}".'),
-          action: SnackBarAction(
-            label: 'تراجع',
-            onPressed: () {
-              controller.undoLastCookingLog(historyEntryId);
-            },
-          ),
-          behavior: SnackBarBehavior.floating,
-        ),
+      AppToast.showUndo(
+        context,
+        message: 'تم تسجيل بواقي أكل "${meal.name}"',
+        actionLabel: 'تراجع',
+        onUndo: () {
+          controller.undoLastCookingLog(historyEntryId);
+        },
       );
     }
   }

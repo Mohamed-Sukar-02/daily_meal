@@ -10,6 +10,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/widgets/app_icons.dart';
+import '../../../../core/widgets/app_toast.dart';
 import '../../../../core/widgets/meal_image.dart';
 import '../../providers/vault_providers.dart';
 
@@ -183,9 +184,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
           final result = await Permission.camera.request();
           if (!result.isGranted) {
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('تم رفض إذن الكاميرا')),
-              );
+              AppToast.showError(context, 'تم رفض إذن الكاميرا');
             }
             return;
           }
@@ -227,26 +226,17 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
           _pickedImageFile = File(savedPath);
           _photoPath = savedPath;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(source == ImageSource.camera ? 'تم التقاط الصورة بنجاح' : 'تم اختيار الصورة بنجاح'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        AppToast.showSuccess(context, source == ImageSource.camera ? 'تم التقاط الصورة بنجاح' : 'تم اختيار الصورة بنجاح');
       }
     } on PlatformException catch (e) {
       debugPrint('PlatformException picking image: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ في اختيار الصورة: ${e.message}')),
-        );
+        AppToast.showError(context, 'خطأ في اختيار الصورة: ${e.message}');
       }
     } catch (e) {
       debugPrint('Error picking image: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('حدث خطأ: $e')),
-        );
+        AppToast.showError(context, 'حدث خطأ: $e');
       }
     } finally {
       if (mounted) setState(() => _isPicking = false);
@@ -412,7 +402,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
             ));
         if (mounted) {
           Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم تعديل أكلة "$name" بنجاح'), behavior: SnackBarBehavior.floating));
+          AppToast.showSuccess(context, 'تم تعديل أكلة "$name" بنجاح');
         }
       } else {
         await ref.read(vaultControllerProvider.notifier).addMeal(
@@ -421,11 +411,11 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
               isBudgetFriendly: _isBudgetFriendly, isFavorite: _isFavorite);
         if (mounted) {
           Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تمت إضافة "$name" إلى خزانة الأكلات'), behavior: SnackBarBehavior.floating));
+          AppToast.showSuccess(context, 'تمت إضافة "$name" إلى خزانة الأكلات');
         }
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('حدث خطأ أثناء الحفظ: $e'), backgroundColor: Theme.of(context).colorScheme.error));
+      if (mounted) AppToast.showError(context, 'حدث خطأ أثناء الحفظ: $e');
     }
   }
 
