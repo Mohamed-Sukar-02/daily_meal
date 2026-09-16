@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/widgets/app_icons.dart';
-import '../../settings/providers/settings_providers.dart';
+import '../../../settings/providers/settings_providers.dart';
 import 'dart:io';
 
 class HomeHeader extends ConsumerWidget {
