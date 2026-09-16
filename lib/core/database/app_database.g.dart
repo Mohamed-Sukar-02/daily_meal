@@ -34,6 +34,17 @@ class $MealsTable extends Meals with TableInfo<$MealsTable, Meal> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _nameNormalizedMeta = const VerificationMeta(
+    'nameNormalized',
+  );
+  @override
+  late final GeneratedColumn<String> nameNormalized = GeneratedColumn<String>(
+    'name_normalized',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _photoPathMeta = const VerificationMeta(
     'photoPath',
   );
@@ -167,6 +178,7 @@ class $MealsTable extends Meals with TableInfo<$MealsTable, Meal> {
   List<GeneratedColumn> get $columns => [
     id,
     name,
+    nameNormalized,
     photoPath,
     proteinType,
     carbsType,
@@ -201,6 +213,15 @@ class $MealsTable extends Meals with TableInfo<$MealsTable, Meal> {
       );
     } else if (isInserting) {
       context.missing(_nameMeta);
+    }
+    if (data.containsKey('name_normalized')) {
+      context.handle(
+        _nameNormalizedMeta,
+        nameNormalized.isAcceptableOrUnknown(
+          data['name_normalized']!,
+          _nameNormalizedMeta,
+        ),
+      );
     }
     if (data.containsKey('photo_path')) {
       context.handle(
@@ -275,6 +296,10 @@ class $MealsTable extends Meals with TableInfo<$MealsTable, Meal> {
         DriftSqlType.string,
         data['${effectivePrefix}name'],
       )!,
+      nameNormalized: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name_normalized'],
+      ),
       photoPath: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}photo_path'],
@@ -344,6 +369,7 @@ class $MealsTable extends Meals with TableInfo<$MealsTable, Meal> {
 class Meal extends DataClass implements Insertable<Meal> {
   final int id;
   final String name;
+  final String? nameNormalized;
   final String? photoPath;
   final ProteinType proteinType;
   final CarbsType carbsType;
@@ -358,6 +384,7 @@ class Meal extends DataClass implements Insertable<Meal> {
   const Meal({
     required this.id,
     required this.name,
+    this.nameNormalized,
     this.photoPath,
     required this.proteinType,
     required this.carbsType,
@@ -375,6 +402,9 @@ class Meal extends DataClass implements Insertable<Meal> {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['name'] = Variable<String>(name);
+    if (!nullToAbsent || nameNormalized != null) {
+      map['name_normalized'] = Variable<String>(nameNormalized);
+    }
     if (!nullToAbsent || photoPath != null) {
       map['photo_path'] = Variable<String>(photoPath);
     }
@@ -409,6 +439,9 @@ class Meal extends DataClass implements Insertable<Meal> {
     return MealsCompanion(
       id: Value(id),
       name: Value(name),
+      nameNormalized: nameNormalized == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nameNormalized),
       photoPath: photoPath == null && nullToAbsent
           ? const Value.absent()
           : Value(photoPath),
@@ -435,6 +468,7 @@ class Meal extends DataClass implements Insertable<Meal> {
     return Meal(
       id: serializer.fromJson<int>(json['id']),
       name: serializer.fromJson<String>(json['name']),
+      nameNormalized: serializer.fromJson<String?>(json['nameNormalized']),
       photoPath: serializer.fromJson<String?>(json['photoPath']),
       proteinType: $MealsTable.$converterproteinType.fromJson(
         serializer.fromJson<String>(json['proteinType']),
@@ -460,6 +494,7 @@ class Meal extends DataClass implements Insertable<Meal> {
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'name': serializer.toJson<String>(name),
+      'nameNormalized': serializer.toJson<String?>(nameNormalized),
       'photoPath': serializer.toJson<String?>(photoPath),
       'proteinType': serializer.toJson<String>(
         $MealsTable.$converterproteinType.toJson(proteinType),
@@ -483,6 +518,7 @@ class Meal extends DataClass implements Insertable<Meal> {
   Meal copyWith({
     int? id,
     String? name,
+    Value<String?> nameNormalized = const Value.absent(),
     Value<String?> photoPath = const Value.absent(),
     ProteinType? proteinType,
     CarbsType? carbsType,
@@ -497,6 +533,9 @@ class Meal extends DataClass implements Insertable<Meal> {
   }) => Meal(
     id: id ?? this.id,
     name: name ?? this.name,
+    nameNormalized: nameNormalized.present
+        ? nameNormalized.value
+        : this.nameNormalized,
     photoPath: photoPath.present ? photoPath.value : this.photoPath,
     proteinType: proteinType ?? this.proteinType,
     carbsType: carbsType ?? this.carbsType,
@@ -513,6 +552,9 @@ class Meal extends DataClass implements Insertable<Meal> {
     return Meal(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
+      nameNormalized: data.nameNormalized.present
+          ? data.nameNormalized.value
+          : this.nameNormalized,
       photoPath: data.photoPath.present ? data.photoPath.value : this.photoPath,
       proteinType: data.proteinType.present
           ? data.proteinType.value
@@ -540,6 +582,7 @@ class Meal extends DataClass implements Insertable<Meal> {
     return (StringBuffer('Meal(')
           ..write('id: $id, ')
           ..write('name: $name, ')
+          ..write('nameNormalized: $nameNormalized, ')
           ..write('photoPath: $photoPath, ')
           ..write('proteinType: $proteinType, ')
           ..write('carbsType: $carbsType, ')
@@ -559,6 +602,7 @@ class Meal extends DataClass implements Insertable<Meal> {
   int get hashCode => Object.hash(
     id,
     name,
+    nameNormalized,
     photoPath,
     proteinType,
     carbsType,
@@ -577,6 +621,7 @@ class Meal extends DataClass implements Insertable<Meal> {
       (other is Meal &&
           other.id == this.id &&
           other.name == this.name &&
+          other.nameNormalized == this.nameNormalized &&
           other.photoPath == this.photoPath &&
           other.proteinType == this.proteinType &&
           other.carbsType == this.carbsType &&
@@ -593,6 +638,7 @@ class Meal extends DataClass implements Insertable<Meal> {
 class MealsCompanion extends UpdateCompanion<Meal> {
   final Value<int> id;
   final Value<String> name;
+  final Value<String?> nameNormalized;
   final Value<String?> photoPath;
   final Value<ProteinType> proteinType;
   final Value<CarbsType> carbsType;
@@ -607,6 +653,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
   const MealsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
+    this.nameNormalized = const Value.absent(),
     this.photoPath = const Value.absent(),
     this.proteinType = const Value.absent(),
     this.carbsType = const Value.absent(),
@@ -622,6 +669,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
   MealsCompanion.insert({
     this.id = const Value.absent(),
     required String name,
+    this.nameNormalized = const Value.absent(),
     this.photoPath = const Value.absent(),
     required ProteinType proteinType,
     required CarbsType carbsType,
@@ -641,6 +689,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
   static Insertable<Meal> custom({
     Expression<int>? id,
     Expression<String>? name,
+    Expression<String>? nameNormalized,
     Expression<String>? photoPath,
     Expression<String>? proteinType,
     Expression<String>? carbsType,
@@ -656,6 +705,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
+      if (nameNormalized != null) 'name_normalized': nameNormalized,
       if (photoPath != null) 'photo_path': photoPath,
       if (proteinType != null) 'protein_type': proteinType,
       if (carbsType != null) 'carbs_type': carbsType,
@@ -673,6 +723,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
   MealsCompanion copyWith({
     Value<int>? id,
     Value<String>? name,
+    Value<String?>? nameNormalized,
     Value<String?>? photoPath,
     Value<ProteinType>? proteinType,
     Value<CarbsType>? carbsType,
@@ -688,6 +739,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     return MealsCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
+      nameNormalized: nameNormalized ?? this.nameNormalized,
       photoPath: photoPath ?? this.photoPath,
       proteinType: proteinType ?? this.proteinType,
       carbsType: carbsType ?? this.carbsType,
@@ -710,6 +762,9 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
+    }
+    if (nameNormalized.present) {
+      map['name_normalized'] = Variable<String>(nameNormalized.value);
     }
     if (photoPath.present) {
       map['photo_path'] = Variable<String>(photoPath.value);
@@ -758,6 +813,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     return (StringBuffer('MealsCompanion(')
           ..write('id: $id, ')
           ..write('name: $name, ')
+          ..write('nameNormalized: $nameNormalized, ')
           ..write('photoPath: $photoPath, ')
           ..write('proteinType: $proteinType, ')
           ..write('carbsType: $carbsType, ')
@@ -1412,7 +1468,7 @@ class $AppSettingsTable extends AppSettings
     false,
     type: DriftSqlType.int,
     requiredDuringInsert: false,
-    defaultValue: const Constant(3),
+    defaultValue: const Constant(0),
   );
   static const VerificationMeta _preventRepeatProteinMeta =
       const VerificationMeta('preventRepeatProtein');
@@ -1477,7 +1533,7 @@ class $AppSettingsTable extends AppSettings
     defaultConstraints: GeneratedColumn.constraintIsAlways(
       'CHECK ("notifications_enabled" IN (0, 1))',
     ),
-    defaultValue: const Constant(true),
+    defaultValue: const Constant(false),
   );
   @override
   late final GeneratedColumnWithTypeConverter<AppThemeModePreference, String>
@@ -2439,6 +2495,7 @@ typedef $$MealsTableCreateCompanionBuilder =
     MealsCompanion Function({
       Value<int> id,
       required String name,
+      Value<String?> nameNormalized,
       Value<String?> photoPath,
       required ProteinType proteinType,
       required CarbsType carbsType,
@@ -2455,6 +2512,7 @@ typedef $$MealsTableUpdateCompanionBuilder =
     MealsCompanion Function({
       Value<int> id,
       Value<String> name,
+      Value<String?> nameNormalized,
       Value<String?> photoPath,
       Value<ProteinType> proteinType,
       Value<CarbsType> carbsType,
@@ -2506,6 +2564,11 @@ class $$MealsTableFilterComposer extends Composer<_$AppDatabase, $MealsTable> {
 
   ColumnFilters<String> get name => $composableBuilder(
     column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get nameNormalized => $composableBuilder(
+    column: $table.nameNormalized,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2612,6 +2675,11 @@ class $$MealsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get nameNormalized => $composableBuilder(
+    column: $table.nameNormalized,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get photoPath => $composableBuilder(
     column: $table.photoPath,
     builder: (column) => ColumnOrderings(column),
@@ -2682,6 +2750,11 @@ class $$MealsTableAnnotationComposer
 
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get nameNormalized => $composableBuilder(
+    column: $table.nameNormalized,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get photoPath =>
       $composableBuilder(column: $table.photoPath, builder: (column) => column);
@@ -2781,6 +2854,7 @@ class $$MealsTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
+                Value<String?> nameNormalized = const Value.absent(),
                 Value<String?> photoPath = const Value.absent(),
                 Value<ProteinType> proteinType = const Value.absent(),
                 Value<CarbsType> carbsType = const Value.absent(),
@@ -2795,6 +2869,7 @@ class $$MealsTableTableManager
               }) => MealsCompanion(
                 id: id,
                 name: name,
+                nameNormalized: nameNormalized,
                 photoPath: photoPath,
                 proteinType: proteinType,
                 carbsType: carbsType,
@@ -2811,6 +2886,7 @@ class $$MealsTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 required String name,
+                Value<String?> nameNormalized = const Value.absent(),
                 Value<String?> photoPath = const Value.absent(),
                 required ProteinType proteinType,
                 required CarbsType carbsType,
@@ -2825,6 +2901,7 @@ class $$MealsTableTableManager
               }) => MealsCompanion.insert(
                 id: id,
                 name: name,
+                nameNormalized: nameNormalized,
                 photoPath: photoPath,
                 proteinType: proteinType,
                 carbsType: carbsType,

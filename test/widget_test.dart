@@ -17,7 +17,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          databaseProvider.overrideWithValue(inMemoryDb),
+          appDatabaseProvider.overrideWithValue(inMemoryDb),
         ],
         child: const DailyMealApp(),
       ),

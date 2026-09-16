@@ -41,8 +41,7 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
 
     return (select(meals)
           ..where((t) => CustomExpression<bool>(
-                "COALESCE(name_normalized, name) LIKE ? ESCAPE '\\'",
-                [Variable<String>(pattern)],
+                "COALESCE(name_normalized, name) LIKE '$pattern' ESCAPE '\\'"
               ))
           ..orderBy([
             (t) => OrderingTerm.asc(t.name),
@@ -94,8 +93,7 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
 
     return (select(meals)
           ..where((t) => CustomExpression<bool>(
-                "COALESCE(name_normalized, name) LIKE ? ESCAPE '\\'",
-                [Variable<String>(pattern)],
+                "COALESCE(name_normalized, name) LIKE '$pattern' ESCAPE '\\'"
               ))
           ..orderBy([
             (t) => OrderingTerm.asc(t.name),
@@ -212,8 +210,7 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
         final escaped = escapeLikePattern(normalized);
         final pattern = '%$escaped%';
         predicates.add(CustomExpression<bool>(
-          "COALESCE(name_normalized, name) LIKE ? ESCAPE '\\'",
-          [Variable<String>(pattern)],
+          "COALESCE(name_normalized, name) LIKE '$pattern' ESCAPE '\\'"
         ));
       }
       if (proteinType != null) {
