@@ -64,6 +64,8 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
   @override
   void initState() {
     super.initState();
+    // كل متغيرات late دي بتتعبى أول حاجة في initState من widget.mealToEdit أو بقيم افتراضية
+    // عشان نتجنب LateInitializationError قبل أي استخدام في build
     final m = widget.mealToEdit;
     _nameController = TextEditingController(text: m?.name ?? '');
     _prepTimeController = TextEditingController(text: m?.prepTime.toString() ?? '30');

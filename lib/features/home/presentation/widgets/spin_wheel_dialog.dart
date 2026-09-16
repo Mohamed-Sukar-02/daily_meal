@@ -43,6 +43,9 @@ class _SpinWheelDialogState extends State<SpinWheelDialog>
       vsync: this,
       duration: const Duration(milliseconds: 3800),
     );
+    // _animation يتعبى بقيمة جاية من _spin() (حساب زاوية الفائز)،
+    // بنحط قيمة ابتدائية هنا عشان نتجنب LateInitializationError لو build اتنادى قبل أول spin
+    _animation = Tween<double>(begin: 0, end: 0).animate(_controller);
   }
 
   @override
