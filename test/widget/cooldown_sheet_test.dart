@@ -17,7 +17,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // A real modal route — not an in-page expansion.
-    expect(find.byType(ModalBottomSheet), findsOneWidget);
+    expect(find.byType(BottomSheet), findsOneWidget);
     expect(find.byKey(const Key('cooldown_details_sheet_scroll')), findsOneWidget);
 
     // All four protein rules are exposed.
@@ -36,13 +36,13 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('settings_cooldown_more')));
     await tester.pumpAndSettle();
-    expect(find.byType(ModalBottomSheet), findsOneWidget);
+    expect(find.byType(BottomSheet), findsOneWidget);
 
     // Tap the dimmed barrier, well above the sheet.
     await tester.tapAt(const Offset(5, 5));
     await tester.pumpAndSettle();
 
-    expect(find.byType(ModalBottomSheet), findsNothing,
+    expect(find.byType(BottomSheet), findsNothing,
         reason: 'an outside tap must cancel the sheet');
     // The settings page behind it is still there and untouched.
     expect(find.byKey(const Key('settings_scroll_view')), findsOneWidget);
@@ -74,7 +74,7 @@ void main() {
     expect(chickenSwitchValue(), isFalse);
     await tester.tapAt(const Offset(5, 5));
     await tester.pumpAndSettle();
-    expect(find.byType(ModalBottomSheet), findsNothing);
+    expect(find.byType(BottomSheet), findsNothing);
 
     // Reopening must show the persisted value, not the default.
     await openSheet();

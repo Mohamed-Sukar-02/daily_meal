@@ -1,3 +1,4 @@
+import 'package:daily_meal/core/database/app_database.dart';
 import 'package:daily_meal/core/services/avatar_service.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
