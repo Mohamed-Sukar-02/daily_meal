@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../../../core/database/app_database.dart';
+import '../../../../core/localization/app_strings.dart';
 
 class SpinWheelDialog extends StatefulWidget {
   final List<Meal> candidates;
@@ -92,16 +93,17 @@ class _SpinWheelDialogState extends State<SpinWheelDialog>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final strings = AppStrings.of(context);
     final candidates = widget.candidates;
 
     if (candidates.length < 2) {
       return AlertDialog(
-        title: const Text('عجلة الحظ'),
-        content: const Text('عجلة الحظ تحتاج إلى وجبتين على الأقل في الاقتراحات للتدوير!'),
+        title: Text(strings.spinWheelTitle),
+        content: Text(strings.spinWheelNeedsTwo),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('حسناً'),
+            child: Text(strings.ok),
           ),
         ],
       );
@@ -122,14 +124,14 @@ class _SpinWheelDialogState extends State<SpinWheelDialog>
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'عجلة الحظ 🎡',
+                      strings.spinWheelTitleEmoji,
                       style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
-                    tooltip: 'إغلاق',
+                    tooltip: strings.close,
                     onPressed: _isSpinning ? null : () => Navigator.of(context).pop(),
                   ),
                 ],
@@ -206,7 +208,7 @@ class _SpinWheelDialogState extends State<SpinWheelDialog>
                 child: Column(
                   children: [
                     Text(
-                      '🎉 أكلة النهاردة وقعت على:',
+                      strings.spinWheelLandedOn,
                       style: theme.textTheme.labelMedium?.copyWith(
                         color: theme.colorScheme.onPrimaryContainer,
                       ),
@@ -232,7 +234,7 @@ class _SpinWheelDialogState extends State<SpinWheelDialog>
                 Expanded(
                   child: FilledButton(
                     onPressed: _isSpinning ? null : _spin,
-                    child: Text(_winnerMeal == null ? 'ابدأ التدوير' : 'لف تاني'),
+                    child: Text(_winnerMeal == null ? strings.spinWheelStart : strings.spinWheelAgain),
                   ),
                 ),
                 if (_winnerMeal != null) ...[
@@ -242,7 +244,7 @@ class _SpinWheelDialogState extends State<SpinWheelDialog>
                       Navigator.of(context).pop();
                       widget.onWinnerCooked?.call(_winnerMeal!);
                     },
-                    child: const Text('طبخت دي'),
+                    child: Text(strings.cookedThisOne),
                   ),
                 ],
               ],

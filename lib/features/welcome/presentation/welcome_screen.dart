@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../core/localization/app_strings.dart';
+import '../../../core/services/avatar_service.dart';
 import '../../../core/widgets/app_toast.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -27,7 +29,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
   void _submit() async {
     if (_formKey.currentState!.validate()) {
       if (_selectedGender == null) {
-        AppToast.showError(context, 'من فضلك اختر النوع (ذكر/أنثى)');
+        AppToast.showError(context, AppStrings.of(context).genderRequired);
         return;
       }
       
@@ -49,6 +51,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final strings = AppStrings.of(context);
     final isSaving = ref.watch(settingsControllerProvider).isLoading;
     
     return Scaffold(
@@ -69,7 +72,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    'مرحباً بك في أكلة النهاردة!',
+                    strings.welcomeTitle,
                     style: theme.textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: theme.colorScheme.primary,
@@ -78,21 +81,21 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'علشان نقدر نخصص لك التجربة بشكل أفضل، محتاجين نتعرف عليك.',
+                    strings.welcomeSubtitle,
                     style: theme.textTheme.bodyLarge,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 48),
                   TextFormField(
                     controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'اسمك (إجباري)',
+                    decoration: InputDecoration(
+                      labelText: strings.welcomeNameLabel,
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.person_outline),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'من فضلك أدخل اسمك';
+                        return strings.welcomeNameRequired;
                       }
                       return null;
                     },
@@ -101,11 +104,11 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _emailController,
-                    decoration: const InputDecoration(
-                      labelText: 'بريدك الإلكتروني (اختياري)',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.email_outlined),
-                      hintText: 'يساعدنا في حفظ بياناتك مستقبلاً',
+                    decoration: InputDecoration(
+                      labelText: strings.welcomeEmailLabel,
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.email_outlined),
+                      hintText: strings.welcomeEmailHint,
                     ),
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.done,
@@ -113,7 +116,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    'النوع (إجباري):',
+                    strings.welcomeGenderLabel,
                     style: theme.textTheme.titleMedium,
                   ),
                   const SizedBox(height: 8),
@@ -121,8 +124,8 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                     children: [
                       Expanded(
                         child: RadioListTile<String>(
-                          title: const Text('ذكر'),
-                          value: 'male',
+                          title: Text(strings.genderMale),
+                          value: UserGender.male,
                           groupValue: _selectedGender,
                           onChanged: (value) {
                             setState(() {
@@ -134,8 +137,8 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                       ),
                       Expanded(
                         child: RadioListTile<String>(
-                          title: const Text('أنثى'),
-                          value: 'female',
+                          title: Text(strings.genderFemale),
+                          value: UserGender.female,
                           groupValue: _selectedGender,
                           onChanged: (value) {
                             setState(() {
@@ -159,9 +162,9 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                             width: 24,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Text(
-                            'ابدأ الاستخدام',
-                            style: TextStyle(fontSize: 18),
+                        : Text(
+                            strings.welcomeStart,
+                            style: const TextStyle(fontSize: 18),
                           ),
                   ),
                 ],

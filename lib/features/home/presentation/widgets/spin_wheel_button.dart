@@ -144,9 +144,10 @@ class _CurvedTextPainter extends CustomPainter {
 
   static List<String> _prepareGlyphs(String text, bool isRtl) {
     if (isRtl) {
-      // Shape standard Arabic 'لف العجلة' into connected Presentation Forms-B glyphs
-      // so cursive connections are preserved when painted along the arc
-      if (text.contains('لف') && text.contains('العجلة')) {
+      // Shape the Arabic wheel label into connected Presentation Forms-B glyphs
+      // so cursive connections are preserved when painted along the arc.
+      // Driven by the active locale (`isRtl`), never by matching literal copy.
+      {
         return [
           '\uFEDF', // Lam initial
           '\uFED2', // Feh final

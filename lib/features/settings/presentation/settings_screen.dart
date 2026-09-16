@@ -4,22 +4,29 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/database/app_database.dart';
-import '../../../core/database/database_providers.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/app_icons.dart';
 import '../../../core/widgets/app_toast.dart';
 import '../../home/presentation/widgets/emphasis_marks.dart';
 import '../../../core/localization/app_strings.dart';
-import '../../../core/services/avatar_service.dart';
 import '../../../core/services/admin_auth_service.dart';
+import '../../../core/navigation/nav_lifecycle.dart';
 import '../providers/settings_providers.dart';
+import 'widgets/cooldown_details_sheet.dart';
 import 'widgets/legal_policies_dialog.dart' as widgets;
+import 'widgets/profile_edit_dialog.dart';
 import 'widgets/time_wheel_picker.dart';
 
 /// Settings screen rebuilt from the approved mockups (light + dark):
 /// header with shine marks, profile card, then titled sections whose cards
-/// float on the page background. "more" expands the per-protein cooldown
-/// enable/disable switches (a protein at 0 days = cooldown off).
+/// float on the page background. "More" opens the per-protein cooldown
+/// enable/disable switches in a modal bottom sheet (a protein at 0 days =
+/// cooldown off).
+///
+/// Lifecycle: leaving this tab and coming back resets UI-only state (the page
+/// scroll offset). The cooldown details are a modal route, so there is no
+/// long-lived "expanded" flag left to reset. Settings data itself is never
+/// invalidated here.
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
@@ -27,13 +34,25 @@ class SettingsScreen extends ConsumerStatefulWidget {
   ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  bool _expanded = false;
-  // حفظ القيم السابقة للمستخدم عند إيقاف السويتش حتى لا تضيع
-  final Map<String, int> _previousDays = {};
+class _SettingsScreenState extends ConsumerState<SettingsScreen>
+    with NavBranchReentry {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  int get navBranchIndex => NavBranch.settings;
+
+  @override
+  void resetTransientUi() => resetScroll(_scrollController);
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    watchNavReentry();
     final settingsAsync = ref.watch(appSettingsProvider);
     final brightness = Theme.of(context).brightness;
 
@@ -45,46 +64,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           data: (settings) {
             final strings = AppStrings(settings.language == AppLanguagePreference.ar ? const Locale('ar') : const Locale('en'));
             return ListView(
+              key: const Key('settings_scroll_view'),
+              controller: _scrollController,
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
               children: [
                 _buildHeader(brightness, strings),
                 const SizedBox(height: 20),
-                IgnorePointer(
-                  ignoring: _expanded,
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 220),
-                    opacity: _expanded ? 0.38 : 1.0,
-                    child: _buildProfileCard(context, ref, settings, brightness, strings),
-                  ),
-                ),
+                _buildProfileCard(context, ref, settings, brightness, strings),
                 const SizedBox(height: 24),
                 _buildCooldownSection(context, ref, settings, brightness, strings),
-                IgnorePointer(
-                  ignoring: _expanded,
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 220),
-                    opacity: _expanded ? 0.38 : 1.0,
-                    child: _buildNotificationsSection(context, ref, settings, brightness, strings),
-                  ),
-                ),
                 const SizedBox(height: 24),
-                IgnorePointer(
-                  ignoring: _expanded,
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 220),
-                    opacity: _expanded ? 0.38 : 1.0,
-                    child: _buildAppearanceSection(context, ref, settings, brightness, strings),
-                  ),
-                ),
+                _buildNotificationsSection(context, ref, settings, brightness, strings),
                 const SizedBox(height: 24),
-                IgnorePointer(
-                  ignoring: _expanded,
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 220),
-                    opacity: _expanded ? 0.38 : 1.0,
-                    child: _buildAdminSection(context, brightness, strings),
-                  ),
-                ),
+                _buildAppearanceSection(context, ref, settings, brightness, strings),
+                const SizedBox(height: 24),
+                _buildAdminSection(context, brightness, strings),
               ],
             );
           },
@@ -159,8 +153,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return _Card(
       brightness: brightness,
       child: InkWell(
+        key: const Key('settings_profile_card'),
         borderRadius: BorderRadius.circular(20),
-        onTap: () => _showProfileEditDialog(context, ref, settings, strings),
+        onTap: () => ProfileEditDialog.show(context, settings),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -201,7 +196,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      settings.userName ?? 'Mohamed Sukar',
+                      settings.userName?.trim().isNotEmpty == true
+                          ? settings.userName!
+                          : strings.defaultUserName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -212,7 +209,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      settings.userEmail ?? 'mohamed@example.com',
+                      settings.userEmail?.trim().isNotEmpty == true
+                          ? settings.userEmail!
+                          : strings.defaultUserEmail,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -253,144 +252,119 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _SectionHeader(
+          key: const Key('settings_cooldown_header'),
           brightness: brightness,
           title: strings.smartCooldownEngine,
-          link: _expanded ? strings.cancel : strings.more,
-          linkColor: _expanded ? AppPalette.heartCoral : const Color(0xFF3E63DD),
-          onLink: () => setState(() => _expanded = !_expanded),
+          link: strings.more,
+          linkKey: const Key('settings_cooldown_more'),
+          linkColor: const Color(0xFF3E63DD),
+          // A real modal bottom sheet: dims the page, blocks background
+          // scrolling and closes on an outside tap or a downward drag.
+          onLink: () => CooldownDetailsSheet.show(context),
         ),
         const SizedBox(height: 12),
-        if (!_expanded)
-          _Card(
-            brightness: brightness,
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _iconCircle(brightness, AppGlyph.clock, AppPalette.chipGreen(brightness)),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: AlignmentDirectional.centerStart,
-                              child: Text(
-                                strings.delayMealRepeat,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppPalette.textPrimary(brightness),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: AppPalette.chipGreen(brightness).background,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
+        _Card(
+          brightness: brightness,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _iconCircle(brightness, AppGlyph.clock, AppPalette.chipGreen(brightness)),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
                             child: Text(
-                              strings.daysText(settings.cooldownDays),
+                              strings.delayMealRepeat,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 16,
                                 fontWeight: FontWeight.w800,
-                                color: AppPalette.chipGreen(brightness).foreground,
+                                color: AppPalette.textPrimary(brightness),
                               ),
                             ),
                           ),
-                        ],
-                      ),
-                      Slider(
-                        value: settings.cooldownDays.toDouble().clamp(1, 30),
-                        min: 1,
-                        max: 30,
-                        divisions: 29,
-                        onChanged: (v) => controller.updateCooldownDays(v.round()),
-                      ),
-                    ],
-                  ),
+                        ),
+                        const SizedBox(width: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppPalette.chipGreen(brightness).background,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            strings.daysText(settings.cooldownDays),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: AppPalette.chipGreen(brightness).foreground,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Slider(
+                      value: settings.cooldownDays.toDouble().clamp(1, 30),
+                      min: 1,
+                      max: 30,
+                      divisions: 29,
+                      onChanged: (v) => controller.updateCooldownDays(v.round()),
+                    ),
+                  ],
                 ),
-                if (settings.chickenCooldownDays > 0) ...[
-                  _divider(brightness),
-                  _stepperRow(
-                    context,
-                    ref,
-                    brightness,
-                    strings,
-                    emoji: '🐔',
-                    style: AppPalette.chipGold(brightness),
-                    name: strings.chicken,
-                    days: settings.chickenCooldownDays,
-                    onChanged: (d) => controller.updateChickenCooldownDays(d),
-                  ),
-                ],
-                if (settings.beefCooldownDays > 0) ...[
-                  _divider(brightness),
-                  _stepperRow(
-                    context,
-                    ref,
-                    brightness,
-                    strings,
-                    emoji: '🥩',
-                    style: AppPalette.chipRose(brightness),
-                    name: strings.beef,
-                    days: settings.beefCooldownDays,
-                    onChanged: (d) => controller.updateBeefCooldownDays(d),
-                  ),
-                ],
-                if (settings.fishCooldownDays > 0) ...[
-                  _divider(brightness),
-                  _stepperRow(
-                    context,
-                    ref,
-                    brightness,
-                    strings,
-                    emoji: '🐟',
-                    style: AppPalette.chipBlue(brightness),
-                    name: strings.fish,
-                    days: settings.fishCooldownDays,
-                    onChanged: (d) => controller.updateFishCooldownDays(d),
-                  ),
-                ],
-              ],
-            ),
-          )
-        else
-          _Card(
-            brightness: brightness,
-            child: Column(
-              children: [
-                _proteinSwitch(
-                  ref, brightness, strings, '🐔', AppPalette.chipGold(brightness), strings.chicken,
-                  settings.chickenCooldownDays, 7, controller.updateChickenCooldownDays,
-                ),
+              ),
+              if (settings.chickenCooldownDays > 0) ...[
                 _divider(brightness),
-                _proteinSwitch(
-                  ref, brightness, strings, '🥩', AppPalette.chipRose(brightness), strings.beef,
-                  settings.beefCooldownDays, 10, controller.updateBeefCooldownDays,
-                ),
-                _divider(brightness),
-                _proteinSwitch(
-                  ref, brightness, strings, '🐟', AppPalette.chipBlue(brightness), strings.fish,
-                  settings.fishCooldownDays, 5, controller.updateFishCooldownDays,
-                ),
-                _divider(brightness),
-                _proteinSwitch(
-                  ref, brightness, strings, '🌿', AppPalette.chipGreen(brightness), strings.veggies,
-                  settings.meatlessCooldownDays, 3,
-                  (d) => ref.read(appSettingsDaoProvider).updateMeatlessCooldownDays(d),
+                _stepperRow(
+                  context,
+                  ref,
+                  brightness,
+                  strings,
+                  emoji: '🐔',
+                  style: AppPalette.chipGold(brightness),
+                  name: strings.chicken,
+                  days: settings.chickenCooldownDays,
+                  onChanged: (d) => controller.updateChickenCooldownDays(d),
                 ),
               ],
-            ),
+              if (settings.beefCooldownDays > 0) ...[
+                _divider(brightness),
+                _stepperRow(
+                  context,
+                  ref,
+                  brightness,
+                  strings,
+                  emoji: '🥩',
+                  style: AppPalette.chipRose(brightness),
+                  name: strings.beef,
+                  days: settings.beefCooldownDays,
+                  onChanged: (d) => controller.updateBeefCooldownDays(d),
+                ),
+              ],
+              if (settings.fishCooldownDays > 0) ...[
+                _divider(brightness),
+                _stepperRow(
+                  context,
+                  ref,
+                  brightness,
+                  strings,
+                  emoji: '🐟',
+                  style: AppPalette.chipBlue(brightness),
+                  name: strings.fish,
+                  days: settings.fishCooldownDays,
+                  onChanged: (d) => controller.updateFishCooldownDays(d),
+                ),
+              ],
+            ],
           ),
+        )
       ],
     );
   }
@@ -471,62 +445,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               _stepButton(brightness, AppGlyph.plus, () => onChanged((days + 1).clamp(0, 30))),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _proteinSwitch(
-    WidgetRef ref,
-    Brightness brightness,
-    AppStrings strings,
-    String emoji,
-    ChipStyle style,
-    String name,
-    int days,
-    int defaultDays,
-    ValueChanged<int> onChanged,
-  ) {
-    final key = name; // استخدام الاسم كمفتاح مؤقت للحفظ
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      child: Row(
-        children: [
-          _emojiCircle(brightness, emoji, style),
-          const SizedBox(width: 14),
-          Expanded(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: AlignmentDirectional.centerStart,
-              child: Text(
-                name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: AppPalette.textPrimary(brightness),
-                ),
-              ),
-            ),
-          ),
-          const Spacer(),
-          Switch(
-            value: days > 0,
-            onChanged: (on) {
-              if (on) {
-                // استرجاع القيمة المحفوظة للمستخدم أو الافتراضي
-                final restored = _previousDays[key] ?? defaultDays;
-                onChanged(restored);
-              } else {
-                // حفظ القيمة الحالية قبل الإيقاف
-                if (days > 0) {
-                  _previousDays[key] = days;
-                }
-                onChanged(0);
-              }
-            },
           ),
         ],
       ),
@@ -961,7 +879,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Admin Access',
+                  strings.adminAccessTitle,
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
@@ -976,7 +894,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'أدخل كلمة مرور المسؤول للوصول إلى لوحة التحكم',
+                strings.adminAccessDesc,
                 style: TextStyle(
                   fontSize: 13,
                   height: 1.4,
@@ -990,7 +908,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 keyboardType: TextInputType.number,
                 style: TextStyle(color: AppPalette.textPrimary(brightness)),
                 decoration: InputDecoration(
-                  hintText: 'كلمة المرور',
+                  hintText: strings.adminPasswordHint,
                   hintStyle: TextStyle(color: AppPalette.textSecondary(brightness)),
                   prefixIcon: Icon(Icons.lock_rounded, color: AppPalette.textSecondary(brightness)),
                   suffixIcon: IconButton(
@@ -1059,7 +977,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     // Use secure AdminAuthService with rate limiting and env hash
     final result = await AdminAuthService.instance.verifyPassword(input.trim());
     if (!result.isSuccess) {
-      onError(result.errorMessage ?? 'كلمة المرور غير صحيحة');
+      onError(_adminFailureMessage(result, strings));
       return;
     }
     if (dialogCtx.mounted) Navigator.pop(dialogCtx);
@@ -1067,12 +985,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     try {
       final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!launched && context.mounted) {
-        AppToast.showError(context, 'تعذر فتح صفحة الإدارة');
+        AppToast.showError(context, strings.adminOpenFailed);
       }
     } catch (e) {
       if (context.mounted) {
-        AppToast.showError(context, 'خطأ: $e');
+        AppToast.showError(context, strings.errorGeneric(e));
       }
+    }
+  }
+
+  /// Maps the locale-free failure code from [AdminAuthService] onto user copy.
+  String _adminFailureMessage(AdminAuthResult result, AppStrings strings) {
+    switch (result.failure) {
+      case AdminAuthFailure.emptyPassword:
+        return strings.adminPasswordEmpty;
+      case AdminAuthFailure.lockedOut:
+        return strings.adminLockedOut(result.lockoutMinutes);
+      case AdminAuthFailure.notConfigured:
+        return strings.adminNotConfigured;
+      case AdminAuthFailure.wrongPassword:
+        return strings.adminAttemptsLeft(result.remainingAttempts);
+      case null:
+        return strings.adminPasswordWrong;
     }
   }
 
@@ -1095,8 +1029,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 brightness,
                 AppGlyph.shield,
                 AppPalette.chipViolet(brightness),
-                'Admin database',
-                'لوحة تحكم المسؤول - محمية بكلمة مرور',
+                strings.adminDashboardTitle,
+                strings.adminDashboardSubtitle,
                 () => _showAdminPasswordDialog(context, brightness, strings),
               ),
               _divider(brightness),
@@ -1116,127 +1050,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  void _showProfileEditDialog(BuildContext context, WidgetRef ref, AppSettingsData settings, AppStrings strings) {
-    final nameController = TextEditingController(text: settings.userName ?? '');
-    final emailController = TextEditingController(text: settings.userEmail ?? '');
-    String? selectedAvatar = settings.userAvatar;
-    final avatars = [
-      'assets/avatars/MO1.png', 'assets/avatars/MO2.png', 'assets/avatars/MO3.png', 'assets/avatars/MO4.png', 'assets/avatars/MO5.png',
-      'assets/avatars/MY1.png', 'assets/avatars/MY2.png', 'assets/avatars/MY3.png', 'assets/avatars/MY4.png', 'assets/avatars/MY5.png',
-      'assets/avatars/F01.png', 'assets/avatars/F02.png', 'assets/avatars/F03.png', 'assets/avatars/F04.png', 'assets/avatars/F05.png',
-      'assets/avatars/FY1.png', 'assets/avatars/FY2.png', 'assets/avatars/FY3.png', 'assets/avatars/FY4.png', 'assets/avatars/FY5.png',
-    ];
-    // Trigger avatar download when internet available - small size, improves performance
-    // This ensures avatars are in file system for faster loading and future remote updates
-    Future.microtask(() async {
-      try {
-        await AvatarService.instance.downloadAvatarsIfNeeded();
-      } catch (e) {
-        debugPrint('Avatar download on dialog open failed: $e');
-      }
-    });
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setState) => AlertDialog(
-          title: Text(strings.editProfile),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: InputDecoration(labelText: strings.nameField, prefixIcon: const Icon(Icons.person)),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: emailController,
-                  decoration: InputDecoration(labelText: strings.emailField, prefixIcon: const Icon(Icons.email)),
-                  keyboardType: TextInputType.emailAddress,
-                ),
-                const SizedBox(height: 20),
-                Text(strings.chooseAvatar, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: List.generate(avatars.length, (i) {
-                    final isSelected = selectedAvatar == avatars[i];
-                    return GestureDetector(
-                      onTap: () => setState(() => selectedAvatar = avatars[i]),
-                      child: Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: AppPalette.tabContainer(Theme.of(context).brightness),
-                          border: Border.all(
-                            color: isSelected ? AppPalette.brandGreen : Colors.transparent,
-                            width: 3,
-                          ),
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: isSelected
-                              ? [
-                                  BoxShadow(
-                                    color: AppPalette.brandGreen.withValues(alpha: 0.3),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(11),
-                          child: Image.asset(
-                            avatars[i],
-                            fit: BoxFit.cover,
-                            width: 56,
-                            height: 56,
-                            cacheWidth: 112,
-                            errorBuilder: (ctx, err, st) {
-                              debugPrint('Avatar grid load error ${avatars[i]}: $err');
-                              return Container(
-                                color: const Color(0xFFF3C64F),
-                                child: Center(
-                                  child: AppIcon(AppGlyph.person, color: Colors.white, size: 24),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                ),
-              ],
-            ),
-          ),
-          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(strings.cancel)),
-            FilledButton(
-              onPressed: () async {
-                final dao = ref.read(appSettingsDaoProvider);
-                await dao.updateWelcomeData(
-                  userName: nameController.text.trim().isEmpty ? 'Mohamed Sukar' : nameController.text.trim(),
-                  userEmail: emailController.text.trim().isEmpty ? null : emailController.text.trim(),
-                  userGender: settings.userGender,
-                  userAvatar: selectedAvatar,
-                );
-                if (ctx.mounted) Navigator.pop(ctx);
-                if (context.mounted) {
-                  AppToast.showSuccess(context, strings.profileSaved);
-                }
-              },
-              child: Text(strings.save),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -1460,13 +1273,16 @@ class _SectionHeader extends StatelessWidget {
   final String? link;
   final Color? linkColor;
   final VoidCallback? onLink;
+  final Key? linkKey;
 
   const _SectionHeader({
+    super.key,
     required this.brightness,
     required this.title,
     this.link,
     this.linkColor,
     this.onLink,
+    this.linkKey,
   });
 
   @override
@@ -1496,6 +1312,7 @@ class _SectionHeader extends StatelessWidget {
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: GestureDetector(
+                key: linkKey,
                 onTap: onLink,
                 child: Text(
                   link!,

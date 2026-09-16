@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/localization/app_strings.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/widgets/app_icons.dart';
 
@@ -17,6 +18,7 @@ class VaultEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
+    final strings = AppStrings.of(context);
 
     return Center(
       child: SingleChildScrollView(
@@ -46,7 +48,7 @@ class VaultEmptyState extends StatelessWidget {
               ),
             const SizedBox(height: 16),
             Text(
-              isSearchResult ? 'لا توجد نتائج مطابقة' : 'خزنة الأكلات فارغة!',
+              isSearchResult ? strings.vaultNoResultsTitle : strings.vaultEmpty,
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
@@ -55,9 +57,7 @@ class VaultEmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              isSearchResult
-                  ? 'لم نجد أكلات تطابق كلمات البحث أو الفلاتر المحددة.'
-                  : 'ابدأ بإضافة أول أكلة أو حمّل الأكلات المقترحة.',
+              isSearchResult ? strings.vaultNoResultsDesc : strings.vaultEmptyDesc,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13,
@@ -70,14 +70,14 @@ class VaultEmptyState extends StatelessWidget {
                 key: const Key('vault_clear_filters_button'),
                 onPressed: onAction,
                 icon: const AppIcon(AppGlyph.close, size: 16, color: AppPalette.brandGreen),
-                label: const Text('إعادة ضبط الفلاتر والبحث'),
+                label: Text(strings.vaultResetFilters),
               )
             else
               FilledButton.icon(
                 key: const Key('vault_empty_add_button'),
                 onPressed: onAction,
                 icon: const AppIcon(AppGlyph.plus, color: Colors.white, size: 18),
-                label: const Text('أضف أكلتك الأولى'),
+                label: Text(strings.addFirstMeal),
               ),
           ],
         ),

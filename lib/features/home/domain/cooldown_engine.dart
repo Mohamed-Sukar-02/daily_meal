@@ -5,15 +5,22 @@ import '../../../core/utils/app_date_utils.dart' as app_date_utils;
 
 class RecommendationResult<T> {
   final List<T> recommendations;
+
+  /// 0 = perfect match … 5 = every rule relaxed. The UI turns this into
+  /// localised copy via `AppStrings.relaxationReason`; the domain layer stays
+  /// free of display text so it can be unit-tested without a locale.
   final int relaxationLevel;
-  final String relaxationReason;
+
+  /// True when the vault itself was empty (a distinct message from "relaxed").
+  final bool isEmptyVault;
+
   final DateTime computedDate;
 
   const RecommendationResult({
     required this.recommendations,
     required this.relaxationLevel,
-    required this.relaxationReason,
     required this.computedDate,
+    this.isEmptyVault = false,
   });
 }
 
@@ -33,7 +40,7 @@ class CooldownEngine {
       return RecommendationResult<T>(
         recommendations: const [],
         relaxationLevel: 5,
-        relaxationReason: _relaxationReason(5, isEmpty: true),
+        isEmptyVault: true,
         computedDate: normalizedToday,
       );
     }
@@ -117,7 +124,6 @@ class CooldownEngine {
         return RecommendationResult<T>(
           recommendations: selectedRaw,
           relaxationLevel: level,
-          relaxationReason: _relaxationReason(level, isEmpty: false),
           computedDate: normalizedToday,
         );
       }
@@ -127,7 +133,6 @@ class CooldownEngine {
     return RecommendationResult<T>(
       recommendations: fallbackRaw,
       relaxationLevel: 5,
-      relaxationReason: _relaxationReason(5, isEmpty: false),
       computedDate: normalizedToday,
     );
   }
@@ -355,27 +360,6 @@ class CooldownEngine {
     }
 
     return selected;
-  }
-
-  static String _relaxationReason(int level, {bool isEmpty = false}) {
-    if (isEmpty) {
-      return 'قاعدة بيانات الوجبات فارغة، يرجى إضافة وجبات.';
-    }
-    switch (level) {
-      case 0:
-        return 'اقتراحات مثالية مطابقة لجميع شروط التنوع الغذائي وفترة الاستبعاد.';
-      case 1:
-        return 'تم السماح بتكرار صنف النشويات لتوفير اقتراحات كافية.';
-      case 2:
-        return 'تم تقليص فترة الاستبعاد إلى النصف لتوفير اقتراحات كافية.';
-      case 3:
-        return 'تم تخفيف شرط البروتين وفترة الاستبعاد لتوفير اقتراحات متنوعة.';
-      case 4:
-        return 'وضع الطوارئ: استبعاد وجبات اليوم فقط لتوفير اقتراحات.';
-      case 5:
-      default:
-        return 'تم عرض جميع الوجبات المتاحة لعدم توفر خيارات أخرى.';
-    }
   }
 }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/database/app_database.dart';
+import '../../../../core/localization/app_strings.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/widgets/app_icons.dart';
 import '../../../../core/widgets/meal_image.dart';
@@ -99,7 +100,7 @@ class MealVaultCard extends ConsumerWidget {
                           child: FittedBox(
                             fit: BoxFit.scaleDown,
                             alignment: AlignmentDirectional.centerStart,
-                            child: _timePill(brightness),
+                            child: _timePill(context, brightness),
                           ),
                         ),
                         _bookmarkButton(context, ref, brightness),
@@ -143,7 +144,7 @@ class MealVaultCard extends ConsumerWidget {
     );
   }
 
-  Widget _timePill(Brightness brightness) {
+  Widget _timePill(BuildContext context, Brightness brightness) {
     final style = AppPalette.chipViolet(brightness);
     return Container(
       margin: const EdgeInsetsDirectional.only(end: 4),
@@ -159,7 +160,7 @@ class MealVaultCard extends ConsumerWidget {
           const SizedBox(width: 4),
           Flexible(
             child: Text(
-              formatPrepTime(meal.prepTime),
+              formatPrepTime(meal.prepTime, AppStrings.of(context)),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(

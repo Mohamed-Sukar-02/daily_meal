@@ -3,6 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'models/cloud_meal.dart';
 
+/// Raised when the public vault cannot be read.
+///
+/// Carries the original error but no display text — the UI localises the
+/// message (`AppStrings.discoveryFetchFailed`).
+class CloudMealsFetchException implements Exception {
+  final Object cause;
+
+  const CloudMealsFetchException(this.cause);
+
+  @override
+  String toString() => 'CloudMealsFetchException: $cause';
+}
+
 final discoveryRepositoryProvider = Provider<DiscoveryRepository>((ref) {
   return DiscoveryRepository(FirebaseFirestore.instance);
 });
@@ -22,7 +35,7 @@ class DiscoveryRepository {
 
       return snapshot.docs.map((doc) => CloudMeal.fromMap(doc.data(), doc.id)).toList();
     } catch (e) {
-      throw Exception('فشل جلب الأكلات السحابية: $e');
+      throw CloudMealsFetchException(e);
     }
   }
 }

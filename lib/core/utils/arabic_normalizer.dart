@@ -1,3 +1,11 @@
+// NOTE: the Arabic characters below are *data*, not UI copy. They are the
+// folding rules that make search work ("أكل" matches "اكل", "٣" matches "3"),
+// so they deliberately stay out of `AppStrings` — localising them would break
+// Arabic search. Every user-facing string in the app still lives there.
+
+/// Folds Arabic text to a canonical search form: strips diacritics/tatweel,
+/// unifies alef/teh-marbuta/alef-maksura/hamza variants and Eastern Arabic
+/// digits, collapses whitespace and lower-cases.
 String normalizeArabic(String input) {
   if (input.isEmpty) return '';
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/database/app_database.dart';
+import '../../../../core/localization/app_strings.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/widgets/app_icons.dart';
 import '../../providers/vault_providers.dart';
@@ -24,6 +25,7 @@ class VaultFilterBar extends ConsumerWidget {
     final filter = ref.watch(vaultFilterProvider);
     final notifier = ref.read(vaultFilterProvider.notifier);
     final brightness = Theme.of(context).brightness;
+    final strings = AppStrings.of(context);
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -36,7 +38,7 @@ class VaultFilterBar extends ConsumerWidget {
             style: AppPalette.chipGreen(brightness),
             emoji: null,
             glyph: AppGlyph.grid,
-            label: 'الكل',
+            label: strings.filterAll,
             onTap: () {
               notifier.resetFilters();
               onQuickChanged(false);
@@ -50,7 +52,7 @@ class VaultFilterBar extends ConsumerWidget {
               style: _proteinStyle(p, brightness),
               emoji: p.emoji,
               glyph: null,
-              label: p.labelArabic,
+              label: p.label(strings),
               onTap: () => notifier.toggleProtein(p),
             ),
           ],
@@ -61,7 +63,7 @@ class VaultFilterBar extends ConsumerWidget {
             style: AppPalette.chipViolet(brightness),
             emoji: null,
             glyph: AppGlyph.clock,
-            label: 'سريع 30م',
+            label: strings.filterQuick,
             onTap: () => onQuickChanged(!quickOnly),
           ),
           const SizedBox(width: 8),
@@ -71,7 +73,7 @@ class VaultFilterBar extends ConsumerWidget {
             style: AppPalette.chipRose(brightness),
             emoji: null,
             glyph: AppGlyph.heartFill,
-            label: 'المفضلة',
+            label: strings.filterFavorites,
             onTap: () => notifier.toggleFavoriteFilter(),
           ),
           const SizedBox(width: 8),
@@ -81,7 +83,7 @@ class VaultFilterBar extends ConsumerWidget {
             style: AppPalette.chipGold(brightness),
             emoji: null,
             glyph: AppGlyph.star,
-            label: 'أكلة جمعة',
+            label: strings.fridaySpecial,
             onTap: () => notifier.toggleFridayFilter(),
           ),
           const SizedBox(width: 8),
@@ -91,7 +93,7 @@ class VaultFilterBar extends ConsumerWidget {
             style: AppPalette.chipGreen(brightness),
             emoji: null,
             glyph: AppGlyph.wallet,
-            label: 'اقتصادي',
+            label: strings.budgetFriendly,
             onTap: () => notifier.toggleBudgetFilter(),
           ),
           for (final c in CarbsType.values) ...[
@@ -102,7 +104,7 @@ class VaultFilterBar extends ConsumerWidget {
               style: AppPalette.chipBlue(brightness),
               emoji: null,
               glyph: null,
-              label: c.labelArabic,
+              label: c.label(strings),
               onTap: () => notifier.toggleCarbs(c),
             ),
           ],

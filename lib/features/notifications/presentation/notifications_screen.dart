@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/app_icons.dart';
 
@@ -11,6 +12,7 @@ class NotificationsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final brightness = Theme.of(context).brightness;
+    final strings = AppStrings.of(context);
 
     return Scaffold(
       backgroundColor: AppPalette.background(brightness),
@@ -22,7 +24,7 @@ class NotificationsScreen extends ConsumerWidget {
           onPressed: () => context.pop(),
         ),
         title: Text(
-          'الإشعارات',
+          strings.notificationsTitle,
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w800,
@@ -45,7 +47,7 @@ class NotificationsScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'كل إشعاراتك في مكان واحد',
+                        strings.notificationsSubtitle,
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
@@ -54,7 +56,7 @@ class NotificationsScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'تابع تذكيراتك واقتراحات الأكلات الجديدة',
+                        strings.notificationsFollow,
                         style: TextStyle(
                           fontSize: 12,
                           color: AppPalette.textSecondary(brightness),
@@ -70,7 +72,7 @@ class NotificationsScreen extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
-                    '3 جديد',
+                    strings.newBadge(3),
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
@@ -84,7 +86,7 @@ class NotificationsScreen extends ConsumerWidget {
 
             // Today section
             Text(
-              'اليوم',
+              strings.today,
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
@@ -101,9 +103,9 @@ class NotificationsScreen extends ConsumerWidget {
                     brightness: brightness,
                     glyph: AppGlyph.clock,
                     style: AppPalette.chipGold(brightness),
-                    title: 'تذكير يومي',
-                    subtitle: 'متنساش تشوف اقتراح أكلة النهاردة - الساعة 12 ظهراً',
-                    time: 'منذ دقائق',
+                    title: strings.notifDailyReminder,
+                    subtitle: strings.notifDailyReminderBody('12'),
+                    time: strings.minutesAgo,
                     isUnread: true,
                     onTap: () => context.go('/'),
                   ),
@@ -112,9 +114,9 @@ class NotificationsScreen extends ConsumerWidget {
                     brightness: brightness,
                     glyph: AppGlyph.pot,
                     style: AppPalette.chipGreen(brightness),
-                    title: 'أكلة جديدة مقترحة',
-                    subtitle: 'جرب كشري مصري أصلي بالصلصة والدقة - اقتصادي ومفيد',
-                    time: 'منذ ساعة',
+                    title: strings.notifNewSuggestion,
+                    subtitle: strings.notifNewSuggestionBody,
+                    time: strings.hoursAgo(1),
                     isUnread: true,
                     onTap: () => context.go('/'),
                   ),
@@ -123,9 +125,9 @@ class NotificationsScreen extends ConsumerWidget {
                     brightness: brightness,
                     glyph: AppGlyph.heartFill,
                     style: AppPalette.chipRose(brightness),
-                    title: 'أكلة مفضلة في انتظارك',
-                    subtitle: 'ملوخية خضراء بالفراخ - من مفضلاتك',
-                    time: 'منذ 3 ساعات',
+                    title: strings.notifFavoriteWaiting,
+                    subtitle: strings.notifFavoriteWaitingBody,
+                    time: strings.hoursAgo(3),
                     isUnread: true,
                     onTap: () => context.go('/vault'),
                   ),
@@ -137,7 +139,7 @@ class NotificationsScreen extends ConsumerWidget {
 
             // Earlier section
             Text(
-              'سابقاً',
+              strings.earlier,
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
@@ -154,9 +156,9 @@ class NotificationsScreen extends ConsumerWidget {
                     brightness: brightness,
                     glyph: AppGlyph.history,
                     style: AppPalette.chipBlue(brightness),
-                    title: 'تم تسجيل وجبة',
-                    subtitle: 'بالهنا والشفا! تم تسجيل حواوشي بلدي في السجل',
-                    time: 'أمس',
+                    title: strings.notifMealLogged,
+                    subtitle: strings.notifMealLoggedBody,
+                    time: strings.yesterday,
                     isUnread: false,
                     onTap: () => context.go('/history'),
                   ),
@@ -165,9 +167,9 @@ class NotificationsScreen extends ConsumerWidget {
                     brightness: brightness,
                     glyph: AppGlyph.vault,
                     style: AppPalette.chipViolet(brightness),
-                    title: 'خزانة الأكلات',
-                    subtitle: 'أضفت 3 وجبات جديدة لخزانتك هذا الأسبوع',
-                    time: 'منذ يومين',
+                    title: strings.notifVaultUpdate,
+                    subtitle: strings.notifVaultUpdateBody(3),
+                    time: strings.twoDaysAgo,
                     isUnread: false,
                     onTap: () => context.go('/vault'),
                   ),
@@ -176,9 +178,9 @@ class NotificationsScreen extends ConsumerWidget {
                     brightness: brightness,
                     glyph: AppGlyph.settings,
                     style: AppPalette.chipGold(brightness),
-                    title: 'تحديث الإعدادات',
-                    subtitle: 'تم تفعيل التذكير اليومي بنجاح',
-                    time: 'منذ 3 أيام',
+                    title: strings.notifSettingsUpdate,
+                    subtitle: strings.notifSettingsUpdateBody,
+                    time: strings.daysAgo(3),
                     isUnread: false,
                     onTap: () => context.go('/settings'),
                   ),
@@ -205,7 +207,7 @@ class NotificationsScreen extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'إعدادات الإشعارات',
+                              strings.notificationSettings,
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w800,
@@ -213,7 +215,7 @@ class NotificationsScreen extends ConsumerWidget {
                               ),
                             ),
                             Text(
-                              'تخصيص مواعيد وتفعيل التذكيرات',
+                              strings.notificationSettingsDesc,
                               style: TextStyle(
                                 fontSize: 12,
                                 color: AppPalette.textSecondary(brightness),
