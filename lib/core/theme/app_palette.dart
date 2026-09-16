@@ -35,13 +35,13 @@ class AppPalette {
   static const Color lightAvatarFg = Color(0xFF5A6B81);
 
   // ---------------------------------------------------------------------------
-  // Dark mode - unified neutral dark (less blue tint for tabs)
+  // Dark mode
   // ---------------------------------------------------------------------------
   static const Color darkBg = Color(0xFF0B0E14);
   static const Color darkCard = Color(0xFF151B23);
   static const Color darkTextPrimary = Color(0xFFFFFFFF);
   static const Color darkTextSecondary = Color(0xFF8A93A6);
-  static const Color darkTabContainer = Color(0xFF1E1E20); // Neutral dark gray, was #1A212B blueish
+  static const Color darkTabContainer = Color(0xFF1A212B);
   static const Color darkHairline = Color(0xFF1E2530);
   static const Color darkOutline = Color(0xFF2A3140);
   static const Color darkNavBg = Color(0xFF10151C);
