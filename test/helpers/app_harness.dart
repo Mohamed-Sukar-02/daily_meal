@@ -41,3 +41,10 @@ Future<void> tapNav(WidgetTester tester, String destination) async {
   await tester.pump(const Duration(milliseconds: 60));
   await tester.pumpAndSettle();
 }
+
+Future<void> tearDownApp(WidgetTester tester, AppDatabase db) async {
+  await tester.pumpWidget(const SizedBox.shrink());
+  await tester.pumpAndSettle();
+  await db.close();
+}
+

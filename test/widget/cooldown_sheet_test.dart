@@ -7,7 +7,6 @@ void main() {
   testWidgets('"More" opens the cooldown details as a modal bottom sheet',
       (tester) async {
     final db = await pumpApp(tester);
-    addTearDown(db.close);
 
     await tapNav(tester, 'settings');
     await tester.ensureVisible(find.byKey(const Key('settings_cooldown_more')));
@@ -25,11 +24,12 @@ void main() {
       expect(find.byKey(Key('cooldown_switch_$protein')), findsOneWidget,
           reason: 'missing switch for $protein');
     }
+
+    await tearDownApp(tester, db);
   });
 
   testWidgets('tapping outside the sheet dismisses it', (tester) async {
     final db = await pumpApp(tester);
-    addTearDown(db.close);
 
     await tapNav(tester, 'settings');
     await tester.ensureVisible(find.byKey(const Key('settings_cooldown_more')));
@@ -46,11 +46,12 @@ void main() {
         reason: 'an outside tap must cancel the sheet');
     // The settings page behind it is still there and untouched.
     expect(find.byKey(const Key('settings_scroll_view')), findsOneWidget);
+
+    await tearDownApp(tester, db);
   });
 
   testWidgets('cooldown changes made in the sheet are persisted', (tester) async {
     final db = await pumpApp(tester);
-    addTearDown(db.close);
 
     bool chickenSwitchValue() => tester
         .widget<Switch>(find.byKey(const Key('cooldown_switch_chicken')))
@@ -85,5 +86,7 @@ void main() {
     await tester.tap(find.byKey(const Key('cooldown_switch_chicken')));
     await tester.pumpAndSettle();
     expect(chickenSwitchValue(), isTrue);
+
+    await tearDownApp(tester, db);
   });
 }

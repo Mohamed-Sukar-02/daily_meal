@@ -8,7 +8,6 @@ void main() {
   testWidgets('Home resets its scroll offset when the tab is re-entered',
       (tester) async {
     final db = await pumpApp(tester);
-    addTearDown(db.close);
 
     const listKey = Key('home_recommendations_list');
     expect(find.byKey(listKey), findsOneWidget);
@@ -22,12 +21,13 @@ void main() {
 
     expect(scrollOffset(tester, listKey), 0,
         reason: 'Home UI state must be reset on re-entry');
+
+    await tearDownApp(tester, db);
   });
 
   testWidgets('Settings resets its scroll offset when the tab is re-entered',
       (tester) async {
     final db = await pumpApp(tester);
-    addTearDown(db.close);
 
     const listKey = Key('settings_scroll_view');
     await tapNav(tester, 'settings');
@@ -41,12 +41,13 @@ void main() {
     await tapNav(tester, 'settings');
 
     expect(scrollOffset(tester, listKey), 0);
+
+    await tearDownApp(tester, db);
   });
 
   testWidgets('Vault keeps its grid position across branch switches',
       (tester) async {
     final db = await pumpApp(tester);
-    addTearDown(db.close);
 
     const gridKey = Key('vault_grid_view');
     await tapNav(tester, 'vault');
@@ -62,12 +63,13 @@ void main() {
 
     expect(scrollOffset(tester, gridKey), before,
         reason: 'The vault must preserve its state across branch switches');
+
+    await tearDownApp(tester, db);
   });
 
   testWidgets('Entering "My Vault" clears the search box and filters',
       (tester) async {
     final db = await pumpApp(tester);
-    addTearDown(db.close);
 
     await tapNav(tester, 'vault');
     const searchKey = Key('vault_search_field');
@@ -91,12 +93,13 @@ void main() {
       '',
       reason: '"My Vault" must reset to its initial state on entry',
     );
+
+    await tearDownApp(tester, db);
   });
 
   testWidgets('Explore keeps its own state across internal tab switches',
       (tester) async {
     final db = await pumpApp(tester);
-    addTearDown(db.close);
 
     await tapNav(tester, 'vault');
     await tester.tap(find.byKey(const Key('vault_tab_explore')));
@@ -106,6 +109,7 @@ void main() {
     if (find.byKey(discoverySearch).evaluate().isEmpty) {
       // Discovery renders an offline/empty state in this environment; the
       // state-preservation contract is still covered by the branch test above.
+      await tearDownApp(tester, db);
       return;
     }
 
@@ -122,6 +126,8 @@ void main() {
       'pizza',
       reason: 'Explore must not be rebuilt (and reset) by an internal switch',
     );
+
+    await tearDownApp(tester, db);
   });
 
   test('Avatar sets are disjoint and cover every bundled avatar', () {

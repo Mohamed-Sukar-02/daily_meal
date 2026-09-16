@@ -8,7 +8,9 @@ import '../helpers/app_harness.dart';
 
 Finder get avatarTiles => find.byWidgetPredicate((w) {
       final key = w.key;
-      return key is ValueKey<String> && key.value.startsWith('profile_avatar_');
+      return key is ValueKey<String> &&
+          key.value.startsWith('profile_avatar_') &&
+          !key.value.contains('empty_hint');
     });
 
 Future<void> openProfileDialog(WidgetTester tester) async {
@@ -29,7 +31,6 @@ void main() {
   testWidgets('gender is required and nothing can be saved before choosing',
       (tester) async {
     final db = await pumpApp(tester);
-    addTearDown(db.close);
 
     await openProfileDialog(tester);
 
@@ -40,12 +41,13 @@ void main() {
     expect(find.byKey(const Key('profile_avatar_empty_hint')), findsOneWidget);
     // …and saving is blocked.
     expect(saveEnabled(tester), isFalse);
+
+    await tearDownApp(tester, db);
   });
 
   testWidgets('choosing a gender shows only that gender\'s avatars',
       (tester) async {
     final db = await pumpApp(tester);
-    addTearDown(db.close);
 
     await openProfileDialog(tester);
 
@@ -68,12 +70,13 @@ void main() {
     expect(find.byKey(const Key('profile_avatar_F01.png')), findsOneWidget);
     expect(saveEnabled(tester), isTrue,
         reason: 'the profile must never be left without an avatar');
+
+    await tearDownApp(tester, db);
   });
 
   testWidgets('a saved gender + avatar are restored when reopening the dialog',
       (tester) async {
     final db = await pumpApp(tester);
-    addTearDown(db.close);
 
     await openProfileDialog(tester);
     await tester.tap(find.byKey(const Key('profile_gender_female')));
@@ -94,12 +97,13 @@ void main() {
     expect(avatarTiles, findsNWidgets(AvatarService.femaleAvatars.length));
     expect(find.byKey(const Key('profile_avatar_FY2.png')), findsOneWidget);
     expect(saveEnabled(tester), isTrue);
+
+    await tearDownApp(tester, db);
   });
 
   testWidgets('a stored avatar that does not match the gender is replaced',
       (tester) async {
     final db = await pumpApp(tester);
-    addTearDown(db.close);
 
     // Simulate legacy data: a male avatar stored against a female profile.
     await db.appSettingsDao.updateSettings(
@@ -113,5 +117,7 @@ void main() {
     expect(avatarTiles, findsNWidgets(AvatarService.femaleAvatars.length));
     expect(find.byKey(const Key('profile_avatar_MO1.png')), findsNothing);
     expect(saveEnabled(tester), isTrue);
+
+    await tearDownApp(tester, db);
   });
 }

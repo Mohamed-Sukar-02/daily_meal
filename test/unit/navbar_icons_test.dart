@@ -35,8 +35,9 @@ void main() {
     expect(find.byKey(const ValueKey('nav_destination_history')), findsOneWidget);
     expect(find.byKey(const ValueKey('nav_destination_settings')), findsOneWidget);
 
-    // Verify ImageIcons are rendered for vault and history
-    expect(find.byType(ImageIcon), findsNWidgets(2));
+    // Verify ImageIcon is rendered for vault and Icon for history
+    expect(find.byType(ImageIcon), findsOneWidget);
+    expect(find.byIcon(Icons.check_circle_outline_rounded), findsOneWidget);
 
     // Tap Vault tab
     await tester.tap(find.byKey(const ValueKey('nav_destination_vault')));
