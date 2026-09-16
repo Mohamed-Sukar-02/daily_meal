@@ -99,13 +99,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
         RefreshIndicator(
           onRefresh: () async => ref.invalidate(todayRecommendationsProvider),
           child: ListView(
-<<<<<<< HEAD
-            padding: EdgeInsets.fromLTRB(16, 2, 16, canSpin ? 100 : 24),
-=======
             key: const Key('home_recommendations_list'),
             controller: _listController,
-            padding: EdgeInsets.fromLTRB(16, 4, 16, canSpin ? 100 : 24),
->>>>>>> 6dbe70a82cde757b53d4110be8e0fef1a07a9ac7
+            padding: EdgeInsets.fromLTRB(16, 2, 16, canSpin ? 100 : 24),
             children: [
               if (result.relaxationLevel > 0) ...[
                 _buildRelaxationBanner(context, result, brightness),
