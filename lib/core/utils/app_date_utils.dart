@@ -1,3 +1,7 @@
+import 'package:flutter/material.dart' show Locale;
+
+import '../localization/app_strings.dart';
+
 /// Central date helper - single source of truth for day boundaries [1][D]
 /// Handles DST correctly via calendar fields, not difference().inDays on local DateTime
 
@@ -38,18 +42,25 @@ bool isSameLocalDay(DateTime a, DateTime b) {
 }
 
 /// Formats history date as Today/Yesterday or dd/MM/yyyy
-/// Handles UTC stored dates by converting to local first
-String formatHistoryDate(DateTime dt, {DateTime? referenceToday}) {
+/// Handles UTC stored dates by converting to local first.
+///
+/// The relative labels come from [AppStrings] so they follow the app language;
+/// callers that have no locale handy get Arabic (the app default).
+String formatHistoryDate(
+  DateTime dt, {
+  DateTime? referenceToday,
+  AppStrings strings = const AppStrings(Locale('ar')),
+}) {
   final today = referenceToday != null ? toLocalDay(referenceToday) : getLocalToday();
   final localDay = toLocalDay(dt);
 
   if (isSameLocalDay(localDay, today)) {
-    return 'اليوم';
+    return strings.today;
   }
 
   final yesterday = today.subtract(const Duration(days: 1));
   if (isSameLocalDay(localDay, yesterday)) {
-    return 'أمس';
+    return strings.yesterday;
   }
 
   // Format as dd/MM/yyyy in local calendar

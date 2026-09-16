@@ -1,5 +1,9 @@
+import 'dart:ui' show Locale;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+import '../localization/app_strings.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
@@ -52,7 +56,16 @@ class NotificationService {
     return true;
   }
 
-  Future<void> scheduleDailyNotification({required int hour, required int minute}) async {
+  /// Schedules the daily reminder.
+  ///
+  /// [strings] carries the user's language so the notification copy matches the
+  /// app UI. Android notification channels are created once by the OS, so the
+  /// channel description keeps the app's default (Arabic) copy.
+  Future<void> scheduleDailyNotification({
+    required int hour,
+    required int minute,
+    AppStrings strings = const AppStrings(Locale('ar')),
+  }) async {
     if (kIsWeb) return;
     await cancelNotification();
 
@@ -63,20 +76,20 @@ class NotificationService {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
 
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+    final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
       'daily_meal_channel',
       'Daily Meal Suggestions',
-      channelDescription: 'تذكير يومي لمعرفة أكلة النهاردة',
+      channelDescription: strings.localNotificationDescription,
       importance: Importance.high,
       priority: Priority.high,
     );
 
-    const NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
+    final NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
 
     await _plugin.zonedSchedule(
       0,
-      'أكلة النهاردة 🍽️',
-      'حان وقت اختيار وجبة اليوم! افتح التطبيق لمعرفة الاقتراحات.',
+      strings.localNotificationTitle,
+      strings.localNotificationBody,
       scheduledDate,
       platformDetails,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,

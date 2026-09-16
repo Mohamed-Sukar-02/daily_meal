@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/app_icons.dart';
 import '../../../core/widgets/app_toast.dart';
 import '../../../core/widgets/meal_image.dart';
+import '../data/discovery_repository.dart';
 import '../data/models/cloud_meal.dart';
 import '../providers/discovery_providers.dart';
 import '../providers/vault_providers.dart';
@@ -64,6 +66,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     final publicMealsAsync = ref.watch(publicMealsProvider);
     final allMealsAsync = ref.watch(allMealsProvider);
     final brightness = Theme.of(context).brightness;
+    final strings = AppStrings.of(context);
 
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -86,12 +89,13 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: TextField(
+                    key: const Key('discovery_search_field'),
                     controller: _searchController,
                     style: TextStyle(fontSize: 14, color: AppPalette.textPrimary(brightness)),
                     decoration: InputDecoration(
                       isCollapsed: true,
                       border: InputBorder.none,
-                      hintText: 'Search for meals, cuisines, or ingredients...',
+                      hintText: strings.discoverySearchHint,
                       hintStyle: TextStyle(fontSize: 14, color: AppPalette.textSecondary(brightness)),
                     ),
                     onChanged: (v) => setState(() => _searchQuery = v),
@@ -118,19 +122,19 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
               // Optimal: cloudAccessStatusProvider now is synchronous Provider watching connectivity stream
               final status = ref.watch(cloudAccessStatusProvider);
               if (status == CloudAccessStatus.noConnection) {
-                return _errorState(brightness, AppGlyph.cloud, 'أنت غير متصل بالإنترنت', 'تحقّق من اتصالك بالشبكة لمشاهدة الوصفات السحابية.');
+                return _errorState(brightness, AppGlyph.cloud, strings.discoveryOfflineTitle, strings.discoveryOfflineDesc);
               }
               if (status == CloudAccessStatus.requiresWifi) {
-                return _errorState(brightness, AppGlyph.cloudDown, 'مطلوب اتصال Wi-Fi', 'فعّلت خيار التحميل عبر الواي فاي فقط.');
+                return _errorState(brightness, AppGlyph.cloudDown, strings.discoveryWifiTitle, strings.discoveryWifiDesc);
               }
               return publicMealsAsync.when(
                 data: (cloudMeals) {
                   final filtered = _filterCloudMeals(cloudMeals);
                   if (cloudMeals.isEmpty) {
-                    return _emptyState(brightness, 'لا توجد وصفات سحابية حالياً', 'جرّب لاحقاً أو أضف وصفاتك الخاصة.');
+                    return _emptyState(brightness, strings.discoveryEmptyTitle, strings.discoveryEmptyDesc);
                   }
                   if (filtered.isEmpty) {
-                    return _emptyState(brightness, 'لا توجد نتائج مطابقة', 'جرّب كلمات بحث مختلفة أو غيّر الفلتر.');
+                    return _emptyState(brightness, strings.vaultNoResultsTitle, strings.discoveryNoResultsDesc);
                   }
                   final localMeals = allMealsAsync.valueOrNull ?? [];
                   return GridView.builder(
@@ -154,7 +158,14 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                   );
                 },
                 loading: () => Center(child: CircularProgressIndicator(color: AppPalette.brandGreen)),
-                error: (err, _) => _errorState(brightness, AppGlyph.alert, 'حدث خطأ', '$err'),
+                error: (err, _) => _errorState(
+                  brightness,
+                  AppGlyph.alert,
+                  strings.discoveryError,
+                  err is CloudMealsFetchException
+                      ? strings.discoveryFetchFailed(err.cause)
+                      : '$err',
+                ),
               );
             },
           ),
@@ -171,6 +182,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   }
 
   Widget _buildStandaloneHeader(Brightness brightness) {
+    final strings = AppStrings.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Row(
@@ -189,8 +201,8 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Discover', style: TextStyle(fontSize: 30, height: 1.2, fontWeight: FontWeight.w800, color: AppPalette.textPrimary(brightness))),
-                Text('Search for meals, cuisines, or ingredients...', style: TextStyle(fontSize: 13, color: AppPalette.textSecondary(brightness))),
+                Text(strings.discoveryTitle, style: TextStyle(fontSize: 30, height: 1.2, fontWeight: FontWeight.w800, color: AppPalette.textPrimary(brightness))),
+                Text(strings.discoverySearchHint, style: TextStyle(fontSize: 13, color: AppPalette.textSecondary(brightness))),
               ],
             ),
           ),
@@ -200,19 +212,20 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   }
 
   Widget _buildFilterChips(Brightness brightness) {
+    final strings = AppStrings.of(context);
     // Mock: Trending (orange/gold) / Admin Picks (blue) / Quick Meals (green) / Global (purple)
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Row(
         children: [
-          _chip(brightness, index: 0, emoji: '🔥', label: 'Trending', style: AppPalette.chipGold(brightness)),
+          _chip(brightness, index: 0, emoji: '🔥', label: strings.discoveryTrending, style: AppPalette.chipGold(brightness)),
           const SizedBox(width: 8),
-          _chip(brightness, index: 1, emoji: '👑', label: 'Admin Picks', style: AppPalette.chipBlue(brightness)),
+          _chip(brightness, index: 1, emoji: '👑', label: strings.discoveryAdminPicks, style: AppPalette.chipBlue(brightness)),
           const SizedBox(width: 8),
-          _chip(brightness, index: 2, emoji: '⚡', label: 'Quick Meals', style: AppPalette.chipGreen(brightness)),
+          _chip(brightness, index: 2, emoji: '⚡', label: strings.discoveryQuickMeals, style: AppPalette.chipGreen(brightness)),
           const SizedBox(width: 8),
-          _chip(brightness, index: 3, emoji: '🌍', label: 'Global', style: AppPalette.chipViolet(brightness)),
+          _chip(brightness, index: 3, emoji: '🌍', label: strings.discoveryGlobal, style: AppPalette.chipViolet(brightness)),
         ],
       ),
     );
@@ -296,6 +309,7 @@ class _CloudMealCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final brightness = Theme.of(context).brightness;
+    final strings = AppStrings.of(context);
     final discoveryState = ref.watch(discoveryControllerProvider);
     final isLinked = linkedMeal != null;
 
@@ -337,11 +351,11 @@ class _CloudMealCard extends ConsumerWidget {
                     children: [
                       _miniBadge(brightness, _proteinEmoji(cloudMeal.proteinType), _proteinStyle(cloudMeal.proteinType, brightness)),
                       const SizedBox(width: 6),
-                      _timePill(brightness, cloudMeal.prepTimeMinutes),
+                      _timePill(brightness, cloudMeal.prepTimeMinutes, strings),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text('أضيفت من ${1.2 + (index * 0.3)}k مستخدم', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: AppPalette.textSecondary(brightness))),
+                  Text(strings.discoveryAddedBy((1.2 + (index * 0.3)).toStringAsFixed(1)), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: AppPalette.textSecondary(brightness))),
                   const Spacer(),
                   if (discoveryState.isLoading)
                     Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppPalette.brandGreen)))
@@ -354,11 +368,11 @@ class _CloudMealCard extends ConsumerWidget {
                             _showUpdateOptions(context, ref);
                           } else {
                             ref.read(discoveryControllerProvider.notifier).downloadMeal(cloudMeal);
-                            AppToast.showSuccess(context, 'تم تنزيل: ${cloudMeal.name}');
+                            AppToast.showSuccess(context, strings.mealDownloaded(cloudMeal.name));
                           }
                         },
                         icon: AppIcon(isLinked ? AppGlyph.swap : AppGlyph.cloudDown, color: isLinked ? AppPalette.textSecondary(brightness) : Colors.white, size: 14),
-                        label: Text(isLinked ? 'تحديث' : 'تنزيل', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
+                        label: Text(isLinked ? strings.discoveryUpdate : strings.discoveryDownload, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
                         style: FilledButton.styleFrom(
                           backgroundColor: isLinked ? AppPalette.tabContainer(brightness) : btnColor,
                           foregroundColor: isLinked ? AppPalette.textPrimary(brightness) : Colors.white,
@@ -393,7 +407,7 @@ class _CloudMealCard extends ConsumerWidget {
     );
   }
 
-  Widget _timePill(Brightness b, int minutes) {
+  Widget _timePill(Brightness b, int minutes, AppStrings strings) {
     final style = AppPalette.chipViolet(b);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
@@ -403,13 +417,11 @@ class _CloudMealCard extends ConsumerWidget {
         children: [
           AppIcon(AppGlyph.clock, color: style.foreground, size: 12),
           const SizedBox(width: 4),
-          Text(_formatPrep(minutes), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: style.foreground)),
+          Text(strings.minutes(minutes), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: style.foreground)),
         ],
       ),
     );
   }
-
-  String _formatPrep(int m) => m <= 10 ? '$m دقائق' : '$m دقيقة';
 
   String _proteinEmoji(String p) {
     switch (p) {
@@ -433,6 +445,7 @@ class _CloudMealCard extends ConsumerWidget {
 
   void _showUpdateOptions(BuildContext context, WidgetRef ref) {
     final brightness = Theme.of(context).brightness;
+    final strings = AppStrings.of(context);
     showModalBottomSheet(
       context: context,
       backgroundColor: AppPalette.card(brightness),
@@ -451,7 +464,7 @@ class _CloudMealCard extends ConsumerWidget {
                   onTap: () {
                     Navigator.pop(ctx);
                     ref.read(discoveryControllerProvider.notifier).updateMeal(linkedMeal!.id, cloudMeal);
-                    AppToast.showSuccess(context, 'تم التحديث: ${cloudMeal.name}');
+                    AppToast.showSuccess(context, strings.mealUpdatedToast(cloudMeal.name));
                   },
                   child: Container(
                     padding: const EdgeInsets.all(14),
@@ -460,7 +473,7 @@ class _CloudMealCard extends ConsumerWidget {
                       children: [
                         Container(width: 44, height: 44, decoration: BoxDecoration(color: AppPalette.chipGreen(brightness).background, shape: BoxShape.circle), child: Center(child: AppIcon(AppGlyph.swap, color: AppPalette.chipGreen(brightness).foreground, size: 20))),
                         const SizedBox(width: 12),
-                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('تحديث الأكلة الموجودة', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppPalette.textPrimary(brightness))), Text('سيتم تحديث بيانات الأكلة في خزانتك بالبيانات الجديدة.', style: TextStyle(fontSize: 12, color: AppPalette.textSecondary(brightness)))])),
+                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(strings.discoveryUpdateExistingTitle, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppPalette.textPrimary(brightness))), Text(strings.discoveryUpdateExistingDesc, style: TextStyle(fontSize: 12, color: AppPalette.textSecondary(brightness)))])),
                       ],
                     ),
                   ),
@@ -471,7 +484,7 @@ class _CloudMealCard extends ConsumerWidget {
                   onTap: () {
                     Navigator.pop(ctx);
                     ref.read(discoveryControllerProvider.notifier).downloadAsNew(linkedMeal!.id, cloudMeal);
-                    AppToast.showSuccess(context, 'تم تنزيل نسخة جديدة: ${cloudMeal.name}');
+                    AppToast.showSuccess(context, strings.mealAddedNewCopy(cloudMeal.name));
                   },
                   child: Container(
                     padding: const EdgeInsets.all(14),
@@ -480,7 +493,7 @@ class _CloudMealCard extends ConsumerWidget {
                       children: [
                         Container(width: 44, height: 44, decoration: BoxDecoration(color: AppPalette.chipBlue(brightness).background, shape: BoxShape.circle), child: Center(child: AppIcon(AppGlyph.plus, color: AppPalette.chipBlue(brightness).foreground, size: 20))),
                         const SizedBox(width: 12),
-                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('إضافة كنسخة جديدة', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppPalette.textPrimary(brightness))), Text('سيتم إضافة هذه الأكلة كوجبة جديدة دون مسح النسخة القديمة.', style: TextStyle(fontSize: 12, color: AppPalette.textSecondary(brightness)))])),
+                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(strings.discoveryAddAsNewTitle, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppPalette.textPrimary(brightness))), Text(strings.discoveryAddAsNewDesc, style: TextStyle(fontSize: 12, color: AppPalette.textSecondary(brightness)))])),
                       ],
                     ),
                   ),

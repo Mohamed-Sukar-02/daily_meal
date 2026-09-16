@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'core/localization/app_strings.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/settings/providers/settings_providers.dart';
@@ -56,7 +57,8 @@ class _DailyMealAppState extends ConsumerState<DailyMealApp> {
     final locale = ref.watch(localeProvider);
 
     return MaterialApp.router(
-      title: 'أكلة النهاردة',
+      // Task-switcher title follows the active locale.
+      onGenerateTitle: (context) => AppStrings(locale).appName,
       debugShowCheckedModeBanner: false,
       themeMode: themeMode,
       theme: AppTheme.lightTheme,

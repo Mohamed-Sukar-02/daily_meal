@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/localization/app_strings.dart';
 import '../../../../core/widgets/app_toast.dart';
 import '../../../../core/database/app_database.dart';
 import '../../providers/vault_providers.dart';
@@ -20,14 +21,15 @@ class DeleteMealDialog extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final strings = AppStrings.of(context);
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: AlertDialog(
+    // No forced `Directionality` here: the dialog follows the app locale set by
+    // MaterialApp instead of being hard-wired to RTL.
+    return AlertDialog(
         icon: Icon(Icons.warning_amber_rounded, color: colorScheme.error, size: 40),
-        title: const Text(
-          'حذف الأكلة',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          strings.deleteMealTitle,
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         content: SingleChildScrollView(
           child: Column(
@@ -35,7 +37,7 @@ class DeleteMealDialog extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'هل أنت متأكد من رغبتك في حذف "${meal.name}" نهائياً من خزانة الأكلات؟',
+                strings.deleteMealConfirm(meal.name),
                 style: theme.textTheme.bodyMedium,
               ),
             const SizedBox(height: 16),
@@ -53,7 +55,7 @@ class DeleteMealDialog extends ConsumerWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'سجل الطبخ في أمان: سيتم الاحتفاظ بسجل المرات السابقة التي طبخت فيها هذه الأكلة ولن يُحذف من سجل الأكلات.',
+                      strings.deleteMealHistorySafe,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                         height: 1.4,
@@ -72,7 +74,7 @@ class DeleteMealDialog extends ConsumerWidget {
           TextButton(
             key: const Key('meal_delete_cancel_button'),
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('إلغاء'),
+            child: Text(strings.cancel),
           ),
           FilledButton(
             key: const Key('meal_delete_confirm_button'),
@@ -81,13 +83,12 @@ class DeleteMealDialog extends ConsumerWidget {
               await ref.read(vaultControllerProvider.notifier).deleteMeal(meal.id);
               if (context.mounted) {
                 Navigator.of(context).pop(true);
-                AppToast.show(context, message: 'تم حذف "${meal.name}" مع الاحتفاظ بسجل طبخها السابق', type: AppToastType.info);
+                AppToast.show(context, message: strings.mealDeletedWithHistory(meal.name), type: AppToastType.info);
               }
             },
-            child: const Text('حذف الأكلة'),
+            child: Text(strings.deleteMealTitle),
           ),
         ],
-      ),
-    );
+      );
   }
 }

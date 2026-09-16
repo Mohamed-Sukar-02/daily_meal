@@ -1,3 +1,4 @@
+import '../localization/app_strings.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -60,7 +61,7 @@ class AppToast {
     BuildContext context, {
     required String message,
     required VoidCallback onUndo,
-    String actionLabel = 'تراجع',
+    String? actionLabel,
     Duration duration = const Duration(seconds: 4),
     AppToastType type = AppToastType.action,
   }) {
@@ -69,7 +70,9 @@ class AppToast {
       message: message,
       type: type,
       duration: duration,
-      actionLabel: actionLabel,
+      // Default label resolved from the active locale instead of a hardcoded
+      // literal default parameter.
+      actionLabel: actionLabel ?? AppStrings.of(context).undo,
       onAction: onUndo,
       showCountdown: true,
     );
@@ -538,7 +541,7 @@ extension AppToastExtension on BuildContext {
     AppToast.showError(this, message);
   }
 
-  void showUndoToast(String message, {required VoidCallback onUndo, String label = 'تراجع'}) {
+  void showUndoToast(String message, {required VoidCallback onUndo, String? label}) {
     AppToast.showUndo(this, message: message, onUndo: onUndo, actionLabel: label);
   }
 }

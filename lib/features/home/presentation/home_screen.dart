@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../core/localization/app_strings.dart';
+import '../../../core/navigation/nav_lifecycle.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/app_icons.dart';
 import '../../../core/widgets/app_toast.dart';
@@ -17,11 +19,40 @@ import 'widgets/spin_wheel_dialog.dart';
 /// - No top tabs (My Kitchen / Discovery) - removed
 /// - No delivery / leftover pills in bottom bar - removed
 /// - Only recommendations + spin wheel centered at bottom when >=2 meals
-class HomeScreen extends ConsumerWidget {
+///
+/// Lifecycle: the shell keeps this branch alive, so the recommendation list
+/// would otherwise stay scrolled down forever. [NavBranchReentry] snaps it back
+/// to the top whenever the user leaves the tab and comes back, without touching
+/// the recommendation data itself.
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
+  final ScrollController _listController = ScrollController();
+
+  @override
+  int get navBranchIndex => NavBranch.home;
+
+  @override
+  void resetTransientUi() {
+    // UI-only reset: scroll offset. No provider is invalidated here, so the
+    // cached recommendations (and the whole database cache) stay intact.
+    resetScroll(_listController);
+  }
+
+  @override
+  void dispose() {
+    _listController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    watchNavReentry();
     final recsAsync = ref.watch(todayRecommendationsProvider);
 
     return Scaffold(
@@ -68,6 +99,8 @@ class HomeScreen extends ConsumerWidget {
         RefreshIndicator(
           onRefresh: () async => ref.invalidate(todayRecommendationsProvider),
           child: ListView(
+            key: const Key('home_recommendations_list'),
+            controller: _listController,
             padding: EdgeInsets.fromLTRB(16, 4, 16, canSpin ? 100 : 24),
             children: [
               if (result.relaxationLevel > 0) ...[
@@ -108,6 +141,11 @@ class HomeScreen extends ConsumerWidget {
     Brightness brightness,
   ) {
     final style = AppPalette.chipGold(brightness);
+    final strings = AppStrings.of(context);
+    final reason = strings.relaxationReason(
+      result.relaxationLevel,
+      isEmptyVault: result.isEmptyVault,
+    );
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -122,7 +160,7 @@ class HomeScreen extends ConsumerWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'تنبيه التنوع الغذائي (مستوى ${result.relaxationLevel}): ${result.relaxationReason}',
+              strings.varietyAlertDetailed(result.relaxationLevel, reason),
               style: TextStyle(
                 fontSize: 12,
                 height: 1.5,
@@ -138,6 +176,7 @@ class HomeScreen extends ConsumerWidget {
 
   Widget _buildEmptyState(BuildContext context) {
     final brightness = Theme.of(context).brightness;
+    final strings = AppStrings.of(context);
 
     return Center(
       child: SingleChildScrollView(
@@ -153,7 +192,7 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'خزنة الأكلات فارغة!',
+              strings.vaultEmpty,
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
@@ -162,7 +201,7 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'ابدأ بإضافة أول أكلة أو حمّل الأكلات المقترحة.',
+              strings.vaultEmptyDesc,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13,
@@ -173,7 +212,7 @@ class HomeScreen extends ConsumerWidget {
             FilledButton.icon(
               onPressed: () => context.go('/vault'),
               icon: const AppIcon(AppGlyph.plus, color: Colors.white, size: 18),
-              label: const Text('أضف أكلتك الأولى'),
+              label: Text(strings.addFirstMeal),
             ),
           ],
         ),
@@ -183,6 +222,7 @@ class HomeScreen extends ConsumerWidget {
 
   Widget _buildErrorState(BuildContext context, WidgetRef ref, Object error) {
     final brightness = Theme.of(context).brightness;
+    final strings = AppStrings.of(context);
 
     return Center(
       child: SingleChildScrollView(
@@ -194,7 +234,7 @@ class HomeScreen extends ConsumerWidget {
             AppIcon(AppGlyph.alert, size: 56, color: AppPalette.heartCoral),
             const SizedBox(height: 16),
             Text(
-              'حدث خطأ في تجهيز الاقتراحات',
+              strings.errorPreparing,
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
@@ -214,7 +254,7 @@ class HomeScreen extends ConsumerWidget {
             OutlinedButton.icon(
               onPressed: () => ref.invalidate(todayRecommendationsProvider),
               icon: const AppIcon(AppGlyph.swap, size: 18, color: AppPalette.brandGreen),
-              label: const Text('إعادة المحاولة'),
+              label: Text(strings.retry),
             ),
           ],
         ),
@@ -239,13 +279,16 @@ class HomeScreen extends ConsumerWidget {
 
   Future<void> _handleCookedToday(BuildContext context, WidgetRef ref, Meal meal) async {
     final controller = ref.read(recommendationControllerProvider.notifier);
+    final strings = AppStrings.of(context);
+    final message = strings.cookedShort(meal.name);
+    final undoLabel = strings.undo;
     final historyEntryId = await controller.markCookedToday(meal);
 
     if (context.mounted) {
       AppToast.showUndo(
         context,
-        message: 'بالهنا والشفا! تم تسجيل "${meal.name}"',
-        actionLabel: 'تراجع',
+        message: message,
+        actionLabel: undoLabel,
         onUndo: () {
           controller.undoLastCookingLog(historyEntryId);
         },
@@ -255,13 +298,16 @@ class HomeScreen extends ConsumerWidget {
 
   Future<void> _handleLeftover(BuildContext context, WidgetRef ref, Meal meal) async {
     final controller = ref.read(recommendationControllerProvider.notifier);
+    final strings = AppStrings.of(context);
+    final message = strings.leftoverSuccess(meal.name);
+    final undoLabel = strings.undo;
     final historyEntryId = await controller.markLeftover(meal);
 
     if (context.mounted) {
       AppToast.showUndo(
         context,
-        message: 'تم تسجيل بواقي أكل "${meal.name}"',
-        actionLabel: 'تراجع',
+        message: message,
+        actionLabel: undoLabel,
         onUndo: () {
           controller.undoLastCookingLog(historyEntryId);
         },
