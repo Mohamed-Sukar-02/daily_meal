@@ -174,18 +174,6 @@ class SettingsController extends AsyncNotifier<void> {
     }
   }
 
-  /// Updates dietary repeat prevention rules (protein / carbs).
-  Future<void> updateDietaryRules({bool? preventProtein, bool? preventCarbs}) async {
-    state = const AsyncValue.loading();
-    try {
-      final dao = ref.read(appSettingsDaoProvider);
-      await dao.updateDietaryRules(preventProtein: preventProtein, preventCarbs: preventCarbs);
-      state = const AsyncValue.data(null);
-    } catch (err, st) {
-      state = AsyncValue.error(err, st);
-      rethrow;
-    }
-  }
 
   /// Save welcome data and mark first run as complete.
   Future<void> saveWelcomeData(String name, String? email, String? gender) async {
