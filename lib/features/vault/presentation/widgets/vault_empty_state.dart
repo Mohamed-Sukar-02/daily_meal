@@ -25,11 +25,25 @@ class VaultEmptyState extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            AppIcon(
-              isSearchResult ? AppGlyph.search : AppGlyph.pot,
-              size: 64,
-              color: AppPalette.textSecondary(brightness),
-            ),
+            if (isSearchResult)
+              AppIcon(
+                AppGlyph.search,
+                size: 64,
+                color: AppPalette.textSecondary(brightness),
+              )
+            else
+              Image.asset(
+                brightness == Brightness.dark
+                    ? 'assets/icons/vault_empty_dark.png'
+                    : 'assets/icons/vault_empty_light.png',
+                width: 220,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => AppIcon(
+                  AppGlyph.pot,
+                  size: 64,
+                  color: AppPalette.textSecondary(brightness),
+                ),
+              ),
             const SizedBox(height: 16),
             Text(
               isSearchResult ? 'لا توجد نتائج مطابقة' : 'خزنة الأكلات فارغة!',

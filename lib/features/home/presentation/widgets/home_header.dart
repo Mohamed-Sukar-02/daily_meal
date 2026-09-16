@@ -5,18 +5,25 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/widgets/app_icons.dart';
 import '../../../settings/providers/settings_providers.dart';
+import '../../../notifications/providers/notifications_provider.dart';
 import 'dart:io';
 
 class HomeHeader extends ConsumerWidget {
   final VoidCallback? onProfileTap;
+  final bool? hasUnreadNotifications;
 
-  const HomeHeader({super.key, this.onProfileTap});
+  const HomeHeader({
+    super.key,
+    this.onProfileTap,
+    this.hasUnreadNotifications,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final brightness = Theme.of(context).brightness;
     final settingsAsync = ref.watch(appSettingsProvider);
     final avatarPath = settingsAsync.valueOrNull?.userAvatar;
+    final bool isUnread = (hasUnreadNotifications ?? ref.watch(unreadNotificationsProvider)) == true;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -25,7 +32,10 @@ class HomeHeader extends ConsumerWidget {
         children: [
           // Notification icon - left side
           GestureDetector(
-            onTap: () => context.push('/notifications'),
+            onTap: () {
+              ref.read(unreadNotificationsProvider.notifier).state = false;
+              context.push('/notifications');
+            },
             child: Container(
               width: 44,
               height: 44,
@@ -44,36 +54,28 @@ class HomeHeader extends ConsumerWidget {
                 ],
               ),
               child: Stack(
+                alignment: Alignment.center,
                 clipBehavior: Clip.none,
                 children: [
-                  Center(
-                    child: ClipOval(
-                      child: Image.asset(
-                        'assets/notification_icon.jpg',
-                        width: 22,
-                        height: 22,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => AppIcon(
-                          AppGlyph.bell,
-                          color: AppPalette.textPrimary(brightness),
-                          size: 22,
-                        ),
-                      ),
+                  Image.asset(
+                    'assets/icons/notification_bell.png',
+                    width: 24,
+                    height: 24,
+                    fit: BoxFit.contain,
+                    color: AppPalette.textPrimary(brightness),
+                    errorBuilder: (context, error, stackTrace) => AppIcon(
+                      AppGlyph.bell,
+                      color: AppPalette.textPrimary(brightness),
+                      size: 22,
                     ),
                   ),
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: AppPalette.heartCoral,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppPalette.card(brightness), width: 1.5),
-                      ),
+                  if (isUnread)
+                    Image.asset(
+                      'assets/icons/notification_around.png',
+                      width: 24,
+                      height: 24,
+                      fit: BoxFit.contain,
                     ),
-                  ),
                 ],
               ),
             ),

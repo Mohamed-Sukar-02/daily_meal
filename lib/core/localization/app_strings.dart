@@ -5,6 +5,11 @@ class AppStrings {
 
   const AppStrings(this.locale);
 
+  static AppStrings of(BuildContext context) {
+    final locale = Localizations.maybeLocaleOf(context) ?? const Locale('ar');
+    return AppStrings(locale);
+  }
+
   bool get isEn => locale.languageCode == 'en';
 
   String get appName => isEn ? 'Daily Meal' : 'أكلة النهاردة';
@@ -78,6 +83,9 @@ class AppStrings {
   String get chooseAvatar => isEn ? 'Choose Avatar' : 'اختر الصورة الرمزية';
   String get profileSaved => isEn ? 'Profile saved' : 'تم حفظ الملف الشخصي';
   String get cancel => isEn ? 'Cancel' : 'إلغاء';
+  String get done => isEn ? 'Done' : 'تم';
+  String get am => isEn ? 'AM' : 'ص';
+  String get pm => isEn ? 'PM' : 'م';
   String get save => isEn ? 'Save' : 'حفظ';
 
   // Cooldown Settings

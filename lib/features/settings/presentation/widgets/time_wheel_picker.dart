@@ -1,10 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../core/localization/app_strings.dart';
 import '../../../../core/theme/app_palette.dart';
 
 /// Custom scrollable time picker matching the reference screenshot:
-/// hour wheel (1-12), minute wheel (00-59), AM/PM wheel, with Cancel/Done.
+/// Sleek floating card, borderless CupertinoPickers, active center row,
+/// and bottom Cancel | Done actions with localization support.
 class TimeWheelPicker extends StatefulWidget {
   final TimeOfDay initialTime;
   final Brightness brightness;
@@ -24,6 +26,10 @@ class _TimeWheelPickerState extends State<TimeWheelPicker> {
   late int _minute; // 0-59
   late int _period; // 0=AM, 1=PM
 
+  late FixedExtentScrollController _hourController;
+  late FixedExtentScrollController _minuteController;
+  late FixedExtentScrollController _periodController;
+
   @override
   void initState() {
     super.initState();
@@ -32,6 +38,18 @@ class _TimeWheelPickerState extends State<TimeWheelPicker> {
     final h12 = h24 % 12;
     _hour = h12 == 0 ? 12 : h12;
     _minute = widget.initialTime.minute;
+
+    _hourController = FixedExtentScrollController(initialItem: _hour - 1);
+    _minuteController = FixedExtentScrollController(initialItem: _minute);
+    _periodController = FixedExtentScrollController(initialItem: _period);
+  }
+
+  @override
+  void dispose() {
+    _hourController.dispose();
+    _minuteController.dispose();
+    _periodController.dispose();
+    super.dispose();
   }
 
   TimeOfDay _toTimeOfDay() {
@@ -45,152 +63,134 @@ class _TimeWheelPickerState extends State<TimeWheelPicker> {
   Widget build(BuildContext context) {
     final brightness = widget.brightness;
     final isDark = brightness == Brightness.dark;
+    final strings = AppStrings.of(context);
+
+    final cardBg = isDark ? const Color(0xFF1E1E22) : Colors.white;
+    final primaryTextColor = AppPalette.textPrimary(brightness);
+    final secondaryTextColor = primaryTextColor.withValues(alpha: 0.3);
+    final dividerColor = isDark ? Colors.white12 : Colors.black12;
 
     return Container(
+      width: 320,
       decoration: BoxDecoration(
-        color: AppPalette.card(brightness),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        color: cardBg,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.15),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
-      child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Top bar Cancel / Done
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 18),
+          // Scrollable Wheels
+          SizedBox(
+            height: 160,
+            child: Directionality(
+              textDirection: TextDirection.ltr,
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(
-                      'إلغاء',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: isDark ? Colors.white70 : const Color(0xFF6B7280),
-                      ),
-                    ),
-                  ),
-                  Text(
-                    'اختر الوقت',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: AppPalette.textPrimary(brightness),
-                    ),
-                  ),
-                  CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    onPressed: () => Navigator.pop(context, _toTimeOfDay()),
-                    child: const Text(
-                      'تم',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: AppPalette.brandGreen,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Divider(height: 1, color: AppPalette.hairline(brightness)),
-            SizedBox(
-              height: 220,
-              child: Row(
-                children: [
-                  // Hour wheel
-                  Expanded(
+                  // Hour Wheel
+                  SizedBox(
+                    width: 60,
                     child: CupertinoPicker(
-                      scrollController: FixedExtentScrollController(initialItem: _hour - 1),
-                      itemExtent: 44,
-                      magnification: 1.1,
-                      useMagnifier: true,
+                      scrollController: _hourController,
+                      itemExtent: 48,
+                      selectionOverlay: const SizedBox.shrink(),
+                      squeeze: 1.05,
+                      diameterRatio: 1.4,
                       onSelectedItemChanged: (i) => setState(() => _hour = i + 1),
                       children: List.generate(12, (i) {
                         final h = i + 1;
-                        final selected = h == _hour;
+                        final isSelected = h == _hour;
                         return Center(
                           child: Text(
-                            h.toString().padLeft(2, '0'),
+                            '$h',
                             style: TextStyle(
-                              fontSize: selected ? 22 : 18,
-                              fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
-                              color: selected
-                                  ? AppPalette.textPrimary(brightness)
-                                  : AppPalette.textSecondary(brightness),
+                              fontSize: isSelected ? 30 : 22,
+                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                              color: isSelected ? primaryTextColor : secondaryTextColor,
                             ),
                           ),
                         );
                       }),
                     ),
                   ),
-                  // Separator
-                  Text(
-                    ':',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: AppPalette.textPrimary(brightness),
+
+                  // Colon Separator
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: Text(
+                      ':',
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w700,
+                        color: primaryTextColor,
+                      ),
                     ),
                   ),
-                  // Minute wheel
-                  Expanded(
+
+                  // Minute Wheel
+                  SizedBox(
+                    width: 68,
                     child: CupertinoPicker(
-                      scrollController: FixedExtentScrollController(initialItem: _minute),
-                      itemExtent: 44,
-                      magnification: 1.1,
-                      useMagnifier: true,
+                      scrollController: _minuteController,
+                      itemExtent: 48,
+                      selectionOverlay: const SizedBox.shrink(),
+                      squeeze: 1.05,
+                      diameterRatio: 1.4,
                       onSelectedItemChanged: (i) => setState(() => _minute = i),
                       children: List.generate(60, (i) {
-                        final selected = i == _minute;
+                        final isSelected = i == _minute;
                         return Center(
                           child: Text(
                             i.toString().padLeft(2, '0'),
                             style: TextStyle(
-                              fontSize: selected ? 22 : 18,
-                              fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
-                              color: selected
-                                  ? AppPalette.textPrimary(brightness)
-                                  : AppPalette.textSecondary(brightness),
+                              fontSize: isSelected ? 30 : 22,
+                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                              color: isSelected ? primaryTextColor : secondaryTextColor,
                             ),
                           ),
                         );
                       }),
                     ),
                   ),
-                  // AM/PM wheel
-                  Expanded(
+
+                  const SizedBox(width: 14),
+
+                  // AM/PM Wheel
+                  SizedBox(
+                    width: 68,
                     child: CupertinoPicker(
-                      scrollController: FixedExtentScrollController(initialItem: _period),
-                      itemExtent: 44,
-                      magnification: 1.1,
-                      useMagnifier: true,
+                      scrollController: _periodController,
+                      itemExtent: 48,
+                      selectionOverlay: const SizedBox.shrink(),
+                      squeeze: 1.05,
+                      diameterRatio: 1.4,
                       onSelectedItemChanged: (i) => setState(() => _period = i),
                       children: [
                         Center(
                           child: Text(
-                            'ص',
+                            strings.am,
                             style: TextStyle(
-                              fontSize: _period == 0 ? 22 : 18,
-                              fontWeight: _period == 0 ? FontWeight.w800 : FontWeight.w500,
-                              color: _period == 0
-                                  ? AppPalette.textPrimary(brightness)
-                                  : AppPalette.textSecondary(brightness),
+                              fontSize: _period == 0 ? 24 : 18,
+                              fontWeight: _period == 0 ? FontWeight.w700 : FontWeight.w400,
+                              color: _period == 0 ? primaryTextColor : secondaryTextColor,
                             ),
                           ),
                         ),
                         Center(
                           child: Text(
-                            'م',
+                            strings.pm,
                             style: TextStyle(
-                              fontSize: _period == 1 ? 22 : 18,
-                              fontWeight: _period == 1 ? FontWeight.w800 : FontWeight.w500,
-                              color: _period == 1
-                                  ? AppPalette.textPrimary(brightness)
-                                  : AppPalette.textSecondary(brightness),
+                              fontSize: _period == 1 ? 24 : 18,
+                              fontWeight: _period == 1 ? FontWeight.w700 : FontWeight.w400,
+                              color: _period == 1 ? primaryTextColor : secondaryTextColor,
                             ),
                           ),
                         ),
@@ -200,24 +200,76 @@ class _TimeWheelPickerState extends State<TimeWheelPicker> {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
-          ],
-        ),
+          ),
+
+          const SizedBox(height: 12),
+          Divider(height: 1, color: dividerColor),
+
+          // Bottom Actions: Cancel | Done
+          SizedBox(
+            height: 52,
+            child: Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(24)),
+                    onTap: () => Navigator.pop(context),
+                    child: Center(
+                      child: Text(
+                        strings.cancel,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: primaryTextColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Container(
+                  width: 1,
+                  height: 28,
+                  color: dividerColor,
+                ),
+                Expanded(
+                  child: InkWell(
+                    borderRadius: const BorderRadius.only(bottomRight: Radius.circular(24)),
+                    onTap: () => Navigator.pop(context, _toTimeOfDay()),
+                    child: Center(
+                      child: Text(
+                        strings.done,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: primaryTextColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-/// Helper to show the wheel picker as modal bottom sheet
+/// Helper to show the wheel picker as a floating dialog exactly matching the reference design
 Future<TimeOfDay?> showWheelTimePicker(
   BuildContext context,
   Brightness brightness,
   TimeOfDay initial,
 ) {
-  return showModalBottomSheet<TimeOfDay>(
+  return showDialog<TimeOfDay>(
     context: context,
-    backgroundColor: Colors.transparent,
-    isScrollControlled: true,
-    builder: (ctx) => TimeWheelPicker(initialTime: initial, brightness: brightness),
+    barrierColor: Colors.black.withValues(alpha: 0.55),
+    builder: (ctx) => Center(
+      child: Material(
+        color: Colors.transparent,
+        child: TimeWheelPicker(initialTime: initial, brightness: brightness),
+      ),
+    ),
   );
 }

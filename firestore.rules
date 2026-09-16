@@ -75,6 +75,13 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
       allow create: if isAdmin() || (isAuthenticated() && isValidStagingMeal());
     }
+
+    // Admin Config: public read (mobile app fetches password hash without auth),
+    // admin-only write (only authenticated admins can update the hash via web panel).
+    match /admin_config/{doc} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
   }
 }
 

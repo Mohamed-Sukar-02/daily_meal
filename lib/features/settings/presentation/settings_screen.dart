@@ -1,7 +1,5 @@
 import 'dart:io';
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -669,7 +667,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _iconCircle(brightness, AppGlyph.bell, AppPalette.chipGold(brightness)),
+                    _iconCircle(brightness, Icons.notifications_active_outlined, AppPalette.chipGold(brightness)),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
@@ -723,7 +721,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _iconCircle(brightness, AppGlyph.clock, AppPalette.chipViolet(brightness)),
+                        _iconCircle(brightness, Icons.access_time_rounded, AppPalette.chipViolet(brightness)),
                         const SizedBox(width: 14),
                         Expanded(
                           child: Column(
@@ -858,7 +856,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _iconCircle(brightness, AppGlyph.moon, AppPalette.chipViolet(brightness)),
+                    _iconCircle(
+                      brightness,
+                      brightness == Brightness.dark
+                          ? Icons.dark_mode_outlined
+                          : Icons.light_mode_outlined,
+                      brightness == Brightness.dark
+                          ? AppPalette.chipViolet(brightness)
+                          : AppPalette.chipGold(brightness),
+                    ),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
@@ -1355,12 +1361,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _iconCircle(Brightness brightness, AppGlyph glyph, ChipStyle style) {
+  Widget _iconCircle(Brightness brightness, dynamic glyphOrIcon, ChipStyle style) {
     return Container(
       width: 44,
       height: 44,
       decoration: BoxDecoration(color: style.background, shape: BoxShape.circle),
-      child: Center(child: AppIcon(glyph, color: style.foreground, size: 20)),
+      child: Center(
+        child: glyphOrIcon is IconData
+            ? Icon(glyphOrIcon, color: style.foreground, size: 22)
+            : AppIcon(glyphOrIcon as AppGlyph, color: style.foreground, size: 20),
+      ),
     );
   }
 
