@@ -10,11 +10,13 @@ import '../../../../core/theme/app_palette.dart';
 class TimeWheelPicker extends StatefulWidget {
   final TimeOfDay initialTime;
   final Brightness brightness;
+  final AppStrings? strings;
 
   const TimeWheelPicker({
     super.key,
     required this.initialTime,
     required this.brightness,
+    this.strings,
   });
 
   @override
@@ -63,30 +65,30 @@ class _TimeWheelPickerState extends State<TimeWheelPicker> {
   Widget build(BuildContext context) {
     final brightness = widget.brightness;
     final isDark = brightness == Brightness.dark;
-    final strings = AppStrings.of(context);
+    final strings = widget.strings ?? AppStrings.of(context);
 
-    final cardBg = isDark ? const Color(0xFF1E1E22) : Colors.white;
-    final primaryTextColor = AppPalette.textPrimary(brightness);
-    final secondaryTextColor = primaryTextColor.withValues(alpha: 0.3);
-    final dividerColor = isDark ? Colors.white12 : Colors.black12;
+    final cardBg = isDark ? const Color(0xFF1B1C1E) : Colors.white;
+    final primaryTextColor = isDark ? Colors.white : AppPalette.textPrimary(brightness);
+    final secondaryTextColor = isDark ? const Color(0xFF555558) : primaryTextColor.withValues(alpha: 0.35);
+    final dividerColor = isDark ? const Color(0xFF333336) : Colors.black12;
 
     return Container(
       width: 320,
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.15),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
+            color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.15),
+            blurRadius: 28,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: 18),
+          const SizedBox(height: 24),
           // Scrollable Wheels
           SizedBox(
             height: 160,
@@ -112,8 +114,8 @@ class _TimeWheelPickerState extends State<TimeWheelPicker> {
                           child: Text(
                             '$h',
                             style: TextStyle(
-                              fontSize: isSelected ? 30 : 22,
-                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                              fontSize: isSelected ? 32 : 24,
+                              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
                               color: isSelected ? primaryTextColor : secondaryTextColor,
                             ),
                           ),
@@ -124,12 +126,12 @@ class _TimeWheelPickerState extends State<TimeWheelPicker> {
 
                   // Colon Separator
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Text(
                       ':',
                       style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
                         color: primaryTextColor,
                       ),
                     ),
@@ -151,8 +153,8 @@ class _TimeWheelPickerState extends State<TimeWheelPicker> {
                           child: Text(
                             i.toString().padLeft(2, '0'),
                             style: TextStyle(
-                              fontSize: isSelected ? 30 : 22,
-                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                              fontSize: isSelected ? 32 : 24,
+                              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
                               color: isSelected ? primaryTextColor : secondaryTextColor,
                             ),
                           ),
@@ -161,7 +163,7 @@ class _TimeWheelPickerState extends State<TimeWheelPicker> {
                     ),
                   ),
 
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 16),
 
                   // AM/PM Wheel
                   SizedBox(
@@ -178,8 +180,8 @@ class _TimeWheelPickerState extends State<TimeWheelPicker> {
                           child: Text(
                             strings.am,
                             style: TextStyle(
-                              fontSize: _period == 0 ? 24 : 18,
-                              fontWeight: _period == 0 ? FontWeight.w700 : FontWeight.w400,
+                              fontSize: _period == 0 ? 26 : 20,
+                              fontWeight: _period == 0 ? FontWeight.w800 : FontWeight.w500,
                               color: _period == 0 ? primaryTextColor : secondaryTextColor,
                             ),
                           ),
@@ -188,8 +190,8 @@ class _TimeWheelPickerState extends State<TimeWheelPicker> {
                           child: Text(
                             strings.pm,
                             style: TextStyle(
-                              fontSize: _period == 1 ? 24 : 18,
-                              fontWeight: _period == 1 ? FontWeight.w700 : FontWeight.w400,
+                              fontSize: _period == 1 ? 26 : 20,
+                              fontWeight: _period == 1 ? FontWeight.w800 : FontWeight.w500,
                               color: _period == 1 ? primaryTextColor : secondaryTextColor,
                             ),
                           ),
@@ -202,8 +204,7 @@ class _TimeWheelPickerState extends State<TimeWheelPicker> {
             ),
           ),
 
-          const SizedBox(height: 12),
-          Divider(height: 1, color: dividerColor),
+          const SizedBox(height: 16),
 
           // Bottom Actions: Cancel | Done
           SizedBox(
@@ -212,7 +213,7 @@ class _TimeWheelPickerState extends State<TimeWheelPicker> {
               children: [
                 Expanded(
                   child: InkWell(
-                    borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(24)),
+                    borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(28)),
                     onTap: () => Navigator.pop(context),
                     child: Center(
                       child: Text(
@@ -228,12 +229,12 @@ class _TimeWheelPickerState extends State<TimeWheelPicker> {
                 ),
                 Container(
                   width: 1,
-                  height: 28,
+                  height: 22,
                   color: dividerColor,
                 ),
                 Expanded(
                   child: InkWell(
-                    borderRadius: const BorderRadius.only(bottomRight: Radius.circular(24)),
+                    borderRadius: const BorderRadius.only(bottomRight: Radius.circular(28)),
                     onTap: () => Navigator.pop(context, _toTimeOfDay()),
                     child: Center(
                       child: Text(
@@ -250,6 +251,7 @@ class _TimeWheelPickerState extends State<TimeWheelPicker> {
               ],
             ),
           ),
+          const SizedBox(height: 8),
         ],
       ),
     );
@@ -260,15 +262,20 @@ class _TimeWheelPickerState extends State<TimeWheelPicker> {
 Future<TimeOfDay?> showWheelTimePicker(
   BuildContext context,
   Brightness brightness,
-  TimeOfDay initial,
-) {
+  TimeOfDay initial, {
+  AppStrings? strings,
+}) {
   return showDialog<TimeOfDay>(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.55),
     builder: (ctx) => Center(
       child: Material(
         color: Colors.transparent,
-        child: TimeWheelPicker(initialTime: initial, brightness: brightness),
+        child: TimeWheelPicker(
+          initialTime: initial,
+          brightness: brightness,
+          strings: strings,
+        ),
       ),
     ),
   );

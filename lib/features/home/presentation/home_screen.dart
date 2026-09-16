@@ -63,6 +63,7 @@ class HomeScreen extends ConsumerWidget {
     final canSpin = meals.length >= 2;
 
     return Stack(
+      clipBehavior: Clip.none,
       children: [
         RefreshIndicator(
           onRefresh: () async => ref.invalidate(todayRecommendationsProvider),
@@ -89,20 +90,11 @@ class HomeScreen extends ConsumerWidget {
           Positioned(
             left: 0,
             right: 0,
-            bottom: 0,
-            child: Container(
-              color: AppPalette.background(brightness).withValues(alpha: 0.9),
-              padding: EdgeInsets.fromLTRB(
-                16,
-                12,
-                16,
-                12 + MediaQuery.of(context).padding.bottom,
-              ),
-              child: Center(
-                child: SpinWheelButton(
-                  onTap: () => _openSpinWheel(context, ref, meals),
-                  enabled: true,
-                ),
+            bottom: -18,
+            child: Center(
+              child: SpinWheelButton(
+                onTap: () => _openSpinWheel(context, ref, meals),
+                enabled: true,
               ),
             ),
           ),

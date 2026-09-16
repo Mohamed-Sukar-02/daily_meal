@@ -67,6 +67,7 @@ class AppStrings {
 
   String get top3Balanced => isEn ? 'Selected best 3 balanced meals.' : 'اخترنا لك أفضل 3 وجبات متنوعة ومتوازنة.';
   String get spinWheel => isEn ? 'Spin the Wheel' : 'لف العجلة';
+  String get spinNow => isEn ? 'Spin now' : 'لف العجلة';
   String get varietyAlert => isEn ? 'Variety Alert' : 'تنبيه التنوع الغذائي';
   
   String get cookedToday => isEn ? 'Cooked Today' : 'طبختها النهاردة';

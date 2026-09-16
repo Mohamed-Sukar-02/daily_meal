@@ -768,6 +768,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 hour: settings.notificationHour,
                                 minute: settings.notificationMinute,
                               ),
+                              strings,
                             );
                             if (picked != null) {
                               controller.updateNotificationTime(picked.hour, picked.minute);
@@ -789,7 +790,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  _formatTime(settings),
+                                  _formatTime(settings, strings),
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700,
@@ -1032,8 +1033,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     BuildContext context,
     Brightness brightness,
     TimeOfDay initial,
+    AppStrings strings,
   ) {
-    return showWheelTimePicker(context, brightness, initial);
+    return showWheelTimePicker(context, brightness, initial, strings: strings);
   }
 
   // Secure admin password handling - replaced by AdminAuthService (see lib/core/services/admin_auth_service.dart)
@@ -1344,12 +1346,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   // Shared bits
   // ---------------------------------------------------------------------------
 
-  String _formatTime(AppSettingsData s) {
+  String _formatTime(AppSettingsData s, AppStrings strings) {
     final hour12 = s.notificationHour > 12
         ? s.notificationHour - 12
         : (s.notificationHour == 0 ? 12 : s.notificationHour);
     final minute = s.notificationMinute.toString().padLeft(2, '0');
-    final period = s.notificationHour >= 12 ? 'م' : 'ص';
+    final period = s.notificationHour >= 12 ? strings.pm : strings.am;
     return '$hour12:$minute $period';
   }
 

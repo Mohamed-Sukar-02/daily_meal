@@ -187,14 +187,14 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
                   ),
                   _NavBarItem(
                     key: const ValueKey('nav_destination_vault'),
-                    glyph: AppGlyph.vault,
+                    assetPath: 'assets/icons/nav_vault.png',
                     label: strings.navVault,
                     isSelected: widget.navigationShell.currentIndex == 1,
                     onTap: () => _onTap(1),
                   ),
                   _NavBarItem(
                     key: const ValueKey('nav_destination_history'),
-                    glyph: AppGlyph.history,
+                    assetPath: 'assets/icons/nav_history.png',
                     label: strings.navHistory,
                     isSelected: widget.navigationShell.currentIndex == 2,
                     onTap: () => _onTap(2),
@@ -217,18 +217,22 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
 }
 
 class _NavBarItem extends StatelessWidget {
-  final AppGlyph glyph;
+  final AppGlyph? glyph;
+  final String? assetPath;
+  final IconData? iconData;
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
 
   const _NavBarItem({
     super.key,
-    required this.glyph,
+    this.glyph,
+    this.assetPath,
+    this.iconData,
     required this.label,
     required this.isSelected,
     required this.onTap,
-  });
+  }) : assert(glyph != null || assetPath != null || iconData != null);
 
   @override
   Widget build(BuildContext context) {
@@ -237,13 +241,30 @@ class _NavBarItem extends StatelessWidget {
         ? AppPalette.brandGreen
         : AppPalette.navIdle(brightness);
 
+    final Widget iconWidget;
+    if (assetPath != null) {
+      iconWidget = ImageIcon(
+        AssetImage(assetPath!),
+        color: color,
+        size: 24,
+      );
+    } else if (iconData != null) {
+      iconWidget = Icon(
+        iconData,
+        color: color,
+        size: 24,
+      );
+    } else {
+      iconWidget = AppIcon(glyph!, color: color, size: 24);
+    }
+
     return Expanded(
       child: InkWell(
         onTap: onTap,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            AppIcon(glyph, color: color, size: 24),
+            iconWidget,
             const SizedBox(height: 4),
             Text(
               label,
