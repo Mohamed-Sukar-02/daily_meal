@@ -12,6 +12,7 @@ import '../../features/welcome/presentation/welcome_screen.dart';
 import '../../features/welcome/presentation/splash_screen.dart';
 import '../../features/settings/providers/settings_providers.dart';
 import '../localization/app_strings.dart';
+import '../navigation/nav_lifecycle.dart';
 import '../theme/app_palette.dart';
 import '../widgets/app_icons.dart';
 
@@ -129,6 +130,31 @@ class ScaffoldWithNavBar extends ConsumerStatefulWidget {
 
 class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
   bool _navLock = false;
+  int? _publishedBranch;
+
+  /// Publishes the visible branch so Home/History/Settings can reset their
+  /// UI-only state on re-entry. Called outside of `build` (gesture callback),
+  /// therefore it may write to the provider synchronously.
+  void _publishBranch(int index) {
+    _publishedBranch = index;
+    if (!mounted) return;
+    if (ref.read(activeNavBranchProvider) == index) return;
+    ref.read(activeNavBranchProvider.notifier).state = index;
+  }
+
+  /// Deep links (e.g. `context.go('/vault')` from the Home empty state) bypass
+  /// `_onTap`, so the shell also re-publishes whatever branch it ends up on.
+  /// Writing a provider during `build` is illegal, hence the post-frame hop.
+  void _scheduleBranchSync(int index) {
+    if (_publishedBranch == index) return;
+    _publishedBranch = index;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (ref.read(activeNavBranchProvider) != index) {
+        ref.read(activeNavBranchProvider.notifier).state = index;
+      }
+    });
+  }
 
   void _onTap(int index) {
     // Guard rapid 30ms switching (test 5.1): defer and drop overlapping frames
@@ -139,6 +165,7 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
         index,
         initialLocation: index == widget.navigationShell.currentIndex,
       );
+      _publishBranch(index);
     } catch (_) {
       // GoRouter may throw if shell is mid-transition during rapid taps — swallow
     } finally {
@@ -157,6 +184,7 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
     final theme = Theme.of(context);
     final locale = ref.watch(localeProvider);
     final strings = AppStrings(locale);
+    _scheduleBranchSync(widget.navigationShell.currentIndex);
 
     return Scaffold(
       body: widget.navigationShell,
@@ -172,7 +200,7 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
         ),
         child: SafeArea(
           child: SizedBox(
-            height: 62,
+            height: 54,
             child: Directionality(
               // Mockups place the Home tab leftmost in both locales.
               textDirection: TextDirection.ltr,
@@ -180,7 +208,7 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
                 children: [
                   _NavBarItem(
                     key: const ValueKey('nav_destination_home'),
-                    glyph: AppGlyph.home,
+                    iconData: Icons.home_rounded,
                     label: strings.navHome,
                     isSelected: widget.navigationShell.currentIndex == 0,
                     onTap: () => _onTap(0),
@@ -194,14 +222,14 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
                   ),
                   _NavBarItem(
                     key: const ValueKey('nav_destination_history'),
-                    assetPath: 'assets/icons/nav_history.png',
+                    iconData: Icons.check_circle_outline_rounded,
                     label: strings.navHistory,
                     isSelected: widget.navigationShell.currentIndex == 2,
                     onTap: () => _onTap(2),
                   ),
                   _NavBarItem(
                     key: const ValueKey('nav_destination_settings'),
-                    glyph: AppGlyph.settings,
+                    iconData: Icons.tune_rounded,
                     label: strings.navSettings,
                     isSelected: widget.navigationShell.currentIndex == 3,
                     onTap: () => _onTap(3),
@@ -246,16 +274,16 @@ class _NavBarItem extends StatelessWidget {
       iconWidget = ImageIcon(
         AssetImage(assetPath!),
         color: color,
-        size: 24,
+        size: 23,
       );
     } else if (iconData != null) {
       iconWidget = Icon(
         iconData,
         color: color,
-        size: 24,
+        size: 23,
       );
     } else {
-      iconWidget = AppIcon(glyph!, color: color, size: 24);
+      iconWidget = AppIcon(glyph!, color: color, size: 23);
     }
 
     return Expanded(
@@ -265,7 +293,7 @@ class _NavBarItem extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             iconWidget,
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Text(
               label,
               maxLines: 1,
@@ -273,14 +301,14 @@ class _NavBarItem extends StatelessWidget {
               style: TextStyle(
                 color: color,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                fontSize: 11,
+                fontSize: 10.5,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             // The green underline indicator
             Container(
-              height: 3,
-              width: 24,
+              height: 2.5,
+              width: 22,
               decoration: BoxDecoration(
                 color: isSelected ? AppPalette.brandGreen : Colors.transparent,
                 borderRadius: BorderRadius.circular(2),

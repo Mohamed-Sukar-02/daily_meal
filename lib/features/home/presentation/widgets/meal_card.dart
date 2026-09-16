@@ -1,21 +1,15 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/database/app_database.dart';
+import '../../../../core/localization/app_strings.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/widgets/app_icons.dart';
 import '../../../../core/widgets/meal_image.dart';
 import 'quick_actions.dart';
 
-/// Formats preparation time in Arabic according to Egyptian linguistic conventions:
-/// <= 10 minutes: '$minutes دقائق'
-/// > 10 minutes: '$minutes دقيقة'
-String formatPrepTime(int minutes) {
-  if (minutes <= 10) {
-    return '$minutes دقائق';
-  } else {
-    return '$minutes دقيقة';
-  }
-}
+/// Formats preparation time through [AppStrings.minutes], which applies the
+/// correct plural form for the active locale (Arabic has four plural buckets).
+String formatPrepTime(int minutes, AppStrings strings) => strings.minutes(minutes);
 
 /// The home recommendation card, rebuilt 1:1 from the approved mockups:
 /// inset hero photo with a floating heart, bold title, meta chips
@@ -91,19 +85,19 @@ class MealCard extends StatelessWidget {
                     context,
                     AppPalette.chipRose(brightness),
                     AppGlyph.steak,
-                    meal.proteinType.labelArabic,
+                    meal.proteinType.label(AppStrings.of(context)),
                   ),
                   _chip(
                     context,
                     AppPalette.chipGold(brightness),
                     AppGlyph.clock,
-                    formatPrepTime(meal.prepTime),
+                    formatPrepTime(meal.prepTime, AppStrings.of(context)),
                   ),
                   _chip(
                     context,
                     AppPalette.chipViolet(brightness),
                     AppGlyph.oven,
-                    meal.category.labelArabic,
+                    meal.category.label(AppStrings.of(context)),
                   ),
                   // Dummy to ensure only badges Wrap has exactly 3 children for ADVERSARIAL-5
                   const SizedBox.shrink(),
@@ -153,26 +147,10 @@ class MealCard extends StatelessWidget {
         Positioned(
           top: 10,
           right: 10,
-          child: Material(
-            color: brightness == Brightness.dark
-                ? Colors.black.withValues(alpha: 0.45)
-                : Colors.white,
-            shape: const CircleBorder(),
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: onToggleFavorite,
-              child: SizedBox(
-                width: 40,
-                height: 40,
-                child: Center(
-                  child: AppIcon(
-                    meal.isFavorite ? AppGlyph.heartFill : AppGlyph.heartOutline,
-                    color: AppPalette.heartCoral,
-                    size: 20,
-                  ),
-                ),
-              ),
-            ),
+          child: _FavoriteHeartButton(
+            isFavorite: meal.isFavorite,
+            onToggle: onToggleFavorite,
+            brightness: brightness,
           ),
         ),
       ],
@@ -204,6 +182,7 @@ class MealCard extends StatelessWidget {
 
   List<Widget> _badges(BuildContext context, Brightness brightness) {
     final badges = <Widget>[];
+    final strings = AppStrings.of(context);
 
     if (meal.isFridaySpecial) {
       badges.add(
@@ -211,7 +190,7 @@ class MealCard extends StatelessWidget {
           context,
           AppPalette.chipGold(brightness),
           AppGlyph.star,
-          'أكلة جمعة',
+          strings.fridaySpecial,
           fontSize: 11,
         ),
       );
@@ -222,7 +201,7 @@ class MealCard extends StatelessWidget {
           context,
           AppPalette.chipGreen(brightness),
           AppGlyph.wallet,
-          'اقتصادي',
+          strings.budgetFriendly,
           fontSize: 11,
         ),
       );
@@ -233,7 +212,7 @@ class MealCard extends StatelessWidget {
           context,
           AppPalette.chipRose(brightness),
           AppGlyph.heartFill,
-          'مفضلة',
+          strings.favorite,
           fontSize: 11,
         ),
       );
@@ -277,6 +256,79 @@ class MealCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FavoriteHeartButton extends StatefulWidget {
+  final bool isFavorite;
+  final VoidCallback? onToggle;
+  final Brightness brightness;
+
+  const _FavoriteHeartButton({
+    required this.isFavorite,
+    required this.onToggle,
+    required this.brightness,
+  });
+
+  @override
+  State<_FavoriteHeartButton> createState() => _FavoriteHeartButtonState();
+}
+
+class _FavoriteHeartButtonState extends State<_FavoriteHeartButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    );
+    _scaleAnim = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.35), weight: 50),
+      TweenSequenceItem(tween: Tween(begin: 1.35, end: 1.0), weight: 50),
+    ]).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleTap() {
+    _controller.forward(from: 0.0);
+    widget.onToggle?.call();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: widget.brightness == Brightness.dark
+          ? Colors.black.withValues(alpha: 0.45)
+          : Colors.white,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: _handleTap,
+        child: SizedBox(
+          width: 40,
+          height: 40,
+          child: Center(
+            child: ScaleTransition(
+              scale: _scaleAnim,
+              child: AppIcon(
+                widget.isFavorite ? AppGlyph.heartFill : AppGlyph.heartOutline,
+                color: AppPalette.heartCoral,
+                size: 20,
+              ),
+            ),
+          ),
         ),
       ),
     );

@@ -16,25 +16,52 @@ import 'package:flutter/foundation.dart';
 //   • Rate limiting prevents brute-force (5 attempts → 5 min lockout).
 // ---------------------------------------------------------------------------
 
+/// Why an admin login attempt failed.
+///
+/// This service is pure Dart with no `BuildContext`, so it reports a stable
+/// code plus the numbers the message needs. The UI layer maps the code to
+/// localised copy (`AppStrings.admin*`) — no display text lives here.
+enum AdminAuthFailure { emptyPassword, lockedOut, notConfigured, wrongPassword }
+
 class AdminAuthResult {
   final bool isSuccess;
   final bool isLockedOut;
-  final String? errorMessage;
+  final AdminAuthFailure? failure;
+
+  /// Attempts left before the lockout kicks in ([AdminAuthFailure.wrongPassword]).
+  final int remainingAttempts;
+
+  /// Minutes left in the lockout window ([AdminAuthFailure.lockedOut]).
+  final int lockoutMinutes;
 
   const AdminAuthResult._({
     required this.isSuccess,
     required this.isLockedOut,
-    this.errorMessage,
+    this.failure,
+    this.remainingAttempts = 0,
+    this.lockoutMinutes = 0,
   });
 
   factory AdminAuthResult.success() =>
       const AdminAuthResult._(isSuccess: true, isLockedOut: false);
 
-  factory AdminAuthResult.failure(String msg) =>
-      AdminAuthResult._(isSuccess: false, isLockedOut: false, errorMessage: msg);
+  factory AdminAuthResult.failure(
+    AdminAuthFailure failure, {
+    int remainingAttempts = 0,
+  }) =>
+      AdminAuthResult._(
+        isSuccess: false,
+        isLockedOut: false,
+        failure: failure,
+        remainingAttempts: remainingAttempts,
+      );
 
-  factory AdminAuthResult.lockedOut(String msg) =>
-      AdminAuthResult._(isSuccess: false, isLockedOut: true, errorMessage: msg);
+  factory AdminAuthResult.lockedOut(int minutes) => AdminAuthResult._(
+        isSuccess: false,
+        isLockedOut: true,
+        failure: AdminAuthFailure.lockedOut,
+        lockoutMinutes: minutes,
+      );
 }
 
 class AdminAuthService {
@@ -141,14 +168,12 @@ class AdminAuthService {
   /// Verifies the admin password against the hash stored in Firestore.
   Future<AdminAuthResult> verifyPassword(String input) async {
     if (input.trim().isEmpty) {
-      return AdminAuthResult.failure('كلمة المرور لا يمكن أن تكون فارغة');
+      return AdminAuthResult.failure(AdminAuthFailure.emptyPassword);
     }
 
     if (isLockedOut) {
       final mins = remainingLockout?.inMinutes ?? 5;
-      return AdminAuthResult.lockedOut(
-        'تم تعليق المحاولات مؤقتاً — حاول مجدداً بعد $mins دقائق',
-      );
+      return AdminAuthResult.lockedOut(mins);
     }
 
     final storedHash = await _fetchHashFromFirestore();
@@ -156,10 +181,7 @@ class AdminAuthService {
     if (storedHash == null || storedHash.isEmpty) {
       // No hash configured yet — deny access and guide admin.
       _recordFailedAttempt();
-      return AdminAuthResult.failure(
-        'لم يتم إعداد كلمة مرور الأدمن بعد.\n'
-        'يرجى تعيينها من لوحة التحكم على الموقع.',
-      );
+      return AdminAuthResult.failure(AdminAuthFailure.notConfigured);
     }
 
     final inputHash = _sha256hex(input.trim());
@@ -171,11 +193,13 @@ class AdminAuthService {
 
     _recordFailedAttempt();
     final remaining = _maxAttempts - _attemptTimes.length;
-    return AdminAuthResult.failure(
-      remaining > 0
-          ? 'كلمة المرور غير صحيحة — تبقى $remaining محاولة'
-          : 'تم تعليق المحاولات مؤقتاً',
-    );
+    if (remaining > 0) {
+      return AdminAuthResult.failure(
+        AdminAuthFailure.wrongPassword,
+        remainingAttempts: remaining,
+      );
+    }
+    return AdminAuthResult.lockedOut(_lockoutDuration.inMinutes);
   }
 
   /// Invalidates the local cache (call after the web panel updates the hash).

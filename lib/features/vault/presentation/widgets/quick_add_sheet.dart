@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../../core/database/app_database.dart';
+import '../../../../core/localization/app_strings.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/widgets/app_icons.dart';
 import '../../../../core/widgets/app_toast.dart';
@@ -144,9 +145,10 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
       final status = await Permission.photos.status;
       if (status.isPermanentlyDenied) {
         if (mounted) {
+          final strings = AppStrings.of(context);
           final open = await _showPermissionDialog(
-            title: 'الوصول للصور محدود',
-            content: 'يمكنك السماح بالوصول لبعض الصور فقط من الإعدادات، أو استخدام منتقي الصور النظامي.',
+            title: strings.photoAccessLimited,
+            content: strings.photoAccessLimitedDesc,
           );
           if (open) await openAppSettings();
         }
@@ -158,14 +160,15 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
   }
 
   Future<bool> _showPermissionDialog({required String title, required String content}) async {
+    final strings = AppStrings.of(context);
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(title),
         content: Text(content),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('فتح الإعدادات')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(strings.cancel)),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(strings.openSettings)),
         ],
       ),
     );
@@ -184,15 +187,16 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
           final result = await Permission.camera.request();
           if (!result.isGranted) {
             if (mounted) {
-              AppToast.showError(context, 'تم رفض إذن الكاميرا');
+              AppToast.showError(context, AppStrings.of(context).cameraPermissionDenied);
             }
             return;
           }
         } else if (cameraStatus.isPermanentlyDenied) {
           if (mounted) {
+            final strings = AppStrings.of(context);
             final open = await _showPermissionDialog(
-              title: 'إذن الكاميرا مطلوب',
-              content: 'يرجى السماح بالوصول للكاميرا من الإعدادات لالتقاط صورة.',
+              title: strings.cameraPermissionTitle,
+              content: strings.cameraPermissionDesc,
             );
             if (open) await openAppSettings();
           }
@@ -226,17 +230,21 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
           _pickedImageFile = File(savedPath);
           _photoPath = savedPath;
         });
-        AppToast.showSuccess(context, source == ImageSource.camera ? 'تم التقاط الصورة بنجاح' : 'تم اختيار الصورة بنجاح');
+        final strings = AppStrings.of(context);
+        AppToast.showSuccess(
+          context,
+          source == ImageSource.camera ? strings.photoCaptured : strings.photoPicked,
+        );
       }
     } on PlatformException catch (e) {
       debugPrint('PlatformException picking image: $e');
       if (mounted) {
-        AppToast.showError(context, 'خطأ في اختيار الصورة: ${e.message}');
+        AppToast.showError(context, AppStrings.of(context).imagePickError('${e.message}'));
       }
     } catch (e) {
       debugPrint('Error picking image: $e');
       if (mounted) {
-        AppToast.showError(context, 'حدث خطأ: $e');
+        AppToast.showError(context, AppStrings.of(context).errorGeneric(e));
       }
     } finally {
       if (mounted) setState(() => _isPicking = false);
@@ -245,6 +253,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
 
   void _showImageSourceSheet(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
+    final strings = AppStrings.of(context);
     showModalBottomSheet(
       context: context,
       backgroundColor: AppPalette.card(brightness),
@@ -261,15 +270,15 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
               ),
               const SizedBox(height: 20),
               Text(
-                'اختر صورة الأكلة',
+                strings.chooseMealPhoto,
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppPalette.textPrimary(brightness)),
               ),
               const SizedBox(height: 16),
               _sourceOption(
                 brightness: brightness,
                 icon: Icons.photo_camera_rounded,
-                title: 'التقاط صورة بالكاميرا',
-                subtitle: 'استخدم الكاميرا لالتقاط صورة جديدة',
+                title: strings.takePhoto,
+                subtitle: strings.takePhotoDesc,
                 onTap: () {
                   Navigator.pop(ctx);
                   _pickImage(ImageSource.camera);
@@ -279,8 +288,8 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
               _sourceOption(
                 brightness: brightness,
                 icon: Icons.photo_library_rounded,
-                title: 'اختيار من المعرض',
-                subtitle: 'اختر صورة من ألبوم الصور',
+                title: strings.pickFromGallery,
+                subtitle: strings.pickFromGalleryDesc,
                 onTap: () {
                   Navigator.pop(ctx);
                   _pickImage(ImageSource.gallery);
@@ -291,8 +300,8 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                 _sourceOption(
                   brightness: brightness,
                   icon: Icons.delete_rounded,
-                  title: 'إزالة الصورة',
-                  subtitle: 'حذف الصورة الحالية',
+                  title: strings.removePhoto,
+                  subtitle: strings.removePhotoDesc,
                   isDestructive: true,
                   onTap: () {
                     Navigator.pop(ctx);
@@ -377,7 +386,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
             ));
         if (mounted) {
           Navigator.pop(context);
-          AppToast.showSuccess(context, 'تم تعديل أكلة "$name" بنجاح');
+          AppToast.showSuccess(context, AppStrings.of(context).mealUpdated(name));
         }
       } else {
         await ref.read(vaultControllerProvider.notifier).addMeal(
@@ -386,11 +395,11 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
               isBudgetFriendly: _isBudgetFriendly, isFavorite: _isFavorite);
         if (mounted) {
           Navigator.pop(context);
-          AppToast.showSuccess(context, 'تمت إضافة "$name" إلى خزانة الأكلات');
+          AppToast.showSuccess(context, AppStrings.of(context).mealAdded(name));
         }
       }
     } catch (e) {
-      if (mounted) AppToast.showError(context, 'حدث خطأ أثناء الحفظ: $e');
+      if (mounted) AppToast.showError(context, AppStrings.of(context).saveError(e));
     }
   }
 
@@ -398,6 +407,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
     final isDark = brightness == Brightness.dark;
+    final strings = AppStrings.of(context);
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Directionality(
@@ -439,9 +449,9 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Quick Add Meal', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppPalette.textPrimary(brightness))),
+                              Text(strings.quickAddMealTitle, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppPalette.textPrimary(brightness))),
                               const SizedBox(height: 2),
-                              Text('Add a new meal to the community', style: TextStyle(fontSize: 12, color: AppPalette.textSecondary(brightness))),
+                              Text(strings.quickAddMealSubtitle, style: TextStyle(fontSize: 12, color: AppPalette.textSecondary(brightness))),
                             ],
                           ),
                         ),
@@ -517,7 +527,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                                                 child: Icon(_isPicking ? Icons.hourglass_top_rounded : Icons.photo_camera_outlined, size: 20, color: isDark ? Colors.white70 : const Color(0xFF5A6B81)),
                                               ),
                                               const SizedBox(height: 6),
-                                              Text(_isPicking ? 'جاري التحميل...' : 'Add Photo', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isDark ? Colors.white70 : const Color(0xFF16283B))),
+                                              Text(_isPicking ? strings.loading : strings.addPhoto, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isDark ? Colors.white70 : const Color(0xFF16283B))),
                                             ],
                                           ),
                                         ),
@@ -537,7 +547,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                                           child: const Center(child: Text('🍴', style: TextStyle(fontSize: 14))),
                                         ),
                                         const SizedBox(width: 8),
-                                        Text('Meal Name', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? Colors.white70 : const Color(0xFF16283B))),
+                                        Text(strings.mealNameLabel, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? Colors.white70 : const Color(0xFF16283B))),
                                       ],
                                     ),
                                     const SizedBox(height: 8),
@@ -546,7 +556,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                                       controller: _nameController,
                                       style: TextStyle(fontSize: 13, color: isDark ? Colors.white : const Color(0xFF16283B)),
                                       decoration: InputDecoration(
-                                        hintText: 'e.g. Grilled Chicken with Rice',
+                                        hintText: strings.mealNameHint,
                                         hintStyle: TextStyle(fontSize: 12, color: isDark ? Colors.white38 : const Color(0xFF9AA6B2)),
                                         filled: true,
                                         fillColor: isDark ? Colors.white10 : const Color(0xFFF7F8FB),
@@ -557,8 +567,8 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                                       ),
                                       maxLength: 120,
                                       validator: (v) {
-                                        if (v == null || v.trim().isEmpty) return 'من فضلك أدخل اسم الأكلة';
-                                        if (v.trim().length < 2) return 'حرفين على الأقل';
+                                        if (v == null || v.trim().isEmpty) return strings.mealNameRequired;
+                                        if (v.trim().length < 2) return strings.mealNameMinLength;
                                         return null;
                                       },
                                     ),
@@ -569,7 +579,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                           ),
                           const SizedBox(height: 16),
                           // Protein Type - عرض كل الأنواع بما فيها الخضار
-                          _labelRow(isDark, AppGlyph.steak, const Color(0xFF6C5CE7), 'Protein Type'),
+                          _labelRow(isDark, AppGlyph.steak, const Color(0xFF6C5CE7), strings.proteinTypeLabel),
                           const SizedBox(height: 8),
                           Wrap(
                             spacing: 8, runSpacing: 8,
@@ -578,7 +588,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                               final (color, fg) = _proteinColors(p);
                               return _pill(
                                 isDark,
-                                label: p.labelArabic,
+                                label: p.label(strings),
                                 emoji: p.emoji,
                                 selected: isSelected,
                                 color: color,
@@ -593,9 +603,9 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                             children: [
                               Container(width: 28, height: 28, decoration: BoxDecoration(color: isDark ? Colors.white10 : const Color(0xFFFFF3E0), shape: BoxShape.circle), child: const Center(child: Text('🍚', style: TextStyle(fontSize: 14)))),
                               const SizedBox(width: 8),
-                              Text('Carb Type', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? Colors.white70 : const Color(0xFF16283B))),
+                              Text(strings.carbsTypeShort, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? Colors.white70 : const Color(0xFF16283B))),
                               const SizedBox(width: 8),
-                              Text('نوع الكارب', style: TextStyle(fontSize: 12, color: isDark ? Colors.white54 : const Color(0xFF7B8794))),
+                              Text(strings.carbsTypeLabel, style: TextStyle(fontSize: 12, color: isDark ? Colors.white54 : const Color(0xFF7B8794))),
                             ],
                           ),
                           const SizedBox(height: 8),
@@ -606,7 +616,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                               final (color, fg) = _carbsColors(c);
                               return _pill(
                                 isDark,
-                                label: c.labelArabic,
+                                label: c.label(strings),
                                 emoji: _carbsEmoji(c),
                                 selected: isSelected,
                                 color: color,
@@ -617,7 +627,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                           ),
                           const SizedBox(height: 14),
                           // Category Type
-                          _labelRow(isDark, AppGlyph.pot, const Color(0xFF6C5CE7), 'Category'),
+                          _labelRow(isDark, AppGlyph.pot, const Color(0xFF6C5CE7), strings.categoryShortLabel),
                           const SizedBox(height: 8),
                           Wrap(
                             spacing: 8, runSpacing: 8,
@@ -625,7 +635,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                               final isSelected = _selectedCategory == cat;
                               return _pill(
                                 isDark,
-                                label: cat.labelArabic,
+                                label: cat.label(strings),
                                 emoji: '🍲',
                                 selected: isSelected,
                                 color: const Color(0xFFE7E1F9),
@@ -640,7 +650,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                             children: [
                               Container(width: 28, height: 28, decoration: BoxDecoration(color: isDark ? Colors.white10 : const Color(0xFFE8F5E9), shape: BoxShape.circle), child: Icon(Icons.access_time, size: 16, color: isDark ? Colors.white70 : const Color(0xFF0E6B4A))),
                               const SizedBox(width: 8),
-                              Text('Time', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? Colors.white70 : const Color(0xFF16283B))),
+                              Text(strings.timeLabel, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? Colors.white70 : const Color(0xFF16283B))),
                             ],
                           ),
                           const SizedBox(height: 8),
@@ -659,7 +669,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                                 children: [
                                   Icon(Icons.access_time, size: 16, color: isDark ? Colors.white70 : const Color(0xFF0E6B4A)),
                                   const SizedBox(width: 8),
-                                  Text('$_prepMins mins', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? Colors.white : const Color(0xFF0E6B4A))),
+                                  Text(strings.minutes(_prepMins), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? Colors.white : const Color(0xFF0E6B4A))),
                                   const SizedBox(width: 8),
                                   Icon(Icons.keyboard_arrow_down, size: 18, color: isDark ? Colors.white70 : const Color(0xFF0E6B4A)),
                                 ],
@@ -671,9 +681,9 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                               key: const Key('meal_form_prep_time_field'),
                               controller: _prepTimeController,
                               validator: (v) {
-                                if (v == null || v.trim().isEmpty) return 'required';
+                                if (v == null || v.trim().isEmpty) return strings.fieldRequired;
                                 final p = int.tryParse(v.trim());
-                                if (p == null || p <= 0) return 'invalid';
+                                if (p == null || p <= 0) return strings.fieldInvalid;
                                 return null;
                               },
                             ),
@@ -681,9 +691,9 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                           Offstage(
                             child: Column(
                               children: [
-                                DropdownButtonFormField<MealCategory>(key: const Key('meal_form_category_dropdown'), initialValue: _selectedCategory, items: MealCategory.values.map((c) => DropdownMenuItem(value: c, child: Text(c.labelArabic))).toList(), onChanged: (v) { if (v != null) setState(() => _selectedCategory = v);}),
-                                DropdownButtonFormField<ProteinType>(key: const Key('meal_form_protein_dropdown'), initialValue: _selectedProtein, items: ProteinType.values.map((p) => DropdownMenuItem(value: p, child: Text(p.labelArabic))).toList(), onChanged: (v) { if (v != null) setState(() => _selectedProtein = v);}),
-                                DropdownButtonFormField<CarbsType>(key: const Key('meal_form_carbs_dropdown'), initialValue: _selectedCarbs, items: CarbsType.values.map((c) => DropdownMenuItem(value: c, child: Text(c.labelArabic))).toList(), onChanged: (v) { if (v != null) setState(() => _selectedCarbs = v);}),
+                                DropdownButtonFormField<MealCategory>(key: const Key('meal_form_category_dropdown'), initialValue: _selectedCategory, items: MealCategory.values.map((c) => DropdownMenuItem(value: c, child: Text(c.label(strings)))).toList(), onChanged: (v) { if (v != null) setState(() => _selectedCategory = v);}),
+                                DropdownButtonFormField<ProteinType>(key: const Key('meal_form_protein_dropdown'), initialValue: _selectedProtein, items: ProteinType.values.map((p) => DropdownMenuItem(value: p, child: Text(p.label(strings)))).toList(), onChanged: (v) { if (v != null) setState(() => _selectedProtein = v);}),
+                                DropdownButtonFormField<CarbsType>(key: const Key('meal_form_carbs_dropdown'), initialValue: _selectedCarbs, items: CarbsType.values.map((c) => DropdownMenuItem(value: c, child: Text(c.label(strings)))).toList(), onChanged: (v) { if (v != null) setState(() => _selectedCarbs = v);}),
                                 SwitchListTile(key: const Key('meal_form_friday_checkbox'), value: _isFridaySpecial, onChanged: (v) => setState(() => _isFridaySpecial = v), title: const Text('')),
                                 SwitchListTile(key: const Key('meal_form_budget_checkbox'), value: _isBudgetFriendly, onChanged: (v) => setState(() => _isBudgetFriendly = v), title: const Text('')),
                                 SwitchListTile(key: const Key('meal_form_favorite_checkbox'), value: _isFavorite, onChanged: (v) => setState(() => _isFavorite = v), title: const Text('')),
@@ -703,7 +713,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                                     padding: const EdgeInsets.symmetric(vertical: 14),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                                   ),
-                                  child: const Text('Cancel', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                                  child: Text(strings.cancel, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -712,7 +722,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                                   key: const Key('meal_form_save_button'),
                                   onPressed: _save,
                                   icon: const Icon(Icons.restaurant_menu, size: 18, color: Colors.white),
-                                  label: Text(isEditing ? 'Save Changes' : 'Save Meal', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
+                                  label: Text(isEditing ? strings.saveChanges : strings.saveMeal, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
                                   style: FilledButton.styleFrom(
                                     backgroundColor: AppPalette.brandGreen,
                                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -828,6 +838,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
 
   void _showTimePicker(bool isDark) {
     final options = [15, 30, 45, 60, 90, 120];
+    final strings = AppStrings.of(context);
     showModalBottomSheet(
       context: context,
       backgroundColor: isDark ? const Color(0xFF1A1F2A) : Colors.white,
@@ -836,7 +847,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: options.map((m) => ListTile(
-            title: Text('$m mins', style: TextStyle(color: isDark ? Colors.white : const Color(0xFF16283B))),
+            title: Text(strings.minutes(m), style: TextStyle(color: isDark ? Colors.white : const Color(0xFF16283B))),
             trailing: _prepMins == m ? const Icon(Icons.check, color: AppPalette.brandGreen) : null,
             onTap: () { Navigator.pop(ctx); _setPrep(m); },
           )).toList(),

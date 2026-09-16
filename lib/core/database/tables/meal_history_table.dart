@@ -1,4 +1,7 @@
 import 'package:drift/drift.dart';
+import 'package:flutter/material.dart' show Locale;
+
+import '../../localization/app_strings.dart';
 import 'meals_table.dart';
 
 enum MealEntryType {
@@ -21,12 +24,8 @@ class MealHistory extends Table {
 }
 
 extension MealEntryTypeX on MealEntryType {
-  String get labelArabic {
-    switch (this) {
-      case MealEntryType.cooked:
-        return 'طبخة جديدة';
-      case MealEntryType.leftover:
-        return 'بواقي أكل';
-    }
-  }
+  /// Localised display label (see [AppStrings.entryTypeLabel]).
+  String label(AppStrings strings) => strings.entryTypeLabel(name);
+
+  String get labelArabic => label(const AppStrings(Locale('ar')));
 }

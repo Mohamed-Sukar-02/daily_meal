@@ -1,19 +1,49 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/tables/meals_table.dart';
+import '../../../core/localization/app_strings.dart';
+import '../../../core/navigation/nav_lifecycle.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/app_icons.dart';
 import '../../../core/widgets/app_toast.dart';
 import '../../../core/widgets/meal_image.dart';
 import '../providers/history_providers.dart';
 
-class HistoryScreen extends ConsumerWidget {
+/// Cooking log.
+///
+/// Lifecycle: this branch stays alive inside the shell, so the timeline would
+/// otherwise stay scrolled down after every tab switch. [NavBranchReentry]
+/// resets the scroll offset (UI-only) on re-entry; the history data itself is
+/// never invalidated, so nothing flickers or reloads.
+class HistoryScreen extends ConsumerStatefulWidget {
   const HistoryScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HistoryScreen> createState() => _HistoryScreenState();
+}
+
+class _HistoryScreenState extends ConsumerState<HistoryScreen>
+    with NavBranchReentry {
+  final ScrollController _timelineController = ScrollController();
+
+  @override
+  int get navBranchIndex => NavBranch.history;
+
+  @override
+  void resetTransientUi() => resetScroll(_timelineController);
+
+  @override
+  void dispose() {
+    _timelineController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    watchNavReentry();
     final historyAsync = ref.watch(mealHistoryWithMealProvider);
     final brightness = Theme.of(context).brightness;
+    final strings = AppStrings.of(context);
 
     return Scaffold(
       backgroundColor: AppPalette.background(brightness),
@@ -35,7 +65,7 @@ class HistoryScreen extends ConsumerWidget {
                           fit: BoxFit.scaleDown,
                           alignment: AlignmentDirectional.centerStart,
                           child: Text(
-                            'سجل الأكلات',
+                            strings.historyTitle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -51,7 +81,7 @@ class HistoryScreen extends ConsumerWidget {
                           fit: BoxFit.scaleDown,
                           alignment: AlignmentDirectional.centerStart,
                           child: Text(
-                            'رحلة وجباتك خلال هذا الشهر',
+                            strings.historySubtitle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -75,7 +105,7 @@ class HistoryScreen extends ConsumerWidget {
                   ),
                   const SizedBox(width: 12),
                   IconButton(
-                    tooltip: 'مسح السجل بالكامل',
+                    tooltip: strings.clearAllHistory,
                     icon: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
@@ -89,19 +119,19 @@ class HistoryScreen extends ConsumerWidget {
                       final confirmed = await showDialog<bool>(
                         context: context,
                         builder: (ctx) => AlertDialog(
-                          title: const Text('مسح السجل'),
-                          content: const Text('هل أنت متأكد من مسح جميع سجلات الطبخ؟'),
+                          title: Text(strings.clearHistoryTitle),
+                          content: Text(strings.clearHistoryConfirm),
                           actionsOverflowDirection: VerticalDirection.up,
                           actionsOverflowButtonSpacing: 8,
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.of(ctx).pop(false),
-                              child: const Text('إلغاء'),
+                              child: Text(strings.cancel),
                             ),
                             FilledButton(
                               style: FilledButton.styleFrom(backgroundColor: Colors.red),
                               onPressed: () => Navigator.of(ctx).pop(true),
-                              child: const Text('مسح الكل'),
+                              child: Text(strings.clearAll),
                             ),
                           ],
                         ),
@@ -110,7 +140,7 @@ class HistoryScreen extends ConsumerWidget {
                       if (confirmed == true) {
                         await ref.read(historyControllerProvider.notifier).clearAllHistory();
                         if (context.mounted) {
-                          AppToast.showSuccess(context, 'تم مسح السجل بالكامل');
+                          AppToast.showSuccess(context, strings.historyCleared);
                         }
                       }
                     },
@@ -137,7 +167,7 @@ class HistoryScreen extends ConsumerWidget {
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              'سجل الطبخ فارغ!',
+                              strings.historyEmptyTitle,
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w800,
@@ -146,7 +176,7 @@ class HistoryScreen extends ConsumerWidget {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'عندما تسجل وجباتك من الصفحة الرئيسية ستظهر هنا مرتبة بالتواريخ.',
+                              strings.historyEmptyDesc,
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 13,
@@ -177,13 +207,13 @@ class HistoryScreen extends ConsumerWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: Row(
                           children: [
-                            _buildStatCard(context, brightness, '🐔', 'فراخ', chickenDays, const Color(0xFFFDF5E6)),
+                            _buildStatCard(context, brightness, '🐔', strings.chicken, chickenDays, const Color(0xFFFDF5E6)),
                             const SizedBox(width: 12),
-                            _buildStatCard(context, brightness, '🐟', 'سمك', fishDays, const Color(0xFFE3F0FD)),
+                            _buildStatCard(context, brightness, '🐟', strings.fish, fishDays, const Color(0xFFE3F0FD)),
                             const SizedBox(width: 12),
-                            _buildStatCard(context, brightness, '🥩', 'لحمة', beefDays, const Color(0xFFFFEBEE)),
+                            _buildStatCard(context, brightness, '🥩', strings.beef, beefDays, const Color(0xFFFFEBEE)),
                             const SizedBox(width: 12),
-                            _buildStatCard(context, brightness, '🌿', 'نباتي', meatlessDays, const Color(0xFFE8F5E9)),
+                            _buildStatCard(context, brightness, '🌿', strings.veggieShort, meatlessDays, const Color(0xFFE8F5E9)),
                           ],
                         ),
                       ),
@@ -191,6 +221,8 @@ class HistoryScreen extends ConsumerWidget {
                       // Timeline List
                       Expanded(
                         child: ListView.separated(
+                          key: const Key('history_timeline_list'),
+                          controller: _timelineController,
                           padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                           itemCount: entries.length,
                           separatorBuilder: (_, __) => const SizedBox(height: 4),
@@ -202,9 +234,9 @@ class HistoryScreen extends ConsumerWidget {
                             final now = DateTime.now();
                             String dateStr;
                             if (date.year == now.year && date.month == now.month && date.day == now.day) {
-                              dateStr = 'اليوم';
+                              dateStr = strings.today;
                             } else if (date.year == now.year && date.month == now.month && date.day == now.day - 1) {
-                              dateStr = 'أمس';
+                              dateStr = strings.yesterday;
                             } else {
                               dateStr = '${date.day}/${date.month}/${date.year}';
                             }
@@ -322,7 +354,7 @@ class HistoryScreen extends ConsumerWidget {
                                                           borderRadius: BorderRadius.circular(8),
                                                         ),
                                                         child: Text(
-                                                          entry.proteinType.labelArabic,
+                                                          entry.proteinType.label(strings),
                                                           style: TextStyle(
                                                             color: dotColor,
                                                             fontSize: 11,
@@ -359,7 +391,7 @@ class HistoryScreen extends ConsumerWidget {
                 child: Center(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(24),
-                    child: Text('حدث خطأ: $err', textAlign: TextAlign.center),
+                    child: Text(strings.errorGeneric(err), textAlign: TextAlign.center),
                   ),
                 ),
               ),
@@ -372,6 +404,7 @@ class HistoryScreen extends ConsumerWidget {
 
   Widget _buildStatCard(BuildContext context, Brightness brightness, String emoji, String title, int count, Color bgColor) {
     final isDark = brightness == Brightness.dark;
+    final strings = AppStrings.of(context);
     final finalBg = isDark ? bgColor.withValues(alpha: 0.12) : bgColor;
     return Container(
       width: 130,
@@ -393,7 +426,7 @@ class HistoryScreen extends ConsumerWidget {
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
-              '$count يوم',
+              strings.daysText(count),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -419,7 +452,7 @@ class HistoryScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 2),
           Text(
-            'هذا الشهر',
+            strings.thisMonth,
             style: TextStyle(
               color: AppPalette.textSecondary(brightness),
               fontSize: 10,

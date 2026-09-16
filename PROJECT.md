@@ -132,3 +132,59 @@ test/
 └── e2e/
     └── full_flow_test.dart
 ```
+
+## UI State vs. Persisted State (tab lifecycle)
+
+`StatefulShellRoute.indexedStack` keeps every branch alive, which is what makes
+the Meal Vault keep its position — but it also means screens would otherwise
+keep their scroll offsets forever. The split is explicit:
+
+| Screen | On leaving + returning to the tab |
+|---|---|
+| Home | UI state reset (scroll offset) — data untouched |
+| History | UI state reset (scroll offset) — data untouched |
+| Settings | UI state reset (scroll offset) — data untouched |
+| Meal Vault | **Nothing** is reset: selected internal tab, grid offset and the Explore browsing state all survive |
+| Vault → "My Vault" (internal switch) | That tab's UI resets (search text + filter chips) |
+| Vault → "Explore" (internal switch) | Kept alive, never rebuilt |
+
+* `activeNavBranchProvider` (`lib/core/navigation/nav_lifecycle.dart`) is the
+  single signal a screen uses to know it was re-entered.
+* `NavBranchReentry` is the mixin screens apply: declare `navBranchIndex`,
+  implement `resetTransientUi()`, call `watchNavReentry()` first in `build`.
+* **Resetting UI state must never invalidate a data provider** — that is what
+  would lose settings or cause a loading flicker. `vaultFilterProvider` is the
+  one exception and it is safe because it holds only transient filter/search
+  state, never database rows.
+
+## Localisation contract
+
+* Every user-facing string lives in `lib/core/localization/app_strings.dart`
+  (`AppStrings`), with an Arabic and an English variant. No literals in widgets.
+* The domain/data layers carry **no display copy**. `CooldownEngine` reports a
+  `relaxationLevel` + `isEmptyVault` flag; `AdminAuthService` reports an
+  `AdminAuthFailure` code; `DiscoveryRepository` throws `CloudMealsFetchException`.
+  The UI maps those to localised text.
+* Enum labels are resolved through `AppStrings` (`ProteinType.label(strings)`,
+  `CarbsType.label(strings)`, `MealCategory.label(strings)`,
+  `MealEntryType.label(strings)`). `labelArabic` remains as a locale-free
+  convenience for seed data and logs.
+* Exceptions that are *data*, not copy: meal names from the database
+  (`meal.name`) and the character-folding tables in
+  `lib/core/utils/arabic_normalizer.dart` — localising the latter would break
+  Arabic search.
+
+### Verifying without the Flutter SDK
+
+`tool/check_localization.py` is a static consistency checker for environments
+where the SDK/pub.dev are unreachable. It is **not** a compiler, but it operates
+on the real sources and catches: unbalanced brackets, unresolved imports,
+`strings.<member>` typos, duplicate `AppStrings` members (including the illegal
+getter+method pair), `strings`/`context` used out of scope, references to removed
+symbols, and un-localised Arabic literals.
+
+```bash
+python3 tool/check_localization.py   # exit code 0 == all checks passed
+```
+
+Run `flutter analyze` and `flutter test` as the authoritative gate.

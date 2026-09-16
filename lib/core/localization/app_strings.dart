@@ -1,5 +1,13 @@
 import 'package:flutter/material.dart';
 
+/// Single source of truth for every user-facing string in the app.
+///
+/// Rules enforced across the codebase:
+///  * No hardcoded Arabic/English literals in widgets — always go through here.
+///  * Domain/data layers never embed display text; they expose stable keys or
+///    enums and the UI maps them here (see [relaxationReason], [proteinLabel]…).
+///  * The only exception is meal names coming from the database (`meal.name`),
+///    which are user content, not UI copy.
 class AppStrings {
   final Locale locale;
 
@@ -12,19 +20,366 @@ class AppStrings {
 
   bool get isEn => locale.languageCode == 'en';
 
+  // ===========================================================================
+  // App shell & navigation
+  // ===========================================================================
   String get appName => isEn ? 'Daily Meal' : 'أكلة النهاردة';
-  String get appSubtitle => isEn ? 'Smart daily meal suggestions for your home' : 'اقتراحات يومية ذكية لوجبات البيت المصري';
-  
-  // Navigation
+  String get appSubtitle => isEn
+      ? 'Smart daily meal suggestions for your home'
+      : 'اقتراحات يومية ذكية لوجبات البيت المصري';
+  String get appTagline => isEn
+      ? 'No more daily dilemmas… what are we eating?'
+      : 'من غير حيرة كل يوم .. هناكل ايه؟';
+
   String get navHome => isEn ? 'Home' : 'الرئيسية';
   String get navVault => isEn ? 'Vault' : 'خزانة الأكلات';
   String get navHistory => isEn ? 'History' : 'السجل';
   String get navSettings => isEn ? 'Settings' : 'الإعدادات';
-  
-  // Settings
+
+  // ===========================================================================
+  // Common
+  // ===========================================================================
+  String get ok => isEn ? 'OK' : 'حسناً';
+  String get cancel => isEn ? 'Cancel' : 'إلغاء';
+  String get done => isEn ? 'Done' : 'تم';
+  String get save => isEn ? 'Save' : 'حفظ';
+  String get close => isEn ? 'Close' : 'إغلاق';
+  String get retry => isEn ? 'Retry' : 'إعادة المحاولة';
+  String get undo => isEn ? 'Undo' : 'تراجع';
+  String get more => isEn ? 'More' : 'المزيد';
+  String get encrypted => isEn ? 'Encrypted' : 'مشفر';
+  String get loading => isEn ? 'Loading…' : 'جاري التحميل...';
+  String get am => isEn ? 'AM' : 'ص';
+  String get pm => isEn ? 'PM' : 'م';
+
+  String get errorOccurred => isEn ? 'An error occurred: ' : 'حدث خطأ: ';
+  String errorGeneric(Object error) =>
+      isEn ? 'An error occurred: $error' : 'حدث خطأ: $error';
+
+  String get today => isEn ? 'Today' : 'اليوم';
+  String get yesterday => isEn ? 'Yesterday' : 'أمس';
+  String get thisMonth => isEn ? 'This month' : 'هذا الشهر';
+  String get earlier => isEn ? 'Earlier' : 'سابقاً';
+
+  /// "12 minutes" with proper Arabic plural forms.
+  String minutes(int minutes) {
+    if (isEn) return minutes == 1 ? '1 minute' : '$minutes minutes';
+    if (minutes == 1) return 'دقيقة واحدة';
+    if (minutes == 2) return 'دقيقتان';
+    if (minutes >= 3 && minutes <= 10) return '$minutes دقائق';
+    return '$minutes دقيقة';
+  }
+
+  String daysText(int days) {
+    if (isEn) return days == 1 ? '1 day' : '$days days';
+    if (days == 1) return 'يوم واحد';
+    if (days == 2) return 'يومان';
+    if (days <= 10) return '$days أيام';
+    return '$days يوماً';
+  }
+
+  String mealsCount(int count) {
+    if (isEn) return count == 1 ? '1 meal' : '$count meals';
+    if (count == 1) return 'أكلة واحدة';
+    if (count == 2) return 'أكلتان';
+    if (count >= 3 && count <= 10) return '$count أكلات';
+    return '$count أكلة';
+  }
+
+  String daysAgo(int days) {
+    if (isEn) return days == 1 ? 'Yesterday' : '$days days ago';
+    if (days == 1) return 'أمس';
+    if (days == 2) return 'منذ يومين';
+    if (days >= 3 && days <= 10) return 'منذ $days أيام';
+    return 'منذ $days يوماً';
+  }
+
+  String hoursAgo(int hours) {
+    if (isEn) return hours == 1 ? 'An hour ago' : '$hours hours ago';
+    if (hours == 1) return 'منذ ساعة';
+    if (hours == 2) return 'منذ ساعتين';
+    if (hours >= 3 && hours <= 10) return 'منذ $hours ساعات';
+    return 'منذ $hours ساعة';
+  }
+
+  String get minutesAgo => isEn ? 'Minutes ago' : 'منذ دقائق';
+  String get twoDaysAgo => isEn ? 'Two days ago' : 'منذ يومين';
+
+  // ===========================================================================
+  // Home screen
+  // ===========================================================================
+  String get refreshSuggestions => isEn ? 'Refresh Suggestions' : 'تحديث الاقتراحات';
+  String get vaultEmpty => isEn ? 'Vault is empty!' : 'خزنة الأكلات فارغة!';
+  String get vaultEmptyDesc => isEn
+      ? 'Start by adding a meal or download suggestions.'
+      : 'ابدأ بإضافة أول أكلة أو حمّل الأكلات المقترحة.';
+  String get addFirstMeal => isEn ? 'Add first meal' : 'أضف أكلتك الأولى';
+  String get errorPreparing => isEn ? 'Error preparing suggestions' : 'حدث خطأ في تجهيز الاقتراحات';
+  String get todaySuggestions => isEn
+      ? 'Today\'s suggestions for you:'
+      : 'اقتراحات النهاردة المختارة لك:';
+
+  String greetingMorning(String name) =>
+      isEn ? 'Good morning, $name ☀️' : 'صباح الفل والجمال يا $name ☀️';
+  String greetingAfternoon(String name) =>
+      isEn ? 'What to cook today, $name? 🍲' : 'أكلة النهاردة.. هنطبخ إيه يا $name؟ 🍲';
+  String greetingEvening(String name) =>
+      isEn ? 'Good evening, $name 🌙' : 'مساء الهنا والسرور يا $name 🌙';
+
+  String get greetingMorningNoName => isEn ? 'Good morning ☀️' : 'صباح الفل والجمال ☀️';
+  String get greetingAfternoonNoName => isEn ? 'What to cook today? 🍲' : 'أكلة النهاردة.. هنطبخ إيه؟ 🍲';
+  String get greetingEveningNoName => isEn ? 'Good evening 🌙' : 'مساء الهنا والسرور 🌙';
+
+  String get top3Balanced => isEn
+      ? 'Selected best 3 balanced meals.'
+      : 'اخترنا لك أفضل 3 وجبات متنوعة ومتوازنة.';
+  String get spinWheel => isEn ? 'Spin the Wheel' : 'لف العجلة';
+  String get spinNow => isEn ? 'Spin now' : 'لف العجلة';
+  String get varietyAlert => isEn ? 'Variety Alert' : 'تنبيه التنوع الغذائي';
+  String varietyAlertDetailed(int level, String reason) => isEn
+      ? 'Variety alert (level $level): $reason'
+      : 'تنبيه التنوع الغذائي (مستوى $level): $reason';
+
+  String get cookedToday => isEn ? 'Cooked Today' : 'طبختها النهاردة';
+  String get leftover => isEn ? 'Leftover' : 'بواقي أكل';
+  String cookedSuccess(String mealName) => isEn
+      ? 'Enjoy! "$mealName" added to history.'
+      : 'بالهنا والشفا! تم تسجيل "$mealName" في السجل.';
+  String cookedShort(String mealName) =>
+      isEn ? 'Enjoy! "$mealName" logged' : 'بالهنا والشفا! تم تسجيل "$mealName"';
+  String leftoverSuccess(String mealName) => isEn
+      ? 'Logged leftover for "$mealName".'
+      : 'تم تسجيل بواقي أكل "$mealName".';
+
+  String get fridaySpecial => isEn ? 'Friday special' : 'أكلة جمعة';
+  String get budgetFriendly => isEn ? 'Budget friendly' : 'اقتصادي';
+  String get favorite => isEn ? 'Favorite' : 'مفضلة';
+
+  // Spin the wheel
+  String get spinWheelTitle => isEn ? 'Wheel of Fortune' : 'عجلة الحظ';
+  String get spinWheelTitleEmoji => isEn ? 'Wheel of Fortune 🎡' : 'عجلة الحظ 🎡';
+  String get spinWheelNeedsTwo => isEn
+      ? 'The wheel needs at least two suggested meals to spin!'
+      : 'عجلة الحظ تحتاج إلى وجبتين على الأقل في الاقتراحات للتدوير!';
+  String get spinWheelLandedOn => isEn
+      ? '🎉 Today\'s meal landed on:'
+      : '🎉 أكلة النهاردة وقعت على:';
+  String get spinWheelStart => isEn ? 'Start spinning' : 'ابدأ التدوير';
+  String get spinWheelAgain => isEn ? 'Spin again' : 'لف تاني';
+  String get cookedThisOne => isEn ? 'Cooked this' : 'طبخت دي';
+  String get wheelSpin => isEn ? 'Spin' : 'لف';
+  String get wheelTheWheel => isEn ? 'the wheel' : 'العجلة';
+
+  // ===========================================================================
+  // Meal vault
+  // ===========================================================================
+  String get vaultTitle => isEn ? 'Meal Vault' : 'خزانة الأكلات';
+  String get vaultSubtitle => isEn
+      ? 'Save your favourite meals and cook them anytime 🧡'
+      : 'احفظ أكلاتك المفضلة واطبخها في أي وقت 🧡';
+  String get vaultSearchHint => isEn ? 'Search a meal by name…' : 'ابحث عن أكلة بالاسم...';
+  String vaultLoadError(Object error) => isEn
+      ? 'Failed to load meals: $error'
+      : 'حدث خطأ في عرض الوجبات: $error';
+  String get vaultTabMine => isEn ? 'My Vault' : 'خزانتي';
+  String get vaultTabExplore => isEn ? 'Explore' : 'استكشاف';
+
+  String get filterAll => isEn ? 'All' : 'الكل';
+  String get filterQuick => isEn ? 'Quick 30m' : 'سريع 30م';
+  String get filterFavorites => isEn ? 'Favorites' : 'المفضلة';
+
+  String get vaultNoResultsTitle => isEn ? 'No matching results' : 'لا توجد نتائج مطابقة';
+  String get vaultNoResultsDesc => isEn
+      ? 'We could not find meals matching your search or filters.'
+      : 'لم نجد أكلات تطابق كلمات البحث أو الفلاتر المحددة.';
+  String get vaultResetFilters => isEn ? 'Reset filters & search' : 'إعادة ضبط الفلاتر والبحث';
+
+  // Delete meal dialog
+  String get deleteMealTitle => isEn ? 'Delete meal' : 'حذف الأكلة';
+  String deleteMealConfirm(String mealName) => isEn
+      ? 'Are you sure you want to permanently delete "$mealName" from your vault?'
+      : 'هل أنت متأكد من رغبتك في حذف "$mealName" نهائياً من خزانة الأكلات؟';
+  String get deleteMealHistorySafe => isEn
+      ? 'Your cooking log is safe: previous times you cooked this meal stay in history and will not be deleted.'
+      : 'سجل الطبخ في أمان: سيتم الاحتفاظ بسجل المرات السابقة التي طبخت فيها هذه الأكلة ولن يُحذف من سجل الأكلات.';
+  String mealDeletedWithHistory(String mealName) => isEn
+      ? '"$mealName" deleted — its previous cooking log was kept'
+      : 'تم حذف "$mealName" مع الاحتفاظ بسجل طبخها السابق';
+
+  // Quick add / edit sheet
+  String get photoAccessLimited => isEn ? 'Limited photo access' : 'الوصول للصور محدود';
+  String get photoAccessLimitedDesc => isEn
+      ? 'You can allow access to selected photos from Settings, or use the system photo picker.'
+      : 'يمكنك السماح بالوصول لبعض الصور فقط من الإعدادات، أو استخدام منتقي الصور النظامي.';
+  String get openSettings => isEn ? 'Open Settings' : 'فتح الإعدادات';
+  String get cameraPermissionDenied => isEn ? 'Camera permission denied' : 'تم رفض إذن الكاميرا';
+  String get cameraPermissionTitle => isEn ? 'Camera permission required' : 'إذن الكاميرا مطلوب';
+  String get cameraPermissionDesc => isEn
+      ? 'Please allow camera access from Settings to take a photo.'
+      : 'يرجى السماح بالوصول للكاميرا من الإعدادات لالتقاط صورة.';
+  String get photoCaptured => isEn ? 'Photo captured successfully' : 'تم التقاط الصورة بنجاح';
+  String get photoPicked => isEn ? 'Photo selected successfully' : 'تم اختيار الصورة بنجاح';
+  String imagePickError(String message) => isEn
+      ? 'Error while picking an image: $message'
+      : 'خطأ في اختيار الصورة: $message';
+  String get chooseMealPhoto => isEn ? 'Choose meal photo' : 'اختر صورة الأكلة';
+  String get takePhoto => isEn ? 'Take a photo' : 'التقاط صورة بالكاميرا';
+  String get takePhotoDesc => isEn ? 'Use the camera to take a new photo' : 'استخدم الكاميرا لالتقاط صورة جديدة';
+  String get pickFromGallery => isEn ? 'Choose from gallery' : 'اختيار من المعرض';
+  String get pickFromGalleryDesc => isEn ? 'Pick a photo from your album' : 'اختر صورة من ألبوم الصور';
+  String get removePhoto => isEn ? 'Remove photo' : 'إزالة الصورة';
+  String get removePhotoDesc => isEn ? 'Delete the current photo' : 'حذف الصورة الحالية';
+  String mealUpdated(String name) => isEn
+      ? 'Meal "$name" updated successfully'
+      : 'تم تعديل أكلة "$name" بنجاح';
+  String mealAdded(String name) => isEn
+      ? '"$name" added to your meal vault'
+      : 'تمت إضافة "$name" إلى خزانة الأكلات';
+  String saveError(Object error) => isEn
+      ? 'Error while saving: $error'
+      : 'حدث خطأ أثناء الحفظ: $error';
+  String get mealNameRequired => isEn ? 'Please enter the meal name' : 'من فضلك أدخل اسم الأكلة';
+  String get mealNameMinLength => isEn ? 'At least two characters' : 'حرفين على الأقل';
+  String get carbsTypeLabel => isEn ? 'Carbs type' : 'نوع الكارب';
+  String get proteinTypeLabel => isEn ? 'Protein type' : 'نوع البروتين';
+  String get categoryShortLabel => isEn ? 'Category' : 'التصنيف';
+  String get quickAddMealTitle => isEn ? 'Quick Add Meal' : 'إضافة أكلة سريعة';
+  String get quickAddMealSubtitle => isEn
+      ? 'Add a new meal to the community'
+      : 'أضف أكلة جديدة للمجتمع';
+  String get addPhoto => isEn ? 'Add Photo' : 'أضف صورة';
+  String get mealNameLabel => isEn ? 'Meal Name' : 'اسم الأكلة';
+  String get mealNameHint => isEn
+      ? 'e.g. Grilled Chicken with Rice'
+      : 'مثال: فراخ مشوية مع أرز';
+  String get timeLabel => isEn ? 'Time' : 'الوقت';
+  String get carbsTypeShort => isEn ? 'Carb Type' : 'نوع الكارب';
+  String get saveChanges => isEn ? 'Save Changes' : 'حفظ التعديلات';
+  String get saveMeal => isEn ? 'Save Meal' : 'حفظ الأكلة';
+  String get fieldRequired => isEn ? 'Required' : 'مطلوب';
+  String get fieldInvalid => isEn ? 'Invalid value' : 'قيمة غير صحيحة';
+
+  // ===========================================================================
+  // Discovery / cloud meals
+  // ===========================================================================
+  String get discoveryTitle => isEn ? 'Discover' : 'استكشاف';
+  String get discoverySearchHint => isEn
+      ? 'Search for meals, cuisines, or ingredients…'
+      : 'ابحث عن أكلات أو مطابخ أو مكونات...';
+  String get discoveryTrending => isEn ? 'Trending' : 'الأكثر رواجاً';
+  String get discoveryAdminPicks => isEn ? 'Admin Picks' : 'اختيارات الإدارة';
+  String get discoveryQuickMeals => isEn ? 'Quick Meals' : 'وجبات سريعة';
+  String get discoveryGlobal => isEn ? 'Global' : 'عالمي';
+  String get discoveryOfflineTitle => isEn ? 'You are offline' : 'أنت غير متصل بالإنترنت';
+  String get discoveryOfflineDesc => isEn
+      ? 'Check your network connection to browse cloud recipes.'
+      : 'تحقّق من اتصالك بالشبكة لمشاهدة الوصفات السحابية.';
+  String get discoveryWifiTitle => isEn ? 'Wi-Fi connection required' : 'مطلوب اتصال Wi-Fi';
+  String get discoveryWifiDesc => isEn
+      ? 'You enabled the Wi-Fi-only download option.'
+      : 'فعّلت خيار التحميل عبر الواي فاي فقط.';
+  String get discoveryEmptyTitle => isEn ? 'No cloud recipes right now' : 'لا توجد وصفات سحابية حالياً';
+  String get discoveryEmptyDesc => isEn
+      ? 'Try again later or add your own recipes.'
+      : 'جرّب لاحقاً أو أضف وصفاتك الخاصة.';
+  String get discoveryNoResultsDesc => isEn
+      ? 'Try different search words or change the filter.'
+      : 'جرّب كلمات بحث مختلفة أو غيّر الفلتر.';
+  String get discoveryError => isEn ? 'An error occurred' : 'حدث خطأ';
+  String discoveryFetchFailed(Object error) => isEn
+      ? 'Failed to fetch cloud meals: $error'
+      : 'فشل جلب الأكلات السحابية: $error';
+  String discoveryAddedBy(String users) => isEn
+      ? 'Added by ${users}k users'
+      : 'أضيفت من ${users}k مستخدم';
+  String mealDownloaded(String name) => isEn ? 'Downloaded: $name' : 'تم تنزيل: $name';
+  String mealUpdatedToast(String name) => isEn ? 'Updated: $name' : 'تم التحديث: $name';
+  String mealAddedNewCopy(String name) => isEn
+      ? 'A new copy was downloaded: $name'
+      : 'تم تنزيل نسخة جديدة: $name';
+  String get discoveryUpdate => isEn ? 'Update' : 'تحديث';
+  String get discoveryDownload => isEn ? 'Download' : 'تنزيل';
+  String get discoveryUpdateExistingTitle => isEn
+      ? 'Update the existing meal'
+      : 'تحديث الأكلة الموجودة';
+  String get discoveryUpdateExistingDesc => isEn
+      ? 'The meal data in your vault will be replaced with the new data.'
+      : 'سيتم تحديث بيانات الأكلة في خزانتك بالبيانات الجديدة.';
+  String get discoveryAddAsNewTitle => isEn ? 'Add as a new copy' : 'إضافة كنسخة جديدة';
+  String get discoveryAddAsNewDesc => isEn
+      ? 'This meal will be added as a new entry without deleting the old copy.'
+      : 'سيتم إضافة هذه الأكلة كوجبة جديدة دون مسح النسخة القديمة.';
+
+  // ===========================================================================
+  // History
+  // ===========================================================================
+  String get historyTitle => isEn ? 'Cooking Log' : 'سجل الأكلات';
+  String get historySubtitle => isEn
+      ? 'Your meal journey this month'
+      : 'رحلة وجباتك خلال هذا الشهر';
+  String get clearAllHistory => isEn ? 'Clear the whole log' : 'مسح السجل بالكامل';
+  String get clearHistoryTitle => isEn ? 'Clear log' : 'مسح السجل';
+  String get clearHistoryConfirm => isEn
+      ? 'Are you sure you want to clear all cooking records?'
+      : 'هل أنت متأكد من مسح جميع سجلات الطبخ؟';
+  String get clearAll => isEn ? 'Clear all' : 'مسح الكل';
+  String get historyCleared => isEn
+      ? 'The whole log was cleared'
+      : 'تم مسح السجل بالكامل';
+  String get historyEmptyTitle => isEn ? 'Cooking log is empty!' : 'سجل الطبخ فارغ!';
+  String get historyEmptyDesc => isEn
+      ? 'Once you log meals from the home screen they will appear here, sorted by date.'
+      : 'عندما تسجل وجباتك من الصفحة الرئيسية ستظهر هنا مرتبة بالتواريخ.';
+  String get veggieShort => isEn ? 'Veggie' : 'نباتي';
+
+  // ===========================================================================
+  // Notifications screen
+  // ===========================================================================
+  String get notificationsTitle => isEn ? 'Notifications' : 'الإشعارات';
+  String get notificationsSubtitle => isEn
+      ? 'All your notifications in one place'
+      : 'كل إشعاراتك في مكان واحد';
+  String get notificationsFollow => isEn
+      ? 'Follow your reminders and new meal suggestions'
+      : 'تابع تذكيراتك واقتراحات الأكلات الجديدة';
+  String newBadge(int count) => isEn ? '$count new' : '$count جديد';
+  String get notifDailyReminder => isEn ? 'Daily reminder' : 'تذكير يومي';
+  String notifDailyReminderBody(String time) => isEn
+      ? 'Don\'t forget to check today\'s meal suggestion — at $time'
+      : 'متنساش تشوف اقتراح أكلة النهاردة - الساعة $time ظهراً';
+  String get notifNewSuggestion => isEn ? 'New suggested meal' : 'كلة جديدة مقترحة';
+  String get notifNewSuggestionBody => isEn
+      ? 'Try authentic Egyptian Koshary with sauce and dakka — budget friendly and healthy'
+      : 'جرب كشري مصري أصلي بالصلصة والدقة - اقتصادي ومفيد';
+  String get notifFavoriteWaiting => isEn ? 'A favourite is waiting' : 'كلة مفضلة في انتظارك';
+  String get notifFavoriteWaitingBody => isEn
+      ? 'Green Molokhia with chicken — one of your favourites'
+      : 'ملوخية خضراء بالفراخ - من مفضلاتك';
+  String get notifMealLogged => isEn ? 'Meal logged' : 'تم تسجيل وجبة';
+  String get notifMealLoggedBody => isEn
+      ? 'Enjoy! Hawawshi Baladi was added to your log'
+      : 'بالهنا والشفا! تم تسجيل حواوشي بلدي في السجل';
+  String get notifVaultUpdate => isEn ? 'Meal vault' : 'خزانة الأكلات';
+  String notifVaultUpdateBody(int count) => isEn
+      ? 'You added $count new meals to your vault this week'
+      : 'أضفت $count وجبات جديدة لخزانتك هذا الأسبوع';
+  String get notifSettingsUpdate => isEn ? 'Settings updated' : 'تحديث الإعدادات';
+  String get notifSettingsUpdateBody => isEn
+      ? 'The daily reminder was enabled successfully'
+      : 'تم تفعيل التذكير اليومي بنجاح';
+  String get notificationSettings => isEn ? 'Notification settings' : 'إعدادات الإشعارات';
+  String get notificationSettingsDesc => isEn
+      ? 'Customise times and enable reminders'
+      : 'تخصيص مواعيد وتفعيل التذكيرات';
+
+  // ===========================================================================
+  // Settings screen
+  // ===========================================================================
   String get languageSettings => isEn ? 'Language' : 'اللغة';
   String get cooldownSettings => isEn ? 'Cooldown Period' : 'فترة استبعاد الأكلات (Cooldown)';
-  String get cooldownDesc => isEn ? 'Duration to exclude a cooked meal from suggestions.' : 'المدة التي تظل فيها الأكلة مستبعدة من الاقتراحات بعد طبخها.';
+  String get cooldownDesc => isEn
+      ? 'Duration to exclude a cooked meal from suggestions.'
+      : 'المدة التي تظل فيها الأكلة مستبعدة من الاقتراحات بعد طبخها.';
   String get appearanceSettings => isEn ? 'Appearance & Theme' : 'المظهر والألوان';
   String get themeSystem => isEn ? 'System' : 'تلقائي';
   String get themeLight => isEn ? 'Light' : 'فاتح';
@@ -32,93 +387,289 @@ class AppStrings {
   String get dietaryRules => isEn ? 'Dietary Rules' : 'قواعد التنوع الغذائي';
   String get dailyReminder => isEn ? 'Daily Reminder' : 'تنبيه الاقتراح اليومي';
   String get enableReminder => isEn ? 'Enable Daily Reminder' : 'تفعيل التذكير اليومي';
-  String get enableReminderDesc => isEn ? 'Notification to check today\'s meal suggestions' : 'إشعار تذكير لتفقد اقتراحات وجبة اليوم';
+  String get enableReminderDesc => isEn
+      ? 'Notification to check today\'s meal suggestions'
+      : 'إشعار تذكير لتفقد اقتراحات وجبة اليوم';
   String get reminderTime => isEn ? 'Reminder Time' : 'موعد التذكير';
   String get networkCloud => isEn ? 'Network & Cloud' : 'الشبكة والسحابة';
   String get wifiOnly => isEn ? 'Cloud on Wi-Fi Only' : 'السحابة تعمل عبر Wi-Fi فقط';
-  String get wifiOnlyDesc => isEn ? 'Download meals only when connected to Wi-Fi.' : 'تنزيل واستكشاف الأكلات يعمل فقط عند الاتصال بشبكة واي فاي للحفاظ على باقتك.';
+  String get wifiOnlyDesc => isEn
+      ? 'Download meals only when connected to Wi-Fi.'
+      : 'تنزيل واستكشاف الأكلات يعمل فقط عند الاتصال بشبكة واي فاي للحفاظ على باقتك.';
   String get legalPolicies => isEn ? 'Legal Policies' : 'السياسات القانونية';
   String get privacyPolicy => isEn ? 'Privacy Policy' : 'سياسة الخصوصية';
-  String get termsConditions => isEn ? 'Terms & Conditions' : 'إخلاء المسؤولية والشروط';
+  String get termsConditions => isEn
+      ? 'Terms & Conditions'
+      : 'إخلاء المسؤولية والشروط';
   String get restoreDefaults => isEn ? 'Restore Defaults' : 'استعادة الإعدادات الافتراضية';
-  String get restoredSuccess => isEn ? 'Settings restored to defaults' : 'تم استعادة الإعدادات الافتراضية';
-  String get errorOccurred => isEn ? 'An error occurred: ' : 'حدث خطأ: ';
+  String get restoredSuccess => isEn
+      ? 'Settings restored to defaults'
+      : 'تم استعادة الإعدادات الافتراضية';
 
-  // Home Screen
-  String get refreshSuggestions => isEn ? 'Refresh Suggestions' : 'تحديث الاقتراحات';
-  String get vaultEmpty => isEn ? 'Vault is empty!' : 'خزنة الأكلات فارغة!';
-  String get vaultEmptyDesc => isEn ? 'Start by adding a meal or download suggestions.' : 'ابدأ بإضافة أول أكلة أو حمّل الأكلات المقترحة.';
-  String get addFirstMeal => isEn ? 'Add first meal' : 'أضف أكلتك الأولى';
-  String get errorPreparing => isEn ? 'Error preparing suggestions' : 'حدث خطأ في تجهيز الاقتراحات';
-  String get retry => isEn ? 'Retry' : 'إعادة المحاولة';
-  String get todaySuggestions => isEn ? 'Today\'s suggestions for you:' : 'اقتراحات النهاردة المختارة لك:';
-  
-  String greetingMorning(String name) => isEn ? 'Good morning, $name ☀️' : 'صباح الفل والجمال يا $name ☀️';
-  String greetingAfternoon(String name) => isEn ? 'What to cook today, $name? 🍲' : 'أكلة النهاردة.. هنطبخ إيه يا $name؟ 🍲';
-  String greetingEvening(String name) => isEn ? 'Good evening, $name 🌙' : 'مساء الهنا والسرور يا $name 🌙';
-  
-  String get greetingMorningNoName => isEn ? 'Good morning ☀️' : 'صباح الفل والجمال ☀️';
-  String get greetingAfternoonNoName => isEn ? 'What to cook today? 🍲' : 'أكلة النهاردة.. هنطبخ إيه؟ 🍲';
-  String get greetingEveningNoName => isEn ? 'Good evening 🌙' : 'مساء الهنا والسرور 🌙';
-
-  String get top3Balanced => isEn ? 'Selected best 3 balanced meals.' : 'اخترنا لك أفضل 3 وجبات متنوعة ومتوازنة.';
-  String get spinWheel => isEn ? 'Spin the Wheel' : 'لف العجلة';
-  String get spinNow => isEn ? 'Spin now' : 'لف العجلة';
-  String get varietyAlert => isEn ? 'Variety Alert' : 'تنبيه التنوع الغذائي';
-  
-  String get cookedToday => isEn ? 'Cooked Today' : 'طبختها النهاردة';
-  String get leftover => isEn ? 'Leftover' : 'بواقي أكل';
-  String cookedSuccess(String mealName) => isEn ? 'Enjoy! "$mealName" added to history.' : 'بالهنا والشفا! تم تسجيل "$mealName" في السجل.';
-  String leftoverSuccess(String mealName) => isEn ? 'Logged leftover for "$mealName".' : 'تم تسجيل بواقي أكل "$mealName".';
-  String get undo => isEn ? 'Undo' : 'تراجع';
-
-  // Profile Settings
-  String get settingsSubtitle => isEn ? 'Make your meals work for you' : 'خلّي أكلاتك تشتغل لمصلحتك';
+  // Profile
+  String get settingsSubtitle => isEn
+      ? 'Make your meals work for you'
+      : 'خلّي أكلاتك تشتغل لمصلحتك';
   String get editProfile => isEn ? 'Edit Profile' : 'تعديل الملف الشخصي';
   String get nameField => isEn ? 'Name' : 'الاسم';
   String get emailField => isEn ? 'Email' : 'البريد الإلكتروني';
   String get chooseAvatar => isEn ? 'Choose Avatar' : 'اختر الصورة الرمزية';
   String get profileSaved => isEn ? 'Profile saved' : 'تم حفظ الملف الشخصي';
-  String get cancel => isEn ? 'Cancel' : 'إلغاء';
-  String get done => isEn ? 'Done' : 'تم';
-  String get am => isEn ? 'AM' : 'ص';
-  String get pm => isEn ? 'PM' : 'م';
-  String get save => isEn ? 'Save' : 'حفظ';
+  String get defaultUserName => 'Mohamed Sukar';
+  String get defaultUserEmail => 'mohamed@example.com';
+  String get genderField => isEn ? 'Gender' : 'النوع';
+  String get genderMale => isEn ? 'Male' : 'ذكر';
+  String get genderFemale => isEn ? 'Female' : 'أنثى';
+  String get genderRequired => isEn
+      ? 'Please choose a gender to continue'
+      : 'من فضلك اختر النوع (ذكر/أنثى)';
+  String get avatarsForGenderHint => isEn
+      ? 'Avatars shown match the selected gender'
+      : 'الصور المعروضة مطابقة للنوع المختار';
 
-  // Cooldown Settings
+  // Smart cooldown engine
   String get smartCooldownEngine => isEn ? 'Smart Cooldown Engine' : 'محرك الكولداون الذكي';
-  String get more => isEn ? 'More' : 'المزيد';
+  String get cooldownSheetTitle => isEn
+      ? 'Smart Cooldown Engine'
+      : 'محرك الكولداون الذكي';
+  String get cooldownSheetSubtitle => isEn
+      ? 'Switch the cooldown on or off per protein. Zero days means disabled.'
+      : 'فعّل أو أوقف فترة الاستبعاد لكل بروتين على حدة. صفر أيام تعني إيقاف.';
+  String get cooldownEnabledHint => isEn
+      ? 'Cooldown active'
+      : 'الاستبعاد مفعّل';
+  String get cooldownDisabledHint => isEn
+      ? 'Cooldown off — this protein repeats freely'
+      : 'الاستبعاد متوقف — البروتين ده ممكن يتكرر في أي وقت';
   String get delayMealRepeat => isEn ? 'Delay Meal Repeat' : 'تأخير تكرار الأكلة';
   String get chicken => isEn ? 'Chicken' : 'فراخ';
   String get beef => isEn ? 'Beef' : 'لحمة';
   String get fish => isEn ? 'Fish' : 'سمك';
   String get veggies => isEn ? 'Veggies' : 'خضار';
+  String get legumes => isEn ? 'Legumes' : 'بقوليات';
+  String get dairyEggs => isEn ? 'Eggs / Cheese' : 'بيض / أجبان';
+  String get noProtein => isEn ? 'No protein' : 'بدون بروتين';
   String get waitingDays => isEn ? 'Waiting days' : 'أيام انتظار';
 
-  // Notifications
+  // Notifications section
   String get notifications => isEn ? 'Notifications' : 'التنبيهات';
-  String get dailyReminderDesc => isEn ? 'Get notified at your preferred time' : 'هيصلك إشعار في الوقت اللي تختاره';
+  String get dailyReminderDesc => isEn
+      ? 'Get notified at your preferred time'
+      : 'هيصلك إشعار في الوقت اللي تختاره';
   String get reminderTimeDesc => isEn ? 'When should we remind you?' : 'امتى تحب نذكّرك؟';
 
-  // Appearance & Admin
+  // Appearance & admin
   String get appearanceAndLanguage => isEn ? 'Appearance & Language' : 'المظهر واللغة';
   String get appearance => isEn ? 'Appearance' : 'المظهر';
   String get chooseAppAppearance => isEn ? 'Choose app appearance' : 'اختر مظهر التطبيق';
   String get admin => isEn ? 'Administration' : 'الإدارة';
   String get databaseManagement => isEn ? 'Database Management' : 'إدارة قاعدة البيانات';
-  String get manageLocalData => isEn ? 'View and manage local data' : 'عرض وإدارة البيانات المحلية';
-  String get databaseComingSoon => isEn ? 'Database management coming soon!' : 'إدارة قاعدة البيانات قريباً!';
+  String get manageLocalData => isEn
+      ? 'View and manage local data'
+      : 'عرض وإدارة البيانات المحلية';
+  String get databaseComingSoon => isEn
+      ? 'Database management coming soon!'
+      : 'إدارة قاعدة البيانات قريباً!';
   String get languageEnglish => isEn ? 'English' : 'English';
   String get languageArabic => isEn ? 'Arabic' : 'العربية';
-  String get encrypted => isEn ? 'Encrypted' : 'مشفر';
+  String get languageCodeEn => 'EN';
+  String get languageCodeAr => 'AR';
   String get adminLogin => isEn ? 'Login' : 'دخول';
+  String get adminAccessTitle => isEn ? 'Admin Access' : 'دخول المسؤول';
+  String get adminAccessDesc => isEn
+      ? 'Enter the admin password to access the dashboard'
+      : 'أدخل كلمة مرور المسؤول للوصول إلى لوحة التحكم';
+  String get adminPasswordHint => isEn ? 'Password' : 'كلمة المرور';
+  String get adminPasswordWrong => isEn ? 'Incorrect password' : 'كلمة المرور غير صحيحة';
+  String get adminOpenFailed => isEn
+      ? 'Could not open the admin page'
+      : 'تعذر فتح صفحة الإدارة';
+  String get adminDashboardTitle => isEn ? 'Admin database' : 'Admin database';
+  String get adminDashboardSubtitle => isEn
+      ? 'Admin dashboard — password protected'
+      : 'لوحة تحكم المسؤول - محمية بكلمة مرور';
+  String get adminPasswordEmpty => isEn
+      ? 'Password cannot be empty'
+      : 'كلمة المرور لا يمكن أن تكون فارغة';
+  String adminLockedOut(int minutes) => isEn
+      ? 'Attempts suspended temporarily — try again in $minutes minutes'
+      : 'تم تعليق المحاولات مؤقتاً — حاول مجدداً بعد $minutes دقائق';
+  String get adminLockedOutShort => isEn
+      ? 'Attempts suspended temporarily'
+      : 'تم تعليق المحاولات مؤقتاً';
+  String get adminNotConfigured => isEn
+      ? 'No admin password has been set yet.\nPlease set it from the dashboard on the website.'
+      : 'لم يتم إعداد كلمة مرور الأدمن بعد.\nيرجى تعيينها من لوحة التحكم على الموقع.';
+  String adminAttemptsLeft(int remaining) => isEn
+      ? 'Incorrect password — $remaining attempts left'
+      : 'كلمة المرور غير صحيحة — تبقى $remaining محاولة';
 
-  // Other common
-  String daysText(int days) {
-    if (isEn) return '$days days';
-    if (days == 1) return 'يوم واحد';
-    if (days == 2) return 'يومان';
-    if (days <= 10) return '$days أيام';
-    return '$days يوماً';
+  // ===========================================================================
+  // Legal policies
+  // ===========================================================================
+  String get privacyBody => isEn
+      ? 'The "Daily Meal" app is fully offline-first.\n\n'
+          'We do not collect, store or transmit any personal data, location or usage '
+          'habits to any external server.\n\n'
+          'All meal data and settings are stored locally on your own device only, '
+          'which guarantees your complete privacy.'
+      : 'تطبيق "أكلة النهاردة" هو تطبيق أوفلاين محلي (Offline-First) بالكامل.\n\n'
+          'نحن لا نقوم بجمع أو تخزين أو إرسال أي بيانات شخصية، أو موقع جغرافي، أو عادات استخدام لأي سيرفر خارجي.\n\n'
+          'جميع بيانات الوجبات والإعدادات يتم حفظها بشكل محلي فقط على جهازك الشخصي، مما يضمن خصوصيتك التامة.';
+
+  String get termsBody => isEn
+      ? 'The app is an organisational tool meant to help you suggest and plan daily home '
+          'meals; it does not provide any medical or nutritional advice.\n\n'
+          'Please note that checking meal ingredients and making sure they are free of '
+          'allergens is entirely the user\'s responsibility.\n\n'
+          'The app developers bear no responsibility for any health damage that may result '
+          'from using the app\'s recipes or suggestions.'
+      : 'التطبيق هو أداة تنظيمية تهدف إلى مساعدتك في اقتراح وتنظيم الوجبات المنزلية اليومية، ولا يقدم أي استشارات طبية أو غذائية متخصصة.\n\n'
+          'يُرجى الانتباه إلى أن فحص مكونات الوجبات والتأكد من خلوها من أي مسببات للحساسية هو مسؤولية المستخدم بالكامل.\n\n'
+          'لا يتحمل مطورو التطبيق أي مسؤولية عن أي أضرار صحية قد تنتج عن استخدام وصفات أو اقتراحات التطبيق.';
+
+  // ===========================================================================
+  // Welcome / onboarding
+  // ===========================================================================
+  String get welcomeTitle => isEn ? 'Welcome to Daily Meal!' : 'مرحباً بك في أكلة النهاردة!';
+  String get welcomeSubtitle => isEn
+      ? 'To tailor the experience for you, we need to know you a little.'
+      : 'علشان نقدر نخصص لك التجربة بشكل أفضل، محتاجين نتعرف عليك.';
+  String get welcomeNameLabel => isEn ? 'Your name (required)' : 'اسمك (إجباري)';
+  String get welcomeNameRequired => isEn ? 'Please enter your name' : 'من فضلك أدخل اسمك';
+  String get welcomeEmailLabel => isEn
+      ? 'Your email (optional)'
+      : 'بريدك الإلكتروني (اختياري)';
+  String get welcomeEmailHint => isEn
+      ? 'Helps us back up your data later'
+      : 'يساعدنا في حفظ بياناتك مستقبلاً';
+  String get welcomeGenderLabel => isEn ? 'Gender (required):' : 'النوع (إجباري):';
+  String get welcomeStart => isEn ? 'Get started' : 'ابدأ الاستخدام';
+
+  // ===========================================================================
+  // Local notification (scheduled reminder)
+  // ===========================================================================
+  String get localNotificationTitle => isEn ? 'Daily Meal 🍽️' : 'أكلة النهاردة 🍽️';
+  String get localNotificationBody => isEn
+      ? 'Time to pick today\'s meal! Open the app to see the suggestions.'
+      : 'حان وقت اختيار وجبة اليوم! افتح التطبيق لمعرفة الاقتراحات.';
+  String get localNotificationDescription => isEn
+      ? 'Daily reminder to check today\'s meal'
+      : 'تذكير يومي لمعرفة أكلة النهاردة';
+
+  // ===========================================================================
+  // Recommendation engine — relaxation reasons
+  //
+  // The engine is pure Dart and must stay free of display copy, so it reports a
+  // numeric level + `isEmptyVault` flag and the UI resolves the text here.
+  // ===========================================================================
+  String relaxationReason(int level, {bool isEmptyVault = false}) {
+    if (isEmptyVault) {
+      return isEn
+          ? 'The meal database is empty, please add meals.'
+          : 'قاعدة بيانات الوجبات فارغة، يرجى إضافة وجبات.';
+    }
+    switch (level) {
+      case 0:
+        return isEn
+            ? 'Perfect suggestions matching every variety and cooldown rule.'
+            : 'اقتراحات مثالية مطابقة لجميع شروط التنوع الغذائي وفترة الاستبعاد.';
+      case 1:
+        return isEn
+            ? 'Repeating a carbs type was allowed to provide enough suggestions.'
+            : 'تم السماح بتكرار صنف النشويات لتوفير اقتراحات كافية.';
+      case 2:
+        return isEn
+            ? 'The cooldown period was halved to provide enough suggestions.'
+            : 'تم تقليص فترة الاستبعاد إلى النصف لتوفير اقتراحات كافية.';
+      case 3:
+        return isEn
+            ? 'The protein rule and cooldown were relaxed to offer varied suggestions.'
+            : 'تم تخفيف شرط البروتين وفترة الاستبعاد لتوفير اقتراحات متنوعة.';
+      case 4:
+        return isEn
+            ? 'Emergency mode: only today\'s meals are excluded to provide suggestions.'
+            : 'وضع الطوارئ: استبعاد وجبات اليوم فقط لتوفير اقتراحات.';
+      case 5:
+      default:
+        return isEn
+            ? 'All available meals are shown because there are no other options.'
+            : 'تم عرض جميع الوجبات المتاحة لعدم توفر خيارات أخرى.';
+    }
+  }
+
+  // ===========================================================================
+  // Enum / entry-type labels
+  //
+  // Keys are stable identifiers produced by the data layer; the display text
+  // lives here so switching language updates every badge and chip instantly.
+  // ===========================================================================
+  String proteinLabel(String enumName) {
+    switch (enumName) {
+      case 'chicken':
+        return chicken;
+      case 'beef':
+        return beef;
+      case 'fish':
+        return fish;
+      case 'legume':
+        return legumes;
+      case 'dairy':
+        return dairyEggs;
+      case 'none':
+        return noProtein;
+      default:
+        return enumName;
+    }
+  }
+
+  String carbsLabel(String enumName) {
+    switch (enumName) {
+      case 'rice':
+        return isEn ? 'Rice' : 'أرز';
+      case 'pasta':
+        return isEn ? 'Pasta' : 'مكرونة';
+      case 'bread':
+        return isEn ? 'Bread' : 'عيش';
+      case 'potato':
+        return isEn ? 'Potatoes' : 'بطاطس';
+      case 'grains':
+        return isEn ? 'Grains / Freekeh' : 'حبوب / فريك';
+      case 'none':
+        return isEn ? 'No carbs' : 'بدون نشويات';
+      default:
+        return enumName;
+    }
+  }
+
+  String categoryLabel(String enumName) {
+    switch (enumName) {
+      case 'egyptianTraditional':
+        return isEn ? 'Traditional & stews' : 'أكلات شعبية وطبيخ';
+      case 'ovenBaked':
+        return isEn ? 'Tagines & oven dishes' : 'طواجن وصواني فرن';
+      case 'fastFood':
+        return isEn ? 'Fast food & sandwiches' : 'سريع وسندوتشات';
+      case 'seafood':
+        return isEn ? 'Fish & seafood' : 'أسماك وبحريات';
+      case 'soupStew':
+        return isEn ? 'Soups & stews' : 'شوربات ويخنات';
+      case 'vegetarian':
+        return isEn ? 'Vegetarian' : 'نباتي / قرديحي';
+      default:
+        return enumName;
+    }
+  }
+
+  /// History entry types are persisted as `'cooked'` / `'leftover'`.
+  String entryTypeLabel(String entryType) {
+    switch (entryType) {
+      case 'cooked':
+        return isEn ? 'Freshly cooked' : 'طبخة جديدة';
+      case 'leftover':
+        return leftover;
+      default:
+        return entryType;
+    }
   }
 }

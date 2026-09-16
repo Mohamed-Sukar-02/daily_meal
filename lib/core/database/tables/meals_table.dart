@@ -1,4 +1,7 @@
 import 'package:drift/drift.dart';
+import 'package:flutter/material.dart' show Locale;
+
+import '../../localization/app_strings.dart';
 
 enum ProteinType {
   chicken, // فراخ / دواجن
@@ -45,22 +48,13 @@ class Meals extends Table {
 }
 
 extension ProteinTypeX on ProteinType {
-  String get labelArabic {
-    switch (this) {
-      case ProteinType.chicken:
-        return 'فراخ';
-      case ProteinType.beef:
-        return 'لحمة';
-      case ProteinType.fish:
-        return 'سمك';
-      case ProteinType.legume:
-        return 'بقوليات';
-      case ProteinType.dairy:
-        return 'بيض / أجبان';
-      case ProteinType.none:
-        return 'بدون بروتين';
-    }
-  }
+  /// Localised display label. Display copy lives in [AppStrings] so switching
+  /// the app language updates every chip/badge without touching the data layer.
+  String label(AppStrings strings) => strings.proteinLabel(name);
+
+  /// Arabic label kept for callers that do not have a locale at hand
+  /// (seed data, debug logs, legacy tests).
+  String get labelArabic => label(const AppStrings(Locale('ar')));
 
   /// Emoji used by the vault / history badges (matches the mockups).
   String get emoji {
@@ -82,39 +76,15 @@ extension ProteinTypeX on ProteinType {
 }
 
 extension CarbsTypeX on CarbsType {
-  String get labelArabic {
-    switch (this) {
-      case CarbsType.rice:
-        return 'أرز';
-      case CarbsType.pasta:
-        return 'مكرونة';
-      case CarbsType.bread:
-        return 'عيش';
-      case CarbsType.potato:
-        return 'بطاطس';
-      case CarbsType.grains:
-        return 'حبوب / فريك';
-      case CarbsType.none:
-        return 'بدون نشويات';
-    }
-  }
+  /// Localised display label (see [AppStrings.carbsLabel]).
+  String label(AppStrings strings) => strings.carbsLabel(name);
+
+  String get labelArabic => label(const AppStrings(Locale('ar')));
 }
 
 extension MealCategoryX on MealCategory {
-  String get labelArabic {
-    switch (this) {
-      case MealCategory.egyptianTraditional:
-        return 'أكلات شعبية وطبيخ';
-      case MealCategory.ovenBaked:
-        return 'طواجن وصواني فرن';
-      case MealCategory.fastFood:
-        return 'سريع وسندوتشات';
-      case MealCategory.seafood:
-        return 'أسماك وبحريات';
-      case MealCategory.soupStew:
-        return 'شوربات ويخنات';
-      case MealCategory.vegetarian:
-        return 'نباتي / قرديحي';
-    }
-  }
+  /// Localised display label (see [AppStrings.categoryLabel]).
+  String label(AppStrings strings) => strings.categoryLabel(name);
+
+  String get labelArabic => label(const AppStrings(Locale('ar')));
 }

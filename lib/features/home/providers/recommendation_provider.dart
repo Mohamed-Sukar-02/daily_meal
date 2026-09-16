@@ -144,6 +144,16 @@ class RecommendationController extends AsyncNotifier<void> {
 
   Future<void> undoHistoryEntry(int historyEntryId) =>
       undoLastCookingLog(historyEntryId);
+
+  Future<void> toggleFavorite(int mealId, bool currentStatus) async {
+    try {
+      final dao = ref.read(mealsDaoProvider);
+      await dao.toggleFavorite(mealId, currentStatus);
+    } catch (err, st) {
+      state = AsyncValue.error(err, st);
+      rethrow;
+    }
+  }
 }
 
 final recommendationControllerProvider =

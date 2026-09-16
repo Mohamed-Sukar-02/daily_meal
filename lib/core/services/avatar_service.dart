@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,11 +8,22 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'reachability_service.dart';
 
+/// Gender values as persisted in `app_settings.user_gender`.
+class UserGender {
+  const UserGender._();
+
+  static const String male = 'male';
+  static const String female = 'female';
+
+  static bool isValid(String? value) => value == male || value == female;
+}
+
 class AvatarService {
   AvatarService._();
   static final AvatarService instance = AvatarService._();
 
-  static const List<String> avatarAssets = [
+  /// Male avatars: `MO*` are the adult set, `MY*` the young set.
+  static const List<String> maleAvatars = [
     'assets/avatars/MO1.png',
     'assets/avatars/MO2.png',
     'assets/avatars/MO3.png',
@@ -22,6 +34,10 @@ class AvatarService {
     'assets/avatars/MY3.png',
     'assets/avatars/MY4.png',
     'assets/avatars/MY5.png',
+  ];
+
+  /// Female avatars: `F0*` are the adult set (zero padded), `FY*` the young set.
+  static const List<String> femaleAvatars = [
     'assets/avatars/F01.png',
     'assets/avatars/F02.png',
     'assets/avatars/F03.png',
@@ -33,6 +49,36 @@ class AvatarService {
     'assets/avatars/FY4.png',
     'assets/avatars/FY5.png',
   ];
+
+  /// Every bundled avatar — used for downloading/copying to the file system.
+  static const List<String> avatarAssets = [...maleAvatars, ...femaleAvatars];
+
+  /// The avatar set matching [gender]. Unknown/absent gender yields an empty
+  /// list so the UI can force an explicit choice instead of showing all 20.
+  static List<String> avatarsForGender(String? gender) {
+    switch (gender) {
+      case UserGender.male:
+        return maleAvatars;
+      case UserGender.female:
+        return femaleAvatars;
+      default:
+        return const <String>[];
+    }
+  }
+
+  /// True when [avatar] belongs to the set of [gender].
+  static bool matchesGender(String? avatar, String? gender) {
+    if (avatar == null || avatar.isEmpty) return false;
+    return avatarsForGender(gender).contains(avatar);
+  }
+
+  /// Picks a random avatar from the set of [gender] so the profile never ends
+  /// up without a picture. Returns `null` only for an invalid gender.
+  static String? randomAvatarForGender(String? gender, {Random? random}) {
+    final pool = avatarsForGender(gender);
+    if (pool.isEmpty) return null;
+    return pool[(random ?? Random()).nextInt(pool.length)];
+  }
 
   static const String _prefsKey = 'avatars_downloaded_v2';
 

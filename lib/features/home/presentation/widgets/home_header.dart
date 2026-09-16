@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/localization/app_strings.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/widgets/app_icons.dart';
 import '../../../settings/providers/settings_providers.dart';
@@ -21,6 +22,7 @@ class HomeHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final brightness = Theme.of(context).brightness;
+    final strings = AppStrings.of(context);
     final settingsAsync = ref.watch(appSettingsProvider);
     final avatarPath = settingsAsync.valueOrNull?.userAvatar;
     final bool isUnread = (hasUnreadNotifications ?? ref.watch(unreadNotificationsProvider)) == true;
@@ -28,7 +30,7 @@ class HomeHeader extends ConsumerWidget {
     final tiltAngle = isRtl ? 0.15 : -0.15;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -78,7 +80,7 @@ class HomeHeader extends ConsumerWidget {
             child: Column(
               children: [
                 Text(
-                  'أكلة النهاردة',
+                  strings.appName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
@@ -91,7 +93,7 @@ class HomeHeader extends ConsumerWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'من غير حيرة كل يوم .. هناكل ايه؟',
+                  strings.appTagline,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
