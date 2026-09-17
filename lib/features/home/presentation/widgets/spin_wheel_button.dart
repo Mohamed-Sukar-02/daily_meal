@@ -154,7 +154,7 @@ class _CurvedTextPainter extends CustomPainter {
           ' ',
           '\uFE8D', // Alef isolated
           '\uFEDF', // Lam initial
-          '\uFEEC', // Ain medial
+          '\uFECC', // Ain medial
           '\uFEA0', // Jeem medial
           '\uFEE0', // Lam medial
           '\uFE94', // Teh Marbuta final

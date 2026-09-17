@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/localization/app_strings.dart';
+import '../../../core/navigation/nav_lifecycle.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/app_icons.dart';
 import '../providers/vault_providers.dart';
@@ -40,6 +41,11 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
 
   bool _quickOnly = false;
   int _tabIndex = _tabMyVault;
+  bool _showTooltip = true;
+  bool _isFilterBarVisible = false;
+  bool _isGridView = true;
+  final _viewToggleLink = LayerLink();
+  final _viewTogglePortal = OverlayPortalController();
 
   /// "Explore" is only mounted once the user actually opens it, so opening the
   /// Vault never fires cloud requests nobody asked for. After that first visit
@@ -60,6 +66,9 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
     _searchController.clear();
     ref.read(vaultFilterProvider.notifier).resetFilters();
     if (_quickOnly) setState(() => _quickOnly = false);
+    if (!_showTooltip) setState(() => _showTooltip = true);
+    if (_isFilterBarVisible) setState(() => _isFilterBarVisible = false);
+    if (_viewTogglePortal.isShowing) _viewTogglePortal.hide();
     if (_gridController.hasClients && _gridController.offset != 0) {
       _gridController.jumpTo(0);
     }
@@ -81,6 +90,16 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
     final strings = AppStrings.of(context);
     final allMealsAsync = ref.watch(allMealsProvider);
     final totalCount = allMealsAsync.valueOrNull?.length ?? 0;
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
+
+    // When the user leaves to another bottom-nav tab and returns, restore the tooltip
+    ref.listen<int>(activeNavBranchProvider, (prev, next) {
+      if (next == NavBranch.vault && prev != NavBranch.vault) {
+        if (!_showTooltip) {
+          setState(() => _showTooltip = true);
+        }
+      }
+    });
 
     return Scaffold(
       body: SafeArea(
@@ -90,7 +109,7 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
           children: [
             // 1. Header — Flexible to handle 1.4x on 320px (30sp scaled to 42sp = 252px)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -119,7 +138,9 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                           fit: BoxFit.scaleDown,
                           alignment: AlignmentDirectional.centerStart,
                           child: Text(
-                            strings.vaultSubtitle,
+                            _tabIndex == _tabMyVault
+                                ? strings.vaultSubtitle
+                                : strings.vaultSubtitleExplore,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -133,7 +154,10 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                   ),
                   const SizedBox(width: 12),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: AppPalette.chipGreen(brightness).background,
                       borderRadius: BorderRadius.circular(12),
@@ -153,14 +177,14 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
 
             // 1b. Segmented tabs (My Vault / Discovery) — embedded per mock 2.2
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
               child: _VaultTabs(
                 index: _tabIndex,
                 onChanged: _onTabChanged,
                 brightness: brightness,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
 
             // Both tabs live in an IndexedStack so that leaving "Explore" for
             // "My Vault" and back does not rebuild (and reset) the discovery
@@ -181,12 +205,83 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
         ),
       ),
       floatingActionButton: _tabIndex == _tabMyVault
-          ? FloatingActionButton(
-              key: const Key('vault_add_fab'),
-              backgroundColor: AppPalette.brandGreen,
-              elevation: 4,
-              onPressed: () => QuickAddSheet.show(context),
-              child: const AppIcon(AppGlyph.plus, color: Colors.white, size: 26),
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  transitionBuilder: (child, animation) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: ScaleTransition(
+                        scale: animation,
+                        alignment: isRtl
+                            ? const Alignment(-0.25, 1.0)
+                            : const Alignment(0.25, 1.0),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: _showTooltip
+                      ? _AddIn10SecondsTooltip(
+                          key: const ValueKey('vault_add_tooltip'),
+                          strings: strings,
+                          brightness: brightness,
+                          onTap: () {
+                            setState(() => _showTooltip = false);
+                          },
+                        )
+                      : const SizedBox.shrink(
+                          key: ValueKey('vault_add_tooltip_empty'),
+                        ),
+                ),
+                Transform.translate(
+                  offset: const Offset(0, -1),
+                  child: SizedBox(
+                    width: 64,
+                    height: 64,
+                    child: FittedBox(
+                      child: FloatingActionButton(
+                        key: const Key('vault_add_fab'),
+                        backgroundColor: AppPalette.brandGreen,
+                        elevation: 4,
+                        shape: const CircleBorder(),
+                        onPressed: () {
+                          if (_showTooltip) {
+                            setState(() => _showTooltip = false);
+                          }
+                          QuickAddSheet.show(context);
+                        },
+                        child: Stack(
+                          alignment: Alignment.center,
+                          clipBehavior: Clip.none,
+                          children: [
+                            const Icon(
+                              Icons.add_rounded,
+                              color: Colors.white,
+                              size: 32,
+                            ),
+                            Positioned(
+                              top: -5,
+                              right: -7,
+                              child: Transform.rotate(
+                                angle: -0.18,
+                                child: Image.asset(
+                                  'assets/icons/add_icons_around.png',
+                                  width: 24,
+                                  height: 24,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             )
           : null,
     );
@@ -207,146 +302,456 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Search
+        // Search bar row with filter & view mode action buttons
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-          child: Container(
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppPalette.tabContainer(brightness),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Row(
-              children: [
-                const SizedBox(width: 14),
-                AppIcon(
-                  AppGlyph.search,
-                  color: AppPalette.textSecondary(brightness),
-                  size: 20,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    key: const Key('vault_search_field'),
-                    controller: _searchController,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppPalette.textPrimary(brightness),
-                    ),
-                    decoration: InputDecoration(
-                      isCollapsed: true,
-                      border: InputBorder.none,
-                      hintText: strings.vaultSearchHint,
-                      hintStyle: TextStyle(
-                        fontSize: 14,
+          child: Row(
+            children: [
+              Expanded(
+                child: Container(
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: AppPalette.tabContainer(brightness),
+                    borderRadius: BorderRadius.circular(22),
+                  ),
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 14),
+                      AppIcon(
+                        AppGlyph.search,
                         color: AppPalette.textSecondary(brightness),
+                        size: 22,
                       ),
-                    ),
-                    onChanged: (val) {
-                      ref.read(vaultFilterProvider.notifier).setSearchQuery(val);
-                      // No setState needed - provider already triggers rebuild, optimal
-                    },
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          key: const Key('vault_search_field'),
+                          controller: _searchController,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppPalette.textPrimary(brightness),
+                          ),
+                          decoration: InputDecoration(
+                            isCollapsed: true,
+                            border: InputBorder.none,
+                            hintText: strings.vaultSearchHint,
+                            hintStyle: TextStyle(
+                              fontSize: 14,
+                              color: AppPalette.textSecondary(brightness),
+                            ),
+                          ),
+                          onChanged: (val) {
+                            ref
+                                .read(vaultFilterProvider.notifier)
+                                .setSearchQuery(val);
+                            // No setState needed - provider already triggers rebuild, optimal
+                          },
+                        ),
+                      ),
+                      // Use ValueListenableBuilder to avoid setState on every keystroke
+                      ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: _searchController,
+                        builder: (context, value, child) {
+                          if (value.text.isEmpty) return const SizedBox.shrink();
+                          return IconButton(
+                            key: const Key('vault_search_clear_button'),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 32,
+                              minHeight: 32,
+                            ),
+                            icon: AppIcon(
+                              AppGlyph.close,
+                              color: AppPalette.textSecondary(brightness),
+                              size: 16,
+                            ),
+                            onPressed: () {
+                              _searchController.clear();
+                              ref
+                                  .read(vaultFilterProvider.notifier)
+                                  .setSearchQuery('');
+                            },
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 6),
+                    ],
                   ),
                 ),
-                // Use ValueListenableBuilder to avoid setState on every keystroke
-                ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: _searchController,
-                  builder: (context, value, child) {
-                    if (value.text.isEmpty) return const SizedBox.shrink();
-                    return IconButton(
-                      key: const Key('vault_search_clear_button'),
-                      icon: AppIcon(
-                        AppGlyph.close,
-                        color: AppPalette.textSecondary(brightness),
-                        size: 16,
-                      ),
-                      onPressed: () {
-                        _searchController.clear();
-                        ref.read(vaultFilterProvider.notifier).setSearchQuery('');
-                      },
-                    );
-                  },
-                ),
-                const SizedBox(width: 6),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              _buildViewModeButton(brightness),
+              const SizedBox(width: 8),
+              _buildTuneButton(brightness, filter),
+            ],
           ),
         ),
-        VaultFilterBar(
-          quickOnly: _quickOnly,
-          onQuickChanged: (v) => setState(() => _quickOnly = v),
-        ),
-        const SizedBox(height: 10),
-        Expanded(
-          child: filteredMealsAsync.when(
-            data: (meals) {
-              final visible = _quickOnly
-                  ? meals.where((m) => m.prepTime <= 30).toList()
-                  : meals;
-
-              if (visible.isEmpty) {
-                final isFiltered = filter.hasActiveFilters || _quickOnly;
-                return VaultEmptyState(
-                  isSearchResult: isFiltered,
-                  onAction: () {
-                    if (isFiltered) {
-                      _searchController.clear();
-                      ref.read(vaultFilterProvider.notifier).resetFilters();
-                      setState(() => _quickOnly = false);
-                    } else {
-                      QuickAddSheet.show(context);
-                    }
-                  },
-                );
-              }
-
-              return CustomScrollView(
-                key: const Key('vault_grid_view'),
-                controller: _gridController,
-                slivers: [
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
-                    sliver: SliverGrid.builder(
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 14,
-                        mainAxisSpacing: 14,
-                        childAspectRatio: 0.98,
-                      ),
-                      itemCount: visible.length,
-                      itemBuilder: (context, index) {
-                        final meal = visible[index];
-                        return MealVaultCard(
-                          meal: meal,
-                          onEdit: () =>
-                              QuickAddSheet.show(context, mealToEdit: meal),
-                          onDelete: () => DeleteMealDialog.show(context, meal),
-                        );
+        // Smooth collapsible filter bar
+        TapRegion(
+          groupId: 'vault_filter_bar',
+          onTapOutside: (_) {
+            if (_isFilterBarVisible) {
+              setState(() => _isFilterBarVisible = false);
+            }
+          },
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeInOutCubic,
+            alignment: Alignment.topCenter,
+            child: _isFilterBarVisible
+                ? Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: VaultFilterBar(
+                      quickOnly: _quickOnly,
+                      onQuickChanged: (v) {
+                        setState(() {
+                          _quickOnly = v;
+                          _isFilterBarVisible = false;
+                        });
+                      },
+                      onFilterApplied: () {
+                        setState(() {
+                          _isFilterBarVisible = false;
+                        });
                       },
                     ),
-                  ),
-                ],
-              );
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ),
+        Expanded(
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (notification) {
+              if (notification is ScrollStartNotification ||
+                  notification is UserScrollNotification) {
+                if (_isFilterBarVisible) {
+                  setState(() => _isFilterBarVisible = false);
+                }
+                if (_viewTogglePortal.isShowing) {
+                  _viewTogglePortal.hide();
+                }
+              }
+              return false;
             },
-            loading: () => const Center(
-              child: CircularProgressIndicator.adaptive(),
-            ),
-            error: (err, _) => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  strings.vaultLoadError(err),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: AppPalette.textSecondary(brightness),
+            child: Listener(
+              behavior: HitTestBehavior.translucent,
+              onPointerDown: (_) {
+                if (_isFilterBarVisible) {
+                  setState(() => _isFilterBarVisible = false);
+                }
+                if (_viewTogglePortal.isShowing) {
+                  _viewTogglePortal.hide();
+                }
+              },
+              child: filteredMealsAsync.when(
+                data: (meals) {
+                  final visible = _quickOnly
+                      ? meals.where((m) => m.prepTime <= 30).toList()
+                      : meals;
+
+                  if (visible.isEmpty) {
+                    final isFiltered = filter.hasActiveFilters || _quickOnly;
+                    return VaultEmptyState(
+                      isSearchResult: isFiltered,
+                      onAction: () {
+                        if (isFiltered) {
+                          _searchController.clear();
+                          ref.read(vaultFilterProvider.notifier).resetFilters();
+                          setState(() => _quickOnly = false);
+                        } else {
+                          QuickAddSheet.show(context);
+                        }
+                      },
+                    );
+                  }
+
+                  return CustomScrollView(
+                    key: const Key('vault_grid_view'),
+                    controller: _gridController,
+                    slivers: [
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
+                        sliver: SliverGrid.builder(
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 14,
+                            mainAxisSpacing: 14,
+                            childAspectRatio: 0.98,
+                          ),
+                          itemCount: visible.length,
+                          itemBuilder: (context, index) {
+                            final meal = visible[index];
+                            return MealVaultCard(
+                              meal: meal,
+                              onEdit: () =>
+                                  QuickAddSheet.show(context, mealToEdit: meal),
+                              onDelete: () =>
+                                  DeleteMealDialog.show(context, meal),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  );
+                },
+                loading: () =>
+                    const Center(child: CircularProgressIndicator.adaptive()),
+                error: (err, _) => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(
+                      strings.vaultLoadError(err),
+                      textAlign: TextAlign.center,
+                      style:
+                          TextStyle(color: AppPalette.textSecondary(brightness)),
+                    ),
                   ),
                 ),
               ),
             ),
           ),
         ),
-      ],
+        ],
+      );
+    }
+
+
+  Widget _buildTuneButton(
+    Brightness brightness,
+    VaultFilterState filter,
+  ) {
+    final hasActiveFilter = filter.hasActiveFilters || _quickOnly;
+    final isExpanded = _isFilterBarVisible;
+
+    return TapRegion(
+      groupId: 'vault_filter_bar',
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          GestureDetector(
+            key: const Key('vault_filter_toggle_button'),
+            onTap: () {
+              setState(() {
+                _isFilterBarVisible = !_isFilterBarVisible;
+              });
+            },
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: isExpanded || hasActiveFilter
+                    ? AppPalette.brandGreen.withValues(alpha: 0.12)
+                    : AppPalette.tabContainer(brightness),
+                borderRadius: BorderRadius.circular(14),
+                border: isExpanded || hasActiveFilter
+                    ? Border.all(
+                        color: AppPalette.brandGreen.withValues(alpha: 0.45),
+                        width: 1.2,
+                      )
+                    : null,
+              ),
+              child: Icon(
+                Icons.tune_rounded,
+                size: 20,
+                color: isExpanded || hasActiveFilter
+                    ? AppPalette.brandGreen
+                    : AppPalette.textSecondary(brightness),
+              ),
+            ),
+          ),
+          if (hasActiveFilter && isExpanded)
+            Positioned(
+              top: -4,
+              right: -4,
+              child: GestureDetector(
+                key: const Key('vault_filter_clear_button'),
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  ref.read(vaultFilterProvider.notifier).resetFilters();
+                  setState(() {
+                    _quickOnly = false;
+                    _isFilterBarVisible = false;
+                  });
+                },
+                child: Container(
+                  width: 18,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: AppPalette.card(brightness),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppPalette.hairline(brightness),
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.close_rounded,
+                    size: 11,
+                    color: AppPalette.textSecondary(brightness),
+                  ),
+                ),
+              ),
+            )
+          else if (hasActiveFilter && !isExpanded)
+            Positioned(
+              top: 6,
+              right: 6,
+              child: Container(
+                width: 7,
+                height: 7,
+                decoration: const BoxDecoration(
+                  color: AppPalette.brandGreen,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildViewModeButton(Brightness brightness) {
+    return TapRegion(
+      groupId: 'vault_view_toggle',
+      child: CompositedTransformTarget(
+        link: _viewToggleLink,
+        child: OverlayPortal(
+          controller: _viewTogglePortal,
+          overlayChildBuilder: (context) =>
+              _buildViewToggleOverlay(context, brightness),
+          child: GestureDetector(
+            key: const Key('vault_view_toggle_button'),
+            onTap: () {
+              if (_viewTogglePortal.isShowing) {
+                _viewTogglePortal.hide();
+              } else {
+                _viewTogglePortal.show();
+              }
+            },
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: AppPalette.tabContainer(brightness),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(
+                _isGridView ? Icons.grid_view_rounded : Icons.view_list_rounded,
+                size: 20,
+                color: AppPalette.textSecondary(brightness),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildViewToggleOverlay(BuildContext context, Brightness brightness) {
+    return CompositedTransformFollower(
+      link: _viewToggleLink,
+      showWhenUnlinked: false,
+      targetAnchor: Alignment.bottomCenter,
+      followerAnchor: Alignment.topCenter,
+      offset: const Offset(0, 6),
+      child: TapRegion(
+        groupId: 'vault_view_toggle',
+        onTapOutside: (_) {
+          if (_viewTogglePortal.isShowing) {
+            _viewTogglePortal.hide();
+          }
+        },
+        child: Material(
+            color: Colors.transparent,
+            child: Container(
+              width: 44,
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: AppPalette.card(brightness),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppPalette.hairline(brightness),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: brightness == Brightness.dark
+                        ? Colors.black.withValues(alpha: 0.45)
+                        : Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _viewToggleOption(
+                    key: const Key('vault_view_option_grid'),
+                    icon: Icons.grid_view_rounded,
+                    selected: _isGridView,
+                    brightness: brightness,
+                    onTap: () {
+                      setState(() => _isGridView = true);
+                      _viewTogglePortal.hide();
+                    },
+                  ),
+                  const SizedBox(height: 4),
+                  _viewToggleOption(
+                    key: const Key('vault_view_option_list'),
+                    icon: Icons.view_list_rounded,
+                    selected: !_isGridView,
+                    brightness: brightness,
+                    onTap: () {
+                      setState(() => _isGridView = false);
+                      _viewTogglePortal.hide();
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+  }
+
+  Widget _viewToggleOption({
+    required Key key,
+    required IconData icon,
+    required bool selected,
+    required Brightness brightness,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      key: key,
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: selected ? AppPalette.brandGreen : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(
+          icon,
+          size: 20,
+          color: selected
+              ? Colors.white
+              : AppPalette.textSecondary(brightness),
+        ),
+      ),
     );
   }
 }
@@ -356,16 +761,20 @@ class _VaultTabs extends StatelessWidget {
   final ValueChanged<int> onChanged;
   final Brightness brightness;
 
-  const _VaultTabs({required this.index, required this.onChanged, required this.brightness});
+  const _VaultTabs({
+    required this.index,
+    required this.onChanged,
+    required this.brightness,
+  });
 
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     return Container(
-      padding: const EdgeInsets.all(6),
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: AppPalette.card(brightness),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppPalette.hairline(brightness), width: 1),
         boxShadow: [
           BoxShadow(
@@ -385,7 +794,7 @@ class _VaultTabs extends StatelessWidget {
               child: _segment(
                 key: const Key('vault_tab_my_vault'),
                 selected: index == 0,
-                glyph: AppGlyph.vault,
+                assetPath: 'assets/icons/nav_vault.png',
                 label: strings.vaultTabMine,
                 onTap: () => onChanged(0),
               ),
@@ -395,7 +804,7 @@ class _VaultTabs extends StatelessWidget {
               child: _segment(
                 key: const Key('vault_tab_explore'),
                 selected: index == 1,
-                glyph: AppGlyph.compass,
+                iconData: Icons.explore_rounded,
                 label: strings.vaultTabExplore,
                 onTap: () => onChanged(1),
               ),
@@ -409,10 +818,37 @@ class _VaultTabs extends StatelessWidget {
   Widget _segment({
     required Key key,
     required bool selected,
-    required AppGlyph glyph,
+    AppGlyph? glyph,
+    String? assetPath,
+    IconData? iconData,
     required String label,
     required VoidCallback onTap,
   }) {
+    final iconColor = selected
+        ? Colors.white
+        : AppPalette.textSecondary(brightness);
+
+    final Widget iconWidget;
+    if (assetPath != null) {
+      iconWidget = ImageIcon(
+        AssetImage(assetPath),
+        size: 22,
+        color: iconColor,
+      );
+    } else if (iconData != null) {
+      iconWidget = Icon(
+        iconData,
+        size: 22,
+        color: iconColor,
+      );
+    } else {
+      iconWidget = AppIcon(
+        glyph ?? AppGlyph.vault,
+        size: 22,
+        color: iconColor,
+      );
+    }
+
     return GestureDetector(
       key: key,
       onTap: onTap,
@@ -420,13 +856,19 @@ class _VaultTabs extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 7.5),
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: selected ? AppPalette.brandGreen : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           boxShadow: selected
-              ? [BoxShadow(color: AppPalette.brandGreen.withValues(alpha: 0.35), blurRadius: 10, offset: const Offset(0, 4))]
+              ? [
+                  BoxShadow(
+                    color: AppPalette.brandGreen.withValues(alpha: 0.35),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
               : null,
         ),
         child: FittedBox(
@@ -435,13 +877,219 @@ class _VaultTabs extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              AppIcon(glyph, size: 20, color: selected ? Colors.white : AppPalette.textSecondary(brightness)),
+              iconWidget,
               const SizedBox(width: 8),
-              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: selected ? Colors.white : AppPalette.textSecondary(brightness))),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: selected
+                      ? Colors.white
+                      : AppPalette.textSecondary(brightness),
+                ),
+              ),
             ],
           ),
         ),
       ),
     );
+  }
+}
+
+class _AddIn10SecondsTooltip extends StatefulWidget {
+  final AppStrings strings;
+  final Brightness brightness;
+  final VoidCallback onTap;
+
+  const _AddIn10SecondsTooltip({
+    super.key,
+    required this.strings,
+    required this.brightness,
+    required this.onTap,
+  });
+
+  @override
+  State<_AddIn10SecondsTooltip> createState() => _AddIn10SecondsTooltipState();
+}
+
+class _AddIn10SecondsTooltipState extends State<_AddIn10SecondsTooltip>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _swayController;
+  late final Animation<double> _angleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _swayController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+
+    // Subtle, gentle sway back and forth: -0.055 rad (~ -3.1 deg) to +0.055 rad (~ +3.1 deg)
+    _angleAnimation = Tween<double>(begin: -0.055, end: 0.055).animate(
+      CurvedAnimation(
+        parent: _swayController,
+        curve: Curves.easeInOutSine,
+      ),
+    );
+
+    // In widget tests, avoid repeating infinite animation loops so tester.pumpAndSettle() can complete
+    final isTest =
+        WidgetsBinding.instance.runtimeType.toString().contains('Test');
+    if (!isTest) {
+      _swayController.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _swayController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
+    const double tooltipWidth = 86.0;
+    const double tooltipHeight = 47.0;
+    const double tailHeight = 7.0;
+    const double tailWidth = 14.0;
+    // FAB is 64 wide. Center of FAB is 32px from the trailing edge.
+    final double tailTipX = isRtl ? 32.0 : (tooltipWidth - 32.0);
+
+    return GestureDetector(
+      onTap: widget.onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedBuilder(
+        animation: _angleAnimation,
+        builder: (context, child) {
+          // Pivot around the tail tip (tailTipX, tooltipHeight) where it rests on the icon
+          return Transform(
+            transform: Matrix4.identity()
+              ..translate(tailTipX, tooltipHeight)
+              ..rotateZ(_angleAnimation.value)
+              ..translate(-tailTipX, -tooltipHeight),
+            child: child,
+          );
+        },
+        child: SizedBox(
+          width: tooltipWidth,
+          height: tooltipHeight,
+          child: CustomPaint(
+            painter: _SpeechBubblePainter(
+              tailTipX: tailTipX,
+              tailWidth: tailWidth,
+              tailHeight: tailHeight,
+              borderRadius: 16.0,
+              color: Colors.white,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.only(
+                left: 6,
+                right: 6,
+                top: 4,
+                bottom: 4 + tailHeight,
+              ),
+              child: Center(
+                child: Text(
+                  widget.strings.vaultAddIn10Seconds,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppPalette.brandGreen,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11.5,
+                    height: 1.15,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SpeechBubblePainter extends CustomPainter {
+  final double tailTipX;
+  final double tailWidth;
+  final double tailHeight;
+  final double borderRadius;
+  final Color color;
+
+  const _SpeechBubblePainter({
+    required this.tailTipX,
+    required this.tailWidth,
+    required this.tailHeight,
+    required this.borderRadius,
+    required this.color,
+  });
+
+  Path _createPath(Size size) {
+    final bodyHeight = size.height - tailHeight;
+    final w = size.width;
+    final r = borderRadius;
+
+    final tHalf = tailWidth / 2;
+    final tLeft = (tailTipX - tHalf).clamp(r, w - r - tailWidth);
+    final tRight = tLeft + tailWidth;
+    final tipX = tailTipX.clamp(tLeft + 2, tRight - 2);
+
+    final path = Path();
+    path.moveTo(r, 0);
+    path.lineTo(w - r, 0);
+    path.arcToPoint(Offset(w, r), radius: Radius.circular(r));
+    path.lineTo(w, bodyHeight - r);
+    path.arcToPoint(Offset(w - r, bodyHeight), radius: Radius.circular(r));
+    path.lineTo(tRight, bodyHeight);
+    path.quadraticBezierTo(
+      tRight - 1.5,
+      bodyHeight + tailHeight * 0.45,
+      tipX,
+      size.height,
+    );
+    path.quadraticBezierTo(
+      tLeft + 1.5,
+      bodyHeight + tailHeight * 0.45,
+      tLeft,
+      bodyHeight,
+    );
+    path.lineTo(r, bodyHeight);
+    path.arcToPoint(Offset(0, bodyHeight - r), radius: Radius.circular(r));
+    path.lineTo(0, r);
+    path.arcToPoint(Offset(r, 0), radius: Radius.circular(r));
+    path.close();
+
+    return path;
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = _createPath(size);
+
+    final shadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.10)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
+    canvas.drawPath(path.shift(const Offset(0, 2.5)), shadowPaint);
+
+    final fillPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(path, fillPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SpeechBubblePainter oldDelegate) {
+    return oldDelegate.tailTipX != tailTipX ||
+        oldDelegate.tailWidth != tailWidth ||
+        oldDelegate.tailHeight != tailHeight ||
+        oldDelegate.borderRadius != borderRadius ||
+        oldDelegate.color != color;
   }
 }

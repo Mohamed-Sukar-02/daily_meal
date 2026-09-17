@@ -216,6 +216,7 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
                   _NavBarItem(
                     key: const ValueKey('nav_destination_vault'),
                     assetPath: 'assets/icons/nav_vault.png',
+                    iconSize: 23.4,
                     label: strings.navVault,
                     isSelected: widget.navigationShell.currentIndex == 1,
                     onTap: () => _onTap(1),
@@ -229,7 +230,7 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
                   ),
                   _NavBarItem(
                     key: const ValueKey('nav_destination_settings'),
-                    iconData: Icons.tune_rounded,
+                    iconData: Icons.settings_rounded,
                     label: strings.navSettings,
                     isSelected: widget.navigationShell.currentIndex == 3,
                     onTap: () => _onTap(3),
@@ -248,6 +249,7 @@ class _NavBarItem extends StatelessWidget {
   final AppGlyph? glyph;
   final String? assetPath;
   final IconData? iconData;
+  final double iconSize;
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
@@ -257,6 +259,7 @@ class _NavBarItem extends StatelessWidget {
     this.glyph,
     this.assetPath,
     this.iconData,
+    this.iconSize = 27.6,
     required this.label,
     required this.isSelected,
     required this.onTap,
@@ -274,16 +277,16 @@ class _NavBarItem extends StatelessWidget {
       iconWidget = ImageIcon(
         AssetImage(assetPath!),
         color: color,
-        size: 23,
+        size: iconSize,
       );
     } else if (iconData != null) {
       iconWidget = Icon(
         iconData,
         color: color,
-        size: 23,
+        size: iconSize,
       );
     } else {
-      iconWidget = AppIcon(glyph!, color: color, size: 23);
+      iconWidget = AppIcon(glyph!, color: color, size: iconSize);
     }
 
     return Expanded(
@@ -293,7 +296,7 @@ class _NavBarItem extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             iconWidget,
-            const SizedBox(height: 2),
+            const SizedBox(height: 1.5),
             Text(
               label,
               maxLines: 1,
@@ -304,7 +307,7 @@ class _NavBarItem extends StatelessWidget {
                 fontSize: 10.5,
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 1.5),
             // The green underline indicator
             Container(
               height: 2.5,

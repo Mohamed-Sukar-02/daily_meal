@@ -578,7 +578,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                             ],
                           ),
                           const SizedBox(height: 16),
-                          // Protein Type - عرض كل الأنواع بما فيها الخضار
+                          // Protein Type
                           _labelRow(isDark, AppGlyph.steak, const Color(0xFF6C5CE7), strings.proteinTypeLabel),
                           const SizedBox(height: 8),
                           Wrap(
@@ -689,15 +689,18 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                             ),
                           ),
                           Offstage(
-                            child: Column(
-                              children: [
-                                DropdownButtonFormField<MealCategory>(key: const Key('meal_form_category_dropdown'), initialValue: _selectedCategory, items: MealCategory.values.map((c) => DropdownMenuItem(value: c, child: Text(c.label(strings)))).toList(), onChanged: (v) { if (v != null) setState(() => _selectedCategory = v);}),
-                                DropdownButtonFormField<ProteinType>(key: const Key('meal_form_protein_dropdown'), initialValue: _selectedProtein, items: ProteinType.values.map((p) => DropdownMenuItem(value: p, child: Text(p.label(strings)))).toList(), onChanged: (v) { if (v != null) setState(() => _selectedProtein = v);}),
-                                DropdownButtonFormField<CarbsType>(key: const Key('meal_form_carbs_dropdown'), initialValue: _selectedCarbs, items: CarbsType.values.map((c) => DropdownMenuItem(value: c, child: Text(c.label(strings)))).toList(), onChanged: (v) { if (v != null) setState(() => _selectedCarbs = v);}),
-                                SwitchListTile(key: const Key('meal_form_friday_checkbox'), value: _isFridaySpecial, onChanged: (v) => setState(() => _isFridaySpecial = v), title: const Text('')),
-                                SwitchListTile(key: const Key('meal_form_budget_checkbox'), value: _isBudgetFriendly, onChanged: (v) => setState(() => _isBudgetFriendly = v), title: const Text('')),
-                                SwitchListTile(key: const Key('meal_form_favorite_checkbox'), value: _isFavorite, onChanged: (v) => setState(() => _isFavorite = v), title: const Text('')),
-                              ],
+                            child: Material(
+                              type: MaterialType.transparency,
+                              child: Column(
+                                children: [
+                                  DropdownButtonFormField<MealCategory>(key: const Key('meal_form_category_dropdown'), initialValue: _selectedCategory, items: MealCategory.values.map((c) => DropdownMenuItem(value: c, child: Text(c.label(strings)))).toList(), onChanged: (v) { if (v != null) setState(() => _selectedCategory = v);}),
+                                  DropdownButtonFormField<ProteinType>(key: const Key('meal_form_protein_dropdown'), initialValue: _selectedProtein, items: ProteinType.values.map((p) => DropdownMenuItem(value: p, child: Text(p.label(strings)))).toList(), onChanged: (v) { if (v != null) setState(() => _selectedProtein = v);}),
+                                  DropdownButtonFormField<CarbsType>(key: const Key('meal_form_carbs_dropdown'), initialValue: _selectedCarbs, items: CarbsType.values.map((c) => DropdownMenuItem(value: c, child: Text(c.label(strings)))).toList(), onChanged: (v) { if (v != null) setState(() => _selectedCarbs = v);}),
+                                  SwitchListTile(key: const Key('meal_form_friday_checkbox'), value: _isFridaySpecial, onChanged: (v) => setState(() => _isFridaySpecial = v), title: const Text('')),
+                                  SwitchListTile(key: const Key('meal_form_budget_checkbox'), value: _isBudgetFriendly, onChanged: (v) => setState(() => _isBudgetFriendly = v), title: const Text('')),
+                                  SwitchListTile(key: const Key('meal_form_favorite_checkbox'), value: _isFavorite, onChanged: (v) => setState(() => _isFavorite = v), title: const Text('')),
+                                ],
+                              ),
                             ),
                           ),
                           const SizedBox(height: 22),

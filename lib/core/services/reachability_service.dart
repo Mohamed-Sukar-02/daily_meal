@@ -6,6 +6,7 @@ class ReachabilityService {
   static final ReachabilityService instance = ReachabilityService._();
 
   Future<bool> isInternetReachable({Duration timeout = const Duration(seconds: 2)}) async {
+    if (Platform.environment.containsKey('FLUTTER_TEST')) return false;
     try {
       final socket = await Socket.connect('1.1.1.1', 53, timeout: timeout);
       socket.destroy();

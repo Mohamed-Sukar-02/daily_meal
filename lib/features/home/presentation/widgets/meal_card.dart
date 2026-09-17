@@ -281,10 +281,12 @@ class _FavoriteHeartButtonState extends State<_FavoriteHeartButton>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnim;
+  late bool _isFavorite;
 
   @override
   void initState() {
     super.initState();
+    _isFavorite = widget.isFavorite;
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 250),
@@ -296,12 +298,23 @@ class _FavoriteHeartButtonState extends State<_FavoriteHeartButton>
   }
 
   @override
+  void didUpdateWidget(covariant _FavoriteHeartButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isFavorite != widget.isFavorite) {
+      _isFavorite = widget.isFavorite;
+    }
+  }
+
+  @override
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
 
   void _handleTap() {
+    setState(() {
+      _isFavorite = !_isFavorite;
+    });
     _controller.forward(from: 0.0);
     widget.onToggle?.call();
   }
@@ -323,7 +336,7 @@ class _FavoriteHeartButtonState extends State<_FavoriteHeartButton>
             child: ScaleTransition(
               scale: _scaleAnim,
               child: AppIcon(
-                widget.isFavorite ? AppGlyph.heartFill : AppGlyph.heartOutline,
+                _isFavorite ? AppGlyph.heartFill : AppGlyph.heartOutline,
                 color: AppPalette.heartCoral,
                 size: 20,
               ),

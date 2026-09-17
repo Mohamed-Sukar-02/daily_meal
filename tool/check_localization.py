@@ -161,7 +161,7 @@ def check_files():
             if not os.path.exists(resolved):
                 fail('import', path, line_no, f'unresolved import {target}')
 
-        rel = os.path.relpath(path, LIB)
+        rel = os.path.relpath(path, LIB).replace('\\', '/')
         if rel in ARABIC_ALLOWED:
             continue
         for line_no, literal in string_literals(src):

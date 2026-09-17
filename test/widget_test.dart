@@ -5,6 +5,7 @@ import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:daily_meal/core/database/app_database.dart';
 import 'package:daily_meal/core/database/database_providers.dart';
+import 'package:daily_meal/features/home/presentation/widgets/home_header.dart';
 
 void main() {
   testWidgets('App launches successfully smoke test', (WidgetTester tester) async {
@@ -28,7 +29,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     await tester.pumpAndSettle();
 
-    expect(find.text('أكلة النهاردة'), findsOneWidget);
+    expect(find.byType(HomeHeader), findsOneWidget);
     await inMemoryDb.close();
   });
 }

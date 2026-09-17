@@ -188,10 +188,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            AppIcon(
-              AppGlyph.pot,
-              size: 64,
-              color: AppPalette.textSecondary(brightness),
+            Image.asset(
+              brightness == Brightness.dark
+                  ? 'assets/icons/vault_empty_dark.png'
+                  : 'assets/icons/vault_empty_light.png',
+              width: 220,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) => AppIcon(
+                AppGlyph.pot,
+                size: 64,
+                color: AppPalette.textSecondary(brightness),
+              ),
             ),
             const SizedBox(height: 16),
             Text(

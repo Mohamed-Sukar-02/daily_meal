@@ -10,6 +10,8 @@ import 'core/theme/app_theme.dart';
 import 'features/settings/providers/settings_providers.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/avatar_service.dart';
+import 'core/services/app_config_sync_service.dart';
+import 'core/database/database_providers.dart';
 import 'core/providers/orphan_sweep_provider.dart';
 
 void main() async {
@@ -47,6 +49,8 @@ class _DailyMealAppState extends ConsumerState<DailyMealApp> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(orphanSweepProvider);
+      final db = ref.read(appDatabaseProvider);
+      AppConfigSyncService.instance.init(db: db);
     });
   }
 

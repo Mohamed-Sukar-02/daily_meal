@@ -74,18 +74,18 @@ class CooldownDetailsSheet extends ConsumerWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 _header(context, brightness, strings),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Text(
                   strings.cooldownSheetSubtitle,
                   style: TextStyle(
                     fontSize: 12,
-                    height: 1.5,
+                    height: 1.4,
                     color: AppPalette.textSecondary(brightness),
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 10),
                 _proteinRow(
                   context,
                   ref,
@@ -137,27 +137,7 @@ class CooldownDetailsSheet extends ConsumerWidget {
                   days: settings.meatlessCooldownDays,
                   defaultDays: 3,
                 ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  height: 48,
-                  child: FilledButton(
-                    key: const Key('cooldown_details_done'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppPalette.brandGreen,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: Text(
-                      strings.done,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ),
+                const SizedBox(height: 12),
               ],
             ),
           ),
@@ -184,8 +164,8 @@ class CooldownDetailsSheet extends ConsumerWidget {
     return Row(
       children: [
         Container(
-          width: 40,
-          height: 40,
+          width: 36,
+          height: 36,
           decoration: BoxDecoration(
             color: AppPalette.chipGreen(brightness).background,
             shape: BoxShape.circle,
@@ -194,11 +174,11 @@ class CooldownDetailsSheet extends ConsumerWidget {
             child: AppIcon(
               AppGlyph.clock,
               color: AppPalette.chipGreen(brightness).foreground,
-              size: 20,
+              size: 18,
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         Expanded(
           child: FittedBox(
             fit: BoxFit.scaleDown,
@@ -212,6 +192,27 @@ class CooldownDetailsSheet extends ConsumerWidget {
                 fontWeight: FontWeight.w800,
                 color: AppPalette.textPrimary(brightness),
               ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        FilledButton(
+          key: const Key('cooldown_details_done'),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppPalette.brandGreen,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(
+            strings.done,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 14.5,
             ),
           ),
         ),
@@ -233,16 +234,16 @@ class CooldownDetailsSheet extends ConsumerWidget {
   }) {
     final enabled = days > 0;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 12, 4, 12),
+      padding: const EdgeInsets.fromLTRB(4, 7, 4, 7),
       child: Row(
         children: [
           Container(
-            width: 44,
-            height: 44,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(color: style.background, shape: BoxShape.circle),
-            child: Center(child: Text(emoji, style: const TextStyle(fontSize: 20))),
+            child: Center(child: Text(emoji, style: const TextStyle(fontSize: 18))),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

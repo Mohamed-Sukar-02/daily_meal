@@ -134,6 +134,7 @@ class _ProfileEditDialogState extends ConsumerState<ProfileEditDialog> {
             TextField(
               key: const Key('profile_name_field'),
               controller: _nameController,
+              autofillHints: const [AutofillHints.name],
               decoration: InputDecoration(
                 labelText: strings.nameField,
                 prefixIcon: const Icon(Icons.person),
@@ -143,6 +144,7 @@ class _ProfileEditDialogState extends ConsumerState<ProfileEditDialog> {
             TextField(
               key: const Key('profile_email_field'),
               controller: _emailController,
+              autofillHints: const [AutofillHints.email],
               decoration: InputDecoration(
                 labelText: strings.emailField,
                 prefixIcon: const Icon(Icons.email),

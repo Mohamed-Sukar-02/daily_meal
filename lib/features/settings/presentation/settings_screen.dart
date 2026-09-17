@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -269,55 +271,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _iconCircle(brightness, AppGlyph.clock, AppPalette.chipGreen(brightness)),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: AlignmentDirectional.centerStart,
-                            child: Text(
-                              strings.delayMealRepeat,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: AppPalette.textPrimary(brightness),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: AppPalette.chipGreen(brightness).background,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            strings.daysText(settings.cooldownDays),
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: AppPalette.chipGreen(brightness).foreground,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    Slider(
-                      value: settings.cooldownDays.toDouble().clamp(1, 30),
-                      min: 1,
-                      max: 30,
-                      divisions: 29,
-                      onChanged: (v) => controller.updateCooldownDays(v.round()),
-                    ),
-                  ],
+                child: _CooldownSliderItem(
+                  initialDays: settings.cooldownDays,
+                  brightness: brightness,
+                  strings: strings,
+                  onChangeEnd: (days) => controller.updateCooldownDays(days),
                 ),
               ),
               if (settings.chickenCooldownDays > 0) ...[
@@ -805,29 +763,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                         border: Border.all(color: AppPalette.hairline(brightness), width: 1),
                       ),
                       clipBehavior: Clip.antiAlias,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: _LanguageSegment(
-                              brightness: brightness,
-                              label: 'EN',
-                              isLeft: true,
-                              selected: settings.language == AppLanguagePreference.en,
-                              onTap: () => controller.updateLanguage(AppLanguagePreference.en),
+                      child: Directionality(
+                        textDirection: TextDirection.ltr,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: _LanguageSegment(
+                                brightness: brightness,
+                                label: 'EN',
+                                isLeft: true,
+                                selected: settings.language == AppLanguagePreference.en,
+                                onTap: () => controller.updateLanguage(AppLanguagePreference.en),
+                              ),
                             ),
-                          ),
-                          Container(width: 1, color: AppPalette.hairline(brightness)),
-                          Expanded(
-                            child: _LanguageSegment(
-                              brightness: brightness,
-                              label: 'AR',
-                              isRight: true,
-                              selected: settings.language == AppLanguagePreference.ar,
-                              onTap: () => controller.updateLanguage(AppLanguagePreference.ar),
+                            Container(width: 1, color: AppPalette.hairline(brightness)),
+                            Expanded(
+                              child: _LanguageSegment(
+                                brightness: brightness,
+                                label: 'AR',
+                                isRight: true,
+                                selected: settings.language == AppLanguagePreference.ar,
+                                onTap: () => controller.updateLanguage(AppLanguagePreference.ar),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -873,7 +834,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                   shape: BoxShape.circle,
                 ),
                 child: Center(
-                  child: AppIcon(AppGlyph.shield, color: AppPalette.chipViolet(brightness).foreground, size: 22),
+                  child: Icon(Icons.storage_rounded, color: AppPalette.chipViolet(brightness).foreground, size: 22),
                 ),
               ),
               const SizedBox(width: 12),
@@ -1018,7 +979,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SectionHeader(brightness: brightness, title: strings.privacyPolicy),
+        _SectionHeader(brightness: brightness, title: strings.admin),
         const SizedBox(height: 12),
         _Card(
           brightness: brightness,
@@ -1027,20 +988,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
               _linkRow(
                 context,
                 brightness,
-                AppGlyph.shield,
+                Icons.storage_rounded,
                 AppPalette.chipViolet(brightness),
                 strings.adminDashboardTitle,
-                strings.adminDashboardSubtitle,
                 () => _showAdminPasswordDialog(context, brightness, strings),
               ),
               _divider(brightness),
               _linkRow(
                 context,
                 brightness,
-                AppGlyph.bookmark,
+                AppGlyph.shield,
                 AppPalette.chipRose(brightness),
-                strings.legalPolicies,
-                strings.privacyPolicy,
+                strings.privacyPolicyTitle,
                 () => showDialog(
                   context: context,
                   builder: (_) => const widgets.LegalPoliciesDialog(isPrivacy: true),
@@ -1117,12 +1076,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   Widget _linkRow(
     BuildContext context,
     Brightness brightness,
-    AppGlyph glyph,
+    dynamic glyphOrIcon,
     ChipStyle style,
     String title,
-    String subtitle,
-    VoidCallback onTap,
-  ) {
+    VoidCallback onTap, {
+    String? subtitle,
+  }) {
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -1130,41 +1089,58 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _iconCircle(brightness, glyph, style),
+            _iconCircle(brightness, glyphOrIcon, style),
             const SizedBox(width: 14),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: AppPalette.textPrimary(brightness),
+              child: subtitle != null && subtitle.isNotEmpty
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: AppPalette.textPrimary(brightness),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppPalette.textSecondary(brightness),
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: AlignmentDirectional.centerStart,
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: AppPalette.textPrimary(brightness),
+                        ),
                       ),
                     ),
-                  ),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Text(
-                      subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppPalette.textSecondary(brightness),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
             ),
             const SizedBox(width: 8),
             AppIcon(
@@ -1419,5 +1395,134 @@ class _LanguageSegment extends StatelessWidget {
     );
   }
 }
+
+class _CooldownSliderItem extends StatefulWidget {
+  final int initialDays;
+  final Brightness brightness;
+  final AppStrings strings;
+  final ValueChanged<int> onChangeEnd;
+
+  const _CooldownSliderItem({
+    required this.initialDays,
+    required this.brightness,
+    required this.strings,
+    required this.onChangeEnd,
+  });
+
+  @override
+  State<_CooldownSliderItem> createState() => _CooldownSliderItemState();
+}
+
+class _CooldownSliderItemState extends State<_CooldownSliderItem> {
+  late double _currentValue;
+  bool _isDragging = false;
+  int _lastTickValue = -1;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentValue = widget.initialDays.toDouble().clamp(1, 30);
+    _lastTickValue = _currentValue.round();
+  }
+
+  @override
+  void didUpdateWidget(covariant _CooldownSliderItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_isDragging) {
+      _currentValue = widget.initialDays.toDouble().clamp(1, 30);
+      _lastTickValue = _currentValue.round();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppPalette.chipGreen(widget.brightness).background,
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: AppIcon(
+                  AppGlyph.clock,
+                  color: AppPalette.chipGreen(widget.brightness).foreground,
+                  size: 18,
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
+                child: Text(
+                  widget.strings.delayMealRepeat,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: AppPalette.textPrimary(widget.brightness),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppPalette.chipGreen(widget.brightness).background,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                widget.strings.daysText(_currentValue.round()),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: AppPalette.chipGreen(widget.brightness).foreground,
+                ),
+              ),
+            ),
+          ],
+        ),
+        Slider(
+          value: _currentValue,
+          min: 1,
+          max: 30,
+          divisions: 29,
+          onChangeStart: (v) {
+            _isDragging = true;
+          },
+          onChanged: (v) {
+            final newInt = v.round();
+            if (newInt != _lastTickValue) {
+              _lastTickValue = newInt;
+              if (defaultTargetPlatform == TargetPlatform.iOS) {
+                SystemSound.play(SystemSoundType.tick);
+              } else {
+                SystemSound.play(SystemSoundType.click);
+              }
+              HapticFeedback.selectionClick();
+            }
+            setState(() {
+              _currentValue = v;
+            });
+          },
+          onChangeEnd: (v) {
+            _isDragging = false;
+            widget.onChangeEnd(v.round());
+          },
+        ),
+      ],
+    );
+  }
+}
+
 
 

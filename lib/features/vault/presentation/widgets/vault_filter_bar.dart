@@ -13,11 +13,13 @@ import '../../providers/vault_providers.dart';
 class VaultFilterBar extends ConsumerWidget {
   final bool quickOnly;
   final ValueChanged<bool> onQuickChanged;
+  final VoidCallback? onFilterApplied;
 
   const VaultFilterBar({
     super.key,
     required this.quickOnly,
     required this.onQuickChanged,
+    this.onFilterApplied,
   });
 
   @override
@@ -42,6 +44,7 @@ class VaultFilterBar extends ConsumerWidget {
             onTap: () {
               notifier.resetFilters();
               onQuickChanged(false);
+              onFilterApplied?.call();
             },
           ),
           for (final p in ProteinType.values) ...[
@@ -53,7 +56,10 @@ class VaultFilterBar extends ConsumerWidget {
               emoji: p.emoji,
               glyph: null,
               label: p.label(strings),
-              onTap: () => notifier.toggleProtein(p),
+              onTap: () {
+                notifier.toggleProtein(p);
+                onFilterApplied?.call();
+              },
             ),
           ],
           const SizedBox(width: 8),
@@ -64,7 +70,10 @@ class VaultFilterBar extends ConsumerWidget {
             emoji: null,
             glyph: AppGlyph.clock,
             label: strings.filterQuick,
-            onTap: () => onQuickChanged(!quickOnly),
+            onTap: () {
+              onQuickChanged(!quickOnly);
+              onFilterApplied?.call();
+            },
           ),
           const SizedBox(width: 8),
           _Chip(
@@ -74,7 +83,10 @@ class VaultFilterBar extends ConsumerWidget {
             emoji: null,
             glyph: AppGlyph.heartFill,
             label: strings.filterFavorites,
-            onTap: () => notifier.toggleFavoriteFilter(),
+            onTap: () {
+              notifier.toggleFavoriteFilter();
+              onFilterApplied?.call();
+            },
           ),
           const SizedBox(width: 8),
           _Chip(
@@ -84,7 +96,10 @@ class VaultFilterBar extends ConsumerWidget {
             emoji: null,
             glyph: AppGlyph.star,
             label: strings.fridaySpecial,
-            onTap: () => notifier.toggleFridayFilter(),
+            onTap: () {
+              notifier.toggleFridayFilter();
+              onFilterApplied?.call();
+            },
           ),
           const SizedBox(width: 8),
           _Chip(
@@ -94,7 +109,10 @@ class VaultFilterBar extends ConsumerWidget {
             emoji: null,
             glyph: AppGlyph.wallet,
             label: strings.budgetFriendly,
-            onTap: () => notifier.toggleBudgetFilter(),
+            onTap: () {
+              notifier.toggleBudgetFilter();
+              onFilterApplied?.call();
+            },
           ),
           for (final c in CarbsType.values) ...[
             const SizedBox(width: 8),
@@ -105,7 +123,10 @@ class VaultFilterBar extends ConsumerWidget {
               emoji: null,
               glyph: null,
               label: c.label(strings),
-              onTap: () => notifier.toggleCarbs(c),
+              onTap: () {
+                notifier.toggleCarbs(c);
+                onFilterApplied?.call();
+              },
             ),
           ],
         ],

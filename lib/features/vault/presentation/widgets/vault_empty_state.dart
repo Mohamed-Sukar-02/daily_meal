@@ -38,7 +38,7 @@ class VaultEmptyState extends StatelessWidget {
                 brightness == Brightness.dark
                     ? 'assets/icons/vault_empty_dark.png'
                     : 'assets/icons/vault_empty_light.png',
-                width: 220,
+                width: 170,
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) => AppIcon(
                   AppGlyph.pot,

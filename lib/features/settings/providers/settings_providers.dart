@@ -278,12 +278,17 @@ class SettingsController extends AsyncNotifier<void> {
 
 
   /// Save welcome data and mark first run as complete.
-  Future<void> saveWelcomeData(String name, String? email, String? gender) async {
+  Future<void> saveWelcomeData(
+    String name,
+    String? email,
+    String? gender, [
+    String? avatar,
+  ]) async {
     state = const AsyncValue.loading();
     try {
       // Single source of truth for "pick an avatar that matches the gender" —
       // shared with the profile editor in the Settings screen.
-      final avatarPath = AvatarService.randomAvatarForGender(gender);
+      final avatarPath = avatar ?? AvatarService.randomAvatarForGender(gender);
 
       final dao = ref.read(appSettingsDaoProvider);
       await dao.updateWelcomeData(

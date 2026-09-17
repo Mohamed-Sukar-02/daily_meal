@@ -1,5 +1,8 @@
+import 'dart:ui';
 import 'package:drift/drift.dart';
 import '../app_database.dart';
+import '../tables/app_settings_table.dart';
+import '../../services/app_config_sync_service.dart';
 
 part 'app_settings_dao.g.dart';
 
@@ -9,19 +12,23 @@ class AppSettingsDao extends DatabaseAccessor<AppDatabase> with _$AppSettingsDao
 
   static const int settingsRowId = 1;
 
-  static const defaultSettings = AppSettingsCompanion(
-    id: Value(settingsRowId),
-    cooldownDays: Value(14),
-    chickenCooldownDays: Value(7),
-    beefCooldownDays: Value(10),
-    fishCooldownDays: Value(5),
-    meatlessCooldownDays: Value(0),
-    notificationHour: Value(12),
-    notificationMinute: Value(0),
-    notificationsEnabled: Value(false),
-    themeMode: Value(AppThemeModePreference.system),
-    language: Value(AppLanguagePreference.ar),
-    isFirstRun: Value(true),
+  static AppSettingsCompanion get defaultSettings => AppSettingsCompanion(
+    id: const Value(settingsRowId),
+    cooldownDays: const Value(14),
+    chickenCooldownDays: const Value(7),
+    beefCooldownDays: const Value(10),
+    fishCooldownDays: const Value(5),
+    meatlessCooldownDays: const Value(0),
+    notificationHour: const Value(12),
+    notificationMinute: const Value(0),
+    notificationsEnabled: const Value(false),
+    themeMode: const Value(AppThemeModePreference.system),
+    language: Value(
+      PlatformDispatcher.instance.locale.languageCode == 'en'
+          ? AppLanguagePreference.en
+          : AppLanguagePreference.ar,
+    ),
+    isFirstRun: const Value(true),
   );
 
   /// Watch singleton AppSettings row with resilient fallback
@@ -143,9 +150,27 @@ class AppSettingsDao extends DatabaseAccessor<AppDatabase> with _$AppSettingsDao
     );
   }
 
-  /// Reset settings to defaults
+  /// Reset settings to defaults (using cached Firebase defaults if available)
   Future<void> resetToDefaults() async {
-    await (update(appSettings)..where((t) => t.id.equals(settingsRowId)))
-        .write(defaultSettings);
+    final cached = await AppConfigSyncService.instance.getCachedDefaults();
+    final companion = AppSettingsCompanion(
+      id: const Value(settingsRowId),
+      cooldownDays: Value(cached.cooldownDays),
+      chickenCooldownDays: Value(cached.chickenCooldownDays),
+      beefCooldownDays: Value(cached.beefCooldownDays),
+      fishCooldownDays: Value(cached.fishCooldownDays),
+      meatlessCooldownDays: Value(cached.meatlessCooldownDays),
+      notificationHour: Value(cached.notificationHour),
+      notificationMinute: Value(cached.notificationMinute),
+      notificationsEnabled: const Value(false),
+      themeMode: const Value(AppThemeModePreference.system),
+      language: Value(
+        PlatformDispatcher.instance.locale.languageCode == 'en'
+            ? AppLanguagePreference.en
+            : AppLanguagePreference.ar,
+      ),
+      isFirstRun: const Value(true),
+    );
+    await (update(appSettings)..where((t) => t.id.equals(settingsRowId))).write(companion);
   }
 }

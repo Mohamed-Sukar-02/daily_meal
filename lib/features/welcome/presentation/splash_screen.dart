@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/theme/app_palette.dart';
 import '../../settings/providers/settings_providers.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -21,6 +22,18 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     // Wait for the first frame to render before checking to avoid go_router state issues
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
+        final existing = ref.read(appSettingsProvider).valueOrNull;
+        if (existing != null) {
+          if (mounted) {
+            if (existing.isFirstRun) {
+              context.go('/welcome');
+            } else {
+              context.go('/');
+            }
+          }
+          return;
+        }
+
         final settingsStream = ref.read(appSettingsProvider.stream);
         final settings = await settingsStream.first;
         if (mounted) {
@@ -40,20 +53,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
     return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.restaurant_menu,
-              size: 100,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(height: 24),
-            const CircularProgressIndicator(),
-          ],
-        ),
+      backgroundColor: AppPalette.background(brightness),
+      body: const Center(
+        child: CircularProgressIndicator.adaptive(),
       ),
     );
   }

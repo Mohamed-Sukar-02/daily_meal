@@ -177,6 +177,10 @@ class AppStrings {
   String get vaultSubtitle => isEn
       ? 'Save your favourite meals and cook them anytime 🧡'
       : 'احفظ أكلاتك المفضلة واطبخها في أي وقت 🧡';
+  String get vaultSubtitleExplore => isEn
+      ? 'Discover community recipes and explore new meal ideas 🌟'
+      : 'استكشف وصفات المجتمع وأفكار أكلات جديدة 🌟';
+  String get vaultAddIn10Seconds => isEn ? 'Add in\n10 seconds' : 'أضفها في\n10 ثواني بس';
   String get vaultSearchHint => isEn ? 'Search a meal by name…' : 'ابحث عن أكلة بالاسم...';
   String vaultLoadError(Object error) => isEn
       ? 'Failed to load meals: $error'
@@ -433,14 +437,14 @@ class AppStrings {
       ? 'Smart Cooldown Engine'
       : 'محرك الكولداون الذكي';
   String get cooldownSheetSubtitle => isEn
-      ? 'Switch the cooldown on or off per protein. Zero days means disabled.'
-      : 'فعّل أو أوقف فترة الاستبعاد لكل بروتين على حدة. صفر أيام تعني إيقاف.';
+      ? 'Customise cooldown periods for proteins and vegetables. Zero days means disabled.'
+      : 'تخصيص فترات الاستبعاد للبروتينات والخضار. صفر أيام تعني إيقاف الاستبعاد.';
   String get cooldownEnabledHint => isEn
       ? 'Cooldown active'
       : 'الاستبعاد مفعّل';
   String get cooldownDisabledHint => isEn
-      ? 'Cooldown off — this protein repeats freely'
-      : 'الاستبعاد متوقف — البروتين ده ممكن يتكرر في أي وقت';
+      ? 'Cooldown off — repeats freely'
+      : 'الاستبعاد متوقف — يتكرر بحرية في أي وقت';
   String get delayMealRepeat => isEn ? 'Delay Meal Repeat' : 'تأخير تكرار الأكلة';
   String get chicken => isEn ? 'Chicken' : 'فراخ';
   String get beef => isEn ? 'Beef' : 'لحمة';
@@ -477,14 +481,15 @@ class AppStrings {
   String get adminLogin => isEn ? 'Login' : 'دخول';
   String get adminAccessTitle => isEn ? 'Admin Access' : 'دخول المسؤول';
   String get adminAccessDesc => isEn
-      ? 'Enter the admin password to access the dashboard'
-      : 'أدخل كلمة مرور المسؤول للوصول إلى لوحة التحكم';
+      ? 'Enter the admin password'
+      : 'أدخل كلمة مرور المسؤول';
   String get adminPasswordHint => isEn ? 'Password' : 'كلمة المرور';
   String get adminPasswordWrong => isEn ? 'Incorrect password' : 'كلمة المرور غير صحيحة';
   String get adminOpenFailed => isEn
       ? 'Could not open the admin page'
       : 'تعذر فتح صفحة الإدارة';
   String get adminDashboardTitle => isEn ? 'Admin database' : 'Admin database';
+  String get privacyPolicyTitle => isEn ? 'Privacy policy' : 'Privacy policy';
   String get adminDashboardSubtitle => isEn
       ? 'Admin dashboard — password protected'
       : 'لوحة تحكم المسؤول - محمية بكلمة مرور';
@@ -535,15 +540,32 @@ class AppStrings {
   String get welcomeSubtitle => isEn
       ? 'To tailor the experience for you, we need to know you a little.'
       : 'علشان نقدر نخصص لك التجربة بشكل أفضل، محتاجين نتعرف عليك.';
-  String get welcomeNameLabel => isEn ? 'Your name (required)' : 'اسمك (إجباري)';
+  String get welcomeHeroTitle => isEn ? 'WELCOME' : 'أهلاً بك';
+  String get welcomeHeroDescription => isEn
+      ? 'Tired of “What to cook today?”. Daily Meal is your offline companion that suggests dishes from your own favorite home recipes using smart repetition control. Plan easily, save left-overs, and log meals in seconds.'
+      : 'محتار تطبخ إيه النهاردة؟ «أكلة النهاردة» رفيقك في المطبخ بدون إنترنت، بيقترح عليك أكلات من وصفات بيتك المفضلة مع تحكم ذكي في التكرار لتجديد سفرتك كل يوم.';
+  String get welcomeStartNow => isEn ? 'START NOW' : 'ابدأ الآن';
+  String get welcomeProfileTitle => isEn ? 'Let\'s Get Started' : 'لنبدأ رحلتك';
+  String get welcomeProfileSubtitle => isEn
+      ? 'Tell us a bit about yourself to personalize your kitchen.'
+      : 'أخبرنا قليلاً عن نفسك لتخصيص مطبخك واقتراحاتك.';
+  String get welcomeNameLabel => isEn ? 'Your Name (Required)' : 'اسمك (إجباري)';
+  String get welcomeNameHint => isEn ? 'Enter your name' : 'اكتب اسمك هنا';
   String get welcomeNameRequired => isEn ? 'Please enter your name' : 'من فضلك أدخل اسمك';
   String get welcomeEmailLabel => isEn
       ? 'Your email (optional)'
       : 'بريدك الإلكتروني (اختياري)';
   String get welcomeEmailHint => isEn
-      ? 'Helps us back up your data later'
-      : 'يساعدنا في حفظ بياناتك مستقبلاً';
-  String get welcomeGenderLabel => isEn ? 'Gender (required):' : 'النوع (إجباري):';
+      ? 'name@example.com'
+      : 'name@example.com';
+  String get welcomeGenderLabel => isEn ? 'Gender (Required)' : 'النوع (إجباري)';
+  String get welcomeGenderRequired => isEn ? 'Please select your gender' : 'من فضلك اختر النوع';
+  String get welcomeAvatarLabel => isEn ? 'Your Avatar' : 'صورتك الرمزية';
+  String get welcomeChooseAvatarHint => isEn
+      ? 'Tap to choose your avatar'
+      : 'اضغط على الصورة لاختيار الأفاتار المفضل';
+  String get welcomeFinish => isEn ? 'Enter the Kitchen' : 'انطلق إلى المطبخ';
+  String get welcomeBack => isEn ? 'Back' : 'رجوع';
   String get welcomeStart => isEn ? 'Get started' : 'ابدأ الاستخدام';
 
   // ===========================================================================

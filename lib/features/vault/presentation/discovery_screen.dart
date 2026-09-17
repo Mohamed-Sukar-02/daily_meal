@@ -29,6 +29,10 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   int _selectedFilterIndex = 0; // 0=Trending, 1=Admin, 2=Quick, 3=Global
+  bool _isFilterBarVisible = false;
+  bool _isGridView = true;
+  final _viewToggleLink = LayerLink();
+  final _viewTogglePortal = OverlayPortalController();
 
   @override
   void dispose() {
@@ -72,61 +76,114 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (!widget.isEmbedded) _buildStandaloneHeader(brightness),
-        // Search bar — mock uses English placeholder, pill shape like vault
+        // Search bar row with view & filter action buttons
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-          child: Container(
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppPalette.tabContainer(brightness),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppPalette.hairline(brightness)),
-            ),
-            child: Row(
-              children: [
-                const SizedBox(width: 14),
-                AppIcon(AppGlyph.search, color: AppPalette.textSecondary(brightness), size: 20),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    key: const Key('discovery_search_field'),
-                    controller: _searchController,
-                    style: TextStyle(fontSize: 14, color: AppPalette.textPrimary(brightness)),
-                    decoration: InputDecoration(
-                      isCollapsed: true,
-                      border: InputBorder.none,
-                      hintText: strings.discoverySearchHint,
-                      hintStyle: TextStyle(fontSize: 14, color: AppPalette.textSecondary(brightness)),
-                    ),
-                    onChanged: (v) => setState(() => _searchQuery = v),
+          padding: EdgeInsets.fromLTRB(16, widget.isEmbedded ? 0 : 10, 16, 10),
+          child: Row(
+            children: [
+              Expanded(
+                child: Container(
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: AppPalette.tabContainer(brightness),
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(color: AppPalette.hairline(brightness)),
+                  ),
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 14),
+                      AppIcon(AppGlyph.search, color: AppPalette.textSecondary(brightness), size: 22),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          key: const Key('discovery_search_field'),
+                          controller: _searchController,
+                          style: TextStyle(fontSize: 14, color: AppPalette.textPrimary(brightness)),
+                          decoration: InputDecoration(
+                            isCollapsed: true,
+                            border: InputBorder.none,
+                            hintText: strings.discoverySearchHint,
+                            hintStyle: TextStyle(fontSize: 14, color: AppPalette.textSecondary(brightness)),
+                          ),
+                          onChanged: (v) => setState(() => _searchQuery = v),
+                        ),
+                      ),
+                      if (_searchQuery.isNotEmpty)
+                        IconButton(
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          icon: AppIcon(AppGlyph.close, color: AppPalette.textSecondary(brightness), size: 16),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                          },
+                        ),
+                      const SizedBox(width: 6),
+                    ],
                   ),
                 ),
-                if (_searchQuery.isNotEmpty)
-                  IconButton(
-                    icon: AppIcon(AppGlyph.close, color: AppPalette.textSecondary(brightness), size: 16),
-                    onPressed: () {
-                      _searchController.clear();
-                      setState(() => _searchQuery = '');
-                    },
-                  ),
-                const SizedBox(width: 6),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              _buildViewModeButton(brightness),
+              const SizedBox(width: 8),
+              _buildTuneButton(brightness),
+            ],
           ),
         ),
-        _buildFilterChips(brightness),
-        const SizedBox(height: 10),
+        // Collapsible filter bar with TapRegion outside detection
+        TapRegion(
+          groupId: 'discovery_filter_bar',
+          onTapOutside: (_) {
+            if (_isFilterBarVisible) {
+              setState(() => _isFilterBarVisible = false);
+            }
+          },
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeInOutCubic,
+            alignment: Alignment.topCenter,
+            child: _isFilterBarVisible
+                ? Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _buildFilterChips(brightness),
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ),
         Expanded(
-          child: Consumer(
-            builder: (context, ref, child) {
-              // Optimal: cloudAccessStatusProvider now is synchronous Provider watching connectivity stream
-              final status = ref.watch(cloudAccessStatusProvider);
-              if (status == CloudAccessStatus.noConnection) {
-                return _errorState(brightness, AppGlyph.cloud, strings.discoveryOfflineTitle, strings.discoveryOfflineDesc);
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (notification) {
+              if (notification is ScrollStartNotification ||
+                  notification is UserScrollNotification) {
+                if (_isFilterBarVisible) {
+                  setState(() => _isFilterBarVisible = false);
+                }
+                if (_viewTogglePortal.isShowing) {
+                  _viewTogglePortal.hide();
+                }
               }
-              if (status == CloudAccessStatus.requiresWifi) {
-                return _errorState(brightness, AppGlyph.cloudDown, strings.discoveryWifiTitle, strings.discoveryWifiDesc);
-              }
+              return false;
+            },
+            child: Listener(
+              behavior: HitTestBehavior.translucent,
+              onPointerDown: (_) {
+                if (_isFilterBarVisible) {
+                  setState(() => _isFilterBarVisible = false);
+                }
+                if (_viewTogglePortal.isShowing) {
+                  _viewTogglePortal.hide();
+                }
+              },
+              child: Consumer(
+                builder: (context, ref, child) {
+                  // Optimal: cloudAccessStatusProvider now is synchronous Provider watching connectivity stream
+                  final status = ref.watch(cloudAccessStatusProvider);
+                  if (status == CloudAccessStatus.noConnection) {
+                    return _errorState(brightness, AppGlyph.cloud, strings.discoveryOfflineTitle, strings.discoveryOfflineDesc);
+                  }
+                  if (status == CloudAccessStatus.requiresWifi) {
+                    return _errorState(brightness, AppGlyph.cloudDown, strings.discoveryWifiTitle, strings.discoveryWifiDesc);
+                  }
               return publicMealsAsync.when(
                 data: (cloudMeals) {
                   final filtered = _filterCloudMeals(cloudMeals);
@@ -170,8 +227,10 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
             },
           ),
         ),
-      ],
-    );
+      ),
+    ),
+    ],
+  );
 
     if (widget.isEmbedded) return content;
 
@@ -234,7 +293,10 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   Widget _chip(Brightness brightness, {required int index, required String emoji, required String label, required ChipStyle style}) {
     final selected = _selectedFilterIndex == index;
     return GestureDetector(
-      onTap: () => setState(() => _selectedFilterIndex = index),
+      onTap: () => setState(() {
+        _selectedFilterIndex = index;
+        _isFilterBarVisible = false;
+      }),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
@@ -250,6 +312,241 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
             const SizedBox(width: 6),
             Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: selected ? style.foreground : AppPalette.textSecondary(brightness))),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTuneButton(Brightness brightness) {
+    final hasActiveFilter = _selectedFilterIndex != 0;
+    final isExpanded = _isFilterBarVisible;
+
+    return TapRegion(
+      groupId: 'discovery_filter_bar',
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          GestureDetector(
+            key: const Key('discovery_filter_toggle_button'),
+            onTap: () {
+              setState(() {
+                _isFilterBarVisible = !_isFilterBarVisible;
+              });
+            },
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: isExpanded || hasActiveFilter
+                    ? AppPalette.brandGreen.withValues(alpha: 0.12)
+                    : AppPalette.tabContainer(brightness),
+                borderRadius: BorderRadius.circular(14),
+                border: isExpanded || hasActiveFilter
+                    ? Border.all(
+                        color: AppPalette.brandGreen.withValues(alpha: 0.45),
+                        width: 1.2,
+                      )
+                    : Border.all(color: AppPalette.hairline(brightness)),
+              ),
+              child: Icon(
+                Icons.tune_rounded,
+                size: 20,
+                color: isExpanded || hasActiveFilter
+                    ? AppPalette.brandGreen
+                    : AppPalette.textSecondary(brightness),
+              ),
+            ),
+          ),
+          if (hasActiveFilter && isExpanded)
+            Positioned(
+              top: -4,
+              right: -4,
+              child: GestureDetector(
+                key: const Key('discovery_filter_clear_button'),
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  setState(() {
+                    _selectedFilterIndex = 0;
+                    _isFilterBarVisible = false;
+                  });
+                },
+                child: Container(
+                  width: 18,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: AppPalette.card(brightness),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppPalette.hairline(brightness),
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.close_rounded,
+                    size: 11,
+                    color: AppPalette.textSecondary(brightness),
+                  ),
+                ),
+              ),
+            )
+          else if (hasActiveFilter && !isExpanded)
+            Positioned(
+              top: 6,
+              right: 6,
+              child: Container(
+                width: 7,
+                height: 7,
+                decoration: const BoxDecoration(
+                  color: AppPalette.brandGreen,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildViewModeButton(Brightness brightness) {
+    return TapRegion(
+      groupId: 'discovery_view_toggle',
+      child: CompositedTransformTarget(
+        link: _viewToggleLink,
+        child: OverlayPortal(
+          controller: _viewTogglePortal,
+          overlayChildBuilder: (context) =>
+              _buildViewToggleOverlay(context, brightness),
+          child: GestureDetector(
+            key: const Key('discovery_view_toggle_button'),
+            onTap: () {
+              if (_viewTogglePortal.isShowing) {
+                _viewTogglePortal.hide();
+              } else {
+                _viewTogglePortal.show();
+              }
+            },
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: AppPalette.tabContainer(brightness),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppPalette.hairline(brightness)),
+              ),
+              child: Icon(
+                _isGridView ? Icons.grid_view_rounded : Icons.view_list_rounded,
+                size: 20,
+                color: AppPalette.textSecondary(brightness),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildViewToggleOverlay(BuildContext context, Brightness brightness) {
+    return CompositedTransformFollower(
+      link: _viewToggleLink,
+      showWhenUnlinked: false,
+      targetAnchor: Alignment.bottomCenter,
+      followerAnchor: Alignment.topCenter,
+      offset: const Offset(0, 6),
+      child: TapRegion(
+        groupId: 'discovery_view_toggle',
+        onTapOutside: (_) {
+          if (_viewTogglePortal.isShowing) {
+            _viewTogglePortal.hide();
+          }
+        },
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            width: 44,
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: AppPalette.card(brightness),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppPalette.hairline(brightness),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: brightness == Brightness.dark
+                      ? Colors.black.withValues(alpha: 0.45)
+                      : Colors.black.withValues(alpha: 0.12),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _viewToggleOption(
+                  key: const Key('discovery_view_option_grid'),
+                  icon: Icons.grid_view_rounded,
+                  selected: _isGridView,
+                  brightness: brightness,
+                  onTap: () {
+                    setState(() => _isGridView = true);
+                    _viewTogglePortal.hide();
+                  },
+                ),
+                const SizedBox(height: 4),
+                _viewToggleOption(
+                  key: const Key('discovery_view_option_list'),
+                  icon: Icons.view_list_rounded,
+                  selected: !_isGridView,
+                  brightness: brightness,
+                  onTap: () {
+                    setState(() => _isGridView = false);
+                    _viewTogglePortal.hide();
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _viewToggleOption({
+    required Key key,
+    required IconData icon,
+    required bool selected,
+    required Brightness brightness,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      key: key,
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: selected ? AppPalette.brandGreen : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(
+          icon,
+          size: 20,
+          color: selected
+              ? Colors.white
+              : AppPalette.textSecondary(brightness),
         ),
       ),
     );

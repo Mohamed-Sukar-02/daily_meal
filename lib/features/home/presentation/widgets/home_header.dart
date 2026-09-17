@@ -106,28 +106,58 @@ class HomeHeader extends ConsumerWidget {
               ],
             ),
           ),
-          // Profile avatar
+          // Profile avatar with chic culinary aura & gradient halo ring
           GestureDetector(
             onTap: onProfileTap,
             child: Container(
-              width: 44,
-              height: 44,
+              width: 50,
+              height: 50,
               decoration: BoxDecoration(
-                color: const Color(0xFFF3C64F),
                 shape: BoxShape.circle,
-                border: Border.all(color: AppPalette.hairline(brightness)),
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppPalette.brandGreen,
+                    Color(0xFF34D399),
+                    Color(0xFFF59E0B),
+                  ],
+                  stops: [0.0, 0.60, 1.0],
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: brightness == Brightness.dark
-                        ? Colors.black.withValues(alpha: 0.2)
-                        : AppPalette.lightTextPrimary.withValues(alpha: 0.05),
-                    blurRadius: 8,
+                    color: AppPalette.brandGreen.withValues(
+                      alpha: brightness == Brightness.dark ? 0.40 : 0.25,
+                    ),
+                    blurRadius: 10,
+                    spreadRadius: 1,
                     offset: const Offset(0, 2),
+                  ),
+                  BoxShadow(
+                    color: const Color(0xFFF59E0B).withValues(
+                      alpha: brightness == Brightness.dark ? 0.25 : 0.15,
+                    ),
+                    blurRadius: 6,
+                    offset: const Offset(0, -1),
                   ),
                 ],
               ),
-              clipBehavior: Clip.antiAlias,
-              child: _buildAvatarImage(avatarPath, brightness),
+              padding: const EdgeInsets.all(2.5),
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                ),
+                padding: const EdgeInsets.all(1.5),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF3C64F),
+                    shape: BoxShape.circle,
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: _buildAvatarImage(avatarPath, brightness),
+                ),
+              ),
             ),
           ),
         ],
