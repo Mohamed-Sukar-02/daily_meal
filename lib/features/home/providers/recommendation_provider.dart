@@ -145,10 +145,17 @@ class RecommendationController extends AsyncNotifier<void> {
   Future<void> undoHistoryEntry(int historyEntryId) =>
       undoLastCookingLog(historyEntryId);
 
+  /// Toggles a meal's favourite flag (heart button on the home cards).
+  ///
+  /// The caller fires this without awaiting (the heart animates instantly and
+  /// the write lands in the background), so errors are captured in [state]
+  /// instead of being rethrown — a rethrown, unawaited future would surface
+  /// as an unhandled async exception.
   Future<void> toggleFavorite(int mealId, bool currentStatus) async {
     try {
       final dao = ref.read(mealsDaoProvider);
       await dao.toggleFavorite(mealId, currentStatus);
+      state = const AsyncValue.data(null);
     } catch (err, st) {
       state = AsyncValue.error(err, st);
     }
