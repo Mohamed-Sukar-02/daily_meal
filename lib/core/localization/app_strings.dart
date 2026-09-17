@@ -188,6 +188,15 @@ class AppStrings {
   String get vaultTabMine => isEn ? 'My Vault' : 'خزانتي';
   String get vaultTabExplore => isEn ? 'Explore' : 'استكشاف';
 
+  /// Header counter statistics shown while the "Explore" tab is active.
+  /// The cloud total reuses [mealsCount] so it keeps the exact capsule text
+  /// (with correct Arabic plurals) plus a cloud mark.
+  String vaultCloudCount(int count) => '${mealsCount(count)} ☁️';
+  String vaultSharedCount(int count) =>
+      isEn ? '$count shared ✅' : '$count مشترك ✅';
+  String vaultNewCount(int count) =>
+      isEn ? '$count new ✨' : '$count جديدة ✨';
+
   String get filterAll => isEn ? 'All' : 'الكل';
   String get filterQuick => isEn ? 'Quick 30m' : 'سريع 30م';
   String get filterFavorites => isEn ? 'Favorites' : 'المفضلة';
@@ -334,6 +343,7 @@ class AppStrings {
   String get historyEmptyDesc => isEn
       ? 'Once you log meals from the home screen they will appear here, sorted by date.'
       : 'عندما تسجل وجباتك من الصفحة الرئيسية ستظهر هنا مرتبة بالتواريخ.';
+  String get goToHome => isEn ? 'Go to Home' : 'العودة للرئيسية';
   String get veggieShort => isEn ? 'Veggie' : 'نباتي';
 
   // ===========================================================================

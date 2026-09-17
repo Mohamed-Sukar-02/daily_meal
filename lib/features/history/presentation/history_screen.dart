@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/database/tables/meals_table.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/navigation/nav_lifecycle.dart';
@@ -160,10 +161,20 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                           mainAxisAlignment: MainAxisAlignment.center,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            AppIcon(
-                              AppGlyph.history,
-                              size: 64,
-                              color: AppPalette.textSecondary(brightness),
+                            // The bespoke history glyph renders clipped at this
+                            // size, so use the same empty-state illustration the
+                            // Home and Vault screens already ship.
+                            Image.asset(
+                              brightness == Brightness.dark
+                                  ? 'assets/icons/vault_empty_dark.png'
+                                  : 'assets/icons/vault_empty_light.png',
+                              width: 170,
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) => Icon(
+                                Icons.receipt_long_outlined,
+                                size: 64,
+                                color: AppPalette.textSecondary(brightness),
+                              ),
                             ),
                             const SizedBox(height: 16),
                             Text(
@@ -182,6 +193,24 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                                 fontSize: 13,
                                 height: 1.5,
                                 color: AppPalette.textSecondary(brightness),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            FilledButton.icon(
+                              key: const Key('history_empty_go_home_button'),
+                              // Deep link through GoRouter: the nav shell owns
+                              // the visible branch and re-publishes it after
+                              // the navigation settles (`_scheduleBranchSync`),
+                              // so writing `activeNavBranchProvider` directly
+                              // would not switch the tab.
+                              onPressed: () => context.go('/'),
+                              icon: const Icon(Icons.home_rounded),
+                              label: Text(strings.goToHome),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppPalette.brandGreen,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                               ),
                             ),
                           ],
@@ -207,13 +236,13 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: Row(
                           children: [
-                            _buildStatCard(context, brightness, '🐔', strings.chicken, chickenDays, const Color(0xFFFDF5E6)),
+                            _buildStatCard(context, brightness, '🐔', strings.chicken, chickenDays, const Color(0xFFFFF3C4)),
                             const SizedBox(width: 12),
-                            _buildStatCard(context, brightness, '🐟', strings.fish, fishDays, const Color(0xFFE3F0FD)),
+                            _buildStatCard(context, brightness, '🐟', strings.fish, fishDays, const Color(0xFFBBDEFB)),
                             const SizedBox(width: 12),
-                            _buildStatCard(context, brightness, '🥩', strings.beef, beefDays, const Color(0xFFFFEBEE)),
+                            _buildStatCard(context, brightness, '🥩', strings.beef, beefDays, const Color(0xFFFFCDD2)),
                             const SizedBox(width: 12),
-                            _buildStatCard(context, brightness, '🌿', strings.veggieShort, meatlessDays, const Color(0xFFE8F5E9)),
+                            _buildStatCard(context, brightness, '🌿', strings.veggieShort, meatlessDays, const Color(0xFFC8E6C9)),
                           ],
                         ),
                       ),
@@ -405,24 +434,50 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
   Widget _buildStatCard(BuildContext context, Brightness brightness, String emoji, String title, int count, Color bgColor) {
     final isDark = brightness == Brightness.dark;
     final strings = AppStrings.of(context);
-    final finalBg = isDark ? bgColor.withValues(alpha: 0.12) : bgColor;
+    // Light mode: vibrant pastel base colours (passed in). Dark mode: raise
+    // the alpha to 0.28 so the tint stays clearly visible on the dark card,
+    // and derive the border from the card colour itself.
+    final finalBg = isDark ? bgColor.withValues(alpha: 0.28) : bgColor;
     return Container(
       width: 130,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: finalBg,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppPalette.hairline(brightness).withValues(alpha: 0.5)),
+        border: Border.all(
+          color: isDark
+              ? bgColor.withValues(alpha: 0.4)
+              : AppPalette.hairline(brightness).withValues(alpha: 0.5),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-            child: Text(emoji, style: const TextStyle(fontSize: 18)),
+          // Row 1: emoji + category name together at the top
+          Row(
+            children: [
+              Text(emoji, style: const TextStyle(fontSize: 20)),
+              const SizedBox(width: 6),
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: AppPalette.textPrimary(brightness).withValues(alpha: 0.8),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
+          // Row 2: days count — big and prominent
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
@@ -431,26 +486,13 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontWeight: FontWeight.w900,
-                fontSize: 18,
+                fontSize: 22,
                 color: AppPalette.textPrimary(brightness),
               ),
             ),
           ),
           const SizedBox(height: 2),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: AppPalette.textPrimary(brightness).withValues(alpha: 0.8),
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          const SizedBox(height: 2),
+          // Row 3: "this month" caption
           Text(
             strings.thisMonth,
             style: TextStyle(

@@ -312,6 +312,11 @@ class _FavoriteHeartButtonState extends State<_FavoriteHeartButton>
   }
 
   void _handleTap() {
+    // Guard against rapid repeated taps: while the pulse is still running,
+    // the previous database write has not round-tripped yet, so a second tap
+    // would race the first one and leave the heart visually out of sync with
+    // the vault (the "button hangs / doesn't respond" symptom).
+    if (_controller.isAnimating) return;
     setState(() {
       _isFavorite = !_isFavorite;
     });

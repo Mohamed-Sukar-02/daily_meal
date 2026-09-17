@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -113,9 +115,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
                   cardIndex: i,
                   onCookedToday: () => _handleCookedToday(context, ref, meals[i]),
                   onLeftover: () => _handleLeftover(context, ref, meals[i]),
-                  onToggleFavorite: () => ref
-                      .read(recommendationControllerProvider.notifier)
-                      .toggleFavorite(meals[i].id, meals[i].isFavorite),
+                  // Fire-and-forget: the heart animates instantly while the
+                  // DB write completes in the background (never blocks UI).
+                  onToggleFavorite: () => unawaited(
+                    ref
+                        .read(recommendationControllerProvider.notifier)
+                        .toggleFavorite(meals[i].id, meals[i].isFavorite),
+                  ),
                 ),
                 if (i < meals.length - 1) const SizedBox(height: 16),
               ],

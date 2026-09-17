@@ -268,13 +268,18 @@ class VaultController extends AsyncNotifier<void> {
     }
   }
 
+  /// Toggles a meal's favourite flag (bookmark button on the vault cards).
+  ///
+  /// The caller fires this without awaiting, so errors are captured in
+  /// [state] instead of being rethrown — a rethrown, unawaited future would
+  /// surface as an unhandled async exception.
   Future<void> toggleFavorite(int id, [bool? currentStatus]) async {
     try {
       final dao = ref.read(mealsDaoProvider);
       await dao.toggleFavorite(id, currentStatus);
+      state = const AsyncValue.data(null);
     } catch (err, st) {
       state = AsyncValue.error(err, st);
-      rethrow;
     }
   }
 }
