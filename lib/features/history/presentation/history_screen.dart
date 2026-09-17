@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
 import '../../../core/database/tables/meals_table.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/navigation/nav_lifecycle.dart';
@@ -160,10 +162,12 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                           mainAxisAlignment: MainAxisAlignment.center,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            AppIcon(
-                              AppGlyph.history,
-                              size: 64,
-                              color: AppPalette.textSecondary(brightness),
+                            Image.asset(
+                              brightness == Brightness.dark
+                                  ? 'assets/icons/vault_empty_dark.png'
+                                  : 'assets/icons/vault_empty_light.png',
+                              width: 170,
+                              errorBuilder: (_, __, ___) => const Icon(Icons.receipt_long_outlined, size: 64),
                             ),
                             const SizedBox(height: 16),
                             Text(
@@ -182,6 +186,17 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                                 fontSize: 13,
                                 height: 1.5,
                                 color: AppPalette.textSecondary(brightness),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            FilledButton.icon(
+                              onPressed: () => context.go('/'),
+                              icon: const Icon(Icons.home_rounded),
+                              label: Text(strings.goToHome),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppPalette.brandGreen,
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                               ),
                             ),
                           ],
@@ -207,13 +222,13 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: Row(
                           children: [
-                            _buildStatCard(context, brightness, '🐔', strings.chicken, chickenDays, const Color(0xFFFDF5E6)),
+                            _buildStatCard(context, brightness, '🐔', strings.chicken, chickenDays, const Color(0xFFFFF3C4)),
                             const SizedBox(width: 12),
-                            _buildStatCard(context, brightness, '🐟', strings.fish, fishDays, const Color(0xFFE3F0FD)),
+                            _buildStatCard(context, brightness, '🐟', strings.fish, fishDays, const Color(0xFFBBDEFB)),
                             const SizedBox(width: 12),
-                            _buildStatCard(context, brightness, '🥩', strings.beef, beefDays, const Color(0xFFFFEBEE)),
+                            _buildStatCard(context, brightness, '🥩', strings.beef, beefDays, const Color(0xFFFFCDD2)),
                             const SizedBox(width: 12),
-                            _buildStatCard(context, brightness, '🌿', strings.veggieShort, meatlessDays, const Color(0xFFE8F5E9)),
+                            _buildStatCard(context, brightness, '🌿', strings.veggieShort, meatlessDays, const Color(0xFFC8E6C9)),
                           ],
                         ),
                       ),
@@ -405,48 +420,53 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
   Widget _buildStatCard(BuildContext context, Brightness brightness, String emoji, String title, int count, Color bgColor) {
     final isDark = brightness == Brightness.dark;
     final strings = AppStrings.of(context);
-    final finalBg = isDark ? bgColor.withValues(alpha: 0.12) : bgColor;
+    final Color lightVibrant = bgColor;
+    final Color darkAdapted = bgColor.withValues(alpha: 0.28);
+    final finalBg = isDark ? darkAdapted : lightVibrant;
+
     return Container(
       width: 130,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: finalBg,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppPalette.hairline(brightness).withValues(alpha: 0.5)),
+        border: Border.all(
+          color: isDark
+              ? bgColor.withValues(alpha: 0.4)
+              : AppPalette.hairline(brightness).withValues(alpha: 0.5),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-            child: Text(emoji, style: const TextStyle(fontSize: 18)),
+          Row(
+            children: [
+              Text(emoji, style: const TextStyle(fontSize: 20)),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppPalette.textPrimary(brightness).withValues(alpha: 0.8),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
               strings.daysText(count),
               maxLines: 1,
-              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontWeight: FontWeight.w900,
-                fontSize: 18,
+                fontSize: 22,
                 color: AppPalette.textPrimary(brightness),
-              ),
-            ),
-          ),
-          const SizedBox(height: 2),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: AppPalette.textPrimary(brightness).withValues(alpha: 0.8),
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
               ),
             ),
           ),

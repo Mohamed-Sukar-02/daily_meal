@@ -312,6 +312,7 @@ class _FavoriteHeartButtonState extends State<_FavoriteHeartButton>
   }
 
   void _handleTap() {
+    if (_controller.isAnimating) return;
     setState(() {
       _isFavorite = !_isFavorite;
     });

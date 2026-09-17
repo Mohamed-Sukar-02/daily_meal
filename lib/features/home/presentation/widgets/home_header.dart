@@ -30,7 +30,7 @@ class HomeHeader extends ConsumerWidget {
     final tiltAngle = isRtl ? 0.15 : -0.15;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 2, 16, 2),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -77,33 +77,41 @@ class HomeHeader extends ConsumerWidget {
             ),
           ),
           Expanded(
-            child: Column(
-              children: [
-                Text(
-                  strings.appName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 24,
-                    height: 1.2,
-                    fontWeight: FontWeight.w900,
-                    color: AppPalette.textPrimary(brightness),
+            child: Center(
+              child: Semantics(
+                label: '${strings.appName} - ${strings.appTagline}',
+                child: SizedBox(
+                  height: 56,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Image.asset(
+                        'assets/icons/home_title_light.png',
+                        height: 56,
+                        fit: BoxFit.contain,
+                        color: brightness == Brightness.dark
+                            ? AppPalette.textPrimary(brightness)
+                            : null,
+                        errorBuilder: (context, error, stackTrace) => Text(
+                          strings.appName,
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: AppPalette.textPrimary(brightness),
+                          ),
+                        ),
+                      ),
+                      Image.asset(
+                        'assets/icons/home_title_around.png',
+                        height: 56,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const SizedBox.shrink(),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  strings.appTagline,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppPalette.textSecondary(brightness),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
           // Profile avatar with chic culinary aura & gradient halo ring

@@ -113,9 +113,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
                   cardIndex: i,
                   onCookedToday: () => _handleCookedToday(context, ref, meals[i]),
                   onLeftover: () => _handleLeftover(context, ref, meals[i]),
-                  onToggleFavorite: () => ref
-                      .read(recommendationControllerProvider.notifier)
-                      .toggleFavorite(meals[i].id, meals[i].isFavorite),
+                  onToggleFavorite: () {
+                    ref
+                        .read(recommendationControllerProvider.notifier)
+                        .toggleFavorite(meals[i].id, meals[i].isFavorite);
+                  },
                 ),
                 if (i < meals.length - 1) const SizedBox(height: 16),
               ],

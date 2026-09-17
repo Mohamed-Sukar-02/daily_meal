@@ -5,6 +5,8 @@ import '../../../core/localization/app_strings.dart';
 import '../../../core/navigation/nav_lifecycle.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/app_icons.dart';
+import '../../../core/database/app_database.dart';
+import '../providers/discovery_providers.dart';
 import '../providers/vault_providers.dart';
 import 'discovery_screen.dart';
 import 'widgets/delete_meal_dialog.dart';
@@ -153,24 +155,7 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppPalette.chipGreen(brightness).background,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      strings.mealsCount(totalCount),
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: AppPalette.chipGreen(brightness).foreground,
-                      ),
-                    ),
-                  ),
+                  _buildVaultCounter(context, totalCount, allMealsAsync.valueOrNull, brightness, strings),
                 ],
               ),
             ),
@@ -284,6 +269,105 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
               ],
             )
           : null,
+    );
+  }
+
+  Widget _buildVaultCounter(BuildContext context, int localCount, List<Meal>? localMeals, Brightness brightness, AppStrings strings) {
+    final isExplore = _tabIndex == _tabExplore;
+    final publicMealsAsync = ref.watch(publicMealsProvider);
+
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOutCubic,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 250),
+        child: !isExplore
+            ? Container(
+                key: const ValueKey('vault_local_count'),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppPalette.chipGreen(brightness).background,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  strings.mealsCount(localCount),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: AppPalette.chipGreen(brightness).foreground,
+                  ),
+                ),
+              )
+            : Container(
+                key: const ValueKey('vault_explore_count'),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppPalette.card(brightness),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: AppPalette.chipGreen(brightness).background,
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppPalette.brandGreen.withValues(alpha: 0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: publicMealsAsync.when(
+                  data: (cloudMeals) {
+                    final cloudCount = cloudMeals.length;
+                    int sharedCount = 0;
+                    if (localMeals != null) {
+                      final localCloudIds = localMeals.map((m) => m.cloudId).where((id) => id != null).toSet();
+                      sharedCount = cloudMeals.where((cm) => localCloudIds.contains(cm.id)).length;
+                    }
+                    final newCount = cloudCount - sharedCount;
+
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          strings.vaultCloudCount(cloudCount),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: AppPalette.textPrimary(brightness),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          strings.vaultSharedCount(sharedCount),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppPalette.textSecondary(brightness),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          strings.vaultNewCount(newCount),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppPalette.brandGreen,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                  loading: () => const SizedBox(
+                    width: 60,
+                    height: 60,
+                    child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  ),
+                  error: (_, __) => const SizedBox.shrink(),
+                ),
+              ),
+      ),
     );
   }
 

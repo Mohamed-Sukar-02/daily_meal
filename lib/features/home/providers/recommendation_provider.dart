@@ -151,7 +151,6 @@ class RecommendationController extends AsyncNotifier<void> {
       await dao.toggleFavorite(mealId, currentStatus);
     } catch (err, st) {
       state = AsyncValue.error(err, st);
-      rethrow;
     }
   }
 }

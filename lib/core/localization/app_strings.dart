@@ -188,6 +188,10 @@ class AppStrings {
   String get vaultTabMine => isEn ? 'My Vault' : 'خزانتي';
   String get vaultTabExplore => isEn ? 'Explore' : 'استكشاف';
 
+  String vaultCloudCount(int count) => isEn ? '$count meals ☁️' : '$count أكلة ☁️';
+  String vaultSharedCount(int count) => isEn ? '$count shared ✅' : '$count مشترك ✅';
+  String vaultNewCount(int count) => isEn ? '$count new ✨' : '$count جديدة ✨';
+
   String get filterAll => isEn ? 'All' : 'الكل';
   String get filterQuick => isEn ? 'Quick 30m' : 'سريع 30م';
   String get filterFavorites => isEn ? 'Favorites' : 'المفضلة';
@@ -334,6 +338,7 @@ class AppStrings {
   String get historyEmptyDesc => isEn
       ? 'Once you log meals from the home screen they will appear here, sorted by date.'
       : 'عندما تسجل وجباتك من الصفحة الرئيسية ستظهر هنا مرتبة بالتواريخ.';
+  String get goToHome => isEn ? 'Go to Home' : 'العودة للرئيسية';
   String get veggieShort => isEn ? 'Veggie' : 'نباتي';
 
   // ===========================================================================
