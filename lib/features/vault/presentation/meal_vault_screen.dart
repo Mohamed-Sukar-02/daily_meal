@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/database/app_database.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/navigation/nav_lifecycle.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/app_icons.dart';
+import '../data/models/cloud_meal.dart';
+import '../providers/discovery_providers.dart';
 import '../providers/vault_providers.dart';
 import 'discovery_screen.dart';
 import 'widgets/delete_meal_dialog.dart';
@@ -153,23 +156,11 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppPalette.chipGreen(brightness).background,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      strings.mealsCount(totalCount),
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: AppPalette.chipGreen(brightness).foreground,
-                      ),
-                    ),
+                  _buildVaultCounter(
+                    strings: strings,
+                    brightness: brightness,
+                    allMealsAsync: allMealsAsync,
+                    localCount: totalCount,
                   ),
                 ],
               ),
@@ -286,6 +277,122 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
           : null,
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // Header counter (dynamic per active tab)
+  // ---------------------------------------------------------------------------
+
+  /// The header counter capsule.
+  ///
+  /// * **"My Vault" tab** — stays a compact capsule showing the local meals
+  ///   count (SQLite only), exactly as before.
+  /// * **"Explore" tab** — the capsule expands vertically into a three-line
+  ///   stats card: total cloud meals ☁️, meals shared with the local vault ✅
+  ///   (cloud meal whose `cloudId` matches a local meal) and meals that are
+  ///   new on the cloud only ✨ (total − shared).
+  ///
+  /// [AnimatedSize] + [AnimatedSwitcher] make the capsule grow and collapse
+  /// smoothly when switching between the two tabs.
+  Widget _buildVaultCounter({
+    required AppStrings strings,
+    required Brightness brightness,
+    required AsyncValue<List<Meal>> allMealsAsync,
+    required int localCount,
+  }) {
+    Widget counter;
+
+    if (_tabIndex == _tabExplore) {
+      // Watched only while "Explore" is the active tab, so opening the Vault
+      // on "My Vault" never fires cloud requests nobody asked for.
+      final publicMealsAsync = ref.watch(publicMealsProvider);
+
+      if (publicMealsAsync.isLoading && !publicMealsAsync.hasValue) {
+        counter = _counterCapsule(
+          key: const ValueKey('vault_counter_loading'),
+          brightness: brightness,
+          child: Text(strings.loading, style: _counterTextStyle(brightness)),
+        );
+      } else {
+        final cloudMeals = publicMealsAsync.valueOrNull ?? const <CloudMeal>[];
+        final localCloudIds = <String>{
+          for (final meal in allMealsAsync.valueOrNull ?? const <Meal>[])
+            if (meal.cloudId != null) meal.cloudId!,
+        };
+        final sharedCount = cloudMeals
+            .where((meal) => localCloudIds.contains(meal.id))
+            .length;
+        final newCount = cloudMeals.length - sharedCount;
+
+        counter = _counterCapsule(
+          key: const ValueKey('vault_counter_cloud'),
+          brightness: brightness,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                strings.vaultCloudCount(cloudMeals.length),
+                style: _counterTextStyle(brightness),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                strings.vaultSharedCount(sharedCount),
+                style: _counterTextStyle(brightness),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                strings.vaultNewCount(newCount),
+                style: _counterTextStyle(brightness),
+              ),
+            ],
+          ),
+        );
+      }
+    } else {
+      counter = _counterCapsule(
+        key: const ValueKey('vault_counter_local'),
+        brightness: brightness,
+        child: Text(
+          strings.mealsCount(localCount),
+          style: _counterTextStyle(brightness),
+        ),
+      );
+    }
+
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOutCubic,
+      alignment: Alignment.topCenter,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 180),
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
+        child: counter,
+      ),
+    );
+  }
+
+  Widget _counterCapsule({
+    required Key key,
+    required Brightness brightness,
+    required Widget child,
+  }) {
+    return Container(
+      key: key,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppPalette.chipGreen(brightness).background,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: child,
+    );
+  }
+
+  TextStyle _counterTextStyle(Brightness brightness) => TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w800,
+        color: AppPalette.chipGreen(brightness).foreground,
+      );
 
   // ---------------------------------------------------------------------------
   // "My Vault" tab
