@@ -204,11 +204,17 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                   );
                 }
 
+                // Stats are "this month" (see _buildStatCard footer): filter to
+                // the current month/year BEFORE counting, not all-time.
+                final statsNow = DateTime.now();
+                final monthEntries = entries.where((e) =>
+                    e.history.cookedAt.year == statsNow.year &&
+                    e.history.cookedAt.month == statsNow.month).toList();
                 // Calculate stats with Arabic labels - use enum equality not string contains (optimal + type-safe)
-                int chickenDays = entries.where((e) => e.history.proteinType == ProteinType.chicken).length;
-                int meatlessDays = entries.where((e) => e.history.proteinType == ProteinType.legume || e.history.proteinType == ProteinType.none || e.history.proteinType == ProteinType.dairy).length;
-                int beefDays = entries.where((e) => e.history.proteinType == ProteinType.beef).length;
-                int fishDays = entries.where((e) => e.history.proteinType == ProteinType.fish).length;
+                int chickenDays = monthEntries.where((e) => e.history.proteinType == ProteinType.chicken).length;
+                int meatlessDays = monthEntries.where((e) => e.history.proteinType == ProteinType.legume || e.history.proteinType == ProteinType.none || e.history.proteinType == ProteinType.dairy).length;
+                int beefDays = monthEntries.where((e) => e.history.proteinType == ProteinType.beef).length;
+                int fishDays = monthEntries.where((e) => e.history.proteinType == ProteinType.fish).length;
 
                 return Expanded(
                   child: Column(

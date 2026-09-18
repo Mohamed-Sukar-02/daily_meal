@@ -608,25 +608,43 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
               else
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
-                  sliver: SliverGrid.builder(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 14,
-                      mainAxisSpacing: 14,
-                      childAspectRatio: 0.98,
-                    ),
-                    itemCount: visible.length,
-                    itemBuilder: (context, index) {
-                      final meal = visible[index];
-                      return MealVaultCard(
-                        meal: meal,
-                        onEdit: () =>
-                            QuickAddSheet.show(context, mealToEdit: meal),
-                        onDelete: () => DeleteMealDialog.show(context, meal),
-                      );
-                    },
-                  ),
+                  sliver: _isGridView
+                      ? SliverGrid.builder(
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 14,
+                            mainAxisSpacing: 14,
+                            childAspectRatio: 0.98,
+                          ),
+                          itemCount: visible.length,
+                          itemBuilder: (context, index) {
+                            final meal = visible[index];
+                            return MealVaultCard(
+                              meal: meal,
+                              onEdit: () => QuickAddSheet.show(
+                                  context, mealToEdit: meal),
+                              onDelete: () =>
+                                  DeleteMealDialog.show(context, meal),
+                            );
+                          },
+                        )
+                      : SliverList.builder(
+                          itemCount: visible.length,
+                          itemBuilder: (context, index) {
+                            final meal = visible[index];
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: MealVaultListTile(
+                                meal: meal,
+                                onEdit: () => QuickAddSheet.show(
+                                    context, mealToEdit: meal),
+                                onDelete: () =>
+                                    DeleteMealDialog.show(context, meal),
+                              ),
+                            );
+                          },
+                        ),
                 ),
             ],
           );

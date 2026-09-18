@@ -645,6 +645,45 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                             }).toList(),
                           ),
                           const SizedBox(height: 14),
+                          // Meal flags: Friday special / budget / favorite.
+                          // These previously had NO visible controls (only the
+                          // Offstage test hooks below). The hooks are kept so
+                          // existing widget tests keep working.
+                          _labelRow(isDark, AppGlyph.star, const Color(0xFFFF9800), strings.mealFlagsLabel),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8, runSpacing: 8,
+                            children: [
+                              _pill(
+                                isDark,
+                                label: strings.fridaySpecial,
+                                emoji: '🕌',
+                                selected: _isFridaySpecial,
+                                color: const Color(0xFFE7E1F9),
+                                fg: const Color(0xFF6C5CE7),
+                                onTap: () => setState(() => _isFridaySpecial = !_isFridaySpecial),
+                              ),
+                              _pill(
+                                isDark,
+                                label: strings.budgetFriendly,
+                                emoji: '💰',
+                                selected: _isBudgetFriendly,
+                                color: const Color(0xFFE8F5E9),
+                                fg: const Color(0xFF0E6B4A),
+                                onTap: () => setState(() => _isBudgetFriendly = !_isBudgetFriendly),
+                              ),
+                              _pill(
+                                isDark,
+                                label: strings.favorite,
+                                emoji: '⭐',
+                                selected: _isFavorite,
+                                color: const Color(0xFFFFEBEE),
+                                fg: const Color(0xFFE91E63),
+                                onTap: () => setState(() => _isFavorite = !_isFavorite),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
                           // Time
                           Row(
                             children: [

@@ -241,7 +241,16 @@ class AppDatabase extends _$AppDatabase {
     } catch (_) {}
 
     try {
-      // 3. Populate missing name_normalized values
+      // 3. Ensure all performance indexes exist FIRST, so the backfill
+      // query below can use idx_meals_name_normalized instead of a full scan.
+      await customStatement('CREATE INDEX IF NOT EXISTS idx_meal_history_meal_id ON meal_history (meal_id)');
+      await customStatement('CREATE INDEX IF NOT EXISTS idx_meal_history_cooked_at ON meal_history (cooked_at DESC)');
+      await customStatement('CREATE INDEX IF NOT EXISTS idx_meals_name ON meals (name)');
+      await customStatement('CREATE INDEX IF NOT EXISTS idx_meals_name_normalized ON meals (name_normalized)');
+    } catch (_) {}
+
+    try {
+      // 4. Populate missing name_normalized values (now index-assisted)
       final nullRows = await customSelect('SELECT id, name FROM meals WHERE name_normalized IS NULL').get();
       for (final row in nullRows) {
         final id = row.read<int>('id');
@@ -249,14 +258,6 @@ class AppDatabase extends _$AppDatabase {
         final normalized = normalizeArabic(name);
         await customStatement('UPDATE meals SET name_normalized = ? WHERE id = ?', [normalized, id]);
       }
-    } catch (_) {}
-
-    try {
-      // 4. Ensure all performance indexes exist
-      await customStatement('CREATE INDEX IF NOT EXISTS idx_meal_history_meal_id ON meal_history (meal_id)');
-      await customStatement('CREATE INDEX IF NOT EXISTS idx_meal_history_cooked_at ON meal_history (cooked_at DESC)');
-      await customStatement('CREATE INDEX IF NOT EXISTS idx_meals_name ON meals (name)');
-      await customStatement('CREATE INDEX IF NOT EXISTS idx_meals_name_normalized ON meals (name_normalized)');
     } catch (_) {}
   }
 }

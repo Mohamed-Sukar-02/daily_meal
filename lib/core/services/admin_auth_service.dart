@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // ---------------------------------------------------------------------------
 // AdminAuthService — Mobile App
@@ -14,6 +16,8 @@ import 'package:flutter/foundation.dart';
 //   • The mobile app reads the hash at verification time (with a short cache),
 //     hashes the user's input locally, and compares using constant-time.
 //   • Rate limiting prevents brute-force (5 attempts → 5 min lockout).
+//   • Rate-limit state is persisted in SharedPreferences so a restart of the
+//     app does NOT reset the lockout / attempt counter.
 // ---------------------------------------------------------------------------
 
 /// Why an admin login attempt failed.
@@ -65,7 +69,11 @@ class AdminAuthResult {
 }
 
 class AdminAuthService {
-  AdminAuthService._();
+  AdminAuthService._() {
+    // Best-effort early load so the sync getters are accurate ASAP.
+    // verifyPassword() always awaits _ensureLoaded() for correctness.
+    unawaited(_ensureLoaded());
+  }
   static final AdminAuthService instance = AdminAuthService._();
 
   // ---------- Rate limiting ----------
@@ -73,8 +81,72 @@ class AdminAuthService {
   static const Duration _lockoutDuration = Duration(minutes: 5);
   static const Duration _attemptWindow = Duration(minutes: 2);
 
+  // ---------- Persistence (brute-force state survives app restarts) ----------
+  static const String _kLockoutUntilMs = 'admin_lockout_until_ms';
+  static const String _kAttemptTimesMs = 'admin_attempt_times_ms';
+
   DateTime? _lockoutUntil;
   final List<DateTime> _attemptTimes = [];
+  Future<void>? _loadFuture;
+
+  /// Loads the persisted rate-limit state exactly once.
+  Future<void> _ensureLoaded() {
+    return _loadFuture ??= _loadPersistedState();
+  }
+
+  Future<void> _loadPersistedState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lockoutMs = prefs.getInt(_kLockoutUntilMs);
+      if (lockoutMs != null) {
+        final lockout = DateTime.fromMillisecondsSinceEpoch(lockoutMs);
+        if (DateTime.now().isBefore(lockout)) {
+          _lockoutUntil = lockout;
+        } else {
+          // Stale lockout left by a previous run — drop it.
+          await prefs.remove(_kLockoutUntilMs);
+        }
+      }
+      final rawAttempts =
+          prefs.getStringList(_kAttemptTimesMs) ?? const <String>[];
+      final now = DateTime.now();
+      _attemptTimes
+        ..clear()
+        ..addAll(
+          rawAttempts
+              .map(int.tryParse)
+              .whereType<int>()
+              .map(DateTime.fromMillisecondsSinceEpoch)
+              .where((t) => now.difference(t) <= _attemptWindow),
+        );
+    } catch (e) {
+      debugPrint('[AdminAuthService] persisted state load error: $e');
+    }
+  }
+
+  Future<void> _persistState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (_lockoutUntil != null) {
+        await prefs.setInt(
+            _kLockoutUntilMs, _lockoutUntil!.millisecondsSinceEpoch);
+      } else {
+        await prefs.remove(_kLockoutUntilMs);
+      }
+      final now = DateTime.now();
+      final recent = _attemptTimes
+          .where((t) => now.difference(t) <= _attemptWindow)
+          .toList();
+      // Bound storage: only the newest attempts matter for rate limiting.
+      if (recent.length > 20) recent.removeRange(0, recent.length - 20);
+      await prefs.setStringList(
+        _kAttemptTimesMs,
+        recent.map((t) => t.millisecondsSinceEpoch.toString()).toList(),
+      );
+    } catch (e) {
+      debugPrint('[AdminAuthService] persisted state save error: $e');
+    }
+  }
 
   // ---------- Firestore hash cache ----------
   // Cached to avoid a Firestore read on every keystroke.
@@ -89,6 +161,7 @@ class AdminAuthService {
     if (DateTime.now().isAfter(_lockoutUntil!)) {
       _lockoutUntil = null;
       _attemptTimes.clear();
+      unawaited(_persistState());
       return false;
     }
     return true;
@@ -100,18 +173,20 @@ class AdminAuthService {
     return remaining.isNegative ? null : remaining;
   }
 
-  void _recordFailedAttempt() {
+  Future<void> _recordFailedAttempt() async {
     final now = DateTime.now();
     _attemptTimes.add(now);
     _attemptTimes.removeWhere((t) => now.difference(t) > _attemptWindow);
     if (_attemptTimes.length >= _maxAttempts) {
       _lockoutUntil = now.add(_lockoutDuration);
     }
+    await _persistState();
   }
 
-  void _resetAttempts() {
+  Future<void> _resetAttempts() async {
     _attemptTimes.clear();
     _lockoutUntil = null;
+    await _persistState();
   }
 
   // ---------- Crypto helpers ----------
@@ -167,6 +242,9 @@ class AdminAuthService {
 
   /// Verifies the admin password against the hash stored in Firestore.
   Future<AdminAuthResult> verifyPassword(String input) async {
+    // Rate-limit state must reflect previous runs before any decision.
+    await _ensureLoaded();
+
     if (input.trim().isEmpty) {
       return AdminAuthResult.failure(AdminAuthFailure.emptyPassword);
     }
@@ -180,18 +258,18 @@ class AdminAuthService {
 
     if (storedHash == null || storedHash.isEmpty) {
       // No hash configured yet — deny access and guide admin.
-      _recordFailedAttempt();
+      await _recordFailedAttempt();
       return AdminAuthResult.failure(AdminAuthFailure.notConfigured);
     }
 
     final inputHash = _sha256hex(input.trim());
 
     if (_constantTimeEquals(inputHash, storedHash)) {
-      _resetAttempts();
+      await _resetAttempts();
       return AdminAuthResult.success();
     }
 
-    _recordFailedAttempt();
+    await _recordFailedAttempt();
     final remaining = _maxAttempts - _attemptTimes.length;
     if (remaining > 0) {
       return AdminAuthResult.failure(

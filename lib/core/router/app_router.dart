@@ -23,9 +23,27 @@ final _shellNavigatorHistory = GlobalKey<NavigatorState>(debugLabel: 'shellHisto
 final _shellNavigatorSettings = GlobalKey<NavigatorState>(debugLabel: 'shellSettings');
 
 final appRouterProvider = Provider<GoRouter>((ref) {
+  // Re-runs `redirect` whenever the setup state loads/changes, so deep
+  // links can't bypass the welcome gate on a cold start.
+  final setupRefresh = ValueNotifier<int>(0);
+  ref.onDispose(setupRefresh.dispose);
+  ref.listen(appSettingsProvider, (_, __) => setupRefresh.value++);
+
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
+    refreshListenable: setupRefresh,
+    redirect: (context, state) {
+      final location = state.uri.path;
+      // Splash is the bootstrap: it reads settings itself and navigates.
+      if (location == '/splash') return null;
+      final settings = ref.read(appSettingsProvider).valueOrNull;
+      // Still loading (or failed): don't force anything, let splash decide.
+      if (settings == null) return null;
+      if (settings.isFirstRun && location != '/welcome') return '/welcome';
+      if (!settings.isFirstRun && location == '/welcome') return '/';
+      return null;
+    },
     routes: [
       GoRoute(
         path: '/splash',

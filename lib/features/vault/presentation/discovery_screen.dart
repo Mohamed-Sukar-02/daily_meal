@@ -277,7 +277,8 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                       final localMeals = allMealsAsync.valueOrNull ?? [];
                       return SliverPadding(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
-                        sliver: SliverGrid.builder(
+                        sliver: _isGridView
+                            ? SliverGrid.builder(
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
@@ -298,7 +299,26 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                               index: index,
                             );
                           },
-                        ),
+                        )
+                            : SliverList.builder(
+                                itemCount: filtered.length,
+                                itemBuilder: (context, index) {
+                                  final cloudMeal = filtered[index];
+                                  final linked = localMeals
+                                      .where((m) => m.cloudId == cloudMeal.id)
+                                      .toList();
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 12),
+                                    child: _CloudMealListTile(
+                                      cloudMeal: cloudMeal,
+                                      linkedMeal: linked.isNotEmpty
+                                          ? linked.first
+                                          : null,
+                                      index: index,
+                                    ),
+                                  );
+                                },
+                              ),
                       );
                     },
                     loading: () => SliverFillRemaining(
@@ -762,7 +782,7 @@ class _CloudMealCard extends ConsumerWidget {
                       child: FilledButton.icon(
                         onPressed: () {
                           if (isLinked) {
-                            _showUpdateOptions(context, ref);
+                            _showCloudMealUpdateOptions(context, ref, linkedMeal!, cloudMeal);
                           } else {
                             ref.read(discoveryControllerProvider.notifier).downloadMeal(cloudMeal);
                             AppToast.showSuccess(context, strings.mealDownloaded(cloudMeal.name));
@@ -839,8 +859,16 @@ class _CloudMealCard extends ConsumerWidget {
       default: return AppPalette.chipGreen(b);
     }
   }
+}
 
-  void _showUpdateOptions(BuildContext context, WidgetRef ref) {
+/// Shared by [_CloudMealCard] and [_CloudMealListTile]: bottom sheet
+/// offering "update existing" vs "download as new" for a linked meal.
+void _showCloudMealUpdateOptions(
+  BuildContext context,
+  WidgetRef ref,
+  Meal linkedMeal,
+  CloudMeal cloudMeal,
+) {
     final brightness = Theme.of(context).brightness;
     final strings = AppStrings.of(context);
     showModalBottomSheet(
@@ -860,7 +888,7 @@ class _CloudMealCard extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(14),
                   onTap: () {
                     Navigator.pop(ctx);
-                    ref.read(discoveryControllerProvider.notifier).updateMeal(linkedMeal!.id, cloudMeal);
+                    ref.read(discoveryControllerProvider.notifier).updateMeal(linkedMeal.id, cloudMeal);
                     AppToast.showSuccess(context, strings.mealUpdatedToast(cloudMeal.name));
                   },
                   child: Container(
@@ -880,7 +908,7 @@ class _CloudMealCard extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(14),
                   onTap: () {
                     Navigator.pop(ctx);
-                    ref.read(discoveryControllerProvider.notifier).downloadAsNew(linkedMeal!.id, cloudMeal);
+                    ref.read(discoveryControllerProvider.notifier).downloadAsNew(linkedMeal.id, cloudMeal);
                     AppToast.showSuccess(context, strings.mealAddedNewCopy(cloudMeal.name));
                   },
                   child: Container(
@@ -901,5 +929,146 @@ class _CloudMealCard extends ConsumerWidget {
         );
       },
     );
+}
+
+/// Compact list-row variant of [_CloudMealCard] for list view.
+///
+/// (The grid card cannot be reused in a list: it sizes itself with
+/// `Expanded`, which crashes under a `SliverList`'s unbounded height.)
+class _CloudMealListTile extends ConsumerWidget {
+  final CloudMeal cloudMeal;
+  final Meal? linkedMeal;
+  final int index;
+
+  const _CloudMealListTile({
+    required this.cloudMeal,
+    this.linkedMeal,
+    required this.index,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final brightness = Theme.of(context).brightness;
+    final strings = AppStrings.of(context);
+    final discoveryState = ref.watch(discoveryControllerProvider);
+    final isLinked = linkedMeal != null;
+
+    final colors = [AppPalette.brandCoral, AppPalette.brandGreen, const Color(0xFF2563EB), const Color(0xFF7C3AED)];
+    final btnColor = colors[index % colors.length];
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppPalette.card(brightness),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(color: brightness == Brightness.dark ? Colors.black.withValues(alpha: 0.35) : AppPalette.lightTextPrimary.withValues(alpha: 0.07), blurRadius: 14, offset: const Offset(0, 6)),
+        ],
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: cloudMeal.imageUrl != null && cloudMeal.imageUrl!.isNotEmpty
+                ? MealImage(photoPath: cloudMeal.imageUrl, width: 60, height: 60, cacheWidth: 180, fallback: _listPlaceholder(brightness))
+                : _listPlaceholder(brightness),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  cloudMeal.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppPalette.textPrimary(brightness)),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    _listMiniBadge(brightness, _listProteinEmoji(cloudMeal.proteinType), _listProteinStyle(cloudMeal.proteinType, brightness)),
+                    const SizedBox(width: 6),
+                    Flexible(child: _listTimePill(brightness, cloudMeal.prepTimeMinutes, strings)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          if (discoveryState.isLoading)
+            const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+          else
+            IconButton.filled(
+              onPressed: () {
+                if (isLinked) {
+                  _showCloudMealUpdateOptions(context, ref, linkedMeal!, cloudMeal);
+                } else {
+                  ref.read(discoveryControllerProvider.notifier).downloadMeal(cloudMeal);
+                  AppToast.showSuccess(context, strings.mealDownloaded(cloudMeal.name));
+                }
+              },
+              icon: AppIcon(isLinked ? AppGlyph.swap : AppGlyph.cloudDown, color: isLinked ? AppPalette.textSecondary(brightness) : Colors.white, size: 16),
+              style: IconButton.styleFrom(backgroundColor: isLinked ? AppPalette.tabContainer(brightness) : btnColor),
+              tooltip: isLinked ? strings.discoveryUpdate : strings.discoveryDownload,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+Widget _listPlaceholder(Brightness b) {
+  return Container(
+    width: 60,
+    height: 60,
+    color: AppPalette.tabContainer(b),
+    child: Center(child: AppIcon(AppGlyph.cloud, color: AppPalette.textSecondary(b).withValues(alpha: 0.5), size: 24)),
+  );
+}
+
+Widget _listMiniBadge(Brightness b, String emoji, ChipStyle style) {
+  return Container(
+    width: 28,
+    height: 28,
+    decoration: BoxDecoration(color: style.background, shape: BoxShape.circle),
+    child: Center(child: Text(emoji, style: const TextStyle(fontSize: 14))),
+  );
+}
+
+Widget _listTimePill(Brightness b, int minutes, AppStrings strings) {
+  final style = AppPalette.chipViolet(b);
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+    decoration: BoxDecoration(color: style.background, borderRadius: BorderRadius.circular(9)),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AppIcon(AppGlyph.clock, color: style.foreground, size: 12),
+        const SizedBox(width: 4),
+        Flexible(child: Text(strings.minutes(minutes), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: style.foreground))),
+      ],
+    ),
+  );
+}
+
+String _listProteinEmoji(String p) {
+  switch (p) {
+    case 'chicken': return '🐔';
+    case 'beef': return '🥩';
+    case 'fish': return '🐟';
+    case 'meatless': return '🫘';
+    default: return '🍽️';
+  }
+}
+
+ChipStyle _listProteinStyle(String p, Brightness b) {
+  switch (p) {
+    case 'chicken': return AppPalette.chipGold(b);
+    case 'beef': return AppPalette.chipRose(b);
+    case 'fish': return AppPalette.chipBlue(b);
+    case 'meatless': return AppPalette.chipGreen(b);
+    default: return AppPalette.chipGreen(b);
   }
 }

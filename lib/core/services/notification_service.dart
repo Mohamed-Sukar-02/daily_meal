@@ -19,8 +19,7 @@ class NotificationService {
     if (kIsWeb) return;
     tz.initializeTimeZones();
     try {
-      final timeZone = await FlutterTimezone.getLocalTimezone();
-      final String timeZoneName = timeZone.identifier;
+      final String timeZoneName = await FlutterTimezone.getLocalTimezone();
       tz.setLocalLocation(tz.getLocation(timeZoneName));
     } catch (e) {
       tz.setLocalLocation(tz.getLocation('Africa/Cairo'));
