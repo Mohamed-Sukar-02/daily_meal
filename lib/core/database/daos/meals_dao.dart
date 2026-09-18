@@ -40,9 +40,7 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
     final pattern = '%$escaped%';
 
     return (select(meals)
-          ..where((t) => CustomExpression<bool>(
-                "COALESCE(name_normalized, name) LIKE ? ESCAPE '\\'", [Variable(pattern)]
-              ))
+          ..where((t) => coalesce<String>([t.nameNormalized, t.name]).like(pattern, escapeChar: '\\'))
           ..orderBy([
             (t) => OrderingTerm.asc(t.name),
             (t) => OrderingTerm.desc(t.id),
@@ -92,9 +90,7 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
     final pattern = '%$escaped%';
 
     return (select(meals)
-          ..where((t) => CustomExpression<bool>(
-                "COALESCE(name_normalized, name) LIKE ? ESCAPE '\\'", [Variable(pattern)]
-              ))
+          ..where((t) => coalesce<String>([t.nameNormalized, t.name]).like(pattern, escapeChar: '\\'))
           ..orderBy([
             (t) => OrderingTerm.asc(t.name),
             (t) => OrderingTerm.desc(t.id),
@@ -209,9 +205,7 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
         final normalized = normalizeArabic(query.trim());
         final escaped = escapeLikePattern(normalized);
         final pattern = '%$escaped%';
-        predicates.add(CustomExpression<bool>(
-          "COALESCE(name_normalized, name) LIKE ? ESCAPE '\\'", [Variable(pattern)]
-        ));
+        predicates.add(coalesce<String>([t.nameNormalized, t.name]).like(pattern, escapeChar: '\\'));
       }
       if (proteinType != null) {
         predicates.add(t.proteinType.equalsValue(proteinType));
