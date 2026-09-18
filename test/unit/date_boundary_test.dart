@@ -58,6 +58,7 @@ void main() {
           proteinType: ProteinType.chicken,
           carbsType: CarbsType.rice,
           category: MealCategory.egyptianTraditional,
+          isStarterMeal: false,
           prepTime: 30,
           isFridaySpecial: false,
           isBudgetFriendly: false,

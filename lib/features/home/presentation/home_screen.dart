@@ -102,7 +102,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
           onRefresh: () async {
             final confirmed = await _confirmRefresh(context);
             if (confirmed == true) {
-              ref.invalidate(todayRecommendationsProvider);
+              ref.read(refreshSeedProvider.notifier).state++;
+              // Incrementing the seed automatically triggers a recompute of todayRecommendationsProvider.
             }
           },
           child: ListView(
@@ -127,8 +128,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
                 ),
                 if (i < meals.length - 1) const SizedBox(height: 16),
               ],
-              const SizedBox(height: 20),
-              _buildNotCookingTodaySection(context, ref, brightness, strings),
+            ],
+          ),
+        ),
+        Positioned(
+          left: 16,
+          right: 16,
+          bottom: 20,
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildFloatingActionBtn(
+                  context: context,
+                  text: strings.eatYesterdayLeftovers,
+                  onPressed: () => _handleEatYesterdayLeftover(context, ref),
+                  keyString: 'btn_eat_yesterday_food',
+                ),
+              ),
+              SizedBox(width: canSpin ? 90 : 16),
+              Expanded(
+                child: _buildFloatingActionBtn(
+                  context: context,
+                  text: strings.orderTakeout,
+                  onPressed: () => _handleTakeout(context, ref),
+                  keyString: 'btn_order_takeout',
+                ),
+              ),
             ],
           ),
         ),
@@ -316,93 +341,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
     }
   }
 
-  Widget _buildNotCookingTodaySection(
-    BuildContext context,
-    WidgetRef ref,
-    Brightness brightness,
-    AppStrings strings,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppPalette.card(brightness),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: AppPalette.outline(brightness).withValues(alpha: 0.5),
+  Widget _buildFloatingActionBtn({
+    required BuildContext context,
+    required String text,
+    required VoidCallback onPressed,
+    required String keyString,
+  }) {
+    final brightness = Theme.of(context).brightness;
+    return ElevatedButton(
+      key: ValueKey(keyString),
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppPalette.card(brightness),
+        foregroundColor: AppPalette.textPrimary(brightness),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+        elevation: 4,
+        shadowColor: Colors.black26,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: AppPalette.outline(brightness).withValues(alpha: 0.2),
+            width: 1,
+          ),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            strings.notCookingToday,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppPalette.textSecondary(brightness),
-            ),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          text,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            height: 1.2,
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  key: const ValueKey('btn_eat_yesterday_food'),
-                  onPressed: () => _handleEatYesterdayLeftover(context, ref),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                    side: BorderSide(
-                      color: AppPalette.outline(brightness),
-                      width: 1.2,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      strings.eatYesterdayLeftovers,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppPalette.textPrimary(brightness),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: OutlinedButton(
-                  key: const ValueKey('btn_order_takeout'),
-                  onPressed: () => _handleTakeout(context, ref),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                    side: BorderSide(
-                      color: AppPalette.outline(brightness),
-                      width: 1.2,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      strings.orderTakeout,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppPalette.textPrimary(brightness),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }

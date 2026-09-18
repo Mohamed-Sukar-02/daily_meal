@@ -158,7 +158,7 @@ class AppStrings {
       : 'تم تسجيل تفويت وجبة الغداء.';
   String get notCookingToday => isEn ? 'Not cooking today?' : 'مش هتطبخ النهاردة؟';
   String get cookThis => 'Cook This';
-  String get eatYesterdayLeftovers => isEn ? 'Eat yesterday\'s food' : 'هاكل أكل إمبارح';
+  String get eatYesterdayLeftovers => isEn ? 'Eat yesterday\'s leftovers' : 'هاكل بواقي امبارح';
   String get orderTakeout => isEn ? 'Order takeout' : 'هطلب من برا';
   String get confirmRefreshTitle => isEn ? 'Change suggestions' : 'تغيير الاقتراحات';
   String get confirmRefreshMessage => isEn
@@ -721,5 +721,33 @@ class AppStrings {
       default:
         return entryType;
     }
+  }
+
+  // ===========================================================================
+  // Notification Center
+  // ===========================================================================
+  String get notificationCenterTitle => isEn ? 'Notification Center' : 'مركز الإشعارات';
+  String get notificationCenterSubtitle => isEn ? 'Stay updated with your meals and reminders' : 'تابع أحدث الوجبات والتذكيرات';
+  String get readAll => isEn ? 'Read All' : 'تحديد كـ مقروء';
+  String get deleteAll => isEn ? 'Delete All' : 'حذف الكل';
+  String get tabMeals => isEn ? 'Meals' : 'الوجبات';
+  String get tabReminders => isEn ? 'Reminders' : 'التذكيرات';
+  String get tabUpdates => isEn ? 'Updates' : 'تحديثات';
+  String get emptyNotifications => isEn ? 'No notifications yet' : 'لا توجد إشعارات بعد';
+  String get emptyNotificationsMeals => isEn ? 'No meal notifications' : 'لا توجد إشعارات للوجبات';
+  String get emptyNotificationsReminders => isEn ? 'No reminders' : 'لا توجد تذكيرات';
+  String get emptyNotificationsUpdates => isEn ? 'No updates' : 'لا توجد تحديثات';
+  String get goodFoodBrighterDays => isEn ? 'Good Food, Brighter Days' : 'أكل حلو، أيام أحلى';
+  String get deleteConfirmTitle => isEn ? 'Delete All' : 'حذف الكل';
+  String get deleteConfirmBody => isEn ? 'Are you sure you want to delete all notifications?' : 'هل أنت متأكد من حذف جميع الإشعارات؟';
+  String get delete => isEn ? 'Delete' : 'حذف';
+  
+  String timeAgo(int minutes) {
+    if (minutes < 60) return isEn ? 'm ago' : 'منذ  دقيقة';
+    final hours = minutes ~/ 60;
+    if (hours < 24) return isEn ? 'h ago' : 'منذ  ساعة';
+    final days = hours ~/ 24;
+    if (days == 1) return isEn ? 'Yesterday' : 'أمس';
+    return isEn ? 'd ago' : 'منذ  أيام';
   }
 }

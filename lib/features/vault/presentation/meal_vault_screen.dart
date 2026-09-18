@@ -6,6 +6,8 @@ import '../../../core/navigation/nav_lifecycle.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/app_icons.dart';
 import '../../../core/database/app_database.dart';
+import '../../../core/database/database_providers.dart';
+import '../../../core/services/app_config_sync_service.dart';
 import '../providers/discovery_providers.dart';
 import '../providers/vault_providers.dart';
 import 'discovery_screen.dart';
@@ -312,21 +314,66 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
       child: AnimatedSwitcher(
         duration: const Duration(milliseconds: 250),
         child: !isExplore
-            ? Container(
-                key: const ValueKey('vault_local_count'),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppPalette.chipGreen(brightness).background,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  strings.mealsCount(localCount),
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: AppPalette.chipGreen(brightness).foreground,
+            ? Column(
+                key: const ValueKey('vault_local_count_col'),
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Container(
+                    key: const ValueKey('vault_local_count'),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppPalette.chipGreen(brightness).background,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      strings.mealsCount(localCount),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: AppPalette.chipGreen(brightness).foreground,
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 6),
+                  InkWell(
+                    onTap: () async {
+                      try {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(strings.isEn ? 'Syncing...' : 'جاري المزامنة...')));
+                        final db = ref.read(databaseProvider);
+                        await AppConfigSyncService.instance.manualSyncStarterMeals(db);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(strings.isEn ? 'Synced successfully' : 'تمت المزامنة بنجاح')));
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(strings.isEn ? 'Sync failed' : 'فشلت المزامنة')));
+                        }
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Image.asset('assets/icons/sync_icon.png', width: 16, height: 16, color: AppPalette.brandGreen),
+                          const SizedBox(width: 4),
+                          Text(
+                            strings.isEn ? 'Sync Defaults' : 'مزامنة الافتراضي',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppPalette.brandGreen,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               )
             : Container(
                 key: const ValueKey('vault_explore_count'),

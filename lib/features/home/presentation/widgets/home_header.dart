@@ -37,7 +37,6 @@ class HomeHeader extends ConsumerWidget {
           // Notification icon - left side
           GestureDetector(
             onTap: () {
-              ref.read(unreadNotificationsProvider.notifier).state = false;
               context.push('/notifications');
             },
             child: Padding(

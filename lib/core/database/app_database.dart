@@ -29,7 +29,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? driftDatabase(name: 'daily_meal_db'));
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -129,6 +129,12 @@ class AppDatabase extends _$AppDatabase {
             final normalized = normalizeArabic(name);
             await customStatement('UPDATE meals SET name_normalized = ? WHERE id = ?', [normalized, id]);
           }
+        } catch (_) {}
+      }
+      if (from < 11) {
+        await safeAddColumn(meals, meals.isStarterMeal);
+        try {
+          await customStatement('UPDATE meals SET is_starter_meal = 1 WHERE id <= 20');
         } catch (_) {}
       }
     },
@@ -254,6 +260,10 @@ class AppDatabase extends _$AppDatabase {
         }
         if (!mealsColNames.contains('notes')) {
           await customStatement('ALTER TABLE meals ADD COLUMN notes TEXT');
+        }
+        if (!mealsColNames.contains('is_starter_meal')) {
+          await customStatement('ALTER TABLE meals ADD COLUMN is_starter_meal INTEGER NOT NULL DEFAULT 0');
+          await customStatement('UPDATE meals SET is_starter_meal = 1 WHERE id <= 20');
         }
       }
     } catch (_) {}

@@ -32,6 +32,7 @@ class CooldownEngine {
     required List<dynamic> history,
     required dynamic settings,
     DateTime? today,
+    int shuffleSeed = 0,
   }) {
     final now = today ?? DateTime.now();
     final normalizedToday = app_date_utils.toLocalDay(now);
@@ -117,6 +118,7 @@ class CooldownEngine {
         beefCooldownDays: beefCooldown,
         fishCooldownDays: fishCooldown,
         meatlessCooldownDays: meatlessCooldown,
+        shuffleSeed: shuffleSeed,
       );
 
       if (ranked.length >= targetCount || level == 5) {
@@ -232,6 +234,7 @@ class CooldownEngine {
     int fishCooldownDays = 5,
     int meatlessCooldownDays = 0,
     Map<int, DateTime>? lastCookedByMealId,
+    int shuffleSeed = 0,
   }) {
     final candidate = meal is _MealCandidate ? meal : _MealCandidate.from(meal);
     final normalizedToday = app_date_utils.toLocalDay(today);
@@ -294,7 +297,7 @@ class CooldownEngine {
     final sFavorite = candidate.isFavorite ? 5.0 : 0.0;
     final sBudget = candidate.isBudgetFriendly ? 2.0 : 0.0;
 
-    final jitter = ((app_date_utils.daysSinceEpoch(normalizedToday) * 17 + candidate.id * 31) % 100) / 25.0;
+    final jitter = ((app_date_utils.daysSinceEpoch(normalizedToday) * 17 + candidate.id * 31 + shuffleSeed * 47) % 100) / 25.0;
 
     return sRecency + sFriday + sFavorite + sBudget + jitter;
   }
@@ -308,6 +311,7 @@ class CooldownEngine {
     int beefCooldownDays = 10,
     int fishCooldownDays = 5,
     int meatlessCooldownDays = 0,
+    int shuffleSeed = 0,
   }) {
     if (candidates.isEmpty) return const [];
 
@@ -323,6 +327,7 @@ class CooldownEngine {
           beefCooldownDays: beefCooldownDays,
           fishCooldownDays: fishCooldownDays,
           meatlessCooldownDays: meatlessCooldownDays,
+          shuffleSeed: shuffleSeed,
         ),
       );
     }).toList()

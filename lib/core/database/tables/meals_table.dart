@@ -42,6 +42,7 @@ class Meals extends Table {
   BoolColumn get isFridaySpecial => boolean().withDefault(const Constant(false))();
   BoolColumn get isBudgetFriendly => boolean().withDefault(const Constant(false))();
   BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
+  BoolColumn get isStarterMeal => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
   TextColumn get cloudId => text().nullable()();

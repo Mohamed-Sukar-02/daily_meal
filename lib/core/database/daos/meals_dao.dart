@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../app_database.dart';
 import '../../utils/arabic_normalizer.dart';
 
@@ -81,6 +82,10 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
     return (select(meals)..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
+  Future<List<Meal>> getStarterMeals() {
+    return (select(meals)..where((t) => t.isStarterMeal.equals(true))).get();
+  }
+
   Future<List<Meal>> searchMeals(String query) {
     final clean = query.trim();
     if (clean.isEmpty) return getAllMeals();
@@ -118,7 +123,7 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
     ).get();
   }
 
-  Future<int> insertMeal(MealsCompanion meal) {
+  Future<int> insertMeal(MealsCompanion meal) async {
     if (meal.name.present) {
       if (meal.name.value.trim().isEmpty) {
         throw ArgumentError('Meal name cannot be empty or whitespace');
@@ -129,6 +134,19 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
         throw ArgumentError('Prep time must be a positive integer');
       }
     }
+    
+    // If inserting a meal that was previously blacklisted, remove it from blacklist
+    if (meal.cloudId.present && meal.cloudId.value != null) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final deletedList = prefs.getStringList('deleted_starter_meals') ?? [];
+        if (deletedList.contains(meal.cloudId.value!)) {
+          deletedList.remove(meal.cloudId.value!);
+          await prefs.setStringList('deleted_starter_meals', deletedList);
+        }
+      } catch (_) {}
+    }
+    
     final normalizedCompanion = _withNormalizedName(meal);
     return into(meals).insert(normalizedCompanion);
   }
@@ -162,7 +180,18 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
     return c;
   }
 
-  Future<int> deleteMeal(int id) {
+  Future<int> deleteMeal(int id) async {
+    final meal = await getMealById(id);
+    if (meal != null && meal.cloudId != null && meal.isStarterMeal) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final deletedList = prefs.getStringList('deleted_starter_meals') ?? [];
+        if (!deletedList.contains(meal.cloudId!)) {
+          deletedList.add(meal.cloudId!);
+          await prefs.setStringList('deleted_starter_meals', deletedList);
+        }
+      } catch (_) {}
+    }
     return (delete(meals)..where((t) => t.id.equals(id))).go();
   }
 

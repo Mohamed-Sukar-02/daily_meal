@@ -15,12 +15,15 @@ final currentTimeProvider = Provider<DateTime>((ref) {
   return DateTime.now();
 });
 
+final refreshSeedProvider = StateProvider<int>((ref) => 0);
+
 final todayRecommendationsProvider = Provider<AsyncValue<RecommendationResult<Meal>>>((ref) {
   final mealsAsync = ref.watch(allMealsProvider);
   final historyAsync = ref.watch(mealHistoryProvider);
   final settingsAsync = ref.watch(appSettingsProvider);
   final engine = ref.watch(engineProvider);
   final now = ref.watch(currentTimeProvider);
+  final refreshSeed = ref.watch(refreshSeedProvider);
 
   if (mealsAsync.hasError) {
     return AsyncValue.error(mealsAsync.error!, mealsAsync.stackTrace!);
@@ -65,6 +68,7 @@ final todayRecommendationsProvider = Provider<AsyncValue<RecommendationResult<Me
       history: history,
       settings: settings,
       today: now,
+      shuffleSeed: refreshSeed,
     );
     return AsyncValue.data(result);
   } catch (err, st) {

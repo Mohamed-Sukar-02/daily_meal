@@ -139,6 +139,21 @@ class $MealsTable extends Meals with TableInfo<$MealsTable, Meal> {
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _isStarterMealMeta = const VerificationMeta(
+    'isStarterMeal',
+  );
+  @override
+  late final GeneratedColumn<bool> isStarterMeal = GeneratedColumn<bool>(
+    'is_starter_meal',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_starter_meal" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -206,6 +221,7 @@ class $MealsTable extends Meals with TableInfo<$MealsTable, Meal> {
     isFridaySpecial,
     isBudgetFriendly,
     isFavorite,
+    isStarterMeal,
     createdAt,
     updatedAt,
     cloudId,
@@ -280,6 +296,15 @@ class $MealsTable extends Meals with TableInfo<$MealsTable, Meal> {
       context.handle(
         _isFavoriteMeta,
         isFavorite.isAcceptableOrUnknown(data['is_favorite']!, _isFavoriteMeta),
+      );
+    }
+    if (data.containsKey('is_starter_meal')) {
+      context.handle(
+        _isStarterMealMeta,
+        isStarterMeal.isAcceptableOrUnknown(
+          data['is_starter_meal']!,
+          _isStarterMealMeta,
+        ),
       );
     }
     if (data.containsKey('created_at')) {
@@ -374,6 +399,10 @@ class $MealsTable extends Meals with TableInfo<$MealsTable, Meal> {
         DriftSqlType.bool,
         data['${effectivePrefix}is_favorite'],
       )!,
+      isStarterMeal: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_starter_meal'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -422,6 +451,7 @@ class Meal extends DataClass implements Insertable<Meal> {
   final bool isFridaySpecial;
   final bool isBudgetFriendly;
   final bool isFavorite;
+  final bool isStarterMeal;
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? cloudId;
@@ -439,6 +469,7 @@ class Meal extends DataClass implements Insertable<Meal> {
     required this.isFridaySpecial,
     required this.isBudgetFriendly,
     required this.isFavorite,
+    required this.isStarterMeal,
     required this.createdAt,
     required this.updatedAt,
     this.cloudId,
@@ -475,6 +506,7 @@ class Meal extends DataClass implements Insertable<Meal> {
     map['is_friday_special'] = Variable<bool>(isFridaySpecial);
     map['is_budget_friendly'] = Variable<bool>(isBudgetFriendly);
     map['is_favorite'] = Variable<bool>(isFavorite);
+    map['is_starter_meal'] = Variable<bool>(isStarterMeal);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     if (!nullToAbsent || cloudId != null) {
@@ -506,6 +538,7 @@ class Meal extends DataClass implements Insertable<Meal> {
       isFridaySpecial: Value(isFridaySpecial),
       isBudgetFriendly: Value(isBudgetFriendly),
       isFavorite: Value(isFavorite),
+      isStarterMeal: Value(isStarterMeal),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       cloudId: cloudId == null && nullToAbsent
@@ -543,6 +576,7 @@ class Meal extends DataClass implements Insertable<Meal> {
       isFridaySpecial: serializer.fromJson<bool>(json['isFridaySpecial']),
       isBudgetFriendly: serializer.fromJson<bool>(json['isBudgetFriendly']),
       isFavorite: serializer.fromJson<bool>(json['isFavorite']),
+      isStarterMeal: serializer.fromJson<bool>(json['isStarterMeal']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       cloudId: serializer.fromJson<String?>(json['cloudId']),
@@ -571,6 +605,7 @@ class Meal extends DataClass implements Insertable<Meal> {
       'isFridaySpecial': serializer.toJson<bool>(isFridaySpecial),
       'isBudgetFriendly': serializer.toJson<bool>(isBudgetFriendly),
       'isFavorite': serializer.toJson<bool>(isFavorite),
+      'isStarterMeal': serializer.toJson<bool>(isStarterMeal),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'cloudId': serializer.toJson<String?>(cloudId),
@@ -591,6 +626,7 @@ class Meal extends DataClass implements Insertable<Meal> {
     bool? isFridaySpecial,
     bool? isBudgetFriendly,
     bool? isFavorite,
+    bool? isStarterMeal,
     DateTime? createdAt,
     DateTime? updatedAt,
     Value<String?> cloudId = const Value.absent(),
@@ -610,6 +646,7 @@ class Meal extends DataClass implements Insertable<Meal> {
     isFridaySpecial: isFridaySpecial ?? this.isFridaySpecial,
     isBudgetFriendly: isBudgetFriendly ?? this.isBudgetFriendly,
     isFavorite: isFavorite ?? this.isFavorite,
+    isStarterMeal: isStarterMeal ?? this.isStarterMeal,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     cloudId: cloudId.present ? cloudId.value : this.cloudId,
@@ -641,6 +678,9 @@ class Meal extends DataClass implements Insertable<Meal> {
       isFavorite: data.isFavorite.present
           ? data.isFavorite.value
           : this.isFavorite,
+      isStarterMeal: data.isStarterMeal.present
+          ? data.isStarterMeal.value
+          : this.isStarterMeal,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       cloudId: data.cloudId.present ? data.cloudId.value : this.cloudId,
@@ -665,6 +705,7 @@ class Meal extends DataClass implements Insertable<Meal> {
           ..write('isFridaySpecial: $isFridaySpecial, ')
           ..write('isBudgetFriendly: $isBudgetFriendly, ')
           ..write('isFavorite: $isFavorite, ')
+          ..write('isStarterMeal: $isStarterMeal, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('cloudId: $cloudId, ')
@@ -687,6 +728,7 @@ class Meal extends DataClass implements Insertable<Meal> {
     isFridaySpecial,
     isBudgetFriendly,
     isFavorite,
+    isStarterMeal,
     createdAt,
     updatedAt,
     cloudId,
@@ -708,6 +750,7 @@ class Meal extends DataClass implements Insertable<Meal> {
           other.isFridaySpecial == this.isFridaySpecial &&
           other.isBudgetFriendly == this.isBudgetFriendly &&
           other.isFavorite == this.isFavorite &&
+          other.isStarterMeal == this.isStarterMeal &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.cloudId == this.cloudId &&
@@ -727,6 +770,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
   final Value<bool> isFridaySpecial;
   final Value<bool> isBudgetFriendly;
   final Value<bool> isFavorite;
+  final Value<bool> isStarterMeal;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<String?> cloudId;
@@ -744,6 +788,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     this.isFridaySpecial = const Value.absent(),
     this.isBudgetFriendly = const Value.absent(),
     this.isFavorite = const Value.absent(),
+    this.isStarterMeal = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.cloudId = const Value.absent(),
@@ -762,6 +807,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     this.isFridaySpecial = const Value.absent(),
     this.isBudgetFriendly = const Value.absent(),
     this.isFavorite = const Value.absent(),
+    this.isStarterMeal = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.cloudId = const Value.absent(),
@@ -784,6 +830,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     Expression<bool>? isFridaySpecial,
     Expression<bool>? isBudgetFriendly,
     Expression<bool>? isFavorite,
+    Expression<bool>? isStarterMeal,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<String>? cloudId,
@@ -802,6 +849,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
       if (isFridaySpecial != null) 'is_friday_special': isFridaySpecial,
       if (isBudgetFriendly != null) 'is_budget_friendly': isBudgetFriendly,
       if (isFavorite != null) 'is_favorite': isFavorite,
+      if (isStarterMeal != null) 'is_starter_meal': isStarterMeal,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (cloudId != null) 'cloud_id': cloudId,
@@ -823,6 +871,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     Value<bool>? isFridaySpecial,
     Value<bool>? isBudgetFriendly,
     Value<bool>? isFavorite,
+    Value<bool>? isStarterMeal,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<String?>? cloudId,
@@ -841,6 +890,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
       isFridaySpecial: isFridaySpecial ?? this.isFridaySpecial,
       isBudgetFriendly: isBudgetFriendly ?? this.isBudgetFriendly,
       isFavorite: isFavorite ?? this.isFavorite,
+      isStarterMeal: isStarterMeal ?? this.isStarterMeal,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       cloudId: cloudId ?? this.cloudId,
@@ -891,6 +941,9 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     if (isFavorite.present) {
       map['is_favorite'] = Variable<bool>(isFavorite.value);
     }
+    if (isStarterMeal.present) {
+      map['is_starter_meal'] = Variable<bool>(isStarterMeal.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -923,6 +976,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
           ..write('isFridaySpecial: $isFridaySpecial, ')
           ..write('isBudgetFriendly: $isBudgetFriendly, ')
           ..write('isFavorite: $isFavorite, ')
+          ..write('isStarterMeal: $isStarterMeal, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('cloudId: $cloudId, ')
@@ -1571,7 +1625,7 @@ class $AppSettingsTable extends AppSettings
     false,
     type: DriftSqlType.int,
     requiredDuringInsert: false,
-    defaultValue: const Constant(1),
+    defaultValue: const Constant(0),
   );
   static const VerificationMeta _notificationHourMeta = const VerificationMeta(
     'notificationHour',
@@ -2622,6 +2676,7 @@ typedef $$MealsTableCreateCompanionBuilder =
       Value<bool> isFridaySpecial,
       Value<bool> isBudgetFriendly,
       Value<bool> isFavorite,
+      Value<bool> isStarterMeal,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<String?> cloudId,
@@ -2641,6 +2696,7 @@ typedef $$MealsTableUpdateCompanionBuilder =
       Value<bool> isFridaySpecial,
       Value<bool> isBudgetFriendly,
       Value<bool> isFavorite,
+      Value<bool> isStarterMeal,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<String?> cloudId,
@@ -2734,6 +2790,11 @@ class $$MealsTableFilterComposer extends Composer<_$AppDatabase, $MealsTable> {
 
   ColumnFilters<bool> get isFavorite => $composableBuilder(
     column: $table.isFavorite,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isStarterMeal => $composableBuilder(
+    column: $table.isStarterMeal,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2852,6 +2913,11 @@ class $$MealsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isStarterMeal => $composableBuilder(
+    column: $table.isStarterMeal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -2928,6 +2994,11 @@ class $$MealsTableAnnotationComposer
 
   GeneratedColumn<bool> get isFavorite => $composableBuilder(
     column: $table.isFavorite,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isStarterMeal => $composableBuilder(
+    column: $table.isStarterMeal,
     builder: (column) => column,
   );
 
@@ -3013,6 +3084,7 @@ class $$MealsTableTableManager
                 Value<bool> isFridaySpecial = const Value.absent(),
                 Value<bool> isBudgetFriendly = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
+                Value<bool> isStarterMeal = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<String?> cloudId = const Value.absent(),
@@ -3030,6 +3102,7 @@ class $$MealsTableTableManager
                 isFridaySpecial: isFridaySpecial,
                 isBudgetFriendly: isBudgetFriendly,
                 isFavorite: isFavorite,
+                isStarterMeal: isStarterMeal,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 cloudId: cloudId,
@@ -3049,6 +3122,7 @@ class $$MealsTableTableManager
                 Value<bool> isFridaySpecial = const Value.absent(),
                 Value<bool> isBudgetFriendly = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
+                Value<bool> isStarterMeal = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<String?> cloudId = const Value.absent(),
@@ -3066,6 +3140,7 @@ class $$MealsTableTableManager
                 isFridaySpecial: isFridaySpecial,
                 isBudgetFriendly: isBudgetFriendly,
                 isFavorite: isFavorite,
+                isStarterMeal: isStarterMeal,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 cloudId: cloudId,

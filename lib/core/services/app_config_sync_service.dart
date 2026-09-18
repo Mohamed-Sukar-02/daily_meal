@@ -97,6 +97,7 @@ class AppConfigSyncService {
 
   /// Syncs default values and system configurations from Firebase Firestore.
   /// If offline, fails gracefully without throwing or blocking UI.
+
   Future<SystemDefaults> syncWithFirebase({AppDatabase? db}) async {
     if (Platform.environment.containsKey('FLUTTER_TEST')) return getCachedDefaults();
     if (_isSyncing) return getCachedDefaults();
@@ -126,8 +127,10 @@ class AppConfigSyncService {
         await _cacheDefaults(remoteDefaults);
 
         // If local database is provided, update first-run or unconfigured defaults
+        bool isFirstRun = false;
         if (db != null) {
           final settings = await db.appSettingsDao.getSettings();
+          isFirstRun = settings.isFirstRun;
           if (settings.isFirstRun) {
             await db.appSettingsDao.updateSettings(
               AppSettingsCompanion(
@@ -143,18 +146,145 @@ class AppConfigSyncService {
           }
         }
 
+        if (db != null && isFirstRun) {
+          _syncStarterMeals(db, isManual: false).catchError((e) {
+            debugPrint('[AppConfigSyncService] Starter meals auto sync error: ');
+          });
+        }
+
         debugPrint('[AppConfigSyncService] Successfully synced system defaults from Firebase.');
         return remoteDefaults;
       } else {
         debugPrint('[AppConfigSyncService] admin_config/system_defaults not found on Firebase. Using local defaults.');
       }
     } catch (e) {
-      debugPrint('[AppConfigSyncService] Sync failed or offline: $e');
+      debugPrint('[AppConfigSyncService] Sync failed or offline: ');
     } finally {
       _isSyncing = false;
     }
 
     return getCachedDefaults();
+  }
+
+  Future<void> _syncStarterMeals(AppDatabase db, {bool isManual = false}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final blacklistedIds = prefs.getStringList('deleted_starter_meals') ?? [];
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('vault_meals')
+          .where('status', isEqualTo: 'approved')
+          .where('isStarterMeal', isEqualTo: true)
+          .get()
+          .timeout(const Duration(seconds: 8));
+
+      final remoteMap = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
+      for (final doc in snapshot.docs) {
+        if (blacklistedIds.contains(doc.id)) continue; // Respect user deletions
+
+        final name = (doc.data()['name'] as String? ?? '').trim();
+        if (name.isNotEmpty) {
+          remoteMap[name] = doc;
+        }
+      }
+
+      final localMeals = await db.mealsDao.getStarterMeals();
+      final localMap = <String, Meal>{};
+      for (final l in localMeals) {
+        if (l.name.isNotEmpty) {
+          localMap[l.name.trim()] = l;
+        }
+      }
+
+      // Update or delete local starter meals
+      for (final l in localMeals) {
+        final lName = l.name.trim();
+        if (remoteMap.containsKey(lName)) {
+          // Exists in both, update it with cloud properties (preserving local isFavorite, etc)
+          final rDoc = remoteMap[lName]!;
+          final rData = rDoc.data();
+          await db.mealsDao.updateMealCompanion(
+            l.id,
+            MealsCompanion(
+              cloudId: Value(rDoc.id),
+              proteinType: Value(_mapProtein(rData['proteinType'] as String? ?? 'other')),
+              carbsType: Value(_mapCarbs(rData['carbsType'] as String? ?? 'none')),
+              category: Value(_mapCategory(rData['category'] as String? ?? 'popular')),
+              prepTime: Value((rData['prepTimeMinutes'] as num?)?.toInt() ?? 30),
+              isFridaySpecial: Value(rData['isFridaySpecial'] as bool? ?? false),
+              isBudgetFriendly: Value(rData['isBudgetFriendly'] as bool? ?? false),
+            ),
+          );
+        } else {
+          // Exists locally as starter meal, but removed from cloud (or blacklisted)
+          if (!isManual) {
+             // Only auto-sync deletes meals. Manual sync never force-deletes user's meals.
+             await db.mealsDao.deleteMeal(l.id);
+          }
+        }
+      }
+
+      // Insert new starter meals from cloud
+      for (final rName in remoteMap.keys) {
+        if (!localMap.containsKey(rName)) {
+          final rDoc = remoteMap[rName]!;
+          final rData = rDoc.data();
+          await db.mealsDao.insertMeal(
+            MealsCompanion(
+              name: Value(rName),
+              cloudId: Value(rDoc.id),
+              proteinType: Value(_mapProtein(rData['proteinType'] as String? ?? 'other')),
+              carbsType: Value(_mapCarbs(rData['carbsType'] as String? ?? 'none')),
+              category: Value(_mapCategory(rData['category'] as String? ?? 'popular')),
+              prepTime: Value((rData['prepTimeMinutes'] as num?)?.toInt() ?? 30),
+              isFridaySpecial: Value(rData['isFridaySpecial'] as bool? ?? false),
+              isBudgetFriendly: Value(rData['isBudgetFriendly'] as bool? ?? false),
+              isStarterMeal: const Value(true),
+            ),
+          );
+        }
+      }
+      debugPrint('[AppConfigSyncService] Starter meals sync (manual=) completed successfully.');
+    } catch (e) {
+      debugPrint('[AppConfigSyncService] Starter meals sync failed: ');
+      if (isManual) rethrow; // Let the UI handle the error
+    }
+  }
+
+  /// Triggered manually by the user from the Vault screen
+  Future<void> manualSyncStarterMeals(AppDatabase db) async {
+    await _syncStarterMeals(db, isManual: true);
+  }
+
+  ProteinType _mapProtein(String p) {
+    switch (p) {
+      case 'chicken': return ProteinType.chicken;
+      case 'beef': return ProteinType.beef;
+      case 'fish': return ProteinType.fish;
+      case 'meatless': return ProteinType.legume;
+      default: return ProteinType.none;
+    }
+  }
+
+  CarbsType _mapCarbs(String c) {
+    switch (c) {
+      case 'rice': return CarbsType.rice;
+      case 'pasta': return CarbsType.pasta;
+      case 'bread': return CarbsType.bread;
+      default: return CarbsType.none;
+    }
+  }
+
+  MealCategory _mapCategory(String c) {
+    switch (c) {
+      case 'tabeekh': return MealCategory.egyptianTraditional;
+      case 'casserole': return MealCategory.ovenBaked;
+      case 'dry_sandwich': return MealCategory.fastFood;
+      case 'seafood': return MealCategory.seafood;
+      case 'soup_stew': return MealCategory.soupStew;
+      case 'vegetarian': return MealCategory.vegetarian;
+      default: return MealCategory.egyptianTraditional;
+    }
   }
 
   Future<void> _cacheDefaults(SystemDefaults defaults) async {

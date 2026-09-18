@@ -13,6 +13,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
     isFridaySpecial: Value(false),
     isBudgetFriendly: Value(true),
     isFavorite: Value(true),
+    isStarterMeal: Value(true),
   ),
   // 2
   const MealsCompanion(
@@ -25,6 +26,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
     isFridaySpecial: Value(false),
     isBudgetFriendly: Value(false),
     isFavorite: Value(true),
+    isStarterMeal: Value(true),
   ),
   // 3
   const MealsCompanion(
@@ -37,6 +39,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
     isFridaySpecial: Value(false),
     isBudgetFriendly: Value(false),
     isFavorite: Value(true),
+    isStarterMeal: Value(true),
   ),
   // 4
   const MealsCompanion(
@@ -49,6 +52,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
     isFridaySpecial: Value(true),
     isBudgetFriendly: Value(true),
     isFavorite: Value(true),
+    isStarterMeal: Value(true),
   ),
   // 5
   const MealsCompanion(
@@ -61,6 +65,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
     isFridaySpecial: Value(false),
     isBudgetFriendly: Value(true),
     isFavorite: Value(true),
+    isStarterMeal: Value(true),
   ),
   // 6
   const MealsCompanion(
@@ -73,6 +78,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
     isFridaySpecial: Value(true),
     isBudgetFriendly: Value(false),
     isFavorite: Value(true),
+    isStarterMeal: Value(true),
   ),
   // 7
   const MealsCompanion(
@@ -85,6 +91,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
     isFridaySpecial: Value(false),
     isBudgetFriendly: Value(false),
     isFavorite: Value(false),
+    isStarterMeal: Value(true),
   ),
   // 8
   const MealsCompanion(
@@ -97,6 +104,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
     isFridaySpecial: Value(false),
     isBudgetFriendly: Value(true),
     isFavorite: Value(true),
+    isStarterMeal: Value(true),
   ),
   // 9
   const MealsCompanion(
@@ -109,6 +117,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
     isFridaySpecial: Value(false),
     isBudgetFriendly: Value(true),
     isFavorite: Value(false),
+    isStarterMeal: Value(true),
   ),
   // 10
   const MealsCompanion(
@@ -121,6 +130,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
     isFridaySpecial: Value(false),
     isBudgetFriendly: Value(true),
     isFavorite: Value(false),
+    isStarterMeal: Value(true),
   ),
   // 11
   const MealsCompanion(
@@ -133,6 +143,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
     isFridaySpecial: Value(false),
     isBudgetFriendly: Value(false),
     isFavorite: Value(false),
+    isStarterMeal: Value(true),
   ),
   // 12
   const MealsCompanion(
@@ -145,6 +156,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
     isFridaySpecial: Value(true),
     isBudgetFriendly: Value(false),
     isFavorite: Value(true),
+    isStarterMeal: Value(true),
   ),
   // 13
   const MealsCompanion(
@@ -157,6 +169,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
     isFridaySpecial: Value(true),
     isBudgetFriendly: Value(true),
     isFavorite: Value(false),
+    isStarterMeal: Value(true),
   ),
   // 14
   const MealsCompanion(
@@ -169,6 +182,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
     isFridaySpecial: Value(false),
     isBudgetFriendly: Value(true),
     isFavorite: Value(false),
+    isStarterMeal: Value(true),
   ),
   // 15
   const MealsCompanion(
@@ -181,6 +195,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
     isFridaySpecial: Value(false),
     isBudgetFriendly: Value(true),
     isFavorite: Value(true),
+    isStarterMeal: Value(true),
   ),
   // 16
   const MealsCompanion(
@@ -193,6 +208,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
     isFridaySpecial: Value(false),
     isBudgetFriendly: Value(true),
     isFavorite: Value(false),
+    isStarterMeal: Value(true),
   ),
   // 17
   const MealsCompanion(
@@ -205,6 +221,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
     isFridaySpecial: Value(true),
     isBudgetFriendly: Value(false),
     isFavorite: Value(true),
+    isStarterMeal: Value(true),
   ),
   // 18
   const MealsCompanion(
@@ -217,6 +234,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
     isFridaySpecial: Value(false),
     isBudgetFriendly: Value(true),
     isFavorite: Value(false),
+    isStarterMeal: Value(true),
   ),
   // 19
   const MealsCompanion(
@@ -229,6 +247,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
     isFridaySpecial: Value(false),
     isBudgetFriendly: Value(true),
     isFavorite: Value(false),
+    isStarterMeal: Value(true),
   ),
   // 20
   const MealsCompanion(
@@ -241,5 +260,6 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
     isFridaySpecial: Value(true),
     isBudgetFriendly: Value(false),
     isFavorite: Value(true),
+    isStarterMeal: Value(true),
   ),
 ];
