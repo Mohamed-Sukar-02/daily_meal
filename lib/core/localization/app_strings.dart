@@ -154,6 +154,7 @@ class AppStrings {
   String get fridaySpecial => isEn ? 'Friday special' : 'أكلة جمعة';
   String get budgetFriendly => isEn ? 'Budget friendly' : 'اقتصادي';
   String get favorite => isEn ? 'Favorite' : 'مفضلة';
+  String get mealFlagsLabel => isEn ? 'Meal options' : 'خيارات الوجبة';
 
   // Spin the wheel
   String get spinWheelTitle => isEn ? 'Wheel of Fortune' : 'عجلة الحظ';

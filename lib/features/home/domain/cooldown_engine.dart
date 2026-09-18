@@ -201,9 +201,8 @@ class CooldownEngine {
         specific = cooldownDays;
         break;
     }
-    if (specific == 0) {
-      return cooldownDays;
-    }
+    // NOTE: 0 means "no cooldown" (user explicitly disabled it).
+    // Do NOT fall back to the global default here.
     return specific;
   }
 

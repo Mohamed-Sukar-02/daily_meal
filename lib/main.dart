@@ -12,7 +12,7 @@ import 'core/services/notification_service.dart';
 import 'core/services/avatar_service.dart';
 import 'core/services/app_config_sync_service.dart';
 import 'core/database/database_providers.dart';
-import 'core/providers/orphan_sweep_provider.dart';
+import 'core/services/orphan_image_sweeper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,8 +48,9 @@ class _DailyMealAppState extends ConsumerState<DailyMealApp> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(orphanSweepProvider);
       final db = ref.read(appDatabaseProvider);
+      // One-shot startup cleanup (plain async call, not a provider side effect).
+      OrphanImageSweeper.sweepAtStartup(db);
       AppConfigSyncService.instance.init(db: db);
     });
   }
