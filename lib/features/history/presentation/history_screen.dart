@@ -162,12 +162,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                           mainAxisAlignment: MainAxisAlignment.center,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Image.asset(
-                              brightness == Brightness.dark
-                                  ? 'assets/icons/vault_empty_dark.png'
-                                  : 'assets/icons/vault_empty_light.png',
-                              width: 170,
-                              errorBuilder: (_, __, ___) => const Icon(Icons.receipt_long_outlined, size: 64),
+                            Icon(
+                              Icons.history_rounded,
+                              size: 64,
+                              color: AppPalette.textSecondary(brightness),
                             ),
                             const SizedBox(height: 16),
                             Text(

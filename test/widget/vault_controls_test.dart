@@ -1,4 +1,4 @@
-﻿import 'package:daily_meal/core/database/app_database.dart';
+import 'package:daily_meal/core/database/app_database.dart';
 import 'package:daily_meal/core/database/database_providers.dart';
 import 'package:daily_meal/core/localization/app_strings.dart';
 import 'package:daily_meal/main.dart';
@@ -60,6 +60,11 @@ void main() {
     await tester.pumpAndSettle();
 
     // Filter bar is now visible
+    expect(find.text('فراخ'), findsOneWidget);
+
+    // 5b. Dragging horizontally on the filter bar must NOT dismiss it
+    await tester.drag(find.text('فراخ'), const Offset(-60, 0));
+    await tester.pumpAndSettle();
     expect(find.text('فراخ'), findsOneWidget);
 
     // 6. Tap a filter chip (e.g. Chicken "فراخ") -> filter applied and bar auto-collapses

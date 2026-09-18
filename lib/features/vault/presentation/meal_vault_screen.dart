@@ -109,68 +109,6 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 1. Header — Flexible to handle 1.4x on 320px (30sp scaled to 42sp = 252px)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: AlignmentDirectional.centerStart,
-                          child: Text(
-                            strings.vaultTitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 30,
-                              height: 1.2,
-                              fontWeight: FontWeight.w800,
-                              color: AppPalette.textPrimary(brightness),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: AlignmentDirectional.centerStart,
-                          child: Text(
-                            _tabIndex == _tabMyVault
-                                ? strings.vaultSubtitle
-                                : strings.vaultSubtitleExplore,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: AppPalette.textSecondary(brightness),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  _buildVaultCounter(context, totalCount, allMealsAsync.valueOrNull, brightness, strings),
-                ],
-              ),
-            ),
-
-            // 1b. Segmented tabs (My Vault / Discovery) — embedded per mock 2.2
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-              child: _VaultTabs(
-                index: _tabIndex,
-                onChanged: _onTabChanged,
-                brightness: brightness,
-              ),
-            ),
-            const SizedBox(height: 10),
-
             // Both tabs live in an IndexedStack so that leaving "Explore" for
             // "My Vault" and back does not rebuild (and reset) the discovery
             // list, its search box or its scroll position.
@@ -178,9 +116,25 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
               child: IndexedStack(
                 index: _tabIndex,
                 children: [
-                  _buildMyVaultTab(context, strings, brightness),
+                  _buildMyVaultTab(
+                    context,
+                    strings,
+                    brightness,
+                    totalCount,
+                    allMealsAsync.valueOrNull,
+                  ),
                   if (_exploreMounted)
-                    const DiscoveryScreen(isEmbedded: true)
+                    DiscoveryScreen(
+                      isEmbedded: true,
+                      embeddedHeader: _buildVaultHeaderWidget(
+                        context,
+                        strings,
+                        brightness,
+                        totalCount,
+                        allMealsAsync.valueOrNull,
+                      ),
+                      embeddedTabs: _buildVaultTabsWidget(brightness),
+                    )
                   else
                     const SizedBox.shrink(),
                 ],
@@ -269,6 +223,81 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
               ],
             )
           : null,
+    );
+  }
+
+  Widget _buildVaultHeaderWidget(
+    BuildContext context,
+    AppStrings strings,
+    Brightness brightness,
+    int totalCount,
+    List<Meal>? localMeals,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    strings.vaultTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 30,
+                      height: 1.2,
+                      fontWeight: FontWeight.w800,
+                      color: AppPalette.textPrimary(brightness),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    _tabIndex == _tabMyVault
+                        ? strings.vaultSubtitle
+                        : strings.vaultSubtitleExplore,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppPalette.textSecondary(brightness),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          _buildVaultCounter(
+            context,
+            totalCount,
+            localMeals,
+            brightness,
+            strings,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVaultTabsWidget(Brightness brightness) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 5),
+      child: _VaultTabs(
+        index: _tabIndex,
+        onChanged: _onTabChanged,
+        brightness: brightness,
+      ),
     );
   }
 
@@ -379,226 +408,244 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
     BuildContext context,
     AppStrings strings,
     Brightness brightness,
+    int totalCount,
+    List<Meal>? localMeals,
   ) {
     final filteredMealsAsync = ref.watch(filteredMealsProvider);
     final filter = ref.watch(vaultFilterProvider);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Search bar row with filter & view mode action buttons
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-          child: Row(
-            children: [
-              Expanded(
-                child: Container(
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: AppPalette.tabContainer(brightness),
-                    borderRadius: BorderRadius.circular(22),
-                  ),
-                  child: Row(
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if ((notification is ScrollStartNotification ||
+                notification is UserScrollNotification) &&
+            notification.metrics.axis == Axis.vertical) {
+          if (_isFilterBarVisible) {
+            setState(() => _isFilterBarVisible = false);
+          }
+          if (_viewTogglePortal.isShowing) {
+            _viewTogglePortal.hide();
+          }
+        }
+        return false;
+      },
+      child: filteredMealsAsync.when(
+        data: (meals) {
+          final visible = _quickOnly
+              ? meals.where((m) => m.prepTime <= 30).toList()
+              : meals;
+
+          return CustomScrollView(
+            key: const Key('vault_grid_view'),
+            controller: _gridController,
+            slivers: [
+              // 1. Header — Scrolls away
+              SliverToBoxAdapter(
+                child: _buildVaultHeaderWidget(
+                  context,
+                  strings,
+                  brightness,
+                  totalCount,
+                  localMeals,
+                ),
+              ),
+
+              // 2. Tabs + Search + Filter — Pinned & Floating (Quick Return)
+              SliverAppBar(
+                pinned: true,
+                floating: true,
+                automaticallyImplyLeading: false,
+                backgroundColor: AppPalette.background(brightness),
+                surfaceTintColor: Colors.transparent,
+                elevation: 0,
+                toolbarHeight: 0,
+                expandedHeight:
+                    57.0 + 52.0 + (_isFilterBarVisible ? 58.0 : 0.0),
+                bottom: PreferredSize(
+                  preferredSize: Size.fromHeight(
+                      57.0 + 52.0 + (_isFilterBarVisible ? 58.0 : 0.0)),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const SizedBox(width: 14),
-                      AppIcon(
-                        AppGlyph.search,
-                        color: AppPalette.textSecondary(brightness),
-                        size: 22,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: TextField(
-                          key: const Key('vault_search_field'),
-                          controller: _searchController,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: AppPalette.textPrimary(brightness),
-                          ),
-                          decoration: InputDecoration(
-                            isCollapsed: true,
-                            border: InputBorder.none,
-                            hintText: strings.vaultSearchHint,
-                            hintStyle: TextStyle(
-                              fontSize: 14,
-                              color: AppPalette.textSecondary(brightness),
+                      _buildVaultTabsWidget(brightness),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: AppPalette.tabContainer(brightness),
+                                  borderRadius: BorderRadius.circular(22),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const SizedBox(width: 14),
+                                    AppIcon(
+                                      AppGlyph.search,
+                                      color:
+                                          AppPalette.textSecondary(brightness),
+                                      size: 22,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: TextField(
+                                        key: const Key('vault_search_field'),
+                                        controller: _searchController,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: AppPalette.textPrimary(
+                                              brightness),
+                                        ),
+                                        decoration: InputDecoration(
+                                          isCollapsed: true,
+                                          border: InputBorder.none,
+                                          hintText: strings.vaultSearchHint,
+                                          hintStyle: TextStyle(
+                                            fontSize: 14,
+                                            color: AppPalette.textSecondary(
+                                                brightness),
+                                          ),
+                                        ),
+                                        onChanged: (val) {
+                                          ref
+                                              .read(
+                                                  vaultFilterProvider.notifier)
+                                              .setSearchQuery(val);
+                                        },
+                                      ),
+                                    ),
+                                    ValueListenableBuilder<TextEditingValue>(
+                                      valueListenable: _searchController,
+                                      builder: (context, value, child) {
+                                        if (value.text.isEmpty) {
+                                          return const SizedBox.shrink();
+                                        }
+                                        return IconButton(
+                                          key: const Key(
+                                              'vault_search_clear_button'),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(
+                                            minWidth: 32,
+                                            minHeight: 32,
+                                          ),
+                                          icon: AppIcon(
+                                            AppGlyph.close,
+                                            color: AppPalette.textSecondary(
+                                                brightness),
+                                            size: 16,
+                                          ),
+                                          onPressed: () {
+                                            _searchController.clear();
+                                            ref
+                                                .read(vaultFilterProvider
+                                                    .notifier)
+                                                .setSearchQuery('');
+                                          },
+                                        );
+                                      },
+                                    ),
+                                    const SizedBox(width: 6),
+                                  ],
+                                ),
+                              ),
                             ),
-                          ),
-                          onChanged: (val) {
-                            ref
-                                .read(vaultFilterProvider.notifier)
-                                .setSearchQuery(val);
-                            // No setState needed - provider already triggers rebuild, optimal
-                          },
+                            const SizedBox(width: 8),
+                            _buildViewModeButton(brightness),
+                            const SizedBox(width: 8),
+                            _buildTuneButton(brightness, filter),
+                          ],
                         ),
                       ),
-                      // Use ValueListenableBuilder to avoid setState on every keystroke
-                      ValueListenableBuilder<TextEditingValue>(
-                        valueListenable: _searchController,
-                        builder: (context, value, child) {
-                          if (value.text.isEmpty) return const SizedBox.shrink();
-                          return IconButton(
-                            key: const Key('vault_search_clear_button'),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                              minWidth: 32,
-                              minHeight: 32,
+                      if (_isFilterBarVisible)
+                        TapRegion(
+                          groupId: 'vault_filter_bar',
+                          onTapOutside: (_) {
+                            if (_isFilterBarVisible) {
+                              setState(() => _isFilterBarVisible = false);
+                            }
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: VaultFilterBar(
+                              quickOnly: _quickOnly,
+                              onQuickChanged: (v) {
+                                setState(() {
+                                  _quickOnly = v;
+                                  _isFilterBarVisible = false;
+                                });
+                              },
+                              onFilterApplied: () {
+                                setState(() {
+                                  _isFilterBarVisible = false;
+                                });
+                              },
                             ),
-                            icon: AppIcon(
-                              AppGlyph.close,
-                              color: AppPalette.textSecondary(brightness),
-                              size: 16,
-                            ),
-                            onPressed: () {
-                              _searchController.clear();
-                              ref
-                                  .read(vaultFilterProvider.notifier)
-                                  .setSearchQuery('');
-                            },
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 6),
+                          ),
+                        ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              _buildViewModeButton(brightness),
-              const SizedBox(width: 8),
-              _buildTuneButton(brightness, filter),
+
+              // 3. Grid Content
+              if (visible.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: VaultEmptyState(
+                    isSearchResult: filter.hasActiveFilters || _quickOnly,
+                    onAction: () {
+                      if (filter.hasActiveFilters || _quickOnly) {
+                        _searchController.clear();
+                        ref.read(vaultFilterProvider.notifier).resetFilters();
+                        setState(() => _quickOnly = false);
+                      } else {
+                        QuickAddSheet.show(context);
+                      }
+                    },
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
+                  sliver: SliverGrid.builder(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 14,
+                      mainAxisSpacing: 14,
+                      childAspectRatio: 0.98,
+                    ),
+                    itemCount: visible.length,
+                    itemBuilder: (context, index) {
+                      final meal = visible[index];
+                      return MealVaultCard(
+                        meal: meal,
+                        onEdit: () =>
+                            QuickAddSheet.show(context, mealToEdit: meal),
+                        onDelete: () => DeleteMealDialog.show(context, meal),
+                      );
+                    },
+                  ),
+                ),
             ],
-          ),
-        ),
-        // Smooth collapsible filter bar
-        TapRegion(
-          groupId: 'vault_filter_bar',
-          onTapOutside: (_) {
-            if (_isFilterBarVisible) {
-              setState(() => _isFilterBarVisible = false);
-            }
-          },
-          child: AnimatedSize(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeInOutCubic,
-            alignment: Alignment.topCenter,
-            child: _isFilterBarVisible
-                ? Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: VaultFilterBar(
-                      quickOnly: _quickOnly,
-                      onQuickChanged: (v) {
-                        setState(() {
-                          _quickOnly = v;
-                          _isFilterBarVisible = false;
-                        });
-                      },
-                      onFilterApplied: () {
-                        setState(() {
-                          _isFilterBarVisible = false;
-                        });
-                      },
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
-        ),
-        Expanded(
-          child: NotificationListener<ScrollNotification>(
-            onNotification: (notification) {
-              if (notification is ScrollStartNotification ||
-                  notification is UserScrollNotification) {
-                if (_isFilterBarVisible) {
-                  setState(() => _isFilterBarVisible = false);
-                }
-                if (_viewTogglePortal.isShowing) {
-                  _viewTogglePortal.hide();
-                }
-              }
-              return false;
-            },
-            child: Listener(
-              behavior: HitTestBehavior.translucent,
-              onPointerDown: (_) {
-                if (_isFilterBarVisible) {
-                  setState(() => _isFilterBarVisible = false);
-                }
-                if (_viewTogglePortal.isShowing) {
-                  _viewTogglePortal.hide();
-                }
-              },
-              child: filteredMealsAsync.when(
-                data: (meals) {
-                  final visible = _quickOnly
-                      ? meals.where((m) => m.prepTime <= 30).toList()
-                      : meals;
-
-                  if (visible.isEmpty) {
-                    final isFiltered = filter.hasActiveFilters || _quickOnly;
-                    return VaultEmptyState(
-                      isSearchResult: isFiltered,
-                      onAction: () {
-                        if (isFiltered) {
-                          _searchController.clear();
-                          ref.read(vaultFilterProvider.notifier).resetFilters();
-                          setState(() => _quickOnly = false);
-                        } else {
-                          QuickAddSheet.show(context);
-                        }
-                      },
-                    );
-                  }
-
-                  return CustomScrollView(
-                    key: const Key('vault_grid_view'),
-                    controller: _gridController,
-                    slivers: [
-                      SliverPadding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
-                        sliver: SliverGrid.builder(
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 14,
-                            mainAxisSpacing: 14,
-                            childAspectRatio: 0.98,
-                          ),
-                          itemCount: visible.length,
-                          itemBuilder: (context, index) {
-                            final meal = visible[index];
-                            return MealVaultCard(
-                              meal: meal,
-                              onEdit: () =>
-                                  QuickAddSheet.show(context, mealToEdit: meal),
-                              onDelete: () =>
-                                  DeleteMealDialog.show(context, meal),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  );
-                },
-                loading: () =>
-                    const Center(child: CircularProgressIndicator.adaptive()),
-                error: (err, _) => Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text(
-                      strings.vaultLoadError(err),
-                      textAlign: TextAlign.center,
-                      style:
-                          TextStyle(color: AppPalette.textSecondary(brightness)),
-                    ),
-                  ),
-                ),
-              ),
+          );
+        },
+        loading: () =>
+            const Center(child: CircularProgressIndicator.adaptive()),
+        error: (err, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              strings.vaultLoadError(err),
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppPalette.textSecondary(brightness)),
             ),
           ),
         ),
-        ],
-      );
-    }
+      ),
+    );
+  }
 
 
   Widget _buildTuneButton(
@@ -638,7 +685,7 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
               ),
               child: Icon(
                 Icons.tune_rounded,
-                size: 20,
+                size: 28,
                 color: isExpanded || hasActiveFilter
                     ? AppPalette.brandGreen
                     : AppPalette.textSecondary(brightness),
@@ -731,7 +778,7 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
               ),
               child: Icon(
                 _isGridView ? Icons.grid_view_rounded : Icons.view_list_rounded,
-                size: 20,
+                size: 28,
                 color: AppPalette.textSecondary(brightness),
               ),
             ),
@@ -742,13 +789,15 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
   }
 
   Widget _buildViewToggleOverlay(BuildContext context, Brightness brightness) {
-    return CompositedTransformFollower(
-      link: _viewToggleLink,
-      showWhenUnlinked: false,
-      targetAnchor: Alignment.bottomCenter,
-      followerAnchor: Alignment.topCenter,
-      offset: const Offset(0, 6),
-      child: TapRegion(
+    return Align(
+      alignment: AlignmentDirectional.topStart,
+      child: CompositedTransformFollower(
+        link: _viewToggleLink,
+        showWhenUnlinked: false,
+        targetAnchor: Alignment.bottomCenter,
+        followerAnchor: Alignment.topCenter,
+        offset: const Offset(0, 6),
+        child: TapRegion(
         groupId: 'vault_view_toggle',
         onTapOutside: (_) {
           if (_viewTogglePortal.isShowing) {
@@ -806,7 +855,8 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
             ),
           ),
         ),
-      );
+      ),
+    );
   }
 
   Widget _viewToggleOption({
@@ -855,6 +905,7 @@ class _VaultTabs extends StatelessWidget {
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     return Container(
+      height: 48,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: AppPalette.card(brightness),

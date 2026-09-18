@@ -15,10 +15,14 @@ import '../../../core/providers/network_provider.dart';
 
 class DiscoveryScreen extends ConsumerStatefulWidget {
   final bool isEmbedded;
+  final Widget? embeddedHeader;
+  final Widget? embeddedTabs;
 
   const DiscoveryScreen({
     super.key,
     this.isEmbedded = false,
+    this.embeddedHeader,
+    this.embeddedTabs,
   });
 
   @override
@@ -72,165 +76,258 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     final brightness = Theme.of(context).brightness;
     final strings = AppStrings.of(context);
 
-    final content = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (!widget.isEmbedded) _buildStandaloneHeader(brightness),
-        // Search bar row with view & filter action buttons
-        Padding(
-          padding: EdgeInsets.fromLTRB(16, widget.isEmbedded ? 0 : 10, 16, 10),
-          child: Row(
-            children: [
-              Expanded(
-                child: Container(
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: AppPalette.tabContainer(brightness),
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: AppPalette.hairline(brightness)),
+    final Widget content = NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if ((notification is ScrollStartNotification ||
+                notification is UserScrollNotification) &&
+            notification.metrics.axis == Axis.vertical) {
+          if (_isFilterBarVisible) {
+            setState(() => _isFilterBarVisible = false);
+          }
+          if (_viewTogglePortal.isShowing) {
+            _viewTogglePortal.hide();
+          }
+        }
+        return false;
+      },
+      child: Consumer(
+        builder: (context, ref, child) {
+          final status = ref.watch(cloudAccessStatusProvider);
+
+          return CustomScrollView(
+            slivers: [
+              // 1. Header — scrolls away
+              if (widget.isEmbedded && widget.embeddedHeader != null)
+                SliverToBoxAdapter(child: widget.embeddedHeader!),
+              if (!widget.isEmbedded)
+                SliverToBoxAdapter(child: _buildStandaloneHeader(brightness)),
+
+              // 2. Tabs + Search + Filter — sticky
+              SliverAppBar(
+                pinned: true,
+                floating: true,
+                automaticallyImplyLeading: false,
+                backgroundColor: AppPalette.background(brightness),
+                surfaceTintColor: Colors.transparent,
+                elevation: 0,
+                toolbarHeight: 0,
+                expandedHeight:
+                    (widget.isEmbedded ? 57.0 : 0.0) +
+                        52.0 +
+                        (_isFilterBarVisible ? 58.0 : 0.0),
+                bottom: PreferredSize(
+                  preferredSize: Size.fromHeight(
+                    (widget.isEmbedded ? 57.0 : 0.0) +
+                        52.0 +
+                        (_isFilterBarVisible ? 58.0 : 0.0),
                   ),
-                  child: Row(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const SizedBox(width: 14),
-                      AppIcon(AppGlyph.search, color: AppPalette.textSecondary(brightness), size: 22),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: TextField(
-                          key: const Key('discovery_search_field'),
-                          controller: _searchController,
-                          style: TextStyle(fontSize: 14, color: AppPalette.textPrimary(brightness)),
-                          decoration: InputDecoration(
-                            isCollapsed: true,
-                            border: InputBorder.none,
-                            hintText: strings.discoverySearchHint,
-                            hintStyle: TextStyle(fontSize: 14, color: AppPalette.textSecondary(brightness)),
-                          ),
-                          onChanged: (v) => setState(() => _searchQuery = v),
+                      if (widget.isEmbedded && widget.embeddedTabs != null)
+                        widget.embeddedTabs!,
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          16,
+                          widget.isEmbedded ? 0 : 10,
+                          16,
+                          10,
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: AppPalette.tabContainer(brightness),
+                                  borderRadius: BorderRadius.circular(22),
+                                  border: Border.all(
+                                    color: AppPalette.hairline(brightness),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const SizedBox(width: 14),
+                                    AppIcon(
+                                      AppGlyph.search,
+                                      color:
+                                          AppPalette.textSecondary(brightness),
+                                      size: 22,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: TextField(
+                                        key: const Key('discovery_search_field'),
+                                        controller: _searchController,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color:
+                                              AppPalette.textPrimary(brightness),
+                                        ),
+                                        decoration: InputDecoration(
+                                          isCollapsed: true,
+                                          border: InputBorder.none,
+                                          hintText: strings.discoverySearchHint,
+                                          hintStyle: TextStyle(
+                                            fontSize: 14,
+                                            color: AppPalette.textSecondary(
+                                                brightness),
+                                          ),
+                                        ),
+                                        onChanged: (v) =>
+                                            setState(() => _searchQuery = v),
+                                      ),
+                                    ),
+                                    if (_searchQuery.isNotEmpty)
+                                      IconButton(
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(
+                                          minWidth: 32,
+                                          minHeight: 32,
+                                        ),
+                                        icon: AppIcon(
+                                          AppGlyph.close,
+                                          color: AppPalette.textSecondary(
+                                              brightness),
+                                          size: 16,
+                                        ),
+                                        onPressed: () {
+                                          _searchController.clear();
+                                          setState(() => _searchQuery = '');
+                                        },
+                                      ),
+                                    const SizedBox(width: 6),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            _buildViewModeButton(brightness),
+                            const SizedBox(width: 8),
+                            _buildTuneButton(brightness),
+                          ],
                         ),
                       ),
-                      if (_searchQuery.isNotEmpty)
-                        IconButton(
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                          icon: AppIcon(AppGlyph.close, color: AppPalette.textSecondary(brightness), size: 16),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() => _searchQuery = '');
+                      if (_isFilterBarVisible)
+                        TapRegion(
+                          groupId: 'discovery_filter_bar',
+                          onTapOutside: (_) {
+                            if (_isFilterBarVisible) {
+                              setState(() => _isFilterBarVisible = false);
+                            }
                           },
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: _buildFilterChips(brightness),
+                          ),
                         ),
-                      const SizedBox(width: 6),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              _buildViewModeButton(brightness),
-              const SizedBox(width: 8),
-              _buildTuneButton(brightness),
-            ],
-          ),
-        ),
-        // Collapsible filter bar with TapRegion outside detection
-        TapRegion(
-          groupId: 'discovery_filter_bar',
-          onTapOutside: (_) {
-            if (_isFilterBarVisible) {
-              setState(() => _isFilterBarVisible = false);
-            }
-          },
-          child: AnimatedSize(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeInOutCubic,
-            alignment: Alignment.topCenter,
-            child: _isFilterBarVisible
-                ? Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _buildFilterChips(brightness),
-                  )
-                : const SizedBox.shrink(),
-          ),
-        ),
-        Expanded(
-          child: NotificationListener<ScrollNotification>(
-            onNotification: (notification) {
-              if (notification is ScrollStartNotification ||
-                  notification is UserScrollNotification) {
-                if (_isFilterBarVisible) {
-                  setState(() => _isFilterBarVisible = false);
-                }
-                if (_viewTogglePortal.isShowing) {
-                  _viewTogglePortal.hide();
-                }
-              }
-              return false;
-            },
-            child: Listener(
-              behavior: HitTestBehavior.translucent,
-              onPointerDown: (_) {
-                if (_isFilterBarVisible) {
-                  setState(() => _isFilterBarVisible = false);
-                }
-                if (_viewTogglePortal.isShowing) {
-                  _viewTogglePortal.hide();
-                }
-              },
-              child: Consumer(
-                builder: (context, ref, child) {
-                  // Optimal: cloudAccessStatusProvider now is synchronous Provider watching connectivity stream
-                  final status = ref.watch(cloudAccessStatusProvider);
+
+              // 3. Grid content
+              Builder(
+                builder: (context) {
                   if (status == CloudAccessStatus.noConnection) {
-                    return _errorState(brightness, AppGlyph.cloud, strings.discoveryOfflineTitle, strings.discoveryOfflineDesc);
+                    return SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: _errorState(
+                        brightness,
+                        AppGlyph.cloud,
+                        strings.discoveryOfflineTitle,
+                        strings.discoveryOfflineDesc,
+                      ),
+                    );
                   }
                   if (status == CloudAccessStatus.requiresWifi) {
-                    return _errorState(brightness, AppGlyph.cloudDown, strings.discoveryWifiTitle, strings.discoveryWifiDesc);
+                    return SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: _errorState(
+                        brightness,
+                        AppGlyph.cloudDown,
+                        strings.discoveryWifiTitle,
+                        strings.discoveryWifiDesc,
+                      ),
+                    );
                   }
-              return publicMealsAsync.when(
-                data: (cloudMeals) {
-                  final filtered = _filterCloudMeals(cloudMeals);
-                  if (cloudMeals.isEmpty) {
-                    return _emptyState(brightness, strings.discoveryEmptyTitle, strings.discoveryEmptyDesc);
-                  }
-                  if (filtered.isEmpty) {
-                    return _emptyState(brightness, strings.vaultNoResultsTitle, strings.discoveryNoResultsDesc);
-                  }
-                  final localMeals = allMealsAsync.valueOrNull ?? [];
-                  return GridView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 14,
-                      mainAxisSpacing: 14,
-                      childAspectRatio: 0.92,
-                    ),
-                    itemCount: filtered.length,
-                    itemBuilder: (context, index) {
-                      final cloudMeal = filtered[index];
-                      final linked = localMeals.where((m) => m.cloudId == cloudMeal.id).toList();
-                      return _CloudMealCard(
-                        cloudMeal: cloudMeal,
-                        linkedMeal: linked.isNotEmpty ? linked.first : null,
-                        index: index,
+                  return publicMealsAsync.when(
+                    data: (cloudMeals) {
+                      final filtered = _filterCloudMeals(cloudMeals);
+                      if (cloudMeals.isEmpty) {
+                        return SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: _emptyState(
+                            brightness,
+                            strings.discoveryEmptyTitle,
+                            strings.discoveryEmptyDesc,
+                          ),
+                        );
+                      }
+                      if (filtered.isEmpty) {
+                        return SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: _emptyState(
+                            brightness,
+                            strings.vaultNoResultsTitle,
+                            strings.discoveryNoResultsDesc,
+                          ),
+                        );
+                      }
+                      final localMeals = allMealsAsync.valueOrNull ?? [];
+                      return SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
+                        sliver: SliverGrid.builder(
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 14,
+                            mainAxisSpacing: 14,
+                            childAspectRatio: 0.92,
+                          ),
+                          itemCount: filtered.length,
+                          itemBuilder: (context, index) {
+                            final cloudMeal = filtered[index];
+                            final linked = localMeals
+                                .where((m) => m.cloudId == cloudMeal.id)
+                                .toList();
+                            return _CloudMealCard(
+                              cloudMeal: cloudMeal,
+                              linkedMeal:
+                                  linked.isNotEmpty ? linked.first : null,
+                              index: index,
+                            );
+                          },
+                        ),
                       );
                     },
+                    loading: () => SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: AppPalette.brandGreen,
+                        ),
+                      ),
+                    ),
+                    error: (err, _) => SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: _errorState(
+                        brightness,
+                        AppGlyph.alert,
+                        strings.discoveryError,
+                        err is CloudMealsFetchException
+                            ? strings.discoveryFetchFailed(err.cause)
+                            : '$err',
+                      ),
+                    ),
                   );
                 },
-                loading: () => Center(child: CircularProgressIndicator(color: AppPalette.brandGreen)),
-                error: (err, _) => _errorState(
-                  brightness,
-                  AppGlyph.alert,
-                  strings.discoveryError,
-                  err is CloudMealsFetchException
-                      ? strings.discoveryFetchFailed(err.cause)
-                      : '$err',
-                ),
-              );
-            },
-          ),
-        ),
+              ),
+            ],
+          );
+        },
       ),
-    ),
-    ],
-  );
+    );
 
     if (widget.isEmbedded) return content;
 
@@ -351,7 +448,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
               ),
               child: Icon(
                 Icons.tune_rounded,
-                size: 20,
+                size: 28,
                 color: isExpanded || hasActiveFilter
                     ? AppPalette.brandGreen
                     : AppPalette.textSecondary(brightness),
@@ -444,7 +541,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
               ),
               child: Icon(
                 _isGridView ? Icons.grid_view_rounded : Icons.view_list_rounded,
-                size: 20,
+                size: 28,
                 color: AppPalette.textSecondary(brightness),
               ),
             ),
@@ -455,13 +552,15 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   }
 
   Widget _buildViewToggleOverlay(BuildContext context, Brightness brightness) {
-    return CompositedTransformFollower(
-      link: _viewToggleLink,
-      showWhenUnlinked: false,
-      targetAnchor: Alignment.bottomCenter,
-      followerAnchor: Alignment.topCenter,
-      offset: const Offset(0, 6),
-      child: TapRegion(
+    return Align(
+      alignment: AlignmentDirectional.topStart,
+      child: CompositedTransformFollower(
+        link: _viewToggleLink,
+        showWhenUnlinked: false,
+        targetAnchor: Alignment.bottomCenter,
+        followerAnchor: Alignment.topCenter,
+        offset: const Offset(0, 6),
+        child: TapRegion(
         groupId: 'discovery_view_toggle',
         onTapOutside: (_) {
           if (_viewTogglePortal.isShowing) {
@@ -518,6 +617,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

@@ -188,7 +188,7 @@ class AppStrings {
   String get vaultTabMine => isEn ? 'My Vault' : 'خزانتي';
   String get vaultTabExplore => isEn ? 'Explore' : 'استكشاف';
 
-  String vaultCloudCount(int count) => '${mealsCount(count)} ☁️';
+  String vaultCloudCount(int count) => isEn ? '$count meals ☁️' : '$count أكلة ☁️';
   String vaultSharedCount(int count) => isEn ? '$count shared ✅' : '$count مشترك ✅';
   String vaultNewCount(int count) => isEn ? '$count new ✨' : '$count جديدة ✨';
 
