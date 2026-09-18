@@ -45,6 +45,8 @@ class Meals extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
   TextColumn get cloudId => text().nullable()();
+  IntColumn get customCooldownDays => integer().nullable()();
+  TextColumn get notes => text().nullable()();
 }
 
 extension ProteinTypeX on ProteinType {

@@ -149,7 +149,25 @@ class AppStrings {
       isEn ? 'Enjoy! "$mealName" logged' : 'بالهنا والشفا! تم تسجيل "$mealName"';
   String leftoverSuccess(String mealName) => isEn
       ? 'Logged leftover for "$mealName".'
-      : 'تم تسجيل بواقي أكل "$mealName".';
+      : 'تم تسجيل بواقي من "$mealName".';
+  String get takeoutSuccess => isEn
+      ? 'Logged takeout for today.'
+      : 'تم تسجيل أكل من بره (هطلب من برا).';
+  String get skippedSuccess => isEn
+      ? 'Logged skipped meal.'
+      : 'تم تسجيل تفويت وجبة الغداء.';
+  String get notCookingToday => isEn ? 'Not cooking today?' : 'مش هتطبخ النهاردة؟';
+  String get cookThis => 'Cook This';
+  String get eatYesterdayLeftovers => isEn ? 'Eat yesterday\'s food' : 'هاكل أكل إمبارح';
+  String get orderTakeout => isEn ? 'Order takeout' : 'هطلب من برا';
+  String get confirmRefreshTitle => isEn ? 'Change suggestions' : 'تغيير الاقتراحات';
+  String get confirmRefreshMessage => isEn
+      ? 'Are you sure you want to change the 3 current suggestions?'
+      : 'هل أنت متأكد من تغيير الـ 3 اقتراحات الحالية؟';
+  String get confirmRefreshConfirm => isEn ? 'Yes, change' : 'نعم، غيّرها';
+  String get leftoverSuccessGeneral => isEn
+      ? 'Logged leftover for today.'
+      : 'تم تسجيل أكل بايت لليوم.';
 
   String get fridaySpecial => isEn ? 'Friday special' : 'أكلة جمعة';
   String get budgetFriendly => isEn ? 'Budget friendly' : 'اقتصادي';
@@ -696,6 +714,10 @@ class AppStrings {
         return isEn ? 'Freshly cooked' : 'طبخة جديدة';
       case 'leftover':
         return leftover;
+      case 'takeout':
+        return isEn ? 'Takeout' : 'تيك أواي';
+      case 'skipped':
+        return isEn ? 'Skipped' : 'تفويت الوجبة';
       default:
         return entryType;
     }

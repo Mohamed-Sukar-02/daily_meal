@@ -44,9 +44,9 @@ final todayRecommendationsProvider = Provider<AsyncValue<RecommendationResult<Me
   final AppSettingsData fallbackSettings = AppSettingsData(
     id: 1,
     cooldownDays: 14,
-    chickenCooldownDays: 7,
-    beefCooldownDays: 10,
-    fishCooldownDays: 5,
+    chickenCooldownDays: 2,
+    beefCooldownDays: 2,
+    fishCooldownDays: 4,
     meatlessCooldownDays: 0,
     notificationHour: 12,
     notificationMinute: 0,
@@ -54,6 +54,8 @@ final todayRecommendationsProvider = Provider<AsyncValue<RecommendationResult<Me
     themeMode: AppThemeModePreference.system,
     language: AppLanguagePreference.ar,
     isFirstRun: true,
+    recommendationSource: RecommendationSource.vault_only,
+    autoFridayFeastFilter: false,
   );
   final settings = settingsAsync.valueOrNull ?? fallbackSettings;
 
@@ -119,6 +121,75 @@ class RecommendationController extends AsyncNotifier<void> {
 
   Future<int> markLeftover(Meal meal, {DateTime? cookedAt, String? notes}) =>
       logLeftover(meal, cookedAt: cookedAt, notes: notes);
+
+  Future<int> markLeftoverEntry({
+    int? mealId,
+    required String mealName,
+    ProteinType proteinType = ProteinType.none,
+    CarbsType carbsType = CarbsType.none,
+    DateTime? cookedAt,
+    String? notes,
+  }) async {
+    state = const AsyncValue.loading();
+    try {
+      final db = ref.read(appDatabaseProvider);
+      final historyDao = ref.read(mealHistoryDaoProvider);
+      final id = await db.transaction(() async {
+        return await historyDao.logMeal(
+          mealId: mealId,
+          mealName: mealName,
+          proteinType: proteinType,
+          carbsType: carbsType,
+          cookedAt: cookedAt ?? DateTime.now(),
+          entryType: MealEntryType.leftover,
+          notes: notes,
+        );
+      });
+      state = const AsyncValue.data(null);
+      return id;
+    } catch (err, st) {
+      state = AsyncValue.error(err, st);
+      rethrow;
+    }
+  }
+
+  Future<int> markTakeout({DateTime? cookedAt, String? notes}) async {
+    state = const AsyncValue.loading();
+    try {
+      final db = ref.read(appDatabaseProvider);
+      final historyDao = ref.read(mealHistoryDaoProvider);
+      final id = await db.transaction(() async {
+        return await historyDao.logTakeoutMeal(
+          cookedAt: cookedAt ?? DateTime.now(),
+          notes: notes,
+        );
+      });
+      state = const AsyncValue.data(null);
+      return id;
+    } catch (err, st) {
+      state = AsyncValue.error(err, st);
+      rethrow;
+    }
+  }
+
+  Future<int> markSkipped({DateTime? cookedAt, String? notes}) async {
+    state = const AsyncValue.loading();
+    try {
+      final db = ref.read(appDatabaseProvider);
+      final historyDao = ref.read(mealHistoryDaoProvider);
+      final id = await db.transaction(() async {
+        return await historyDao.logSkippedMeal(
+          cookedAt: cookedAt ?? DateTime.now(),
+          notes: notes,
+        );
+      });
+      state = const AsyncValue.data(null);
+      return id;
+    } catch (err, st) {
+      state = AsyncValue.error(err, st);
+      rethrow;
+    }
+  }
 
   Future<void> undoLastCookingLog([int? historyEntryId]) async {
     state = const AsyncValue.loading();

@@ -158,6 +158,28 @@ class MealHistoryDao extends DatabaseAccessor<AppDatabase> with _$MealHistoryDao
     return logMealFromMeal(meal, cookedAt: cookedAt, entryType: MealEntryType.leftover, notes: notes);
   }
 
+  Future<int> logTakeoutMeal({DateTime? cookedAt, String? notes}) {
+    return logMeal(
+      mealName: 'خارج البيت',
+      proteinType: ProteinType.none,
+      carbsType: CarbsType.none,
+      cookedAt: cookedAt ?? DateTime.now(),
+      entryType: MealEntryType.takeout,
+      notes: notes,
+    );
+  }
+
+  Future<int> logSkippedMeal({DateTime? cookedAt, String? notes}) {
+    return logMeal(
+      mealName: 'تفويت الوجبة',
+      proteinType: ProteinType.none,
+      carbsType: CarbsType.none,
+      cookedAt: cookedAt ?? DateTime.now(),
+      entryType: MealEntryType.skipped,
+      notes: notes,
+    );
+  }
+
   /// Delete a single history log entry
   Future<int> deleteHistoryEntry(int id) {
     return (delete(mealHistory)..where((t) => t.id.equals(id))).go();

@@ -89,4 +89,54 @@ void main() {
 
     await tearDownApp(tester, db);
   });
+
+  testWidgets('meatless switch defaults to false, hides stepper on main card, and appears when enabled',
+      (tester) async {
+    final db = await pumpApp(tester);
+
+    await tapNav(tester, 'settings');
+    await tester.ensureVisible(find.byKey(const Key('settings_cooldown_header')));
+    await tester.pumpAndSettle();
+
+    // 1. Meatless (خضار) is NOT present on the main card by default
+    expect(find.text('خضار'), findsNothing);
+
+    // 2. Open "More" sheet
+    await tester.tap(find.byKey(const Key('settings_cooldown_more')));
+    await tester.pumpAndSettle();
+
+    // 3. Meatless switch must be false by default
+    final meatlessSwitchFinder = find.byKey(const Key('cooldown_switch_meatless'));
+    expect(meatlessSwitchFinder, findsOneWidget);
+    expect(tester.widget<Switch>(meatlessSwitchFinder).value, isFalse);
+
+    // 4. Toggle Meatless switch to ON
+    await tester.tap(meatlessSwitchFinder);
+    await tester.pumpAndSettle();
+    expect(tester.widget<Switch>(meatlessSwitchFinder).value, isTrue);
+
+    // 5. Close the sheet
+    await tester.tap(find.byKey(const Key('cooldown_details_done')));
+    await tester.pumpAndSettle();
+    // 6. Meatless stepper row is now visible on the main card!
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('cooldown_stepper_meatless')),
+      100,
+    );
+    expect(find.byKey(const Key('cooldown_stepper_meatless')), findsOneWidget);
+
+    // 7. Re-open sheet and turn it OFF
+    await tester.tap(find.byKey(const Key('settings_cooldown_more')));
+    await tester.pumpAndSettle();
+    await tester.tap(meatlessSwitchFinder);
+    await tester.pumpAndSettle();
+    expect(tester.widget<Switch>(meatlessSwitchFinder).value, isFalse);
+
+    // 8. Close sheet -> Meatless stepper disappears from main card
+    await tester.tap(find.byKey(const Key('cooldown_details_done')));
+    await tester.pumpAndSettle();
+    expect(find.text('خضار'), findsNothing);
+
+    await tearDownApp(tester, db);
+  });
 }

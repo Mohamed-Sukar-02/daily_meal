@@ -210,17 +210,17 @@ class SpinWheelButton extends StatelessWidget {
             clipBehavior: Clip.none,
             alignment: Alignment.center,
             children: [
-              // Left sparks
+              // Left sparks - always burst outwards to the left (unmirrored), fixed position across locales
               Positioned(
-                left: 2,
+                left: 8,
+                top: center.dy - 8,
+                child: const EmphasisMarks(size: 16, mirrored: false),
+              ),
+              // Right sparks - always burst outwards to the right (mirrored), fixed position across locales
+              Positioned(
+                right: 8,
                 top: center.dy - 8,
                 child: const EmphasisMarks(size: 16, mirrored: true),
-              ),
-              // Right sparks
-              Positioned(
-                right: 2,
-                top: center.dy - 8,
-                child: const EmphasisMarks(size: 16),
               ),
               // Wheel circle
               Positioned(
@@ -274,12 +274,12 @@ class SpinWheelButton extends StatelessWidget {
                     painter: _CurvedTextPainter(
                       text: text,
                       style: TextStyle(
-                        fontSize: 10.5,
+                        fontSize: isRtl ? 13.0 : 10.5,
                         fontWeight: FontWeight.w800,
                         color: AppPalette.textPrimary(brightness),
                         letterSpacing: isRtl ? 0.0 : 0.4,
                       ),
-                      radius: 43.5,
+                      radius: isRtl ? 44.5 : 43.5,
                       center: center,
                       isRtl: isRtl,
                     ),

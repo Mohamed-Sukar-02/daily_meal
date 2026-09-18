@@ -18,7 +18,6 @@ class MealCard extends StatelessWidget {
   final Meal meal;
   final int cardIndex;
   final VoidCallback onCookedToday;
-  final VoidCallback onLeftover;
   final VoidCallback? onTap;
   final VoidCallback? onToggleFavorite;
 
@@ -27,7 +26,6 @@ class MealCard extends StatelessWidget {
     required this.meal,
     required this.cardIndex,
     required this.onCookedToday,
-    required this.onLeftover,
     this.onTap,
     this.onToggleFavorite,
   });
@@ -114,12 +112,11 @@ class MealCard extends StatelessWidget {
                 ),
               if (_badges(context, brightness).isNotEmpty)
                 const SizedBox(height: 8),
-              // Actions — Wrap ensures 1.6x/2.0x on 320px flows instead of overflowing Row
+              // Actions
               Align(
                 alignment: AlignmentDirectional.centerStart,
                 child: QuickActions(
                   onCookedToday: onCookedToday,
-                  onLeftover: onLeftover,
                 ),
               ),
             ],

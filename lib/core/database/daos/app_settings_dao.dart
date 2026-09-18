@@ -15,9 +15,9 @@ class AppSettingsDao extends DatabaseAccessor<AppDatabase> with _$AppSettingsDao
   static AppSettingsCompanion get defaultSettings => AppSettingsCompanion(
     id: const Value(settingsRowId),
     cooldownDays: const Value(14),
-    chickenCooldownDays: const Value(7),
-    beefCooldownDays: const Value(10),
-    fishCooldownDays: const Value(5),
+    chickenCooldownDays: const Value(2),
+    beefCooldownDays: const Value(2),
+    fishCooldownDays: const Value(4),
     meatlessCooldownDays: const Value(0),
     notificationHour: const Value(12),
     notificationMinute: const Value(0),
@@ -29,6 +29,8 @@ class AppSettingsDao extends DatabaseAccessor<AppDatabase> with _$AppSettingsDao
           : AppLanguagePreference.ar,
     ),
     isFirstRun: const Value(true),
+    recommendationSource: const Value(RecommendationSource.vault_only),
+    autoFridayFeastFilter: const Value(false),
   );
 
   /// Watch singleton AppSettings row with resilient fallback

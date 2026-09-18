@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../core/database/database_providers.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/navigation/nav_lifecycle.dart';
 import '../../../core/theme/app_palette.dart';
@@ -92,16 +93,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
     final brightness = Theme.of(context).brightness;
     final meals = result.recommendations;
     final canSpin = meals.length >= 2;
+    final strings = AppStrings.of(context);
 
     return Stack(
       clipBehavior: Clip.none,
       children: [
         RefreshIndicator(
-          onRefresh: () async => ref.invalidate(todayRecommendationsProvider),
+          onRefresh: () async {
+            final confirmed = await _confirmRefresh(context);
+            if (confirmed == true) {
+              ref.invalidate(todayRecommendationsProvider);
+            }
+          },
           child: ListView(
             key: const Key('home_recommendations_list'),
             controller: _listController,
-            padding: EdgeInsets.fromLTRB(16, 2, 16, canSpin ? 100 : 24),
+            padding: EdgeInsets.fromLTRB(16, 2, 16, canSpin ? 110 : 28),
             children: [
               if (result.relaxationLevel > 0) ...[
                 _buildRelaxationBanner(context, result, brightness),
@@ -112,7 +119,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
                   meal: meals[i],
                   cardIndex: i,
                   onCookedToday: () => _handleCookedToday(context, ref, meals[i]),
-                  onLeftover: () => _handleLeftover(context, ref, meals[i]),
                   onToggleFavorite: () {
                     ref
                         .read(recommendationControllerProvider.notifier)
@@ -121,6 +127,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
                 ),
                 if (i < meals.length - 1) const SizedBox(height: 16),
               ],
+              const SizedBox(height: 20),
+              _buildNotCookingTodaySection(context, ref, brightness, strings),
             ],
           ),
         ),
@@ -308,12 +316,195 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
     }
   }
 
-  Future<void> _handleLeftover(BuildContext context, WidgetRef ref, Meal meal) async {
+  Widget _buildNotCookingTodaySection(
+    BuildContext context,
+    WidgetRef ref,
+    Brightness brightness,
+    AppStrings strings,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppPalette.card(brightness),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: AppPalette.outline(brightness).withValues(alpha: 0.5),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            strings.notCookingToday,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppPalette.textSecondary(brightness),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  key: const ValueKey('btn_eat_yesterday_food'),
+                  onPressed: () => _handleEatYesterdayLeftover(context, ref),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                    side: BorderSide(
+                      color: AppPalette.outline(brightness),
+                      width: 1.2,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      strings.eatYesterdayLeftovers,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppPalette.textPrimary(brightness),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton(
+                  key: const ValueKey('btn_order_takeout'),
+                  onPressed: () => _handleTakeout(context, ref),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                    side: BorderSide(
+                      color: AppPalette.outline(brightness),
+                      width: 1.2,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      strings.orderTakeout,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppPalette.textPrimary(brightness),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<bool?> _confirmRefresh(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final brightness = Theme.of(context).brightness;
+
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppPalette.card(brightness),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          strings.confirmRefreshTitle,
+          style: TextStyle(
+            color: AppPalette.textPrimary(brightness),
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+          ),
+        ),
+        content: Text(
+          strings.confirmRefreshMessage,
+          style: TextStyle(
+            color: AppPalette.textSecondary(brightness),
+            fontSize: 14,
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(
+              strings.cancel,
+              style: TextStyle(
+                color: AppPalette.textSecondary(brightness),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppPalette.brandGreen,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: Text(
+              strings.confirmRefreshConfirm,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleEatYesterdayLeftover(BuildContext context, WidgetRef ref) async {
+    final controller = ref.read(recommendationControllerProvider.notifier);
+    final historyDao = ref.read(mealHistoryDaoProvider);
+    final strings = AppStrings.of(context);
+    final latestMeal = await historyDao.getLatestCookedMeal();
+    if (!context.mounted) return;
+
+    int historyEntryId;
+    String message;
+
+    if (latestMeal != null) {
+      historyEntryId = await controller.markLeftoverEntry(
+        mealId: latestMeal.mealId,
+        mealName: latestMeal.mealName,
+        proteinType: latestMeal.proteinType,
+        carbsType: latestMeal.carbsType,
+      );
+      message = strings.leftoverSuccess(latestMeal.mealName);
+    } else {
+      historyEntryId = await controller.markLeftoverEntry(
+        mealName: strings.eatYesterdayLeftovers,
+      );
+      message = strings.leftoverSuccessGeneral;
+    }
+
+    if (context.mounted) {
+      AppToast.showUndo(
+        context,
+        message: message,
+        actionLabel: strings.undo,
+        onUndo: () {
+          controller.undoLastCookingLog(historyEntryId);
+        },
+      );
+    }
+  }
+
+  Future<void> _handleTakeout(BuildContext context, WidgetRef ref) async {
     final controller = ref.read(recommendationControllerProvider.notifier);
     final strings = AppStrings.of(context);
-    final message = strings.leftoverSuccess(meal.name);
+    final message = strings.takeoutSuccess;
     final undoLabel = strings.undo;
-    final historyEntryId = await controller.markLeftover(meal);
+    final historyEntryId = await controller.markTakeout();
 
     if (context.mounted) {
       AppToast.showUndo(

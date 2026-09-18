@@ -130,7 +130,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
               ),
             ),
             const SizedBox(width: 8),
-            const EmphasisMarks(size: 20),
+            EmphasisMarks(size: 20, mirrored: strings.isEn),
           ],
         ),
         const SizedBox(height: 4),
@@ -320,6 +320,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                   onChanged: (d) => controller.updateFishCooldownDays(d),
                 ),
               ],
+              if (settings.meatlessCooldownDays > 0) ...[
+                _divider(brightness),
+                _stepperRow(
+                  context,
+                  ref,
+                  brightness,
+                  strings,
+                  key: const Key('cooldown_stepper_meatless'),
+                  emoji: '🌿',
+                  style: AppPalette.chipGreen(brightness),
+                  name: strings.veggies,
+                  days: settings.meatlessCooldownDays,
+                  onChanged: (d) => controller.updateMeatlessCooldownDays(d),
+                ),
+              ],
             ],
           ),
         )
@@ -332,6 +347,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     WidgetRef ref,
     Brightness brightness,
     AppStrings strings, {
+    Key? key,
     required String emoji,
     required ChipStyle style,
     required String name,
@@ -339,6 +355,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     required ValueChanged<int> onChanged,
   }) {
     return Padding(
+      key: key,
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,

@@ -196,10 +196,15 @@ class AppDatabase extends _$AppDatabase {
 
         // Clean up any NULLs in non-nullable columns that might have been left by older builds
         await customStatement('UPDATE app_settings SET cooldown_days = 14 WHERE cooldown_days IS NULL');
-        await customStatement('UPDATE app_settings SET chicken_cooldown_days = 7 WHERE chicken_cooldown_days IS NULL');
-        await customStatement('UPDATE app_settings SET beef_cooldown_days = 10 WHERE beef_cooldown_days IS NULL');
-        await customStatement('UPDATE app_settings SET fish_cooldown_days = 5 WHERE fish_cooldown_days IS NULL');
+        // Backfill NULLs to new defaults
+        await customStatement('UPDATE app_settings SET chicken_cooldown_days = 2 WHERE chicken_cooldown_days IS NULL');
+        await customStatement('UPDATE app_settings SET beef_cooldown_days = 2 WHERE beef_cooldown_days IS NULL');
+        await customStatement('UPDATE app_settings SET fish_cooldown_days = 4 WHERE fish_cooldown_days IS NULL');
         await customStatement('UPDATE app_settings SET meatless_cooldown_days = 0 WHERE meatless_cooldown_days IS NULL');
+        // Upgrade legacy defaults to new spec defaults
+        await customStatement('UPDATE app_settings SET chicken_cooldown_days = 2 WHERE chicken_cooldown_days = 7');
+        await customStatement('UPDATE app_settings SET beef_cooldown_days = 2 WHERE beef_cooldown_days = 10');
+        await customStatement('UPDATE app_settings SET fish_cooldown_days = 4 WHERE fish_cooldown_days = 5');
         await customStatement('UPDATE app_settings SET notification_hour = 12 WHERE notification_hour IS NULL');
         await customStatement('UPDATE app_settings SET notification_minute = 0 WHERE notification_minute IS NULL');
         await customStatement('UPDATE app_settings SET notifications_enabled = 0 WHERE notifications_enabled IS NULL');
@@ -210,6 +215,13 @@ class AppDatabase extends _$AppDatabase {
         // Sanitize any numeric PINs/passwords or invalid emails mistakenly saved in user profile
         await customStatement("UPDATE app_settings SET user_name = NULL WHERE user_name IS NOT NULL AND user_name NOT GLOB '*[^0-9]*'");
         await customStatement("UPDATE app_settings SET user_email = NULL WHERE user_email IS NOT NULL AND user_email NOT LIKE '%@%'");
+
+        if (!settingsColNames.contains('recommendation_source')) {
+          await customStatement("ALTER TABLE app_settings ADD COLUMN recommendation_source TEXT NOT NULL DEFAULT 'vault_only'");
+        }
+        if (!settingsColNames.contains('auto_friday_feast_filter')) {
+          await customStatement('ALTER TABLE app_settings ADD COLUMN auto_friday_feast_filter INTEGER NOT NULL DEFAULT 0');
+        }
       }
     } catch (_) {}
 
@@ -236,6 +248,12 @@ class AppDatabase extends _$AppDatabase {
         }
         if (!mealsColNames.contains('is_favorite')) {
           await customStatement('ALTER TABLE meals ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0');
+        }
+        if (!mealsColNames.contains('custom_cooldown_days')) {
+          await customStatement('ALTER TABLE meals ADD COLUMN custom_cooldown_days INTEGER');
+        }
+        if (!mealsColNames.contains('notes')) {
+          await customStatement('ALTER TABLE meals ADD COLUMN notes TEXT');
         }
       }
     } catch (_) {}

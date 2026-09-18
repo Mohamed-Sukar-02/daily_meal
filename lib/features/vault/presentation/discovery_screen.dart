@@ -96,11 +96,35 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
 
           return CustomScrollView(
             slivers: [
-              // 1. Header — scrolls away
+              // 1. Header — Quick Return
               if (widget.isEmbedded && widget.embeddedHeader != null)
-                SliverToBoxAdapter(child: widget.embeddedHeader!),
+                SliverAppBar(
+                  floating: true,
+                  pinned: false,
+                  snap: true,
+                  automaticallyImplyLeading: false,
+                  backgroundColor: AppPalette.background(brightness),
+                  surfaceTintColor: Colors.transparent,
+                  elevation: 0,
+                  toolbarHeight: 85,
+                  flexibleSpace: FlexibleSpaceBar(
+                    background: widget.embeddedHeader!,
+                  ),
+                ),
               if (!widget.isEmbedded)
-                SliverToBoxAdapter(child: _buildStandaloneHeader(brightness)),
+                SliverAppBar(
+                  floating: true,
+                  pinned: false,
+                  snap: true,
+                  automaticallyImplyLeading: false,
+                  backgroundColor: AppPalette.background(brightness),
+                  surfaceTintColor: Colors.transparent,
+                  elevation: 0,
+                  toolbarHeight: 75,
+                  flexibleSpace: FlexibleSpaceBar(
+                    background: _buildStandaloneHeader(brightness),
+                  ),
+                ),
 
               // 2. Tabs + Search + Filter — sticky
               SliverAppBar(
@@ -468,7 +492,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
               ),
               child: Icon(
                 Icons.tune_rounded,
-                size: 28,
+                size: 24,
                 color: isExpanded || hasActiveFilter
                     ? AppPalette.brandGreen
                     : AppPalette.textSecondary(brightness),
@@ -561,7 +585,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
               ),
               child: Icon(
                 _isGridView ? Icons.grid_view_rounded : Icons.view_list_rounded,
-                size: 28,
+                size: 24,
                 color: AppPalette.textSecondary(brightness),
               ),
             ),

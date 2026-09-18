@@ -21,9 +21,9 @@ class SystemDefaults {
 
   const SystemDefaults({
     this.cooldownDays = 14,
-    this.chickenCooldownDays = 7,
-    this.beefCooldownDays = 10,
-    this.fishCooldownDays = 5,
+    this.chickenCooldownDays = 2,
+    this.beefCooldownDays = 2,
+    this.fishCooldownDays = 4,
     this.meatlessCooldownDays = 0,
     this.notificationHour = 12,
     this.notificationMinute = 0,
@@ -34,9 +34,9 @@ class SystemDefaults {
   factory SystemDefaults.fromMap(Map<String, dynamic> map) {
     return SystemDefaults(
       cooldownDays: (map['cooldownDays'] as num?)?.toInt() ?? 14,
-      chickenCooldownDays: (map['chickenCooldownDays'] as num?)?.toInt() ?? 7,
-      beefCooldownDays: (map['beefCooldownDays'] as num?)?.toInt() ?? 10,
-      fishCooldownDays: (map['fishCooldownDays'] as num?)?.toInt() ?? 5,
+      chickenCooldownDays: (map['chickenCooldownDays'] as num?)?.toInt() ?? 2,
+      beefCooldownDays: (map['beefCooldownDays'] as num?)?.toInt() ?? 2,
+      fishCooldownDays: (map['fishCooldownDays'] as num?)?.toInt() ?? 4,
       meatlessCooldownDays: (map['meatlessCooldownDays'] as num?)?.toInt() ?? 0,
       notificationHour: (map['notificationHour'] as num?)?.toInt() ?? 12,
       notificationMinute: (map['notificationMinute'] as num?)?.toInt() ?? 0,
@@ -76,6 +76,7 @@ class AppConfigSyncService {
     // Initial sync attempt (asynchronous & non-blocking)
     syncWithFirebase(db: db).catchError((e) {
       debugPrint('[AppConfigSyncService] Initial sync error (offline): $e');
+      return const SystemDefaults();
     });
 
     // Listen for transitions to online
@@ -84,6 +85,7 @@ class AppConfigSyncService {
       if (hasInterface) {
         syncWithFirebase(db: db).catchError((e) {
           debugPrint('[AppConfigSyncService] Background sync error: $e');
+          return const SystemDefaults();
         });
       }
     });
@@ -179,16 +181,16 @@ class AppConfigSyncService {
       final prefs = await SharedPreferences.getInstance();
       return SystemDefaults(
         cooldownDays: prefs.getInt('cfg_cooldown_days') ?? 14,
-        chickenCooldownDays: prefs.getInt('cfg_chicken_cooldown_days') ?? 7,
-        beefCooldownDays: prefs.getInt('cfg_beef_cooldown_days') ?? 10,
-        fishCooldownDays: prefs.getInt('cfg_fish_cooldown_days') ?? 5,
+        chickenCooldownDays: prefs.getInt('cfg_chicken_cooldown_days') ?? 2,
+        beefCooldownDays: prefs.getInt('cfg_beef_cooldown_days') ?? 2,
+        fishCooldownDays: prefs.getInt('cfg_fish_cooldown_days') ?? 4,
         meatlessCooldownDays: prefs.getInt('cfg_meatless_cooldown_days') ?? 0,
         notificationHour: prefs.getInt('cfg_notification_hour') ?? 12,
         notificationMinute: prefs.getInt('cfg_notification_minute') ?? 0,
         minAppVersion: prefs.getString('cfg_min_app_version'),
         announcement: prefs.getString('cfg_announcement'),
       );
-    } catch (_) {
+    } catch (e) {
       return const SystemDefaults();
     }
   }

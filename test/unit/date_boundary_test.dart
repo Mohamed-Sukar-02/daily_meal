@@ -1,4 +1,4 @@
-﻿import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:daily_meal/core/utils/app_date_utils.dart' as app_date_utils;
 import 'package:daily_meal/features/home/domain/cooldown_engine.dart';
 import 'package:daily_meal/core/database/app_database.dart';
@@ -83,6 +83,8 @@ void main() {
           themeMode: AppThemeModePreference.system,
           language: AppLanguagePreference.ar,
           isFirstRun: false,
+          recommendationSource: RecommendationSource.vault_only,
+          autoFridayFeastFilter: false,
         );
       }
 

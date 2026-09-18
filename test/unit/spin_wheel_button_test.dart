@@ -62,4 +62,31 @@ void main() {
     // Disabled should not trigger tap callback
     expect(tapped, isFalse);
   });
+
+  testWidgets('EmphasisMarks have fixed outward orientation in both Arabic and English', (tester) async {
+    for (final locale in [const Locale('ar'), const Locale('en')]) {
+      await tester.pumpWidget(
+        buildTestWidget(
+          locale: locale,
+          child: const SpinWheelButton(enabled: true),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final positionedWidgets = tester.widgetList<Positioned>(find.byType(Positioned));
+      final leftSparkPos = positionedWidgets.firstWhere((p) => p.left == 8);
+      final rightSparkPos = positionedWidgets.firstWhere((p) => p.right == 8);
+
+      expect(leftSparkPos, isNotNull);
+      expect(rightSparkPos, isNotNull);
+
+      final leftChild = leftSparkPos.child as dynamic;
+      final rightChild = rightSparkPos.child as dynamic;
+
+      // Left spark must not be mirrored (bursts to the left)
+      expect(leftChild.mirrored, isFalse);
+      // Right spark must be mirrored (bursts to the right)
+      expect(rightChild.mirrored, isTrue);
+    }
+  });
 }

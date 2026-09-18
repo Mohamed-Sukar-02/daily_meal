@@ -308,6 +308,7 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
     return AnimatedSize(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOutCubic,
+      alignment: AlignmentDirectional.centerEnd,
       child: AnimatedSwitcher(
         duration: const Duration(milliseconds: 250),
         child: !isExplore
@@ -329,7 +330,7 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
               )
             : Container(
                 key: const ValueKey('vault_explore_count'),
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: AppPalette.card(brightness),
                   borderRadius: BorderRadius.circular(16),
@@ -355,9 +356,8 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                     }
                     final newCount = cloudCount - sharedCount;
 
-                    return Column(
+                    return Row(
                       mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           strings.vaultCloudCount(cloudCount),
@@ -367,7 +367,12 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                             color: AppPalette.textPrimary(brightness),
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        Container(
+                          height: 12,
+                          width: 1,
+                          margin: const EdgeInsets.symmetric(horizontal: 8),
+                          color: AppPalette.hairline(brightness),
+                        ),
                         Text(
                           strings.vaultSharedCount(sharedCount),
                           style: TextStyle(
@@ -376,12 +381,17 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                             color: AppPalette.textSecondary(brightness),
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        Container(
+                          height: 12,
+                          width: 1,
+                          margin: const EdgeInsets.symmetric(horizontal: 8),
+                          color: AppPalette.hairline(brightness),
+                        ),
                         Text(
                           strings.vaultNewCount(newCount),
                           style: TextStyle(
                             fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w800,
                             color: AppPalette.brandGreen,
                           ),
                         ),
@@ -390,8 +400,14 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                   },
                   loading: () => const SizedBox(
                     width: 60,
-                    height: 60,
-                    child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    height: 20,
+                    child: Center(
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
                   ),
                   error: (_, __) => const SizedBox.shrink(),
                 ),
@@ -438,14 +454,24 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
             key: const Key('vault_grid_view'),
             controller: _gridController,
             slivers: [
-              // 1. Header — Scrolls away
-              SliverToBoxAdapter(
-                child: _buildVaultHeaderWidget(
-                  context,
-                  strings,
-                  brightness,
-                  totalCount,
-                  localMeals,
+              // 1. Header — Quick Return
+              SliverAppBar(
+                floating: true,
+                pinned: false,
+                snap: true,
+                automaticallyImplyLeading: false,
+                backgroundColor: AppPalette.background(brightness),
+                surfaceTintColor: Colors.transparent,
+                elevation: 0,
+                toolbarHeight: 85,
+                flexibleSpace: FlexibleSpaceBar(
+                  background: _buildVaultHeaderWidget(
+                    context,
+                    strings,
+                    brightness,
+                    totalCount,
+                    localMeals,
+                  ),
                 ),
               ),
 
@@ -703,7 +729,7 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
               ),
               child: Icon(
                 Icons.tune_rounded,
-                size: 28,
+                size: 24,
                 color: isExpanded || hasActiveFilter
                     ? AppPalette.brandGreen
                     : AppPalette.textSecondary(brightness),
@@ -796,7 +822,7 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
               ),
               child: Icon(
                 _isGridView ? Icons.grid_view_rounded : Icons.view_list_rounded,
-                size: 28,
+                size: 24,
                 color: AppPalette.textSecondary(brightness),
               ),
             ),

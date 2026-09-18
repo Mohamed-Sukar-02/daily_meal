@@ -174,6 +174,25 @@ class $MealsTable extends Meals with TableInfo<$MealsTable, Meal> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _customCooldownDaysMeta =
+      const VerificationMeta('customCooldownDays');
+  @override
+  late final GeneratedColumn<int> customCooldownDays = GeneratedColumn<int>(
+    'custom_cooldown_days',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -190,6 +209,8 @@ class $MealsTable extends Meals with TableInfo<$MealsTable, Meal> {
     createdAt,
     updatedAt,
     cloudId,
+    customCooldownDays,
+    notes,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -279,6 +300,21 @@ class $MealsTable extends Meals with TableInfo<$MealsTable, Meal> {
         cloudId.isAcceptableOrUnknown(data['cloud_id']!, _cloudIdMeta),
       );
     }
+    if (data.containsKey('custom_cooldown_days')) {
+      context.handle(
+        _customCooldownDaysMeta,
+        customCooldownDays.isAcceptableOrUnknown(
+          data['custom_cooldown_days']!,
+          _customCooldownDaysMeta,
+        ),
+      );
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
     return context;
   }
 
@@ -350,6 +386,14 @@ class $MealsTable extends Meals with TableInfo<$MealsTable, Meal> {
         DriftSqlType.string,
         data['${effectivePrefix}cloud_id'],
       ),
+      customCooldownDays: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}custom_cooldown_days'],
+      ),
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
     );
   }
 
@@ -381,6 +425,8 @@ class Meal extends DataClass implements Insertable<Meal> {
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? cloudId;
+  final int? customCooldownDays;
+  final String? notes;
   const Meal({
     required this.id,
     required this.name,
@@ -396,6 +442,8 @@ class Meal extends DataClass implements Insertable<Meal> {
     required this.createdAt,
     required this.updatedAt,
     this.cloudId,
+    this.customCooldownDays,
+    this.notes,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -432,6 +480,12 @@ class Meal extends DataClass implements Insertable<Meal> {
     if (!nullToAbsent || cloudId != null) {
       map['cloud_id'] = Variable<String>(cloudId);
     }
+    if (!nullToAbsent || customCooldownDays != null) {
+      map['custom_cooldown_days'] = Variable<int>(customCooldownDays);
+    }
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
     return map;
   }
 
@@ -457,6 +511,12 @@ class Meal extends DataClass implements Insertable<Meal> {
       cloudId: cloudId == null && nullToAbsent
           ? const Value.absent()
           : Value(cloudId),
+      customCooldownDays: customCooldownDays == null && nullToAbsent
+          ? const Value.absent()
+          : Value(customCooldownDays),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
     );
   }
 
@@ -486,6 +546,8 @@ class Meal extends DataClass implements Insertable<Meal> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       cloudId: serializer.fromJson<String?>(json['cloudId']),
+      customCooldownDays: serializer.fromJson<int?>(json['customCooldownDays']),
+      notes: serializer.fromJson<String?>(json['notes']),
     );
   }
   @override
@@ -512,6 +574,8 @@ class Meal extends DataClass implements Insertable<Meal> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'cloudId': serializer.toJson<String?>(cloudId),
+      'customCooldownDays': serializer.toJson<int?>(customCooldownDays),
+      'notes': serializer.toJson<String?>(notes),
     };
   }
 
@@ -530,6 +594,8 @@ class Meal extends DataClass implements Insertable<Meal> {
     DateTime? createdAt,
     DateTime? updatedAt,
     Value<String?> cloudId = const Value.absent(),
+    Value<int?> customCooldownDays = const Value.absent(),
+    Value<String?> notes = const Value.absent(),
   }) => Meal(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -547,6 +613,10 @@ class Meal extends DataClass implements Insertable<Meal> {
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     cloudId: cloudId.present ? cloudId.value : this.cloudId,
+    customCooldownDays: customCooldownDays.present
+        ? customCooldownDays.value
+        : this.customCooldownDays,
+    notes: notes.present ? notes.value : this.notes,
   );
   Meal copyWithCompanion(MealsCompanion data) {
     return Meal(
@@ -574,6 +644,10 @@ class Meal extends DataClass implements Insertable<Meal> {
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       cloudId: data.cloudId.present ? data.cloudId.value : this.cloudId,
+      customCooldownDays: data.customCooldownDays.present
+          ? data.customCooldownDays.value
+          : this.customCooldownDays,
+      notes: data.notes.present ? data.notes.value : this.notes,
     );
   }
 
@@ -593,7 +667,9 @@ class Meal extends DataClass implements Insertable<Meal> {
           ..write('isFavorite: $isFavorite, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('cloudId: $cloudId')
+          ..write('cloudId: $cloudId, ')
+          ..write('customCooldownDays: $customCooldownDays, ')
+          ..write('notes: $notes')
           ..write(')'))
         .toString();
   }
@@ -614,6 +690,8 @@ class Meal extends DataClass implements Insertable<Meal> {
     createdAt,
     updatedAt,
     cloudId,
+    customCooldownDays,
+    notes,
   );
   @override
   bool operator ==(Object other) =>
@@ -632,7 +710,9 @@ class Meal extends DataClass implements Insertable<Meal> {
           other.isFavorite == this.isFavorite &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
-          other.cloudId == this.cloudId);
+          other.cloudId == this.cloudId &&
+          other.customCooldownDays == this.customCooldownDays &&
+          other.notes == this.notes);
 }
 
 class MealsCompanion extends UpdateCompanion<Meal> {
@@ -650,6 +730,8 @@ class MealsCompanion extends UpdateCompanion<Meal> {
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<String?> cloudId;
+  final Value<int?> customCooldownDays;
+  final Value<String?> notes;
   const MealsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -665,6 +747,8 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.cloudId = const Value.absent(),
+    this.customCooldownDays = const Value.absent(),
+    this.notes = const Value.absent(),
   });
   MealsCompanion.insert({
     this.id = const Value.absent(),
@@ -681,6 +765,8 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.cloudId = const Value.absent(),
+    this.customCooldownDays = const Value.absent(),
+    this.notes = const Value.absent(),
   }) : name = Value(name),
        proteinType = Value(proteinType),
        carbsType = Value(carbsType),
@@ -701,6 +787,8 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<String>? cloudId,
+    Expression<int>? customCooldownDays,
+    Expression<String>? notes,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -717,6 +805,9 @@ class MealsCompanion extends UpdateCompanion<Meal> {
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (cloudId != null) 'cloud_id': cloudId,
+      if (customCooldownDays != null)
+        'custom_cooldown_days': customCooldownDays,
+      if (notes != null) 'notes': notes,
     });
   }
 
@@ -735,6 +826,8 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<String?>? cloudId,
+    Value<int?>? customCooldownDays,
+    Value<String?>? notes,
   }) {
     return MealsCompanion(
       id: id ?? this.id,
@@ -751,6 +844,8 @@ class MealsCompanion extends UpdateCompanion<Meal> {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       cloudId: cloudId ?? this.cloudId,
+      customCooldownDays: customCooldownDays ?? this.customCooldownDays,
+      notes: notes ?? this.notes,
     );
   }
 
@@ -805,6 +900,12 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     if (cloudId.present) {
       map['cloud_id'] = Variable<String>(cloudId.value);
     }
+    if (customCooldownDays.present) {
+      map['custom_cooldown_days'] = Variable<int>(customCooldownDays.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
     return map;
   }
 
@@ -824,7 +925,9 @@ class MealsCompanion extends UpdateCompanion<Meal> {
           ..write('isFavorite: $isFavorite, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('cloudId: $cloudId')
+          ..write('cloudId: $cloudId, ')
+          ..write('customCooldownDays: $customCooldownDays, ')
+          ..write('notes: $notes')
           ..write(')'))
         .toString();
   }
@@ -1433,7 +1536,7 @@ class $AppSettingsTable extends AppSettings
     false,
     type: DriftSqlType.int,
     requiredDuringInsert: false,
-    defaultValue: const Constant(7),
+    defaultValue: const Constant(2),
   );
   static const VerificationMeta _beefCooldownDaysMeta = const VerificationMeta(
     'beefCooldownDays',
@@ -1445,7 +1548,7 @@ class $AppSettingsTable extends AppSettings
     false,
     type: DriftSqlType.int,
     requiredDuringInsert: false,
-    defaultValue: const Constant(10),
+    defaultValue: const Constant(2),
   );
   static const VerificationMeta _fishCooldownDaysMeta = const VerificationMeta(
     'fishCooldownDays',
@@ -1457,7 +1560,7 @@ class $AppSettingsTable extends AppSettings
     false,
     type: DriftSqlType.int,
     requiredDuringInsert: false,
-    defaultValue: const Constant(5),
+    defaultValue: const Constant(4),
   );
   static const VerificationMeta _meatlessCooldownDaysMeta =
       const VerificationMeta('meatlessCooldownDays');
@@ -1468,7 +1571,7 @@ class $AppSettingsTable extends AppSettings
     false,
     type: DriftSqlType.int,
     requiredDuringInsert: false,
-    defaultValue: const Constant(0),
+    defaultValue: const Constant(1),
   );
   static const VerificationMeta _notificationHourMeta = const VerificationMeta(
     'notificationHour',
@@ -1545,6 +1648,34 @@ class $AppSettingsTable extends AppSettings
     ),
     defaultValue: const Constant(true),
   );
+  @override
+  late final GeneratedColumnWithTypeConverter<RecommendationSource, String>
+  recommendationSource =
+      GeneratedColumn<String>(
+        'recommendation_source',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('vault_only'),
+      ).withConverter<RecommendationSource>(
+        $AppSettingsTable.$converterrecommendationSource,
+      );
+  static const VerificationMeta _autoFridayFeastFilterMeta =
+      const VerificationMeta('autoFridayFeastFilter');
+  @override
+  late final GeneratedColumn<bool> autoFridayFeastFilter =
+      GeneratedColumn<bool>(
+        'auto_friday_feast_filter',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("auto_friday_feast_filter" IN (0, 1))',
+        ),
+        defaultValue: const Constant(false),
+      );
   static const VerificationMeta _userNameMeta = const VerificationMeta(
     'userName',
   );
@@ -1603,6 +1734,8 @@ class $AppSettingsTable extends AppSettings
     themeMode,
     language,
     isFirstRun,
+    recommendationSource,
+    autoFridayFeastFilter,
     userName,
     userEmail,
     userGender,
@@ -1704,6 +1837,15 @@ class $AppSettingsTable extends AppSettings
         ),
       );
     }
+    if (data.containsKey('auto_friday_feast_filter')) {
+      context.handle(
+        _autoFridayFeastFilterMeta,
+        autoFridayFeastFilter.isAcceptableOrUnknown(
+          data['auto_friday_feast_filter']!,
+          _autoFridayFeastFilterMeta,
+        ),
+      );
+    }
     if (data.containsKey('user_name')) {
       context.handle(
         _userNameMeta,
@@ -1789,6 +1931,17 @@ class $AppSettingsTable extends AppSettings
         DriftSqlType.bool,
         data['${effectivePrefix}is_first_run'],
       )!,
+      recommendationSource: $AppSettingsTable.$converterrecommendationSource
+          .fromSql(
+            attachedDatabase.typeMapping.read(
+              DriftSqlType.string,
+              data['${effectivePrefix}recommendation_source'],
+            )!,
+          ),
+      autoFridayFeastFilter: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}auto_friday_feast_filter'],
+      )!,
       userName: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}user_name'],
@@ -1821,6 +1974,11 @@ class $AppSettingsTable extends AppSettings
   $converterlanguage = const EnumNameConverter<AppLanguagePreference>(
     AppLanguagePreference.values,
   );
+  static JsonTypeConverter2<RecommendationSource, String, String>
+  $converterrecommendationSource =
+      const EnumNameConverter<RecommendationSource>(
+        RecommendationSource.values,
+      );
 }
 
 class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
@@ -1836,6 +1994,8 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
   final AppThemeModePreference themeMode;
   final AppLanguagePreference language;
   final bool isFirstRun;
+  final RecommendationSource recommendationSource;
+  final bool autoFridayFeastFilter;
   final String? userName;
   final String? userEmail;
   final String? userGender;
@@ -1853,6 +2013,8 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
     required this.themeMode,
     required this.language,
     required this.isFirstRun,
+    required this.recommendationSource,
+    required this.autoFridayFeastFilter,
     this.userName,
     this.userEmail,
     this.userGender,
@@ -1881,6 +2043,14 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
       );
     }
     map['is_first_run'] = Variable<bool>(isFirstRun);
+    {
+      map['recommendation_source'] = Variable<String>(
+        $AppSettingsTable.$converterrecommendationSource.toSql(
+          recommendationSource,
+        ),
+      );
+    }
+    map['auto_friday_feast_filter'] = Variable<bool>(autoFridayFeastFilter);
     if (!nullToAbsent || userName != null) {
       map['user_name'] = Variable<String>(userName);
     }
@@ -1910,6 +2080,8 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
       themeMode: Value(themeMode),
       language: Value(language),
       isFirstRun: Value(isFirstRun),
+      recommendationSource: Value(recommendationSource),
+      autoFridayFeastFilter: Value(autoFridayFeastFilter),
       userName: userName == null && nullToAbsent
           ? const Value.absent()
           : Value(userName),
@@ -1953,6 +2125,11 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
         serializer.fromJson<String>(json['language']),
       ),
       isFirstRun: serializer.fromJson<bool>(json['isFirstRun']),
+      recommendationSource: $AppSettingsTable.$converterrecommendationSource
+          .fromJson(serializer.fromJson<String>(json['recommendationSource'])),
+      autoFridayFeastFilter: serializer.fromJson<bool>(
+        json['autoFridayFeastFilter'],
+      ),
       userName: serializer.fromJson<String?>(json['userName']),
       userEmail: serializer.fromJson<String?>(json['userEmail']),
       userGender: serializer.fromJson<String?>(json['userGender']),
@@ -1979,6 +2156,12 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
         $AppSettingsTable.$converterlanguage.toJson(language),
       ),
       'isFirstRun': serializer.toJson<bool>(isFirstRun),
+      'recommendationSource': serializer.toJson<String>(
+        $AppSettingsTable.$converterrecommendationSource.toJson(
+          recommendationSource,
+        ),
+      ),
+      'autoFridayFeastFilter': serializer.toJson<bool>(autoFridayFeastFilter),
       'userName': serializer.toJson<String?>(userName),
       'userEmail': serializer.toJson<String?>(userEmail),
       'userGender': serializer.toJson<String?>(userGender),
@@ -1999,6 +2182,8 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
     AppThemeModePreference? themeMode,
     AppLanguagePreference? language,
     bool? isFirstRun,
+    RecommendationSource? recommendationSource,
+    bool? autoFridayFeastFilter,
     Value<String?> userName = const Value.absent(),
     Value<String?> userEmail = const Value.absent(),
     Value<String?> userGender = const Value.absent(),
@@ -2016,6 +2201,8 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
     themeMode: themeMode ?? this.themeMode,
     language: language ?? this.language,
     isFirstRun: isFirstRun ?? this.isFirstRun,
+    recommendationSource: recommendationSource ?? this.recommendationSource,
+    autoFridayFeastFilter: autoFridayFeastFilter ?? this.autoFridayFeastFilter,
     userName: userName.present ? userName.value : this.userName,
     userEmail: userEmail.present ? userEmail.value : this.userEmail,
     userGender: userGender.present ? userGender.value : this.userGender,
@@ -2053,6 +2240,12 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
       isFirstRun: data.isFirstRun.present
           ? data.isFirstRun.value
           : this.isFirstRun,
+      recommendationSource: data.recommendationSource.present
+          ? data.recommendationSource.value
+          : this.recommendationSource,
+      autoFridayFeastFilter: data.autoFridayFeastFilter.present
+          ? data.autoFridayFeastFilter.value
+          : this.autoFridayFeastFilter,
       userName: data.userName.present ? data.userName.value : this.userName,
       userEmail: data.userEmail.present ? data.userEmail.value : this.userEmail,
       userGender: data.userGender.present
@@ -2079,6 +2272,8 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
           ..write('themeMode: $themeMode, ')
           ..write('language: $language, ')
           ..write('isFirstRun: $isFirstRun, ')
+          ..write('recommendationSource: $recommendationSource, ')
+          ..write('autoFridayFeastFilter: $autoFridayFeastFilter, ')
           ..write('userName: $userName, ')
           ..write('userEmail: $userEmail, ')
           ..write('userGender: $userGender, ')
@@ -2101,6 +2296,8 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
     themeMode,
     language,
     isFirstRun,
+    recommendationSource,
+    autoFridayFeastFilter,
     userName,
     userEmail,
     userGender,
@@ -2122,6 +2319,8 @@ class AppSettingsData extends DataClass implements Insertable<AppSettingsData> {
           other.themeMode == this.themeMode &&
           other.language == this.language &&
           other.isFirstRun == this.isFirstRun &&
+          other.recommendationSource == this.recommendationSource &&
+          other.autoFridayFeastFilter == this.autoFridayFeastFilter &&
           other.userName == this.userName &&
           other.userEmail == this.userEmail &&
           other.userGender == this.userGender &&
@@ -2141,6 +2340,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsData> {
   final Value<AppThemeModePreference> themeMode;
   final Value<AppLanguagePreference> language;
   final Value<bool> isFirstRun;
+  final Value<RecommendationSource> recommendationSource;
+  final Value<bool> autoFridayFeastFilter;
   final Value<String?> userName;
   final Value<String?> userEmail;
   final Value<String?> userGender;
@@ -2158,6 +2359,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsData> {
     this.themeMode = const Value.absent(),
     this.language = const Value.absent(),
     this.isFirstRun = const Value.absent(),
+    this.recommendationSource = const Value.absent(),
+    this.autoFridayFeastFilter = const Value.absent(),
     this.userName = const Value.absent(),
     this.userEmail = const Value.absent(),
     this.userGender = const Value.absent(),
@@ -2176,6 +2379,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsData> {
     this.themeMode = const Value.absent(),
     this.language = const Value.absent(),
     this.isFirstRun = const Value.absent(),
+    this.recommendationSource = const Value.absent(),
+    this.autoFridayFeastFilter = const Value.absent(),
     this.userName = const Value.absent(),
     this.userEmail = const Value.absent(),
     this.userGender = const Value.absent(),
@@ -2194,6 +2399,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsData> {
     Expression<String>? themeMode,
     Expression<String>? language,
     Expression<bool>? isFirstRun,
+    Expression<String>? recommendationSource,
+    Expression<bool>? autoFridayFeastFilter,
     Expression<String>? userName,
     Expression<String>? userEmail,
     Expression<String>? userGender,
@@ -2215,6 +2422,10 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsData> {
       if (themeMode != null) 'theme_mode': themeMode,
       if (language != null) 'language': language,
       if (isFirstRun != null) 'is_first_run': isFirstRun,
+      if (recommendationSource != null)
+        'recommendation_source': recommendationSource,
+      if (autoFridayFeastFilter != null)
+        'auto_friday_feast_filter': autoFridayFeastFilter,
       if (userName != null) 'user_name': userName,
       if (userEmail != null) 'user_email': userEmail,
       if (userGender != null) 'user_gender': userGender,
@@ -2235,6 +2446,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsData> {
     Value<AppThemeModePreference>? themeMode,
     Value<AppLanguagePreference>? language,
     Value<bool>? isFirstRun,
+    Value<RecommendationSource>? recommendationSource,
+    Value<bool>? autoFridayFeastFilter,
     Value<String?>? userName,
     Value<String?>? userEmail,
     Value<String?>? userGender,
@@ -2253,6 +2466,9 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsData> {
       themeMode: themeMode ?? this.themeMode,
       language: language ?? this.language,
       isFirstRun: isFirstRun ?? this.isFirstRun,
+      recommendationSource: recommendationSource ?? this.recommendationSource,
+      autoFridayFeastFilter:
+          autoFridayFeastFilter ?? this.autoFridayFeastFilter,
       userName: userName ?? this.userName,
       userEmail: userEmail ?? this.userEmail,
       userGender: userGender ?? this.userGender,
@@ -2303,6 +2519,18 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsData> {
     if (isFirstRun.present) {
       map['is_first_run'] = Variable<bool>(isFirstRun.value);
     }
+    if (recommendationSource.present) {
+      map['recommendation_source'] = Variable<String>(
+        $AppSettingsTable.$converterrecommendationSource.toSql(
+          recommendationSource.value,
+        ),
+      );
+    }
+    if (autoFridayFeastFilter.present) {
+      map['auto_friday_feast_filter'] = Variable<bool>(
+        autoFridayFeastFilter.value,
+      );
+    }
     if (userName.present) {
       map['user_name'] = Variable<String>(userName.value);
     }
@@ -2333,6 +2561,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsData> {
           ..write('themeMode: $themeMode, ')
           ..write('language: $language, ')
           ..write('isFirstRun: $isFirstRun, ')
+          ..write('recommendationSource: $recommendationSource, ')
+          ..write('autoFridayFeastFilter: $autoFridayFeastFilter, ')
           ..write('userName: $userName, ')
           ..write('userEmail: $userEmail, ')
           ..write('userGender: $userGender, ')
@@ -2395,6 +2625,8 @@ typedef $$MealsTableCreateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<String?> cloudId,
+      Value<int?> customCooldownDays,
+      Value<String?> notes,
     });
 typedef $$MealsTableUpdateCompanionBuilder =
     MealsCompanion Function({
@@ -2412,6 +2644,8 @@ typedef $$MealsTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<String?> cloudId,
+      Value<int?> customCooldownDays,
+      Value<String?> notes,
     });
 
 final class $$MealsTableReferences
@@ -2515,6 +2749,16 @@ class $$MealsTableFilterComposer extends Composer<_$AppDatabase, $MealsTable> {
 
   ColumnFilters<String> get cloudId => $composableBuilder(
     column: $table.cloudId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get customCooldownDays => $composableBuilder(
+    column: $table.customCooldownDays,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2622,6 +2866,16 @@ class $$MealsTableOrderingComposer
     column: $table.cloudId,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get customCooldownDays => $composableBuilder(
+    column: $table.customCooldownDays,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$MealsTableAnnotationComposer
@@ -2685,6 +2939,14 @@ class $$MealsTableAnnotationComposer
 
   GeneratedColumn<String> get cloudId =>
       $composableBuilder(column: $table.cloudId, builder: (column) => column);
+
+  GeneratedColumn<int> get customCooldownDays => $composableBuilder(
+    column: $table.customCooldownDays,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
 
   Expression<T> mealHistoryRefs<T extends Object>(
     Expression<T> Function($$MealHistoryTableAnnotationComposer a) f,
@@ -2754,6 +3016,8 @@ class $$MealsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<String?> cloudId = const Value.absent(),
+                Value<int?> customCooldownDays = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
               }) => MealsCompanion(
                 id: id,
                 name: name,
@@ -2769,6 +3033,8 @@ class $$MealsTableTableManager
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 cloudId: cloudId,
+                customCooldownDays: customCooldownDays,
+                notes: notes,
               ),
           createCompanionCallback:
               ({
@@ -2786,6 +3052,8 @@ class $$MealsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<String?> cloudId = const Value.absent(),
+                Value<int?> customCooldownDays = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
               }) => MealsCompanion.insert(
                 id: id,
                 name: name,
@@ -2801,6 +3069,8 @@ class $$MealsTableTableManager
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 cloudId: cloudId,
+                customCooldownDays: customCooldownDays,
+                notes: notes,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -3260,6 +3530,8 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<AppThemeModePreference> themeMode,
       Value<AppLanguagePreference> language,
       Value<bool> isFirstRun,
+      Value<RecommendationSource> recommendationSource,
+      Value<bool> autoFridayFeastFilter,
       Value<String?> userName,
       Value<String?> userEmail,
       Value<String?> userGender,
@@ -3279,6 +3551,8 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<AppThemeModePreference> themeMode,
       Value<AppLanguagePreference> language,
       Value<bool> isFirstRun,
+      Value<RecommendationSource> recommendationSource,
+      Value<bool> autoFridayFeastFilter,
       Value<String?> userName,
       Value<String?> userEmail,
       Value<String?> userGender,
@@ -3361,6 +3635,21 @@ class $$AppSettingsTableFilterComposer
 
   ColumnFilters<bool> get isFirstRun => $composableBuilder(
     column: $table.isFirstRun,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<
+    RecommendationSource,
+    RecommendationSource,
+    String
+  >
+  get recommendationSource => $composableBuilder(
+    column: $table.recommendationSource,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<bool> get autoFridayFeastFilter => $composableBuilder(
+    column: $table.autoFridayFeastFilter,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3454,6 +3743,16 @@ class $$AppSettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get recommendationSource => $composableBuilder(
+    column: $table.recommendationSource,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get autoFridayFeastFilter => $composableBuilder(
+    column: $table.autoFridayFeastFilter,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get userName => $composableBuilder(
     column: $table.userName,
     builder: (column) => ColumnOrderings(column),
@@ -3540,6 +3839,17 @@ class $$AppSettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumnWithTypeConverter<RecommendationSource, String>
+  get recommendationSource => $composableBuilder(
+    column: $table.recommendationSource,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get autoFridayFeastFilter => $composableBuilder(
+    column: $table.autoFridayFeastFilter,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get userName =>
       $composableBuilder(column: $table.userName, builder: (column) => column);
 
@@ -3600,6 +3910,9 @@ class $$AppSettingsTableTableManager
                 Value<AppThemeModePreference> themeMode = const Value.absent(),
                 Value<AppLanguagePreference> language = const Value.absent(),
                 Value<bool> isFirstRun = const Value.absent(),
+                Value<RecommendationSource> recommendationSource =
+                    const Value.absent(),
+                Value<bool> autoFridayFeastFilter = const Value.absent(),
                 Value<String?> userName = const Value.absent(),
                 Value<String?> userEmail = const Value.absent(),
                 Value<String?> userGender = const Value.absent(),
@@ -3617,6 +3930,8 @@ class $$AppSettingsTableTableManager
                 themeMode: themeMode,
                 language: language,
                 isFirstRun: isFirstRun,
+                recommendationSource: recommendationSource,
+                autoFridayFeastFilter: autoFridayFeastFilter,
                 userName: userName,
                 userEmail: userEmail,
                 userGender: userGender,
@@ -3636,6 +3951,9 @@ class $$AppSettingsTableTableManager
                 Value<AppThemeModePreference> themeMode = const Value.absent(),
                 Value<AppLanguagePreference> language = const Value.absent(),
                 Value<bool> isFirstRun = const Value.absent(),
+                Value<RecommendationSource> recommendationSource =
+                    const Value.absent(),
+                Value<bool> autoFridayFeastFilter = const Value.absent(),
                 Value<String?> userName = const Value.absent(),
                 Value<String?> userEmail = const Value.absent(),
                 Value<String?> userGender = const Value.absent(),
@@ -3653,6 +3971,8 @@ class $$AppSettingsTableTableManager
                 themeMode: themeMode,
                 language: language,
                 isFirstRun: isFirstRun,
+                recommendationSource: recommendationSource,
+                autoFridayFeastFilter: autoFridayFeastFilter,
                 userName: userName,
                 userEmail: userEmail,
                 userGender: userGender,

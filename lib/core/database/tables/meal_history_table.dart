@@ -7,6 +7,8 @@ import 'meals_table.dart';
 enum MealEntryType {
   cooked, // طبخة جديدة
   leftover, // بواقي أكل
+  takeout, // تيك أواي
+  skipped, // سكيب (أكلنا بره أو مش هنتغدى)
 }
 
 class MealHistory extends Table {

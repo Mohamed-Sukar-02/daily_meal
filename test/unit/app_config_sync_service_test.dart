@@ -13,9 +13,9 @@ void main() {
     test('default values match expected application baselines', () {
       const defaults = SystemDefaults();
       expect(defaults.cooldownDays, 14);
-      expect(defaults.chickenCooldownDays, 7);
-      expect(defaults.beefCooldownDays, 10);
-      expect(defaults.fishCooldownDays, 5);
+      expect(defaults.chickenCooldownDays, 2);
+      expect(defaults.beefCooldownDays, 2);
+      expect(defaults.fishCooldownDays, 4);
       expect(defaults.meatlessCooldownDays, 0);
       expect(defaults.notificationHour, 12);
       expect(defaults.notificationMinute, 0);
@@ -56,7 +56,7 @@ void main() {
 
       final parsed = SystemDefaults.fromMap(map);
       expect(parsed.cooldownDays, 14);
-      expect(parsed.chickenCooldownDays, 7);
+      expect(parsed.chickenCooldownDays, 2);
       expect(parsed.meatlessCooldownDays, 0);
     });
   });
@@ -65,14 +65,14 @@ void main() {
     test('getCachedDefaults returns fallback defaults when nothing cached', () async {
       final defaults = await AppConfigSyncService.instance.getCachedDefaults();
       expect(defaults.cooldownDays, 14);
-      expect(defaults.chickenCooldownDays, 7);
+      expect(defaults.chickenCooldownDays, 2);
       expect(defaults.meatlessCooldownDays, 0);
     });
 
     test('syncWithFirebase returns cached defaults safely during test/offline', () async {
       final result = await AppConfigSyncService.instance.syncWithFirebase();
       expect(result.cooldownDays, 14);
-      expect(result.chickenCooldownDays, 7);
+      expect(result.chickenCooldownDays, 2);
     });
   });
 }

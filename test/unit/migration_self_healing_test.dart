@@ -64,8 +64,8 @@ void main() {
       final settings = await appDb.appSettingsDao.getSettings();
       expect(settings.userName, 'Mohamed');
       expect(settings.cooldownDays, 21);
-      expect(settings.chickenCooldownDays, 7);
-      expect(settings.meatlessCooldownDays, 0);
+      expect(settings.chickenCooldownDays, 2); // Was 7, updated by self-healing
+      expect(settings.meatlessCooldownDays, 0); // Defaults to 0 (disabled)
 
       final mealsList = await appDb.mealsDao.getAllMeals();
       expect(mealsList.length, 1);
@@ -186,8 +186,8 @@ void main() {
     try {
       // beforeOpen self-heals the table columns!
       final settings = await appDb.appSettingsDao.getSettings();
-      expect(settings.chickenCooldownDays, 7);
-      expect(settings.fishCooldownDays, 5);
+      expect(settings.chickenCooldownDays, 2); // Was 7
+      expect(settings.fishCooldownDays, 4); // Was 5
 
       final mealsList = await appDb.mealsDao.getAllMeals();
       expect(mealsList.first.name, 'فول مدمس');
