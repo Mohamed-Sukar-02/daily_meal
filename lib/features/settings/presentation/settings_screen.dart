@@ -1081,6 +1081,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                 AppPalette.chipViolet(brightness),
                 strings.adminDashboardTitle,
                 () => _showAdminPasswordDialog(context, brightness, strings),
+                trailing: Icon(
+                  Icons.open_in_new_rounded,
+                  color: AppPalette.textSecondary(brightness),
+                  size: 19,
+                ),
               ),
               _divider(brightness),
               _linkRow(
@@ -1170,6 +1175,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     String title,
     VoidCallback onTap, {
     String? subtitle,
+    Widget? trailing,
   }) {
     return InkWell(
       onTap: onTap,
@@ -1232,11 +1238,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                     ),
             ),
             const SizedBox(width: 8),
-            AppIcon(
-              AppGlyph.chevron,
-              color: AppPalette.textSecondary(brightness),
-              size: 20,
-            ),
+            trailing ??
+                AppIcon(
+                  AppGlyph.chevron,
+                  color: AppPalette.textSecondary(brightness),
+                  size: 20,
+                ),
           ],
         ),
       ),
