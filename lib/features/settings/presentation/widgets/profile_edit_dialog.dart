@@ -7,6 +7,7 @@ import '../../../../core/services/avatar_service.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/widgets/app_icons.dart';
 import '../../../../core/widgets/app_toast.dart';
+import '../../../../core/widgets/discard_changes_dialog.dart';
 import '../../providers/settings_providers.dart';
 
 /// "Edit Profile" dialog.
@@ -42,6 +43,35 @@ class _ProfileEditDialogState extends ConsumerState<ProfileEditDialog> {
   String? _avatar;
   bool _saving = false;
 
+  // Effective initial values captured in [initState]. [hasUnsavedChanges]
+  // compares the current fields against them — the avatar snapshot accounts
+  // for the auto-correction done when the stored picture mismatches the
+  // stored gender (that correction is not a user edit).
+  String _initialName = '';
+  String _initialEmail = '';
+  String? _initialGender;
+  String? _initialAvatar;
+
+  /// `true` when any field differs from the original profile data.
+  bool get hasUnsavedChanges =>
+      _nameController.text.trim() != _initialName ||
+      _emailController.text.trim() != _initialEmail ||
+      _gender != _initialGender ||
+      _avatar != _initialAvatar;
+
+  /// Back button / cancel / barrier-tap exit path: when the form is dirty,
+  /// confirm the discard first; otherwise close immediately and silently.
+  Future<void> _requestClose() async {
+    if (!hasUnsavedChanges) {
+      Navigator.of(context).pop();
+      return;
+    }
+    final discard = await showDiscardChangesDialog(context);
+    if (discard == true && mounted) {
+      Navigator.of(context).pop();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -57,6 +87,12 @@ class _ProfileEditDialogState extends ConsumerState<ProfileEditDialog> {
           ? settings.userAvatar
           : AvatarService.randomAvatarForGender(_gender);
     }
+
+    // Snapshot the effective initial state for the unsaved-changes check.
+    _initialName = _nameController.text.trim();
+    _initialEmail = _emailController.text.trim();
+    _initialGender = _gender;
+    _initialAvatar = _avatar;
 
     // Warm the file-system cache so the grid paints instantly.
     Future.microtask(() async {
@@ -124,7 +160,14 @@ class _ProfileEditDialogState extends ConsumerState<ProfileEditDialog> {
     final genderChosen = UserGender.isValid(_gender);
     final avatars = AvatarService.avatarsForGender(_gender);
 
-    return AlertDialog(
+    return PopScope(
+      canPop: !hasUnsavedChanges,
+      onPopInvokedWithResult: (didPop, result) {
+        // canPop=false (dirty form) → ask before leaving; clean form pops
+        // straight through (didPop=true) without any dialog.
+        if (!didPop) _requestClose();
+      },
+      child: AlertDialog(
       title: Text(strings.editProfile),
       content: SingleChildScrollView(
         child: Column(
@@ -252,7 +295,7 @@ class _ProfileEditDialogState extends ConsumerState<ProfileEditDialog> {
       actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       actions: [
         TextButton(
-          onPressed: _saving ? null : () => Navigator.of(context).pop(),
+          onPressed: _saving ? null : _requestClose,
           child: Text(strings.cancel),
         ),
         FilledButton(
@@ -262,6 +305,7 @@ class _ProfileEditDialogState extends ConsumerState<ProfileEditDialog> {
           child: Text(strings.save),
         ),
       ],
+    ),
     );
   }
 }

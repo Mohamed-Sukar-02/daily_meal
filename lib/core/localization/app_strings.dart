@@ -57,6 +57,15 @@ class AppStrings {
   String errorGeneric(Object error) =>
       isEn ? 'An error occurred: $error' : 'حدث خطأ: $error';
 
+  // Unsaved changes confirmation (shared by all edit surfaces)
+  String get discardChangesTitle =>
+      isEn ? 'Discard changes?' : 'تجاهل التعديلات؟';
+  String get discardChangesMessage => isEn
+      ? 'You have unsaved changes. Are you sure you want to leave and discard your edits?'
+      : 'لديك تغييرات غير محفوظة، هل أنت متأكد من رغبتك في المغادرة وتجاهل ما قمت بتعديله؟';
+  String get keepEditing => isEn ? 'Keep Editing' : 'متابعة التعديل';
+  String get discardChanges => isEn ? 'Discard' : 'تجاهل التغييرات';
+
   String get today => isEn ? 'Today' : 'اليوم';
   String get yesterday => isEn ? 'Yesterday' : 'أمس';
   String get thisMonth => isEn ? 'This month' : 'هذا الشهر';
