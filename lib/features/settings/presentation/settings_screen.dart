@@ -55,7 +55,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   int get navBranchIndex => NavBranch.settings;
 
   @override
-  @override
   void resetTransientUi() {
     // A modal bottom sheet (e.g. CooldownDetailsSheet) or dialog pushed over
     // the settings page survives a tab switch — the branch navigator keeps
