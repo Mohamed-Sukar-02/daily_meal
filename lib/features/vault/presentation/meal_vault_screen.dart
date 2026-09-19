@@ -7,7 +7,9 @@ import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/app_icons.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_providers.dart';
+import '../../../core/providers/network_provider.dart';
 import '../../../core/services/app_config_sync_service.dart';
+import '../data/models/cloud_meal.dart';
 import '../providers/discovery_providers.dart';
 import '../providers/vault_providers.dart';
 import 'discovery_screen.dart';
@@ -335,42 +337,12 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  InkWell(
-                    onTap: () async {
-                      try {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(strings.isEn ? 'Syncing...' : 'جاري المزامنة...')));
-                        final db = ref.read(databaseProvider);
-                        await AppConfigSyncService.instance.manualSyncStarterMeals(db);
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(strings.isEn ? 'Synced successfully' : 'تمت المزامنة بنجاح')));
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(strings.isEn ? 'Sync failed' : 'فشلت المزامنة')));
-                        }
-                      }
-                    },
-                    borderRadius: BorderRadius.circular(8),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Image.asset('assets/icons/sync_icon.png', width: 16, height: 16, color: AppPalette.brandGreen),
-                          const SizedBox(width: 4),
-                          Text(
-                            strings.isEn ? 'Sync Defaults' : 'مزامنة الافتراضي',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: AppPalette.brandGreen,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  _buildSyncDefaultsIcon(
+                    context,
+                    brightness,
+                    strings,
+                    localMeals,
+                    publicMealsAsync,
                   ),
                 ],
               )
@@ -458,6 +430,130 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                   error: (_, __) => const SizedBox.shrink(),
                 ),
               ),
+      ),
+    );
+  }
+
+  /// The "sync default meals" icon under the local counter (My Vault only).
+  ///
+  /// Label-free by design (the old "Sync Defaults" text crowded the header
+  /// and broke the subtitle line) — the icon alone is the button, and its
+  /// color reflects the live sync state:
+  ///
+  ///  * offline / status unknown → neutral ([AppPalette.textPrimary])
+  ///  * online with starter meals still missing from the vault → sparkle
+  ///    orange + a micro-badge with the number of starter meals already
+  ///    synced locally (hidden while that number is 0)
+  ///  * online with every cloud starter present locally → [AppPalette.brandGreen]
+  Widget _buildSyncDefaultsIcon(
+    BuildContext context,
+    Brightness brightness,
+    AppStrings strings,
+    List<Meal>? localMeals,
+    AsyncValue<List<CloudMeal>> publicMealsAsync,
+  ) {
+    final accessStatus = ref.watch(cloudAccessStatusProvider);
+    // Blacklisted (user-deleted) starters never come back via sync, so they
+    // don't count as "missing".
+    final deletedIds = ref.watch(deletedStarterMealIdsProvider).valueOrNull;
+
+    final cloudMeals = publicMealsAsync.valueOrNull ?? const <CloudMeal>[];
+    final localList = localMeals ?? const <Meal>[];
+    final localCloudIds = localList
+        .map((m) => m.cloudId)
+        .whereType<String>()
+        .toSet();
+    final localStarterCount =
+        localList.where((m) => m.isStarterMeal).length;
+    final missingStarterCount = cloudMeals
+        .where((cm) => cm.isStarterMeal)
+        .where((cm) => !localCloudIds.contains(cm.id))
+        .where((cm) => deletedIds == null || !deletedIds.contains(cm.id))
+        .length;
+
+    final cloudReady =
+        accessStatus == CloudAccessStatus.allowed && publicMealsAsync.hasValue;
+
+    Color iconColor;
+    int? badgeCount;
+    if (!cloudReady) {
+      iconColor = AppPalette.textPrimary(brightness);
+    } else if (missingStarterCount > 0) {
+      iconColor = const Color(0xFFFFA726); // sparkle orange
+      badgeCount = localStarterCount > 0 ? localStarterCount : null;
+    } else {
+      iconColor = AppPalette.brandGreen;
+    }
+
+    return InkWell(
+      key: const ValueKey('vault_sync_defaults_button'),
+      tooltip: strings.syncDefaultsTooltip,
+      onTap: () async {
+        try {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(strings.syncingDefaults)),
+          );
+          final db = ref.read(databaseProvider);
+          await AppConfigSyncService.instance.manualSyncStarterMeals(db);
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(strings.defaultsSynced)),
+            );
+          }
+        } catch (e) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(strings.defaultsSyncFailed)),
+            );
+          }
+        }
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.all(2),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              foregroundColor: iconColor,
+              child: Image.asset(
+                'assets/icons/sync_icon.png',
+                width: 22,
+                height: 22,
+              ),
+            ),
+            if (badgeCount != null)
+              Positioned(
+                top: -6,
+                end: -8,
+                child: Container(
+                  key: const ValueKey('vault_sync_badge'),
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  constraints: const BoxConstraints(minWidth: 15, minHeight: 15),
+                  decoration: BoxDecoration(
+                    color: AppPalette.textPrimary(brightness),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppPalette.card(brightness), width: 1),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '$badgeCount',
+                      style: TextStyle(
+                        fontSize: 9,
+                        height: 1,
+                        fontWeight: FontWeight.w800,
+                        color: AppPalette.card(brightness),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

@@ -43,6 +43,7 @@ class AppStrings {
   String get cancel => isEn ? 'Cancel' : 'إلغاء';
   String get done => isEn ? 'Done' : 'تم';
   String get save => isEn ? 'Save' : 'حفظ';
+  String get edit => isEn ? 'Edit' : 'تعديل';
   String get close => isEn ? 'Close' : 'إغلاق';
   String get retry => isEn ? 'Retry' : 'إعادة المحاولة';
   String get undo => isEn ? 'Undo' : 'تراجع';
@@ -55,6 +56,15 @@ class AppStrings {
   String get errorOccurred => isEn ? 'An error occurred: ' : 'حدث خطأ: ';
   String errorGeneric(Object error) =>
       isEn ? 'An error occurred: $error' : 'حدث خطأ: $error';
+
+  // Unsaved changes confirmation (shared by all edit surfaces)
+  String get discardChangesTitle =>
+      isEn ? 'Discard changes?' : 'تجاهل التعديلات؟';
+  String get discardChangesMessage => isEn
+      ? 'You have unsaved changes. Are you sure you want to leave and discard your edits?'
+      : 'لديك تغييرات غير محفوظة، هل أنت متأكد من رغبتك في المغادرة وتجاهل ما قمت بتعديله؟';
+  String get keepEditing => isEn ? 'Keep Editing' : 'متابعة التعديل';
+  String get discardChanges => isEn ? 'Discard' : 'تجاهل التغييرات';
 
   String get today => isEn ? 'Today' : 'اليوم';
   String get yesterday => isEn ? 'Yesterday' : 'أمس';
@@ -100,6 +110,30 @@ class AppStrings {
     if (hours == 2) return 'منذ ساعتين';
     if (hours >= 3 && hours <= 10) return 'منذ $hours ساعات';
     return 'منذ $hours ساعة';
+  }
+
+  /// Localised weekday name for [DateTime.weekday] (1 = Monday … 7 = Sunday).
+  String weekdayName(int weekday) {
+    if (weekday < 1 || weekday > 7) return '';
+    const arabic = [
+      'الاثنين',
+      'الثلاثاء',
+      'الأربعاء',
+      'الخميس',
+      'الجمعة',
+      'السبت',
+      'الأحد',
+    ];
+    const english = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+    return isEn ? english[weekday - 1] : arabic[weekday - 1];
   }
 
   String get minutesAgo => isEn ? 'Minutes ago' : 'منذ دقائق';
@@ -210,6 +244,16 @@ class AppStrings {
   String vaultCloudCount(int count) => isEn ? '$count meals ☁️' : '$count أكلة ☁️';
   String vaultSharedCount(int count) => isEn ? '$count shared ✅' : '$count مشترك ✅';
   String vaultNewCount(int count) => isEn ? '$count new ✨' : '$count جديدة ✨';
+
+  // Sync defaults icon (My Vault header)
+  String get syncDefaultsTooltip =>
+      isEn ? 'Sync default meals' : 'مزامنة الأكلات الافتراضية';
+  String get syncingDefaults =>
+      isEn ? 'Syncing default meals…' : 'جاري مزامنة الأكلات الافتراضية...';
+  String get defaultsSynced =>
+      isEn ? 'Default meals synced successfully' : 'تمت مزامنة الأكلات الافتراضية بنجاح';
+  String get defaultsSyncFailed =>
+      isEn ? 'Syncing default meals failed' : 'فشلت مزامنة الأكلات الافتراضية';
 
   String get filterAll => isEn ? 'All' : 'الكل';
   String get filterQuick => isEn ? 'Quick 30m' : 'سريع 30م';
@@ -336,6 +380,10 @@ class AppStrings {
   String get discoveryAddAsNewDesc => isEn
       ? 'This meal will be added as a new entry without deleting the old copy.'
       : 'سيتم إضافة هذه الأكلة كوجبة جديدة دون مسح النسخة القديمة.';
+
+  // Meal details sheet
+  String get savedInVault =>
+      isEn ? 'Saved to your vault' : 'محفوظة في خزانتك';
 
   // ===========================================================================
   // History

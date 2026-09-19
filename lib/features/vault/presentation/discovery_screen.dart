@@ -12,6 +12,7 @@ import '../providers/discovery_providers.dart';
 import '../providers/vault_providers.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/providers/network_provider.dart';
+import 'widgets/meal_details_sheet.dart';
 
 class DiscoveryScreen extends ConsumerStatefulWidget {
   final bool isEmbedded;
@@ -763,7 +764,16 @@ class _CloudMealCard extends ConsumerWidget {
     final colors = [AppPalette.brandCoral, AppPalette.brandGreen, const Color(0xFF2563EB), const Color(0xFF7C3AED)];
     final btnColor = colors[index % colors.length];
 
-    return Container(
+    return InkWell(
+      key: ValueKey('cloud_meal_card_${cloudMeal.id}'),
+      borderRadius: BorderRadius.circular(18),
+      onTap: () => MealDetailsSheet.show(
+        context,
+        detailsContext: MealDetailsContext.explore,
+        cloudMeal: cloudMeal,
+        isSavedToVault: isLinked,
+      ),
+      child: Container(
       decoration: BoxDecoration(
         color: AppPalette.card(brightness),
         borderRadius: BorderRadius.circular(18),
@@ -834,6 +844,7 @@ class _CloudMealCard extends ConsumerWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -986,7 +997,16 @@ class _CloudMealListTile extends ConsumerWidget {
     final colors = [AppPalette.brandCoral, AppPalette.brandGreen, const Color(0xFF2563EB), const Color(0xFF7C3AED)];
     final btnColor = colors[index % colors.length];
 
-    return Container(
+    return InkWell(
+      key: ValueKey('cloud_meal_list_tile_${cloudMeal.id}'),
+      borderRadius: BorderRadius.circular(18),
+      onTap: () => MealDetailsSheet.show(
+        context,
+        detailsContext: MealDetailsContext.explore,
+        cloudMeal: cloudMeal,
+        isSavedToVault: isLinked,
+      ),
+      child: Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: AppPalette.card(brightness),
@@ -1044,6 +1064,7 @@ class _CloudMealListTile extends ConsumerWidget {
               tooltip: isLinked ? strings.discoveryUpdate : strings.discoveryDownload,
             ),
         ],
+      ),
       ),
     );
   }

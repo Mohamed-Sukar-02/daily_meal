@@ -179,10 +179,18 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
     if (_navLock) return;
     _navLock = true;
     try {
-      widget.navigationShell.goBranch(
-        index,
-        initialLocation: index == widget.navigationShell.currentIndex,
-      );
+      if (index == NavBranch.home) {
+        // The Home tab must always land on the true home screen: force the
+        // branch's initial location so any sub-route open inside the home
+        // branch (e.g. /notifications) is reset — otherwise goBranch would
+        // restore the branch at whatever sub-route it was last left on.
+        widget.navigationShell.goBranch(index, initialLocation: true);
+      } else {
+        widget.navigationShell.goBranch(
+          index,
+          initialLocation: index == widget.navigationShell.currentIndex,
+        );
+      }
       _publishBranch(index);
     } catch (_) {
       // GoRouter may throw if shell is mid-transition during rapid taps — swallow

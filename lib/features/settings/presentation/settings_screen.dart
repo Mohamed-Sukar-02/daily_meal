@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/database/app_database.dart';
@@ -21,9 +22,10 @@ import 'widgets/time_wheel_picker.dart';
 
 /// Settings screen rebuilt from the approved mockups (light + dark):
 /// header with shine marks, profile card, then titled sections whose cards
-/// float on the page background. "More" opens the per-protein cooldown
+/// float on the page background. "Edit" opens the per-protein cooldown
 /// enable/disable switches in a modal bottom sheet (a protein at 0 days =
-/// cooldown off).
+/// cooldown off); once that sheet is dismissed the page scroll is reset to
+/// the top for a clean state.
 ///
 /// Lifecycle: leaving this tab and coming back resets UI-only state (the page
 /// scroll offset). The cooldown details are a modal route, so there is no
@@ -40,11 +42,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     with NavBranchReentry {
   final ScrollController _scrollController = ScrollController();
 
+  /// Anchors the notifications section so an incoming
+  /// `/settings?section=notifications` navigation can auto-scroll to it.
+  final GlobalKey _notificationsSectionKey = GlobalKey();
+
+  /// The GoRouterState instance we already auto-scrolled for — a fresh push
+  /// creates a fresh instance, while unrelated dependency changes (locale,
+  /// theme) must not re-trigger the scroll.
+  GoRouterState? _scrolledForState;
+
   @override
   int get navBranchIndex => NavBranch.settings;
 
   @override
-  void resetTransientUi() => resetScroll(_scrollController);
+  void resetTransientUi() {
+    // A modal bottom sheet (e.g. CooldownDetailsSheet) or dialog pushed over
+    // the settings page survives a tab switch — the branch navigator keeps
+    // its route stack. Close it so the screen comes back in its default
+    // state, then reset the scroll to the top.
+    final navigator = Navigator.of(context, rootNavigator: false);
+    if (navigator.canPop()) {
+      navigator.pop();
+    }
+    resetScroll(_scrollController);
+  }
 
   @override
   void dispose() {
@@ -52,9 +73,50 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     super.dispose();
   }
 
+  /// When opened via `/settings?section=notifications` (from the
+  /// notifications center), scroll straight to the notifications section.
+  ///
+  /// The shell reuses this state across navigations, so the check lives in
+  /// [didChangeDependencies] — it fires both on first mount and whenever the
+  /// route's GoRouterState changes.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final routerState = GoRouterState.maybeOf(context);
+    if (routerState == null) return;
+    if (routerState.uri.queryParameters['section'] != 'notifications') return;
+    if (identical(_scrolledForState, routerState)) return;
+    _scrolledForState = routerState;
+    WidgetsBinding.instance.addPostFrameCallback((_) =>
+        _scrollToNotificationsSection(attempt: 0));
+  }
+
+  /// The section only exists once the settings data has loaded, so the first
+  /// frame may not have it yet — retry a bounded number of frames.
+  void _scrollToNotificationsSection({required int attempt}) {
+    if (!mounted) return;
+    final sectionContext = _notificationsSectionKey.currentContext;
+    if (sectionContext != null) {
+      Scrollable.ensureVisible(
+        sectionContext,
+        alignment: 0.0,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeInOutCubic,
+      );
+      return;
+    }
+    if (attempt < 30) {
+      WidgetsBinding.instance.addPostFrameCallback((_) =>
+          _scrollToNotificationsSection(attempt: attempt + 1));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     watchNavReentry();
+    // Register a dependency on the route state so didChangeDependencies fires
+    // on every navigation (a fresh GoRouterState per push).
+    GoRouterState.maybeOf(context);
     final settingsAsync = ref.watch(appSettingsProvider);
     final brightness = Theme.of(context).brightness;
 
@@ -76,7 +138,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                 const SizedBox(height: 24),
                 _buildCooldownSection(context, ref, settings, brightness, strings),
                 const SizedBox(height: 24),
-                _buildNotificationsSection(context, ref, settings, brightness, strings),
+                KeyedSubtree(
+                  key: _notificationsSectionKey,
+                  child: _buildNotificationsSection(context, ref, settings, brightness, strings),
+                ),
                 const SizedBox(height: 24),
                 _buildAppearanceSection(context, ref, settings, brightness, strings),
                 const SizedBox(height: 24),
@@ -257,12 +322,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
           key: const Key('settings_cooldown_header'),
           brightness: brightness,
           title: strings.smartCooldownEngine,
-          link: strings.more,
+          // "Edit", not "More" — the label should say what the action is.
+          link: strings.edit,
           linkKey: const Key('settings_cooldown_more'),
           linkColor: const Color(0xFF3E63DD),
           // A real modal bottom sheet: dims the page, blocks background
           // scrolling and closes on an outside tap or a downward drag.
-          onLink: () => CooldownDetailsSheet.show(context),
+          // Once the details have been reviewed and the sheet is dismissed,
+          // reset the page to a clean state: scroll back to the very top —
+          // the same reset the bottom-nav re-entry performs
+          // (NavBranchReentry.resetTransientUi -> resetScroll).
+          onLink: () async {
+            await CooldownDetailsSheet.show(context);
+            if (mounted) resetScroll(_scrollController);
+          },
         ),
         const SizedBox(height: 12),
         _Card(

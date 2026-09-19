@@ -78,7 +78,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               } else if (value == 'deleteAll') {
                 _showDeleteConfirmation(context, ref, strings, brightness);
               } else if (value == 'settings') {
-                context.push('/settings');
+                // `?section=notifications` tells the settings page to auto-
+                // scroll to its notifications section. push (not go) keeps
+                // the notifications screen on the stack so Back returns here.
+                context.push('/settings?section=notifications');
               }
             },
             itemBuilder: (context) => [

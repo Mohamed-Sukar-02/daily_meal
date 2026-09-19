@@ -12,6 +12,7 @@ import '../../../../core/localization/app_strings.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/widgets/app_icons.dart';
 import '../../../../core/widgets/app_toast.dart';
+import '../../../../core/widgets/discard_changes_dialog.dart';
 import '../../../../core/widgets/meal_image.dart';
 import '../../providers/vault_providers.dart';
 
@@ -61,7 +62,45 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
 
   final ImagePicker _picker = ImagePicker();
 
+  // Original values captured in [initState]. [hasUnsavedChanges] compares the
+  // current fields against them so the sheet can ask before discarding edits.
+  late String _initialName;
+  late String _initialPrepTime;
+  late MealCategory _initialCategory;
+  late ProteinType _initialProtein;
+  late CarbsType _initialCarbs;
+  late bool _initialFridaySpecial;
+  late bool _initialBudgetFriendly;
+  late bool _initialFavorite;
+  String? _initialPhotoPath;
+
   bool get isEditing => widget.mealToEdit != null;
+
+  /// `true` when any field (including the photo) differs from the original
+  /// values — the sheet asks before discarding in that case.
+  bool get hasUnsavedChanges =>
+      _nameController.text.trim() != _initialName ||
+      _prepTimeController.text.trim() != _initialPrepTime ||
+      _selectedCategory != _initialCategory ||
+      _selectedProtein != _initialProtein ||
+      _selectedCarbs != _initialCarbs ||
+      _isFridaySpecial != _initialFridaySpecial ||
+      _isBudgetFriendly != _initialBudgetFriendly ||
+      _isFavorite != _initialFavorite ||
+      _photoPath != _initialPhotoPath;
+
+  /// Back button / X / cancel / swipe-down exit path: when the form is dirty,
+  /// confirm the discard first; otherwise close immediately and silently.
+  Future<void> _requestClose() async {
+    if (!hasUnsavedChanges) {
+      Navigator.of(context).pop();
+      return;
+    }
+    final discard = await showDiscardChangesDialog(context);
+    if (discard == true && mounted) {
+      Navigator.of(context).pop();
+    }
+  }
 
   @override
   void initState() {
@@ -84,6 +123,16 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
         _pickedImageFile = f;
       }
     }
+    // Snapshot the original values for the unsaved-changes check.
+    _initialName = _nameController.text.trim();
+    _initialPrepTime = _prepTimeController.text.trim();
+    _initialCategory = _selectedCategory;
+    _initialProtein = _selectedProtein;
+    _initialCarbs = _selectedCarbs;
+    _initialFridaySpecial = _isFridaySpecial;
+    _initialBudgetFriendly = _isBudgetFriendly;
+    _initialFavorite = _isFavorite;
+    _initialPhotoPath = _photoPath;
     // Professional: handle Android activity destruction via retrieveLostData [8][10]
     _retrieveLostData();
   }
@@ -412,7 +461,14 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
 
     return Directionality(
       textDirection: TextDirection.ltr,
-      child: Container(
+      child: PopScope(
+        canPop: !hasUnsavedChanges,
+        onPopInvokedWithResult: (didPop, result) {
+          // canPop=false (dirty form) → ask before leaving; clean form pops
+          // straight through (didPop=true) without any dialog.
+          if (!didPop) _requestClose();
+        },
+        child: Container(
         decoration: BoxDecoration(
           color: AppPalette.card(brightness),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -437,7 +493,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                       children: [
                         InkWell(
                           customBorder: const CircleBorder(),
-                          onTap: () => Navigator.pop(context),
+                          onTap: _requestClose,
                           child: Container(
                             width: 32, height: 32,
                             decoration: BoxDecoration(color: isDark ? Colors.white10 : const Color(0xFFF0F2F5), shape: BoxShape.circle),
@@ -748,7 +804,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                               Expanded(
                                 child: OutlinedButton(
                                   key: const Key('meal_form_cancel_button'),
-                                  onPressed: () => Navigator.pop(context),
+                                  onPressed: _requestClose,
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: isDark ? Colors.white70 : const Color(0xFF16283B),
                                     side: BorderSide(color: isDark ? Colors.white24 : const Color(0xFFD9DFE8)),
@@ -784,6 +840,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

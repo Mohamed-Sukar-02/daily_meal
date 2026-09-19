@@ -8,11 +8,13 @@ import '../../../../core/widgets/app_icons.dart';
 import '../../../../core/widgets/meal_image.dart';
 import '../../../home/presentation/widgets/meal_card.dart' show formatPrepTime;
 import '../../providers/vault_providers.dart';
+import 'meal_details_sheet.dart';
 
 /// Vault grid card, styled after the mockups: full-bleed photo on top,
 /// bold name, emoji badges + time pill and a bookmark (favourite) toggle.
 ///
-/// Gestures: tap = edit, long-press = delete (keys kept for the test-suite).
+/// Gestures: tap = details sheet (with edit/delete actions), long-press =
+/// delete (keys kept for the test-suite).
 class MealVaultCard extends ConsumerWidget {
   final Meal meal;
   final VoidCallback onEdit;
@@ -37,7 +39,13 @@ class MealVaultCard extends ConsumerWidget {
       onLongPress: onDelete,
       child: InkWell(
         key: ValueKey('meal_edit_button_${meal.id}'),
-        onTap: onEdit,
+        onTap: () => MealDetailsSheet.show(
+          context,
+          detailsContext: MealDetailsContext.vault,
+          meal: meal,
+          onEdit: onEdit,
+          onDelete: onDelete,
+        ),
         borderRadius: BorderRadius.circular(18),
         child: Container(
           key: ValueKey('meal_card_${meal.id}'),
@@ -215,8 +223,9 @@ class MealVaultCard extends ConsumerWidget {
 }
 
 /// Vault list-row variant, shown when the user switches the vault to list
-/// view. Same data, gestures (tap = edit, long-press = delete) and test keys
-/// as [MealVaultCard] — only the layout is compact (thumbnail + text).
+/// view. Same data, gestures (tap = details sheet, long-press = delete) and
+/// test keys as [MealVaultCard] — only the layout is compact (thumbnail +
+/// text).
 class MealVaultListTile extends ConsumerWidget {
   final Meal meal;
   final VoidCallback onEdit;
@@ -238,7 +247,13 @@ class MealVaultListTile extends ConsumerWidget {
       onLongPress: onDelete,
       child: InkWell(
         key: ValueKey('meal_edit_button_${meal.id}'),
-        onTap: onEdit,
+        onTap: () => MealDetailsSheet.show(
+          context,
+          detailsContext: MealDetailsContext.vault,
+          meal: meal,
+          onEdit: onEdit,
+          onDelete: onDelete,
+        ),
         borderRadius: BorderRadius.circular(18),
         child: Container(
           key: ValueKey('meal_card_${meal.id}'),
