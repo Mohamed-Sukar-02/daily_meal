@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/database/app_database.dart';
-import '../../../core/localization/app_strings.dart';
-import '../../../core/theme/app_palette.dart';
-import '../../../core/widgets/app_icons.dart';
-import '../../../core/widgets/app_toast.dart';
-import '../../../core/widgets/meal_image.dart';
-import '../data/models/cloud_meal.dart';
-import '../providers/discovery_providers.dart';
+import '../../../../core/database/app_database.dart';
+import '../../../../core/localization/app_strings.dart';
+import '../../../../core/theme/app_palette.dart';
+import '../../../../core/widgets/app_icons.dart';
+import '../../../../core/widgets/app_toast.dart';
+import '../../../../core/widgets/meal_image.dart';
+import '../../data/models/cloud_meal.dart';
+import '../../providers/discovery_providers.dart';
 
 /// Which screen a [MealDetailsSheet] was opened from. Controls the
 /// context-specific action area (if any) rendered at the bottom.

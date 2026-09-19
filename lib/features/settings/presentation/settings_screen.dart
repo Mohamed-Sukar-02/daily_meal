@@ -82,8 +82,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final routerState = GoRouterState.maybeOf(context);
-    if (routerState == null) return;
+    final routerState = GoRouterState.of(context);
     if (routerState.uri.queryParameters['section'] != 'notifications') return;
     if (identical(_scrolledForState, routerState)) return;
     _scrolledForState = routerState;
@@ -116,7 +115,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     watchNavReentry();
     // Register a dependency on the route state so didChangeDependencies fires
     // on every navigation (a fresh GoRouterState per push).
-    GoRouterState.maybeOf(context);
+    GoRouterState.of(context);
     final settingsAsync = ref.watch(appSettingsProvider);
     final brightness = Theme.of(context).brightness;
 

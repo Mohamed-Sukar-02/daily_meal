@@ -9,7 +9,7 @@ import '../localization/app_strings.dart';
 /// edits. Resolves to:
 ///  * `true`  — the user confirmed discarding and leaving.
 ///  * `false` — the user chose to keep editing (dialog cancelled).
-Future<bool> showDiscardChangesDialog(BuildContext context) {
+Future<bool?> showDiscardChangesDialog(BuildContext context) {
   final strings = AppStrings.of(context);
   final theme = Theme.of(context);
   final colorScheme = theme.colorScheme;
@@ -34,12 +34,12 @@ Future<bool> showDiscardChangesDialog(BuildContext context) {
       actions: [
         TextButton(
           key: const Key('discard_changes_discard_button'),
-          onPressed: () => Navigator.of(ctx).pop(false),
+          onPressed: () => Navigator.of(ctx).pop(true),
           child: Text(strings.discardChanges),
         ),
         FilledButton(
           key: const Key('discard_changes_keep_editing_button'),
-          onPressed: () => Navigator.of(ctx).pop(true),
+          onPressed: () => Navigator.of(ctx).pop(false),
           child: Text(strings.keepEditing),
         ),
       ],

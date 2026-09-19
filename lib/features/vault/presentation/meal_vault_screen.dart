@@ -485,51 +485,55 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
       iconColor = AppPalette.brandGreen;
     }
 
-    return InkWell(
-      key: const ValueKey('vault_sync_defaults_button'),
-      tooltip: strings.syncDefaultsTooltip,
-      onTap: () async {
-        try {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(strings.syncingDefaults)),
-          );
-          final db = ref.read(databaseProvider);
-          await AppConfigSyncService.instance.manualSyncStarterMeals(db);
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    return Tooltip(
+      message: strings.syncDefaultsTooltip,
+      child: InkWell(
+        key: const ValueKey('vault_sync_defaults_button'),
+        onTap: () async {
+          try {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(strings.defaultsSynced)),
+              SnackBar(content: Text(strings.syncingDefaults)),
             );
+            final db = ref.read(databaseProvider);
+            await AppConfigSyncService.instance.manualSyncStarterMeals(db);
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(strings.defaultsSynced)),
+              );
+            }
+          } catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(strings.defaultsSyncFailed)),
+              );
+            }
           }
-        } catch (e) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(strings.defaultsSyncFailed)),
-            );
-          }
-        }
-      },
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.all(2),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-              foregroundColor: iconColor,
-              child: Image.asset(
-                'assets/icons/sync_icon.png',
-                width: 22,
-                height: 22,
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.all(2),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              TweenAnimationBuilder<Color?>(
+                tween: ColorTween(end: iconColor),
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                builder: (context, color, _) {
+                  return Image.asset(
+                    'assets/icons/sync_icon.png',
+                    width: 22,
+                    height: 22,
+                    color: color,
+                  );
+                },
               ),
-            ),
-            if (badgeCount != null)
+              if (badgeCount != null)
               Positioned(
                 top: -6,
-                end: -8,
+                right: -8,
                 child: Container(
                   key: const ValueKey('vault_sync_badge'),
                   padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -555,8 +559,9 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   // ---------------------------------------------------------------------------
   // "My Vault" tab
