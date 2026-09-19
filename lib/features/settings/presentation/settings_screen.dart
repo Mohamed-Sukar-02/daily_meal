@@ -22,9 +22,10 @@ import 'widgets/time_wheel_picker.dart';
 
 /// Settings screen rebuilt from the approved mockups (light + dark):
 /// header with shine marks, profile card, then titled sections whose cards
-/// float on the page background. "More" opens the per-protein cooldown
+/// float on the page background. "Edit" opens the per-protein cooldown
 /// enable/disable switches in a modal bottom sheet (a protein at 0 days =
-/// cooldown off).
+/// cooldown off); once that sheet is dismissed the page scroll is reset to
+/// the top for a clean state.
 ///
 /// Lifecycle: leaving this tab and coming back resets UI-only state (the page
 /// scroll offset). The cooldown details are a modal route, so there is no
@@ -311,12 +312,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
           key: const Key('settings_cooldown_header'),
           brightness: brightness,
           title: strings.smartCooldownEngine,
-          link: strings.more,
+          // "Edit", not "More" — the label should say what the action is.
+          link: strings.edit,
           linkKey: const Key('settings_cooldown_more'),
           linkColor: const Color(0xFF3E63DD),
           // A real modal bottom sheet: dims the page, blocks background
           // scrolling and closes on an outside tap or a downward drag.
-          onLink: () => CooldownDetailsSheet.show(context),
+          // Once the details have been reviewed and the sheet is dismissed,
+          // reset the page to a clean state: scroll back to the very top —
+          // the same reset the bottom-nav re-entry performs
+          // (NavBranchReentry.resetTransientUi -> resetScroll).
+          onLink: () async {
+            await CooldownDetailsSheet.show(context);
+            if (mounted) resetScroll(_scrollController);
+          },
         ),
         const SizedBox(height: 12),
         _Card(
