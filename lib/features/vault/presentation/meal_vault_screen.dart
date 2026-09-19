@@ -47,7 +47,6 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
   int _tabIndex = _tabMyVault;
   bool _showTooltip = true;
   bool _isFilterBarVisible = false;
-  bool _isGridView = true;
   final _viewToggleLink = LayerLink();
   final _viewTogglePortal = OverlayPortalController();
 
@@ -681,7 +680,7 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
               else
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
-                  sliver: _isGridView
+                  sliver: ref.watch(vaultViewModeProvider)
                       ? SliverGrid.builder(
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
@@ -868,7 +867,9 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(
-                _isGridView ? Icons.grid_view_rounded : Icons.view_list_rounded,
+                ref.watch(vaultViewModeProvider)
+                    ? Icons.grid_view_rounded
+                    : Icons.view_list_rounded,
                 size: 24,
                 color: AppPalette.textSecondary(brightness),
               ),
@@ -880,6 +881,7 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
   }
 
   Widget _buildViewToggleOverlay(BuildContext context, Brightness brightness) {
+    final isGridView = ref.watch(vaultViewModeProvider);
     return Align(
       alignment: AlignmentDirectional.topStart,
       child: CompositedTransformFollower(
@@ -923,10 +925,12 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                   _viewToggleOption(
                     key: const Key('vault_view_option_grid'),
                     icon: Icons.grid_view_rounded,
-                    selected: _isGridView,
+                    selected: isGridView,
                     brightness: brightness,
                     onTap: () {
-                      setState(() => _isGridView = true);
+                      ref
+                          .read(vaultViewModeProvider.notifier)
+                          .setGridView(true);
                       _viewTogglePortal.hide();
                     },
                   ),
@@ -934,10 +938,12 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                   _viewToggleOption(
                     key: const Key('vault_view_option_list'),
                     icon: Icons.view_list_rounded,
-                    selected: !_isGridView,
+                    selected: !isGridView,
                     brightness: brightness,
                     onTap: () {
-                      setState(() => _isGridView = false);
+                      ref
+                          .read(vaultViewModeProvider.notifier)
+                          .setGridView(false);
                       _viewTogglePortal.hide();
                     },
                   ),

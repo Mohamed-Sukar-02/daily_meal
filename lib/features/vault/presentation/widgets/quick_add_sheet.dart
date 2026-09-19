@@ -488,7 +488,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                                               photoPath: _pickedImageFile!.path,
                                               width: 110,
                                               height: 110,
-                                              cacheWidth: 330,
+                                              cacheWidth: 600,
                                               fallback: Container(color: AppPalette.tabContainer(brightness)),
                                             ),
                                             Positioned(

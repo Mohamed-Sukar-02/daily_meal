@@ -34,7 +34,6 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   String _searchQuery = '';
   int _selectedFilterIndex = 0; // 0=Trending, 1=Admin, 2=Quick, 3=Global
   bool _isFilterBarVisible = false;
-  bool _isGridView = true;
   final _viewToggleLink = LayerLink();
   final _viewTogglePortal = OverlayPortalController();
 
@@ -301,7 +300,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                       final localMeals = allMealsAsync.valueOrNull ?? [];
                       return SliverPadding(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
-                        sliver: _isGridView
+                        sliver: ref.watch(vaultViewModeProvider)
                             ? SliverGrid.builder(
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
@@ -584,7 +583,9 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                 border: Border.all(color: AppPalette.hairline(brightness)),
               ),
               child: Icon(
-                _isGridView ? Icons.grid_view_rounded : Icons.view_list_rounded,
+                ref.watch(vaultViewModeProvider)
+                    ? Icons.grid_view_rounded
+                    : Icons.view_list_rounded,
                 size: 24,
                 color: AppPalette.textSecondary(brightness),
               ),
@@ -596,6 +597,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   }
 
   Widget _buildViewToggleOverlay(BuildContext context, Brightness brightness) {
+    final isGridView = ref.watch(vaultViewModeProvider);
     return Align(
       alignment: AlignmentDirectional.topStart,
       child: CompositedTransformFollower(
@@ -639,10 +641,12 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                 _viewToggleOption(
                   key: const Key('discovery_view_option_grid'),
                   icon: Icons.grid_view_rounded,
-                  selected: _isGridView,
+                  selected: isGridView,
                   brightness: brightness,
                   onTap: () {
-                    setState(() => _isGridView = true);
+                    ref
+                        .read(vaultViewModeProvider.notifier)
+                        .setGridView(true);
                     _viewTogglePortal.hide();
                   },
                 ),
@@ -650,10 +654,12 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                 _viewToggleOption(
                   key: const Key('discovery_view_option_list'),
                   icon: Icons.view_list_rounded,
-                  selected: !_isGridView,
+                  selected: !isGridView,
                   brightness: brightness,
                   onTap: () {
-                    setState(() => _isGridView = false);
+                    ref
+                        .read(vaultViewModeProvider.notifier)
+                        .setGridView(false);
                     _viewTogglePortal.hide();
                   },
                 ),
@@ -994,7 +1000,7 @@ class _CloudMealListTile extends ConsumerWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: cloudMeal.imageUrl != null && cloudMeal.imageUrl!.isNotEmpty
-                ? MealImage(photoPath: cloudMeal.imageUrl, width: 60, height: 60, cacheWidth: 180, fallback: _listPlaceholder(brightness))
+                ? MealImage(photoPath: cloudMeal.imageUrl, width: 60, height: 60, cacheWidth: 400, fallback: _listPlaceholder(brightness))
                 : _listPlaceholder(brightness),
           ),
           const SizedBox(width: 12),

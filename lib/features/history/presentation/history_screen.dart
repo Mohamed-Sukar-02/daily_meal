@@ -340,7 +340,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                                                     photoPath: meal?.photoPath,
                                                     width: 48,
                                                     height: 48,
-                                                    cacheWidth: 144,
+                                                    cacheWidth: 320,
                                                     fallback: Container(
                                                       width: 48,
                                                       height: 48,

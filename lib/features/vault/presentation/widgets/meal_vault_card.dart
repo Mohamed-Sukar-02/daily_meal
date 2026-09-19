@@ -264,7 +264,7 @@ class MealVaultListTile extends ConsumerWidget {
                   photoPath: meal.photoPath,
                   width: 60,
                   height: 60,
-                  cacheWidth: 180,
+                  cacheWidth: 400,
                   fallback: Container(
                     width: 60,
                     height: 60,

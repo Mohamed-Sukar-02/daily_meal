@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_providers.dart';
 import '../../../core/utils/arabic_normalizer.dart';
@@ -286,4 +287,41 @@ class VaultController extends AsyncNotifier<void> {
 
 final vaultControllerProvider = AsyncNotifierProvider<VaultController, void>(() {
   return VaultController();
+});
+
+const String _kVaultIsGridViewKey = 'vault_is_grid_view';
+
+class VaultViewModeNotifier extends Notifier<bool> {
+  @override
+  bool build() {
+    _loadPreference();
+    return true; // Default to Grid view
+  }
+
+  Future<void> _loadPreference() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getBool(_kVaultIsGridViewKey);
+      if (saved != null) {
+        state = saved;
+      }
+    } catch (_) {
+      // Fallback silently in test or offline environments
+    }
+  }
+
+  Future<void> setGridView(bool isGrid) async {
+    state = isGrid;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kVaultIsGridViewKey, isGrid);
+    } catch (_) {
+      // Fallback silently in test or offline environments
+    }
+  }
+}
+
+final vaultViewModeProvider =
+    NotifierProvider<VaultViewModeNotifier, bool>(() {
+  return VaultViewModeNotifier();
 });
