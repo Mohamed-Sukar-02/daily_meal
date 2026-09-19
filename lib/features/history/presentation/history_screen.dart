@@ -9,6 +9,7 @@ import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/app_icons.dart';
 import '../../../core/widgets/app_toast.dart';
 import '../../../core/widgets/meal_image.dart';
+import '../../vault/presentation/widgets/meal_details_sheet.dart';
 import '../providers/history_providers.dart';
 
 /// Cooking log.
@@ -317,7 +318,16 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                                           ),
                                         ),
                                         const SizedBox(height: 8),
-                                        Container(
+                                        InkWell(
+                                          key: ValueKey('history_meal_card_${entry.id}'),
+                                          borderRadius: BorderRadius.circular(16),
+                                          onTap: () => MealDetailsSheet.show(
+                                            context,
+                                            detailsContext: MealDetailsContext.history,
+                                            historyEntry: entry,
+                                            meal: meal,
+                                          ),
+                                          child: Container(
                                           decoration: BoxDecoration(
                                             color: AppPalette.card(brightness),
                                             borderRadius: BorderRadius.circular(16),
@@ -389,6 +399,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                                               ],
                                             ),
                                           ),
+                                        ),
                                         ),
                                       ],
                                     ),
