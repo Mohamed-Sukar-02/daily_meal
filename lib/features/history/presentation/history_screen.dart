@@ -115,7 +115,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.red.shade100),
                       ),
-                      child: Icon(Icons.delete_sweep_outlined, color: Colors.red.shade700, size: 20),
+                      child: Icon(Icons.delete_outline_rounded, color: Colors.red.shade700, size: 20),
                     ),
                     onPressed: () async {
                       final confirmed = await showDialog<bool>(
