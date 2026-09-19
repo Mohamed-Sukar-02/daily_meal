@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/database/app_database.dart';
@@ -40,6 +41,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     with NavBranchReentry {
   final ScrollController _scrollController = ScrollController();
 
+  /// Anchors the notifications section so an incoming
+  /// `/settings?section=notifications` navigation can auto-scroll to it.
+  final GlobalKey _notificationsSectionKey = GlobalKey();
+
+  /// The GoRouterState instance we already auto-scrolled for — a fresh push
+  /// creates a fresh instance, while unrelated dependency changes (locale,
+  /// theme) must not re-trigger the scroll.
+  GoRouterState? _scrolledForState;
+
   @override
   int get navBranchIndex => NavBranch.settings;
 
@@ -52,9 +62,50 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     super.dispose();
   }
 
+  /// When opened via `/settings?section=notifications` (from the
+  /// notifications center), scroll straight to the notifications section.
+  ///
+  /// The shell reuses this state across navigations, so the check lives in
+  /// [didChangeDependencies] — it fires both on first mount and whenever the
+  /// route's GoRouterState changes.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final routerState = GoRouterState.maybeOf(context);
+    if (routerState == null) return;
+    if (routerState.uri.queryParameters['section'] != 'notifications') return;
+    if (identical(_scrolledForState, routerState)) return;
+    _scrolledForState = routerState;
+    WidgetsBinding.instance.addPostFrameCallback((_) =>
+        _scrollToNotificationsSection(attempt: 0));
+  }
+
+  /// The section only exists once the settings data has loaded, so the first
+  /// frame may not have it yet — retry a bounded number of frames.
+  void _scrollToNotificationsSection({required int attempt}) {
+    if (!mounted) return;
+    final sectionContext = _notificationsSectionKey.currentContext;
+    if (sectionContext != null) {
+      Scrollable.ensureVisible(
+        sectionContext,
+        alignment: 0.0,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeInOutCubic,
+      );
+      return;
+    }
+    if (attempt < 30) {
+      WidgetsBinding.instance.addPostFrameCallback((_) =>
+          _scrollToNotificationsSection(attempt: attempt + 1));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     watchNavReentry();
+    // Register a dependency on the route state so didChangeDependencies fires
+    // on every navigation (a fresh GoRouterState per push).
+    GoRouterState.maybeOf(context);
     final settingsAsync = ref.watch(appSettingsProvider);
     final brightness = Theme.of(context).brightness;
 
@@ -76,7 +127,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                 const SizedBox(height: 24),
                 _buildCooldownSection(context, ref, settings, brightness, strings),
                 const SizedBox(height: 24),
-                _buildNotificationsSection(context, ref, settings, brightness, strings),
+                KeyedSubtree(
+                  key: _notificationsSectionKey,
+                  child: _buildNotificationsSection(context, ref, settings, brightness, strings),
+                ),
                 const SizedBox(height: 24),
                 _buildAppearanceSection(context, ref, settings, brightness, strings),
                 const SizedBox(height: 24),
