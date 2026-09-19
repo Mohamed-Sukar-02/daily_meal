@@ -11,6 +11,15 @@ final allMealsProvider = StreamProvider<List<Meal>>((ref) {
   return dao.watchAllMeals();
 });
 
+/// Cloud ids of starter meals the user explicitly deleted. `MealsDao.deleteMeal`
+/// blacklists a deleted starter's cloud id so auto-sync never re-adds it; the
+/// vault sync-status icon ignores blacklisted ids when deciding whether the
+/// defaults are fully synced.
+final deletedStarterMealIdsProvider = FutureProvider<Set<String>>((ref) async {
+  final prefs = await SharedPreferences.getInstance();
+  return (prefs.getStringList('deleted_starter_meals') ?? const []).toSet();
+});
+
 final favoriteMealsProvider = StreamProvider<List<Meal>>((ref) {
   final dao = ref.watch(mealsDaoProvider);
   return dao.watchFavorites();
@@ -261,6 +270,9 @@ class VaultController extends AsyncNotifier<void> {
     try {
       final dao = ref.read(mealsDaoProvider);
       final deleted = await dao.deleteMeal(id);
+      // Deleting a starter meal may add its cloud id to the sync blacklist —
+      // refresh it so the sync-status icon reflects the new state.
+      ref.invalidate(deletedStarterMealIdsProvider);
       state = const AsyncValue.data(null);
       return deleted;
     } catch (err, st) {

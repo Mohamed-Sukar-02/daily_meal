@@ -245,6 +245,16 @@ class AppStrings {
   String vaultSharedCount(int count) => isEn ? '$count shared ✅' : '$count مشترك ✅';
   String vaultNewCount(int count) => isEn ? '$count new ✨' : '$count جديدة ✨';
 
+  // Sync defaults icon (My Vault header)
+  String get syncDefaultsTooltip =>
+      isEn ? 'Sync default meals' : 'مزامنة الأكلات الافتراضية';
+  String get syncingDefaults =>
+      isEn ? 'Syncing default meals…' : 'جاري مزامنة الأكلات الافتراضية...';
+  String get defaultsSynced =>
+      isEn ? 'Default meals synced successfully' : 'تمت مزامنة الأكلات الافتراضية بنجاح';
+  String get defaultsSyncFailed =>
+      isEn ? 'Syncing default meals failed' : 'فشلت مزامنة الأكلات الافتراضية';
+
   String get filterAll => isEn ? 'All' : 'الكل';
   String get filterQuick => isEn ? 'Quick 30m' : 'سريع 30م';
   String get filterFavorites => isEn ? 'Favorites' : 'المفضلة';
