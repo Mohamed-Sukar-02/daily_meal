@@ -55,7 +55,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   int get navBranchIndex => NavBranch.settings;
 
   @override
-  void resetTransientUi() => resetScroll(_scrollController);
+  @override
+  void resetTransientUi() {
+    // A modal bottom sheet (e.g. CooldownDetailsSheet) or dialog pushed over
+    // the settings page survives a tab switch — the branch navigator keeps
+    // its route stack. Close it so the screen comes back in its default
+    // state, then reset the scroll to the top.
+    final navigator = Navigator.of(context, rootNavigator: false);
+    if (navigator.canPop()) {
+      navigator.pop();
+    }
+    resetScroll(_scrollController);
+  }
 
   @override
   void dispose() {
