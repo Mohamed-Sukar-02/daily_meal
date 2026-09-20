@@ -59,6 +59,7 @@ class DiscoveryNotifier extends StateNotifier<AsyncValue<void>> {
     return MealsCompanion(
       name: drift.Value(cloudMeal.name),
       photoPath: drift.Value(cloudMeal.imageUrl),
+      shortName: drift.Value(cloudMeal.shortName),
       proteinType: drift.Value(_mapProtein(cloudMeal.proteinType)),
       carbsType: drift.Value(_mapCarbs(cloudMeal.carbsType)),
       category: drift.Value(_mapCategory(cloudMeal.category)),

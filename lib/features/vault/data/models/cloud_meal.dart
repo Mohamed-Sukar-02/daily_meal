@@ -2,6 +2,7 @@ class CloudMeal {
   final String id;
   final String name;
   final String? imageUrl;
+  final String? shortName;
   final String proteinType; // chicken, beef, fish, meatless, other
   final String carbsType;   // rice, pasta, bread, none
   final String category;    // tabeekh, casserole, dry_sandwich, popular, seafood
@@ -18,6 +19,7 @@ class CloudMeal {
     required this.id,
     required this.name,
     this.imageUrl,
+    this.shortName,
     required this.proteinType,
     required this.carbsType,
     required this.category,
@@ -36,6 +38,7 @@ class CloudMeal {
       'id': id,
       'name': name,
       'imageUrl': imageUrl,
+      'shortName': shortName,
       'proteinType': proteinType,
       'carbsType': carbsType,
       'category': category,
@@ -55,6 +58,7 @@ class CloudMeal {
       id: docId,
       name: map['name'] as String? ?? '',
       imageUrl: map['imageUrl'] as String?,
+      shortName: map['shortName'] as String?,
       proteinType: map['proteinType'] as String? ?? 'other',
       carbsType: map['carbsType'] as String? ?? 'none',
       category: map['category'] as String? ?? 'popular',

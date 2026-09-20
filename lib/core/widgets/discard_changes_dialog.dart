@@ -44,5 +44,5 @@ Future<bool> showDiscardChangesDialog(BuildContext context) {
         ),
       ],
     ),
-  );
+  ).then((value) => value ?? false);
 }

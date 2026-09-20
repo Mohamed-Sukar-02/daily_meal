@@ -238,55 +238,48 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
   ) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: AlignmentDirectional.centerStart,
-                  child: Text(
-                    strings.vaultTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 30,
-                      height: 1.2,
-                      fontWeight: FontWeight.w800,
-                      color: AppPalette.textPrimary(brightness),
-                    ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  strings.vaultTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 28,
+                    height: 1.2,
+                    fontWeight: FontWeight.w800,
+                    color: AppPalette.textPrimary(brightness),
                   ),
                 ),
-                const SizedBox(height: 4),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: AlignmentDirectional.centerStart,
-                  child: Text(
-                    _tabIndex == _tabMyVault
-                        ? strings.vaultSubtitle
-                        : strings.vaultSubtitleExplore,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppPalette.textSecondary(brightness),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              _buildVaultCounter(
+                context,
+                totalCount,
+                localMeals,
+                brightness,
+                strings,
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          _buildVaultCounter(
-            context,
-            totalCount,
-            localMeals,
-            brightness,
-            strings,
+          const SizedBox(height: 4),
+          Text(
+            _tabIndex == _tabMyVault
+                ? strings.vaultSubtitle
+                : strings.vaultSubtitleExplore,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: AppPalette.textSecondary(brightness),
+            ),
           ),
         ],
       ),
@@ -346,25 +339,7 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                   ),
                 ],
               )
-            : Container(
-                key: const ValueKey('vault_explore_count'),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppPalette.card(brightness),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: AppPalette.chipGreen(brightness).background,
-                    width: 1.5,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppPalette.brandGreen.withValues(alpha: 0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: publicMealsAsync.when(
+              : publicMealsAsync.when(
                   data: (cloudMeals) {
                     final cloudCount = cloudMeals.length;
                     int sharedCount = 0;
@@ -372,64 +347,95 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                       final localCloudIds = localMeals.map((m) => m.cloudId).where((id) => id != null).toSet();
                       sharedCount = cloudMeals.where((cm) => localCloudIds.contains(cm.id)).length;
                     }
-                    final newCount = cloudCount - sharedCount;
+                    final newCount = cloudMeals.length - sharedCount;
 
-                    return Row(
+                    return Column(
+                      key: const ValueKey('vault_explore_count_col'),
                       mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text(
-                          strings.vaultCloudCount(cloudCount),
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: AppPalette.textPrimary(brightness),
-                          ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // المشترك (beside الأصلي)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: AppPalette.card(brightness),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: AppPalette.hairline(brightness),
+                                ),
+                              ),
+                              child: Text(
+                                strings.vaultSharedCount(sharedCount),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppPalette.textSecondary(brightness),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            // الأصلي
+                            Container(
+                              key: const ValueKey('vault_explore_count'),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: AppPalette.chipGreen(brightness).background,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                strings.vaultCloudCount(cloudCount),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppPalette.chipGreen(brightness).foreground,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        Container(
-                          height: 12,
-                          width: 1,
-                          margin: const EdgeInsets.symmetric(horizontal: 8),
-                          color: AppPalette.hairline(brightness),
-                        ),
-                        Text(
-                          strings.vaultSharedCount(sharedCount),
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: AppPalette.textSecondary(brightness),
-                          ),
-                        ),
-                        Container(
-                          height: 12,
-                          width: 1,
-                          margin: const EdgeInsets.symmetric(horizontal: 8),
-                          color: AppPalette.hairline(brightness),
-                        ),
-                        Text(
-                          strings.vaultNewCount(newCount),
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: AppPalette.brandGreen,
+                        const SizedBox(height: 3),
+                        // الجديد (under الأصلي)
+                        Padding(
+                          padding: const EdgeInsetsDirectional.only(end: 4),
+                          child: Text(
+                            strings.vaultNewCount(newCount),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: AppPalette.brandGreen,
+                            ),
                           ),
                         ),
                       ],
                     );
                   },
-                  loading: () => const SizedBox(
-                    width: 60,
-                    height: 20,
-                    child: Center(
-                      child: SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                  loading: () => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppPalette.chipGreen(brightness).background,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: SizedBox(
+                      width: 40,
+                      height: 16,
+                      child: Center(
+                        child: SizedBox(
+                          width: 12,
+                          height: 12,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppPalette.chipGreen(brightness).foreground,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                   error: (_, __) => const SizedBox.shrink(),
                 ),
-              ),
       ),
     );
   }
@@ -485,18 +491,35 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
       iconColor = AppPalette.brandGreen;
     }
 
-    return InkWell(
-      key: const ValueKey('vault_sync_defaults_button'),
-      tooltip: strings.syncDefaultsTooltip,
-      onTap: () async {
-        try {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(strings.syncingDefaults)),
-          );
-          final db = ref.read(databaseProvider);
-          await AppConfigSyncService.instance.manualSyncStarterMeals(db);
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    return Tooltip(
+      message: strings.syncDefaultsTooltip,
+      child: InkWell(
+        key: const ValueKey('vault_sync_defaults_button'),
+        onTap: () async {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          
+          if (!cloudReady) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(strings.syncOffline)),
+            );
+            return;
+          }
+          
+          if (missingStarterCount == 0) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(strings.syncUpToDate)),
+            );
+            return;
+          }
+
+          try {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(strings.syncingDefaults)),
+            );
+            final db = ref.read(databaseProvider);
+            await AppConfigSyncService.instance.manualSyncStarterMeals(db);
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(strings.defaultsSynced)),
             );
@@ -516,20 +539,23 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            AnimatedContainer(
+            TweenAnimationBuilder<Color?>(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,
-              foregroundColor: iconColor,
-              child: Image.asset(
-                'assets/icons/sync_icon.png',
-                width: 22,
-                height: 22,
-              ),
+              tween: ColorTween(end: iconColor),
+              builder: (context, color, child) {
+                return Image.asset(
+                  'assets/icons/sync_icon.png',
+                  width: 22,
+                  height: 22,
+                  color: color,
+                );
+              },
             ),
             if (badgeCount != null)
               Positioned(
                 top: -6,
-                end: -8,
+                right: -8,
                 child: Container(
                   key: const ValueKey('vault_sync_badge'),
                   padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -555,7 +581,7 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 
   // ---------------------------------------------------------------------------

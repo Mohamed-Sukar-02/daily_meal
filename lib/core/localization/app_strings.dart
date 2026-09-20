@@ -52,6 +52,7 @@ class AppStrings {
   String get loading => isEn ? 'Loading…' : 'جاري التحميل...';
   String get am => isEn ? 'AM' : 'ص';
   String get pm => isEn ? 'PM' : 'م';
+  String get pressAgainToExit => isEn ? 'Press again to exit' : 'اضغط مرة أخرى للخروج';
 
   String get errorOccurred => isEn ? 'An error occurred: ' : 'حدث خطأ: ';
   String errorGeneric(Object error) =>
@@ -219,7 +220,7 @@ class AppStrings {
       : '🎉 أكلة النهاردة وقعت على:';
   String get spinWheelStart => isEn ? 'Start spinning' : 'ابدأ التدوير';
   String get spinWheelAgain => isEn ? 'Spin again' : 'لف تاني';
-  String get cookedThisOne => isEn ? 'Cooked this' : 'طبخت دي';
+  String get cookedThisOne => isEn ? 'Cook This' : 'هنطبخها النهاردة';
   String get wheelSpin => isEn ? 'Spin' : 'لف';
   String get wheelTheWheel => isEn ? 'the wheel' : 'العجلة';
 
@@ -254,6 +255,10 @@ class AppStrings {
       isEn ? 'Default meals synced successfully' : 'تمت مزامنة الأكلات الافتراضية بنجاح';
   String get defaultsSyncFailed =>
       isEn ? 'Syncing default meals failed' : 'فشلت مزامنة الأكلات الافتراضية';
+  String get syncOffline =>
+      isEn ? 'You are offline. Cannot sync right now.' : 'أنت الآن في وضع عدم الاتصال.';
+  String get syncUpToDate =>
+      isEn ? 'Everything is up to date and synced.' : 'تمت المزامنة، كل شيء محدث.';
 
   String get filterAll => isEn ? 'All' : 'الكل';
   String get filterQuick => isEn ? 'Quick 30m' : 'سريع 30م';
@@ -585,14 +590,14 @@ class AppStrings {
   // Legal policies
   // ===========================================================================
   String get privacyBody => isEn
-      ? 'The "Daily Meal" app is fully offline-first.\n\n'
-          'We do not collect, store or transmit any personal data, location or usage '
-          'habits to any external server.\n\n'
-          'All meal data and settings are stored locally on your own device only, '
-          'which guarantees your complete privacy.'
-      : 'تطبيق "أكلة النهاردة" هو تطبيق أوفلاين محلي (Offline-First) بالكامل.\n\n'
-          'نحن لا نقوم بجمع أو تخزين أو إرسال أي بيانات شخصية، أو موقع جغرافي، أو عادات استخدام لأي سيرفر خارجي.\n\n'
-          'جميع بيانات الوجبات والإعدادات يتم حفظها بشكل محلي فقط على جهازك الشخصي، مما يضمن خصوصيتك التامة.';
+      ? 'The "Daily Meal" app is built with an offline-first approach.\n\n'
+          'We do not track, collect, or transmit your personal data, location, or usage habits.\n\n'
+          'All your personal meal data and settings are stored locally on your device to guarantee your privacy. '
+          'If you use the "Explore" community recipes or "Suggest a Meal" features, the app connects to our cloud database to fetch or submit public recipes, but this is done without tracking any personally identifiable information.'
+      : 'تطبيق "أكلة النهاردة" هو تطبيق يعتمد على التخزين المحلي (Offline-First).\n\n'
+          'نحن لا نقوم بجمع أو تتبع بياناتك الشخصية، أو موقعك الجغرافي، أو عادات استخدامك.\n\n'
+          'جميع بيانات وجباتك الشخصية وإعداداتك يتم حفظها بشكل أساسي على جهازك لضمان خصوصيتك. '
+          'في حال استخدامك لميزة "استكشاف أكلات جديدة" أو "اقتراح أكلة"، يتصل التطبيق بقاعدة بياناتنا السحابية لتبادل الوصفات العامة، وذلك دون ربطها بأي بيانات شخصية تحدد هويتك.';
 
   String get termsBody => isEn
       ? 'The app is an organisational tool meant to help you suggest and plan daily home '

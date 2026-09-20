@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../widgets/app_toast.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/vault/presentation/meal_vault_screen.dart';
 import '../../features/history/presentation/history_screen.dart';
@@ -149,6 +151,7 @@ class ScaffoldWithNavBar extends ConsumerStatefulWidget {
 class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
   bool _navLock = false;
   int? _publishedBranch;
+  DateTime? _lastBackPressTime;
 
   /// Publishes the visible branch so Home/History/Settings can reset their
   /// UI-only state on re-entry. Called outside of `build` (gesture callback),
@@ -212,9 +215,34 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
     final strings = AppStrings(locale);
     _scheduleBranchSync(widget.navigationShell.currentIndex);
 
-    return Scaffold(
-      body: widget.navigationShell,
-      bottomNavigationBar: Container(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+
+        final currentIndex = widget.navigationShell.currentIndex;
+        final now = DateTime.now();
+        final isExitWarningActive = _lastBackPressTime != null &&
+            now.difference(_lastBackPressTime!) < const Duration(seconds: 2);
+
+        if (currentIndex != 0) {
+          // If not on Home tab, go to Home tab and show toast
+          _onTap(0);
+          context.showToast(strings.pressAgainToExit);
+          _lastBackPressTime = now;
+        } else {
+          // If on Home tab, check exit warning
+          if (isExitWarningActive) {
+            SystemNavigator.pop();
+          } else {
+            context.showToast(strings.pressAgainToExit);
+            _lastBackPressTime = now;
+          }
+        }
+      },
+      child: Scaffold(
+        body: widget.navigationShell,
+        bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: AppPalette.navBackground(theme.brightness),
           border: Border(
@@ -267,7 +295,7 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 

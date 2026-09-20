@@ -82,8 +82,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final routerState = GoRouterState.maybeOf(context);
-    if (routerState == null) return;
+    final routerState = GoRouterState.of(context);
     if (routerState.uri.queryParameters['section'] != 'notifications') return;
     if (identical(_scrolledForState, routerState)) return;
     _scrolledForState = routerState;
@@ -116,7 +115,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     watchNavReentry();
     // Register a dependency on the route state so didChangeDependencies fires
     // on every navigation (a fresh GoRouterState per push).
-    GoRouterState.maybeOf(context);
+    GoRouterState.of(context);
     final settingsAsync = ref.watch(appSettingsProvider);
     final brightness = Theme.of(context).brightness;
 
@@ -1082,6 +1081,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                 AppPalette.chipViolet(brightness),
                 strings.adminDashboardTitle,
                 () => _showAdminPasswordDialog(context, brightness, strings),
+                trailing: Icon(
+                  Icons.open_in_new_rounded,
+                  color: AppPalette.textSecondary(brightness),
+                  size: 19,
+                  textDirection: TextDirection.ltr,
+                ),
               ),
               _divider(brightness),
               _linkRow(
@@ -1171,6 +1176,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     String title,
     VoidCallback onTap, {
     String? subtitle,
+    Widget? trailing,
   }) {
     return InkWell(
       onTap: onTap,
@@ -1233,11 +1239,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                     ),
             ),
             const SizedBox(width: 8),
-            AppIcon(
-              AppGlyph.chevron,
-              color: AppPalette.textSecondary(brightness),
-              size: 20,
-            ),
+            trailing ??
+                AppIcon(
+                  AppGlyph.chevron,
+                  color: AppPalette.textSecondary(brightness),
+                  size: 20,
+                ),
           ],
         ),
       ),

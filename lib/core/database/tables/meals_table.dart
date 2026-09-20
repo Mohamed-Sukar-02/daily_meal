@@ -48,6 +48,7 @@ class Meals extends Table {
   TextColumn get cloudId => text().nullable()();
   IntColumn get customCooldownDays => integer().nullable()();
   TextColumn get notes => text().nullable()();
+  TextColumn get shortName => text().nullable()();
 }
 
 extension ProteinTypeX on ProteinType {

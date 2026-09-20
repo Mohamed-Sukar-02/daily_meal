@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -109,15 +110,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                   const SizedBox(width: 12),
                   IconButton(
                     tooltip: strings.clearAllHistory,
-                    icon: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.red.shade100),
-                      ),
-                      child: Icon(Icons.delete_outline_rounded, color: Colors.red.shade700, size: 20),
-                    ),
+                    icon: Icon(CupertinoIcons.delete, color: Colors.red.shade700, size: 28),
                     onPressed: () async {
                       final confirmed = await showDialog<bool>(
                         context: context,

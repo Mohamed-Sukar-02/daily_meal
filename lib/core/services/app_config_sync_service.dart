@@ -207,6 +207,8 @@ class AppConfigSyncService {
             l.id,
             MealsCompanion(
               cloudId: Value(rDoc.id),
+              photoPath: Value(rData['imageUrl'] as String?),
+              shortName: Value(rData['shortName'] as String?),
               proteinType: Value(_mapProtein(rData['proteinType'] as String? ?? 'other')),
               carbsType: Value(_mapCarbs(rData['carbsType'] as String? ?? 'none')),
               category: Value(_mapCategory(rData['category'] as String? ?? 'popular')),
@@ -233,6 +235,8 @@ class AppConfigSyncService {
             MealsCompanion(
               name: Value(rName),
               cloudId: Value(rDoc.id),
+              photoPath: Value(rData['imageUrl'] as String?),
+              shortName: Value(rData['shortName'] as String?),
               proteinType: Value(_mapProtein(rData['proteinType'] as String? ?? 'other')),
               carbsType: Value(_mapCarbs(rData['carbsType'] as String? ?? 'none')),
               category: Value(_mapCategory(rData['category'] as String? ?? 'popular')),

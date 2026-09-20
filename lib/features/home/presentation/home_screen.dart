@@ -143,6 +143,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
                   text: strings.eatYesterdayLeftovers,
                   onPressed: () => _handleEatYesterdayLeftover(context, ref),
                   keyString: 'btn_eat_yesterday_food',
+                  textColor: brightness == Brightness.dark
+                      ? const Color(0xFF17C97B)
+                      : const Color(0xFF0D8A50),
+                  backgroundColor: brightness == Brightness.dark
+                      ? const Color(0xFF131D18)
+                      : const Color(0xFFE8F5E9),
+                  borderColor: const Color(0xFF17C97B)
+                      .withValues(alpha: brightness == Brightness.dark ? 0.35 : 0.45),
                 ),
               ),
               SizedBox(width: canSpin ? 90 : 16),
@@ -152,6 +160,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
                   text: strings.orderTakeout,
                   onPressed: () => _handleTakeout(context, ref),
                   keyString: 'btn_order_takeout',
+                  textColor: brightness == Brightness.dark
+                      ? const Color(0xFF9D84FF)
+                      : const Color(0xFF6D28D9),
+                  backgroundColor: brightness == Brightness.dark
+                      ? const Color(0xFF1A1829)
+                      : const Color(0xFFF3E8FF),
+                  borderColor: const Color(0xFF9D84FF)
+                      .withValues(alpha: brightness == Brightness.dark ? 0.35 : 0.45),
                 ),
               ),
             ],
@@ -312,10 +328,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
   // ---------------------------------------------------------------------------
 
   void _openSpinWheel(BuildContext context, WidgetRef ref, List<Meal> meals) {
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      barrierDismissible: false,
-      builder: (ctx) => SpinWheelDialog(
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => SpinWheelBottomSheet(
         candidates: meals,
         onWinnerCooked: (winner) => _handleCookedToday(context, ref, winner),
       ),
@@ -346,22 +363,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
     required String text,
     required VoidCallback onPressed,
     required String keyString,
+    required Color textColor,
+    required Color backgroundColor,
+    required Color borderColor,
   }) {
-    final brightness = Theme.of(context).brightness;
     return ElevatedButton(
       key: ValueKey(keyString),
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
-        backgroundColor: AppPalette.card(brightness),
-        foregroundColor: AppPalette.textPrimary(brightness),
+        backgroundColor: backgroundColor,
+        foregroundColor: textColor,
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
         elevation: 4,
         shadowColor: Colors.black26,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(
-            color: AppPalette.outline(brightness).withValues(alpha: 0.2),
-            width: 1,
+            color: borderColor,
+            width: 1.2,
           ),
         ),
       ),
@@ -370,7 +389,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
         child: Text(
           text,
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
+            color: textColor,
             fontSize: 13,
             fontWeight: FontWeight.w700,
             height: 1.2,

@@ -208,6 +208,17 @@ class $MealsTable extends Meals with TableInfo<$MealsTable, Meal> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _shortNameMeta = const VerificationMeta(
+    'shortName',
+  );
+  @override
+  late final GeneratedColumn<String> shortName = GeneratedColumn<String>(
+    'short_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -227,6 +238,7 @@ class $MealsTable extends Meals with TableInfo<$MealsTable, Meal> {
     cloudId,
     customCooldownDays,
     notes,
+    shortName,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -340,6 +352,12 @@ class $MealsTable extends Meals with TableInfo<$MealsTable, Meal> {
         notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
       );
     }
+    if (data.containsKey('short_name')) {
+      context.handle(
+        _shortNameMeta,
+        shortName.isAcceptableOrUnknown(data['short_name']!, _shortNameMeta),
+      );
+    }
     return context;
   }
 
@@ -423,6 +441,10 @@ class $MealsTable extends Meals with TableInfo<$MealsTable, Meal> {
         DriftSqlType.string,
         data['${effectivePrefix}notes'],
       ),
+      shortName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}short_name'],
+      ),
     );
   }
 
@@ -457,6 +479,7 @@ class Meal extends DataClass implements Insertable<Meal> {
   final String? cloudId;
   final int? customCooldownDays;
   final String? notes;
+  final String? shortName;
   const Meal({
     required this.id,
     required this.name,
@@ -475,6 +498,7 @@ class Meal extends DataClass implements Insertable<Meal> {
     this.cloudId,
     this.customCooldownDays,
     this.notes,
+    this.shortName,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -518,6 +542,9 @@ class Meal extends DataClass implements Insertable<Meal> {
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
     }
+    if (!nullToAbsent || shortName != null) {
+      map['short_name'] = Variable<String>(shortName);
+    }
     return map;
   }
 
@@ -550,6 +577,9 @@ class Meal extends DataClass implements Insertable<Meal> {
       notes: notes == null && nullToAbsent
           ? const Value.absent()
           : Value(notes),
+      shortName: shortName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(shortName),
     );
   }
 
@@ -582,6 +612,7 @@ class Meal extends DataClass implements Insertable<Meal> {
       cloudId: serializer.fromJson<String?>(json['cloudId']),
       customCooldownDays: serializer.fromJson<int?>(json['customCooldownDays']),
       notes: serializer.fromJson<String?>(json['notes']),
+      shortName: serializer.fromJson<String?>(json['shortName']),
     );
   }
   @override
@@ -611,6 +642,7 @@ class Meal extends DataClass implements Insertable<Meal> {
       'cloudId': serializer.toJson<String?>(cloudId),
       'customCooldownDays': serializer.toJson<int?>(customCooldownDays),
       'notes': serializer.toJson<String?>(notes),
+      'shortName': serializer.toJson<String?>(shortName),
     };
   }
 
@@ -632,6 +664,7 @@ class Meal extends DataClass implements Insertable<Meal> {
     Value<String?> cloudId = const Value.absent(),
     Value<int?> customCooldownDays = const Value.absent(),
     Value<String?> notes = const Value.absent(),
+    Value<String?> shortName = const Value.absent(),
   }) => Meal(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -654,6 +687,7 @@ class Meal extends DataClass implements Insertable<Meal> {
         ? customCooldownDays.value
         : this.customCooldownDays,
     notes: notes.present ? notes.value : this.notes,
+    shortName: shortName.present ? shortName.value : this.shortName,
   );
   Meal copyWithCompanion(MealsCompanion data) {
     return Meal(
@@ -688,6 +722,7 @@ class Meal extends DataClass implements Insertable<Meal> {
           ? data.customCooldownDays.value
           : this.customCooldownDays,
       notes: data.notes.present ? data.notes.value : this.notes,
+      shortName: data.shortName.present ? data.shortName.value : this.shortName,
     );
   }
 
@@ -710,7 +745,8 @@ class Meal extends DataClass implements Insertable<Meal> {
           ..write('updatedAt: $updatedAt, ')
           ..write('cloudId: $cloudId, ')
           ..write('customCooldownDays: $customCooldownDays, ')
-          ..write('notes: $notes')
+          ..write('notes: $notes, ')
+          ..write('shortName: $shortName')
           ..write(')'))
         .toString();
   }
@@ -734,6 +770,7 @@ class Meal extends DataClass implements Insertable<Meal> {
     cloudId,
     customCooldownDays,
     notes,
+    shortName,
   );
   @override
   bool operator ==(Object other) =>
@@ -755,7 +792,8 @@ class Meal extends DataClass implements Insertable<Meal> {
           other.updatedAt == this.updatedAt &&
           other.cloudId == this.cloudId &&
           other.customCooldownDays == this.customCooldownDays &&
-          other.notes == this.notes);
+          other.notes == this.notes &&
+          other.shortName == this.shortName);
 }
 
 class MealsCompanion extends UpdateCompanion<Meal> {
@@ -776,6 +814,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
   final Value<String?> cloudId;
   final Value<int?> customCooldownDays;
   final Value<String?> notes;
+  final Value<String?> shortName;
   const MealsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -794,6 +833,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     this.cloudId = const Value.absent(),
     this.customCooldownDays = const Value.absent(),
     this.notes = const Value.absent(),
+    this.shortName = const Value.absent(),
   });
   MealsCompanion.insert({
     this.id = const Value.absent(),
@@ -813,6 +853,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     this.cloudId = const Value.absent(),
     this.customCooldownDays = const Value.absent(),
     this.notes = const Value.absent(),
+    this.shortName = const Value.absent(),
   }) : name = Value(name),
        proteinType = Value(proteinType),
        carbsType = Value(carbsType),
@@ -836,6 +877,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     Expression<String>? cloudId,
     Expression<int>? customCooldownDays,
     Expression<String>? notes,
+    Expression<String>? shortName,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -856,6 +898,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
       if (customCooldownDays != null)
         'custom_cooldown_days': customCooldownDays,
       if (notes != null) 'notes': notes,
+      if (shortName != null) 'short_name': shortName,
     });
   }
 
@@ -877,6 +920,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     Value<String?>? cloudId,
     Value<int?>? customCooldownDays,
     Value<String?>? notes,
+    Value<String?>? shortName,
   }) {
     return MealsCompanion(
       id: id ?? this.id,
@@ -896,6 +940,7 @@ class MealsCompanion extends UpdateCompanion<Meal> {
       cloudId: cloudId ?? this.cloudId,
       customCooldownDays: customCooldownDays ?? this.customCooldownDays,
       notes: notes ?? this.notes,
+      shortName: shortName ?? this.shortName,
     );
   }
 
@@ -959,6 +1004,9 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
     }
+    if (shortName.present) {
+      map['short_name'] = Variable<String>(shortName.value);
+    }
     return map;
   }
 
@@ -981,7 +1029,8 @@ class MealsCompanion extends UpdateCompanion<Meal> {
           ..write('updatedAt: $updatedAt, ')
           ..write('cloudId: $cloudId, ')
           ..write('customCooldownDays: $customCooldownDays, ')
-          ..write('notes: $notes')
+          ..write('notes: $notes, ')
+          ..write('shortName: $shortName')
           ..write(')'))
         .toString();
   }
@@ -2682,6 +2731,7 @@ typedef $$MealsTableCreateCompanionBuilder =
       Value<String?> cloudId,
       Value<int?> customCooldownDays,
       Value<String?> notes,
+      Value<String?> shortName,
     });
 typedef $$MealsTableUpdateCompanionBuilder =
     MealsCompanion Function({
@@ -2702,6 +2752,7 @@ typedef $$MealsTableUpdateCompanionBuilder =
       Value<String?> cloudId,
       Value<int?> customCooldownDays,
       Value<String?> notes,
+      Value<String?> shortName,
     });
 
 final class $$MealsTableReferences
@@ -2820,6 +2871,11 @@ class $$MealsTableFilterComposer extends Composer<_$AppDatabase, $MealsTable> {
 
   ColumnFilters<String> get notes => $composableBuilder(
     column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get shortName => $composableBuilder(
+    column: $table.shortName,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2942,6 +2998,11 @@ class $$MealsTableOrderingComposer
     column: $table.notes,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get shortName => $composableBuilder(
+    column: $table.shortName,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$MealsTableAnnotationComposer
@@ -3019,6 +3080,9 @@ class $$MealsTableAnnotationComposer
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
 
+  GeneratedColumn<String> get shortName =>
+      $composableBuilder(column: $table.shortName, builder: (column) => column);
+
   Expression<T> mealHistoryRefs<T extends Object>(
     Expression<T> Function($$MealHistoryTableAnnotationComposer a) f,
   ) {
@@ -3090,6 +3154,7 @@ class $$MealsTableTableManager
                 Value<String?> cloudId = const Value.absent(),
                 Value<int?> customCooldownDays = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
+                Value<String?> shortName = const Value.absent(),
               }) => MealsCompanion(
                 id: id,
                 name: name,
@@ -3108,6 +3173,7 @@ class $$MealsTableTableManager
                 cloudId: cloudId,
                 customCooldownDays: customCooldownDays,
                 notes: notes,
+                shortName: shortName,
               ),
           createCompanionCallback:
               ({
@@ -3128,6 +3194,7 @@ class $$MealsTableTableManager
                 Value<String?> cloudId = const Value.absent(),
                 Value<int?> customCooldownDays = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
+                Value<String?> shortName = const Value.absent(),
               }) => MealsCompanion.insert(
                 id: id,
                 name: name,
@@ -3146,6 +3213,7 @@ class $$MealsTableTableManager
                 cloudId: cloudId,
                 customCooldownDays: customCooldownDays,
                 notes: notes,
+                shortName: shortName,
               ),
           withReferenceMapper: (p0) => p0
               .map(

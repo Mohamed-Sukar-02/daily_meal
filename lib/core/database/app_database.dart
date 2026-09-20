@@ -29,7 +29,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? driftDatabase(name: 'daily_meal_db'));
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -136,6 +136,9 @@ class AppDatabase extends _$AppDatabase {
         try {
           await customStatement('UPDATE meals SET is_starter_meal = 1 WHERE id <= 20');
         } catch (_) {}
+      }
+      if (from < 12) {
+        await safeAddColumn(meals, meals.shortName);
       }
     },
     beforeOpen: (details) async {
@@ -260,6 +263,9 @@ class AppDatabase extends _$AppDatabase {
         }
         if (!mealsColNames.contains('notes')) {
           await customStatement('ALTER TABLE meals ADD COLUMN notes TEXT');
+        }
+        if (!mealsColNames.contains('short_name')) {
+          await customStatement('ALTER TABLE meals ADD COLUMN short_name TEXT');
         }
         if (!mealsColNames.contains('is_starter_meal')) {
           await customStatement('ALTER TABLE meals ADD COLUMN is_starter_meal INTEGER NOT NULL DEFAULT 0');
