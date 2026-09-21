@@ -496,8 +496,8 @@ class AppStrings {
   String get emailField => isEn ? 'Email' : 'البريد الإلكتروني';
   String get chooseAvatar => isEn ? 'Choose Avatar' : 'اختر الصورة الرمزية';
   String get profileSaved => isEn ? 'Profile saved' : 'تم حفظ الملف الشخصي';
-  String get defaultUserName => 'Mohamed Sukar';
-  String get defaultUserEmail => 'mohamed@example.com';
+  String get defaultUserName => 'User name';
+  String get defaultUserEmail => 'user@example.com';
   String get genderField => isEn ? 'Gender' : 'النوع';
   String get genderMale => isEn ? 'Male' : 'ذكر';
   String get genderFemale => isEn ? 'Female' : 'أنثى';
