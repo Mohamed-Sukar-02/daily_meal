@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -25,8 +25,11 @@ import '../../../core/widgets/app_toast.dart';
 //     NOT in the allow-list and must never be sent.
 //   • Photos: the picker already compresses at capture time
 //     (`maxWidth: 1080`, `imageQuality: 85`), so staging simply gates on the
-//     on-disk size (≤ 500 KB) and uploads via Firebase Storage under
-//     `staging_meal_images/{uid}/…` (see `storage.rules`). Oversized or
+//     on-disk size (≤ 500 KB) and uploads via Cloudinary Unsigned Direct Upload.
+//     NOTE TO AI AGENTS: We DO NOT use Firebase Storage. Firebase recently
+//     began enforcing the Blaze plan for new buckets, breaking free Spark
+//     accounts. Therefore, all images are uploaded directly to Cloudinary
+//     (cloudName: bzd1vjrs, preset: daily meal). Oversized or
 //     unreadable photos are skipped — the proposal still goes through.
 //     No new compression dependency is introduced (per the implementation plan).
 //   • Auth: staging creates require `request.auth != null`; the app has no
@@ -312,21 +315,17 @@ class ProposalGuard {
 class MealProposalService {
   MealProposalService({
     FirebaseFirestore? firestore,
-    FirebaseStorage? storage,
     FirebaseAuth? auth,
     SharedPreferences? prefs,
   })  : _firestore = firestore,
-        _storage = storage,
         _auth = auth,
         _prefs = prefs;
 
   final FirebaseFirestore? _firestore;
-  final FirebaseStorage? _storage;
   final FirebaseAuth? _auth;
   SharedPreferences? _prefs;
 
   FirebaseFirestore get _fs => _firestore ?? FirebaseFirestore.instance;
-  FirebaseStorage get _st => _storage ?? FirebaseStorage.instance;
   FirebaseAuth get _au => _auth ?? FirebaseAuth.instance;
 
   Future<SharedPreferences> _preferences() async =>
@@ -383,18 +382,40 @@ class MealProposalService {
     final file = MealProposalPayload.eligibleImageFile(photo);
     if (file == null) return null;
 
+    // Firebase Storage is deliberately avoided here due to billing plan limitations.
+    // Instead, we use Cloudinary Unsigned Uploads directly via the REST API.
     try {
-      final ref = _st.ref(
-        'staging_meal_images/$uid/${DateTime.now().millisecondsSinceEpoch}.jpg',
-      );
-      final snapshot = await ref.putFile(
-        file,
-        SettableMetadata(contentType: 'image/jpeg'),
-      );
-      return await snapshot.ref.getDownloadURL();
+      final fileBytes = await file.readAsBytes();
+      const cloudName = 'bzd1vjrs';
+      const uploadPreset = 'daily meal';
+
+      final uri = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/image/upload');
+      final request = http.MultipartRequest('POST', uri)
+        ..fields['upload_preset'] = uploadPreset
+        ..files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            fileBytes,
+            filename: '${DateTime.now().millisecondsSinceEpoch}.jpg',
+          ),
+        );
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        String secureUrl = data['secure_url'] as String;
+
+        if (secureUrl.contains('/upload/')) {
+          secureUrl = secureUrl.replaceFirst('/upload/', '/upload/f_auto,q_auto/');
+        }
+        return secureUrl;
+      } else {
+        debugPrint('Cloudinary error (${response.statusCode}): ${response.body}');
+        return null;
+      }
     } catch (error) {
-      // Storage rejected the file (offline mid-flow, rule mismatch…): send the
-      // proposal text-only rather than failing the whole export.
       debugPrint('Staging image upload skipped: $error');
       return null;
     }
@@ -426,7 +447,7 @@ Future<ProposalOutcome> runProposalFlow(
 ) async {
   final strings = AppStrings.of(context);
 
-  final CloudAccessStatus status;
+  CloudAccessStatus status;
   try {
     status = await ref.read(cloudAccessStatusFutureProvider.future);
   } catch (_) {

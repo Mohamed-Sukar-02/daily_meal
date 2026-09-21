@@ -19,7 +19,7 @@ void main() {
     final db = AppDatabase(NativeDatabase.memory());
     await db.appSettingsDao.ensureSettings();
     await db.appSettingsDao.updateSettings(
-      const drift.AppSettingsCompanion(
+      const AppSettingsCompanion(
         isFirstRun: drift.Value(false),
         language: drift.Value(AppLanguagePreference.ar),
       ),
@@ -39,9 +39,9 @@ void main() {
     await tester.pumpAndSettle();
 
     const strings = AppStrings(Locale('ar'));
-    final appBar = tester.getRect(find.byType(SliverAppBar).first);
-    final title = tester.getRect(find.text(strings.vaultTitle));
-    final subtitle = tester.getRect(find.text(strings.vaultSubtitle));
+    final appBar = tester.getRect(find.byType(FlexibleSpaceBar).first);
+    final title = tester.getRect(find.text(strings.vaultTitle).first);
+    final subtitle = tester.getRect(find.text(strings.vaultSubtitle).first);
     final syncButton = tester.getRect(find.byKey(const ValueKey('vault_sync_defaults_button')));
 
     expect(

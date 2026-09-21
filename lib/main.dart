@@ -23,7 +23,7 @@ void main() async {
   // it and scrolling back re-decodes (visible jank). Raise the budget to a
   // still Android-friendly 200 MB / 1200 images; every MealImage already
   // passes cacheWidth, so entries stay proportionally small.
-  binding.imageCache
+  PaintingBinding.instance.imageCache
     ..maximumSize = 1200
     ..maximumSizeBytes = 200 << 20;
 
