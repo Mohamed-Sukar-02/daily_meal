@@ -243,7 +243,6 @@ class AppStrings {
   String get vaultTabExplore => isEn ? 'Explore' : 'استكشاف';
 
   String vaultCloudCount(int count) => isEn ? '$count meals ☁️' : '$count أكلة ☁️';
-  String vaultSharedCount(int count) => isEn ? '$count shared ✅' : '$count مشترك ✅';
   String vaultNewCount(int count) => isEn ? '$count new ✨' : '$count جديدة ✨';
 
   // Sync defaults icon (My Vault header)

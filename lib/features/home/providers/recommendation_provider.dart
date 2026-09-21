@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_providers.dart';
+import '../../../core/utils/app_date_utils.dart' as app_date_utils;
 import '../../vault/providers/vault_providers.dart';
 import '../../history/providers/history_providers.dart';
 import '../../settings/providers/settings_providers.dart';
@@ -17,64 +18,130 @@ final currentTimeProvider = Provider<DateTime>((ref) {
 
 final refreshSeedProvider = StateProvider<int>((ref) => 0);
 
-final todayRecommendationsProvider = Provider<AsyncValue<RecommendationResult<Meal>>>((ref) {
-  final mealsAsync = ref.watch(allMealsProvider);
-  final historyAsync = ref.watch(mealHistoryProvider);
-  final settingsAsync = ref.watch(appSettingsProvider);
-  final engine = ref.watch(engineProvider);
-  final now = ref.watch(currentTimeProvider);
-  final refreshSeed = ref.watch(refreshSeedProvider);
+/// Fingerprint of everything that is allowed to change *which* meals get
+/// suggested. Deliberately blind to a meal's own fields: the drift stream emits
+/// on every write, and treating a heart tap as a re-rank trigger makes the
+/// cards the user is looking at jump mid-click.
+String _eligibilityKey({
+  required int dayEpoch,
+  required int refreshSeed,
+  required List<Meal> meals,
+  required int historyLength,
+  required AppSettingsData settings,
+}) {
+  final mealIds = meals.map((m) => m.id).toList()..sort();
+  return [
+    dayEpoch,
+    refreshSeed,
+    historyLength,
+    mealIds.join(','),
+    settings.cooldownDays,
+    settings.chickenCooldownDays,
+    settings.beefCooldownDays,
+    settings.fishCooldownDays,
+    settings.meatlessCooldownDays,
+  ].join('|');
+}
 
-  if (mealsAsync.hasError) {
-    return AsyncValue.error(mealsAsync.error!, mealsAsync.stackTrace!);
-  }
-  if (historyAsync.hasError) {
-    return AsyncValue.error(historyAsync.error!, historyAsync.stackTrace!);
-  }
-  if (settingsAsync.hasError) {
-    return AsyncValue.error(settingsAsync.error!, settingsAsync.stackTrace!);
-  }
+final todayRecommendationsProvider =
+    NotifierProvider<TodayRecommendationsNotifier, AsyncValue<RecommendationResult<Meal>>>(
+  TodayRecommendationsNotifier.new,
+);
 
-  final isInitialLoading = (mealsAsync.isLoading && !mealsAsync.hasValue) ||
-      (historyAsync.isLoading && !historyAsync.hasValue) ||
-      (settingsAsync.isLoading && !settingsAsync.hasValue);
-  if (isInitialLoading) {
-    return const AsyncValue.loading();
-  }
+class TodayRecommendationsNotifier
+    extends Notifier<AsyncValue<RecommendationResult<Meal>>> {
+  String? _pinnedKey;
+  List<int>? _pinnedIds;
+  RecommendationResult<Meal>? _pinnedResult;
 
-  final meals = mealsAsync.valueOrNull ?? const [];
-  final history = historyAsync.valueOrNull ?? const [];
-  final AppSettingsData fallbackSettings = AppSettingsData(
-    id: 1,
-    cooldownDays: 14,
-    chickenCooldownDays: 2,
-    beefCooldownDays: 2,
-    fishCooldownDays: 4,
-    meatlessCooldownDays: 0,
-    notificationHour: 12,
-    notificationMinute: 0,
-    notificationsEnabled: false,
-    themeMode: AppThemeModePreference.system,
-    language: AppLanguagePreference.ar,
-    isFirstRun: true,
-    recommendationSource: RecommendationSource.vault_only,
-    autoFridayFeastFilter: false,
-  );
-  final settings = settingsAsync.valueOrNull ?? fallbackSettings;
+  @override
+  AsyncValue<RecommendationResult<Meal>> build() {
+    final mealsAsync = ref.watch(allMealsProvider);
+    final historyAsync = ref.watch(mealHistoryProvider);
+    final settingsAsync = ref.watch(appSettingsProvider);
+    final engine = ref.watch(engineProvider);
+    final now = ref.watch(currentTimeProvider);
+    final refreshSeed = ref.watch(refreshSeedProvider);
 
-  try {
-    final result = engine.compute<Meal>(
-      meals: meals,
-      history: history,
-      settings: settings,
-      today: now,
-      shuffleSeed: refreshSeed,
+    if (mealsAsync.hasError) {
+      return AsyncValue.error(mealsAsync.error!, mealsAsync.stackTrace!);
+    }
+    if (historyAsync.hasError) {
+      return AsyncValue.error(historyAsync.error!, historyAsync.stackTrace!);
+    }
+    if (settingsAsync.hasError) {
+      return AsyncValue.error(settingsAsync.error!, settingsAsync.stackTrace!);
+    }
+
+    final isInitialLoading = (mealsAsync.isLoading && !mealsAsync.hasValue) ||
+        (historyAsync.isLoading && !historyAsync.hasValue) ||
+        (settingsAsync.isLoading && !settingsAsync.hasValue);
+    if (isInitialLoading) {
+      return const AsyncValue.loading();
+    }
+
+    final meals = mealsAsync.valueOrNull ?? const <Meal>[];
+    final history = historyAsync.valueOrNull ?? const [];
+    final AppSettingsData fallbackSettings = AppSettingsData(
+      id: 1,
+      cooldownDays: 14,
+      chickenCooldownDays: 2,
+      beefCooldownDays: 2,
+      fishCooldownDays: 4,
+      meatlessCooldownDays: 0,
+      notificationHour: 12,
+      notificationMinute: 0,
+      notificationsEnabled: false,
+      themeMode: AppThemeModePreference.system,
+      language: AppLanguagePreference.ar,
+      isFirstRun: true,
+      recommendationSource: RecommendationSource.vault_only,
+      autoFridayFeastFilter: false,
     );
-    return AsyncValue.data(result);
-  } catch (err, st) {
-    return AsyncValue.error(err, st);
+    final settings = settingsAsync.valueOrNull ?? fallbackSettings;
+
+    final key = _eligibilityKey(
+      dayEpoch: app_date_utils.daysSinceEpoch(now),
+      refreshSeed: refreshSeed,
+      meals: meals,
+      historyLength: history.length,
+      settings: settings,
+    );
+
+    final pinned = _pinnedResult;
+    final pinnedIds = _pinnedIds;
+    if (pinned != null && pinnedIds != null && _pinnedKey == key) {
+      // Same eligibility: keep today's three meals and their order, but rebuild
+      // them from the fresh rows so edited fields (photo, name, heart) show up.
+      final byId = {for (final m in meals) m.id: m};
+      final fresh = pinnedIds.map((id) => byId[id]).whereType<Meal>().toList();
+      if (fresh.length == pinnedIds.length) {
+        return AsyncValue.data(RecommendationResult<Meal>(
+          recommendations: fresh,
+          relaxationLevel: pinned.relaxationLevel,
+          isEmptyVault: pinned.isEmptyVault,
+          computedDate: pinned.computedDate,
+        ));
+      }
+    }
+
+    try {
+      final result = engine.compute<Meal>(
+        meals: meals,
+        history: history,
+        settings: settings,
+        today: now,
+        shuffleSeed: refreshSeed,
+      );
+      _pinnedKey = key;
+      _pinnedIds = result.recommendations.map((m) => m.id).toList();
+      _pinnedResult = result;
+      return AsyncValue.data(result);
+    } catch (err, st) {
+      return AsyncValue.error(err, st);
+    }
   }
-});
+}
 
 class RecommendationController extends AsyncNotifier<void> {
   @override

@@ -103,7 +103,7 @@ lib/
 │   │   ├── presentation/
 │   │   │   ├── home_screen.dart
 │   │   │   └── widgets/
-│   │   │       ├── meal_card.dart
+│   │   │       ├── quick_mealview.dart
 │   │   │       ├── quick_actions.dart
 │   │   │       └── spin_wheel_dialog.dart
 │   │   └── providers/

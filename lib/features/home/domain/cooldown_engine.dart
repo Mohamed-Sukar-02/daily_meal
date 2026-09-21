@@ -224,6 +224,9 @@ class CooldownEngine {
     }
   }
 
+  /// Pure meal quality: how overdue it is, Friday fit, favourite and budget
+  /// flags. Deliberately contains no randomness — variety is decided in
+  /// [_rankAndSelectDiversity], so this stays a stable "goodness" number.
   double calculateMealScore({
     required dynamic meal,
     dynamic history = const [],
@@ -234,7 +237,6 @@ class CooldownEngine {
     int fishCooldownDays = 5,
     int meatlessCooldownDays = 0,
     Map<int, DateTime>? lastCookedByMealId,
-    int shuffleSeed = 0,
   }) {
     final candidate = meal is _MealCandidate ? meal : _MealCandidate.from(meal);
     final normalizedToday = app_date_utils.toLocalDay(today);
@@ -297,10 +299,13 @@ class CooldownEngine {
     final sFavorite = candidate.isFavorite ? 5.0 : 0.0;
     final sBudget = candidate.isBudgetFriendly ? 2.0 : 0.0;
 
-    final jitter = ((app_date_utils.daysSinceEpoch(normalizedToday) * 17 + candidate.id * 31 + shuffleSeed * 47) % 100) / 25.0;
-
-    return sRecency + sFriday + sFavorite + sBudget + jitter;
+    return sRecency + sFriday + sFavorite + sBudget;
   }
+
+  /// Score gap within which two meals count as equally worthy of a card slot.
+  /// Equal to the favourite bonus, so a favourite, a budget pick and a plain
+  /// meal cooked around the same time stay interchangeable.
+  static const double _interchangeableBand = 5.0;
 
   List<_MealCandidate> _rankAndSelectDiversity({
     required List<_MealCandidate> candidates,
@@ -327,11 +332,27 @@ class CooldownEngine {
           beefCooldownDays: beefCooldownDays,
           fishCooldownDays: fishCooldownDays,
           meatlessCooldownDays: meatlessCooldownDays,
-          shuffleSeed: shuffleSeed,
         ),
       );
-    }).toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    }).toList();
+
+    // One seeded draw per meal, taken in [candidates] order (which the DAO
+    // query keeps stable). Re-seeding with the same day + shuffleSeed replays
+    // the same sequence, so browsing never moves the cards — only a refresh
+    // does. Within a band the draw decides; across bands quality still rules.
+    final draw = Random(app_date_utils.daysSinceEpoch(today) + shuffleSeed * 7919);
+    final lottery = <int, double>{
+      for (final candidate in candidates) candidate.id: draw.nextDouble(),
+    };
+
+    scored.sort((a, b) {
+      final bandA = (a.value / _interchangeableBand).floor();
+      final bandB = (b.value / _interchangeableBand).floor();
+      if (bandA != bandB) return bandB.compareTo(bandA);
+      final drawCmp = lottery[b.key.id]!.compareTo(lottery[a.key.id]!);
+      if (drawCmp != 0) return drawCmp;
+      return b.key.id.compareTo(a.key.id);
+    });
 
     final selected = <_MealCandidate>[];
     final remaining = scored.map((e) => e.key).toList();

@@ -9,6 +9,9 @@ import '../../../core/navigation/nav_lifecycle.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/app_icons.dart';
 import '../../../core/widgets/app_toast.dart';
+import '../../vault/presentation/widgets/delete_meal_dialog.dart';
+import '../../vault/presentation/widgets/meal_details_sheet.dart';
+import '../../vault/presentation/widgets/quick_add_sheet.dart';
 import '../domain/cooldown_engine.dart';
 import '../providers/recommendation_provider.dart';
 import 'widgets/home_header.dart';
@@ -125,6 +128,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
                         .read(recommendationControllerProvider.notifier)
                         .toggleFavorite(meals[i].id, meals[i].isFavorite);
                   },
+                  onTap: () => MealDetailsSheet.show(
+                    context,
+                    detailsContext: MealDetailsContext.vault,
+                    meal: meals[i],
+                    onEdit: () =>
+                        QuickAddSheet.show(context, mealToEdit: meals[i]),
+                    onDelete: () => DeleteMealDialog.show(context, meals[i]),
+                  ),
                 ),
                 if (i < meals.length - 1) const SizedBox(height: 16),
               ],

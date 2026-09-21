@@ -245,7 +245,7 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
+              Flexible(
                 child: Text(
                   strings.vaultTitle,
                   maxLines: 1,
@@ -259,12 +259,20 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              _buildVaultCounter(
-                context,
-                totalCount,
-                localMeals,
-                brightness,
-                strings,
+              Flexible(
+                // scaleDown, not clip: on narrow screens the counter badges
+                // shrink instead of throwing a RenderFlex overflow.
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: _buildVaultCounter(
+                    context,
+                    totalCount,
+                    localMeals,
+                    brightness,
+                    strings,
+                  ),
+                ),
               ),
             ],
           ),
@@ -308,10 +316,10 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
       child: AnimatedSwitcher(
         duration: const Duration(milliseconds: 250),
         child: !isExplore
-            ? Column(
-                key: const ValueKey('vault_local_count_col'),
+            ? Row(
+                key: const ValueKey('vault_local_count_row'),
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Container(
                     key: const ValueKey('vault_local_count'),
@@ -329,7 +337,7 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(width: 6),
                   _buildSyncDefaultsIcon(
                     context,
                     brightness,
@@ -349,64 +357,45 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                     }
                     final newCount = cloudMeals.length - sharedCount;
 
-                    return Column(
-                      key: const ValueKey('vault_explore_count_col'),
+                    return Row(
+                      key: const ValueKey('vault_explore_count_row'),
                       mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            // المشترك (beside الأصلي)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: AppPalette.card(brightness),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: AppPalette.hairline(brightness),
-                                ),
-                              ),
-                              child: Text(
-                                strings.vaultSharedCount(sharedCount),
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppPalette.textSecondary(brightness),
-                                ),
-                              ),
+                        // الجديد (beside الأصلي)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: AppPalette.card(brightness),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: AppPalette.hairline(brightness),
                             ),
-                            const SizedBox(width: 6),
-                            // الأصلي
-                            Container(
-                              key: const ValueKey('vault_explore_count'),
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: AppPalette.chipGreen(brightness).background,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                strings.vaultCloudCount(cloudCount),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppPalette.chipGreen(brightness).foreground,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 3),
-                        // الجديد (under الأصلي)
-                        Padding(
-                          padding: const EdgeInsetsDirectional.only(end: 4),
+                          ),
                           child: Text(
                             strings.vaultNewCount(newCount),
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
                               color: AppPalette.brandGreen,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        // الأصلي
+                        Container(
+                          key: const ValueKey('vault_explore_count'),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppPalette.chipGreen(brightness).background,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            strings.vaultCloudCount(cloudCount),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: AppPalette.chipGreen(brightness).foreground,
                             ),
                           ),
                         ),
