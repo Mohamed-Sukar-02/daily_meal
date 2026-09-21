@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:audio_session/audio_session.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/localization/app_strings.dart';
 
@@ -45,6 +46,7 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
   @override
   void initState() {
     super.initState();
+    _initAudioSession();
     _audioPlayer = AudioPlayer();
     _audioPlayer.setAsset('assets/audio/tick.wav');
     _controller = AnimationController(
@@ -52,6 +54,24 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
       duration: const Duration(milliseconds: 5000), // Longer for premium casino feel
     );
     _animation = Tween<double>(begin: 0, end: 0).animate(_controller);
+  }
+
+  Future<void> _initAudioSession() async {
+    final session = await AudioSession.instance;
+    await session.configure(const AudioSessionConfiguration(
+      avAudioSessionCategory: AVAudioSessionCategory.ambient,
+      avAudioSessionCategoryOptions: AVAudioSessionCategoryOptions.mixWithOthers,
+      avAudioSessionMode: AVAudioSessionMode.defaultMode,
+      avAudioSessionRouteSharingPolicy: AVAudioSessionRouteSharingPolicy.defaultPolicy,
+      avAudioSessionSetActiveOptions: AVAudioSessionSetActiveOptions.none,
+      androidAudioAttributes: AndroidAudioAttributes(
+        contentType: AndroidAudioContentType.sonification,
+        flags: AndroidAudioFlags.none,
+        usage: AndroidAudioUsage.assistanceSonification,
+      ),
+      androidAudioFocusGainType: AndroidAudioFocusGainType.gainTransientMayDuck,
+      androidWillPauseWhenDucked: true,
+    ));
   }
 
   @override
@@ -103,7 +123,7 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
         final currentSegment = (currentA + math.pi / 2) ~/ sectorAngle;
         if (currentSegment != _lastSegment) {
           _lastSegment = currentSegment;
-          HapticFeedback.selectionClick();
+          HapticFeedback.lightImpact();
           _audioPlayer.seek(Duration.zero);
           _audioPlayer.play();
         }
