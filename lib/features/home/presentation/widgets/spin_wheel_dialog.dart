@@ -27,6 +27,7 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
   double _currentAngle = 0.0;
   Meal? _winnerMeal;
   bool _isSpinning = false;
+  int _lastSegment = 0;
 
   final List<Color> _palette = const [
     Color(0xFFE57373), // Coral Red
@@ -93,8 +94,18 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
     _animation = Tween<double>(begin: _currentAngle, end: endAngle).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOutCirc),
     )..addListener(() {
+        final currentA = _animation.value;
+        final currentSegment = (currentA + math.pi / 2) ~/ sectorAngle;
+        if (currentSegment != _lastSegment) {
+          _lastSegment = currentSegment;
+          HapticFeedback.selectionClick();
+          SystemSound.play(SystemSoundType.click);
+        }
         setState(() {});
       });
+
+    // Seed the pointer's starting segment so the first peg crossing ticks.
+    _lastSegment = (_currentAngle + math.pi / 2) ~/ sectorAngle;
 
     _controller.forward(from: 0.0).then((_) {
       if (!mounted) return;
@@ -287,6 +298,18 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
     final buttonText = isArabic ? 'لف' : 'SPIN';
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    // Pointer behaves like a spring-loaded flapper pushed back by each peg.
+    final currentA = _controller.isAnimating ? _animation.value : _currentAngle;
+    final multiplier = 12 ~/ widget.candidates.length;
+    final effectiveMultiplier = multiplier < 2 ? 2 : multiplier;
+    final totalSegments = widget.candidates.length * effectiveMultiplier;
+    final sweepAngle = (2 * math.pi) / totalSegments;
+
+    final phase = (currentA + math.pi / 2) % sweepAngle;
+    final phaseNormalized = phase / sweepAngle;
+    // Slowly gets pushed back, then snaps to 0 when passing the peg.
+    final flapperAngle = -0.5 * math.pow(phaseNormalized, 4).toDouble();
+
     return SizedBox(
       height: (wheelSize / 2) + 24, 
       width: MediaQuery.sizeOf(context).width,
@@ -313,11 +336,15 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
           // Top Arrow Indicator
           Positioned(
             top: 0,
-            child: Icon(
-              Icons.arrow_drop_down,
-              size: 64,
-              color: Colors.redAccent.shade400,
-              shadows: const [Shadow(color: Colors.black45, blurRadius: 6, offset: Offset(0, 2))],
+            child: Transform.rotate(
+              angle: flapperAngle,
+              alignment: Alignment.topCenter,
+              child: Icon(
+                Icons.arrow_drop_down,
+                size: 64,
+                color: Colors.redAccent.shade400,
+                shadows: const [Shadow(color: Colors.black45, blurRadius: 6, offset: Offset(0, 2))],
+              ),
             ),
           ),
 
