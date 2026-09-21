@@ -113,14 +113,25 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
 
     // Target angle brings the chosen sector directly under the top pointer (-pi/2 relative to wheel)
     final targetSectorAngle = (targetSegment + 0.5) * sectorAngle;
+    
+    double baseEndAngle = -math.pi / 2 - targetSectorAngle;
+    while (baseEndAngle < 0) {
+      baseEndAngle += 2 * math.pi;
+    }
+    
     const fullSpins = 8 * 2 * math.pi;
-    final endAngle = _currentAngle + fullSpins + (2 * math.pi - targetSectorAngle);
+    final minEndAngle = _currentAngle + fullSpins;
+    
+    double endAngle = baseEndAngle;
+    while (endAngle < minEndAngle) {
+      endAngle += 2 * math.pi;
+    }
 
     _animation = Tween<double>(begin: _currentAngle, end: endAngle).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOutCirc),
     )..addListener(() {
         final currentA = _animation.value;
-        final currentSegment = (currentA + math.pi / 2) ~/ sectorAngle;
+        final currentSegment = ((currentA + math.pi / 2) / sectorAngle).floor();
         if (currentSegment != _lastSegment) {
           _lastSegment = currentSegment;
           HapticFeedback.lightImpact();
@@ -131,15 +142,19 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
       });
 
     // Seed the pointer's starting segment so the first peg crossing ticks.
-    _lastSegment = (_currentAngle + math.pi / 2) ~/ sectorAngle;
+    _lastSegment = ((_currentAngle + math.pi / 2) / sectorAngle).floor();
 
     _controller.forward(from: 0.0).then((_) {
       if (!mounted) return;
       HapticFeedback.heavyImpact();
       setState(() {
-        _currentAngle = endAngle % (2 * math.pi);
-        _winnerMeal = widget.candidates[winnerIndex];
         _isSpinning = false;
+        _currentAngle = endAngle % (2 * math.pi); // Keep it normalized
+        _winnerMeal = widget.candidates[winnerIndex];
+      });
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (!mounted) return;
+        // Optionally show celebration
       });
     });
   }
@@ -331,7 +346,7 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
     final totalSegments = widget.candidates.length * effectiveMultiplier;
     final sweepAngle = (2 * math.pi) / totalSegments;
 
-    final phase = (currentA + math.pi / 2) % sweepAngle;
+    final phase = ((currentA + math.pi / 2) % sweepAngle + sweepAngle) % sweepAngle;
     final phaseNormalized = phase / sweepAngle;
     // Slowly gets pushed back, then snaps to 0 when passing the peg.
     final flapperAngle = -0.5 * math.pow(phaseNormalized, 4).toDouble();
