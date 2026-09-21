@@ -32,12 +32,14 @@ enum AppGlyph {
   grid,
   search,
   bookmark,
+  bookmarkFill,
   close,
   sun,
   moon,
   cloud,
   cloudDown,
   cloudUp,
+  download,
   pencil,
   chevron,
   minus,
@@ -345,16 +347,10 @@ class _GlyphPainter extends CustomPainter {
         canvas.drawLine(const Offset(15.4, 15.4), const Offset(20, 20), stroke);
 
       case AppGlyph.bookmark:
-        canvas.drawPath(
-          Path()
-            ..moveTo(7, 3.8)
-            ..lineTo(17, 3.8)
-            ..lineTo(17, 20.2)
-            ..lineTo(12, 16.4)
-            ..lineTo(7, 20.2)
-            ..close(),
-          stroke,
-        );
+        canvas.drawPath(_bookmarkPath(), stroke);
+
+      case AppGlyph.bookmarkFill:
+        canvas.drawPath(_bookmarkPath(), fill);
 
       case AppGlyph.close:
         canvas.drawLine(const Offset(6.4, 6.4), const Offset(17.6, 17.6), stroke);
@@ -433,6 +429,19 @@ class _GlyphPainter extends CustomPainter {
         canvas.drawLine(const Offset(12, 19.6), const Offset(12, 11.6), stroke);
         canvas.drawLine(const Offset(9.2, 14.2), const Offset(12, 11.4), stroke);
         canvas.drawLine(const Offset(14.8, 14.2), const Offset(12, 11.4), stroke);
+
+      case AppGlyph.download:
+        canvas.drawLine(const Offset(12, 3.6), const Offset(12, 14.2), stroke);
+        canvas.drawLine(const Offset(8.2, 10.4), const Offset(12, 14.4), stroke);
+        canvas.drawLine(const Offset(15.8, 10.4), const Offset(12, 14.4), stroke);
+        canvas.drawPath(
+          Path()
+            ..moveTo(4.6, 15.6)
+            ..lineTo(4.6, 20)
+            ..lineTo(19.4, 20)
+            ..lineTo(19.4, 15.6),
+          stroke,
+        );
 
       case AppGlyph.pencil:
         canvas.save();
@@ -540,6 +549,16 @@ class _GlyphPainter extends CustomPainter {
     }
 
     canvas.restore();
+  }
+
+  Path _bookmarkPath() {
+    return Path()
+      ..moveTo(7, 3.8)
+      ..lineTo(17, 3.8)
+      ..lineTo(17, 20.2)
+      ..lineTo(12, 16.4)
+      ..lineTo(7, 20.2)
+      ..close();
   }
 
   Path _heartPath() {

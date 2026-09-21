@@ -337,6 +337,9 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                       ),
                     ),
                   ),
+                  // Inline, on the badge's trailing side (its left in Arabic),
+                  // so the counter stays a single line and the subtitle below
+                  // it is never pushed down.
                   const SizedBox(width: 6),
                   _buildSyncDefaultsIcon(
                     context,
@@ -429,7 +432,7 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
     );
   }
 
-  /// The "sync default meals" icon under the local counter (My Vault only).
+  /// The "sync default meals" icon beside the local counter (My Vault only).
   ///
   /// Label-free by design (the old "Sync Defaults" text crowded the header
   /// and broke the subtitle line) — the icon alone is the button, and its
@@ -542,9 +545,11 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
               },
             ),
             if (badgeCount != null)
-              Positioned(
-                top: -6,
-                right: -8,
+              // Overflows away from the meals chip (its `end` side) so the
+              // micro-badge never touches the counter it sits beside.
+              PositionedDirectional(
+                bottom: -5,
+                end: -7,
                 child: Container(
                   key: const ValueKey('vault_sync_badge'),
                   padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -620,6 +625,9 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                 backgroundColor: AppPalette.background(brightness),
                 surfaceTintColor: Colors.transparent,
                 elevation: 0,
+                // Same height as the Explore header: the FlexibleSpaceBar
+                // background is clipped to this value, so it must cover the
+                // title row + the subtitle line under it.
                 toolbarHeight: 85,
                 flexibleSpace: FlexibleSpaceBar(
                   background: _buildVaultHeaderWidget(

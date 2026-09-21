@@ -261,7 +261,12 @@ class AppStrings {
 
   String get filterAll => isEn ? 'All' : 'الكل';
   String get filterQuick => isEn ? 'Quick 30m' : 'سريع 30م';
-  String get filterFavorites => isEn ? 'Favorites' : 'المفضلة';
+
+  /// My Vault: meals the user loved (the `Meal.isFavorite` flag).
+  String get filterLoved => isEn ? 'Loved ❤️' : 'المحبوبة ❤️';
+
+  /// Explore: cloud meals that already have a copy in the local vault.
+  String get filterSaved => isEn ? 'Saved 🔖' : 'المحفوظة 🔖';
 
   String get vaultNoResultsTitle => isEn ? 'No matching results' : 'لا توجد نتائج مطابقة';
   String get vaultNoResultsDesc => isEn

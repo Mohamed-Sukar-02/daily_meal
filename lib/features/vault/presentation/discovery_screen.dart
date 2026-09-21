@@ -33,7 +33,7 @@ class DiscoveryScreen extends ConsumerStatefulWidget {
 class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
-  int _selectedFilterIndex = 0; // 0=Trending, 1=Admin, 2=Quick, 3=Global
+  int _selectedFilterIndex = 0; // 0=Trending, 1=Admin, 2=Quick, 3=Global, 4=Saved
   bool _isFilterBarVisible = false;
   final _viewToggleLink = LayerLink();
   final _viewTogglePortal = OverlayPortalController();
@@ -44,7 +44,8 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     super.dispose();
   }
 
-  List<CloudMeal> _filterCloudMeals(List<CloudMeal> meals) {
+  List<CloudMeal> _filterCloudMeals(
+      List<CloudMeal> meals, Set<String> savedCloudIds) {
     var filtered = meals;
     // Search filter
     if (_searchQuery.trim().isNotEmpty) {
@@ -64,6 +65,10 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
         filtered = filtered.where((m) => m.prepTimeMinutes <= 30).toList();
         break;
       case 3: // Global — no filter
+        break;
+      case 4: // Saved — already downloaded into the local vault
+        filtered =
+            filtered.where((m) => savedCloudIds.contains(m.id)).toList();
         break;
     }
     return filtered;
@@ -277,7 +282,13 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                   }
                   return publicMealsAsync.when(
                     data: (cloudMeals) {
-                      final filtered = _filterCloudMeals(cloudMeals);
+                      final localMeals = allMealsAsync.valueOrNull ?? [];
+                      final savedCloudIds = localMeals
+                          .map((m) => m.cloudId)
+                          .whereType<String>()
+                          .toSet();
+                      final filtered =
+                          _filterCloudMeals(cloudMeals, savedCloudIds);
                       if (cloudMeals.isEmpty) {
                         return SliverFillRemaining(
                           hasScrollBody: false,
@@ -298,7 +309,6 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                           ),
                         );
                       }
-                      final localMeals = allMealsAsync.valueOrNull ?? [];
                       return SliverPadding(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
                         sliver: ref.watch(vaultViewModeProvider)
@@ -426,12 +436,15 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
           _chip(brightness, index: 2, emoji: '⚡', label: strings.discoveryQuickMeals, style: AppPalette.chipGreen(brightness)),
           const SizedBox(width: 8),
           _chip(brightness, index: 3, emoji: '🌍', label: strings.discoveryGlobal, style: AppPalette.chipViolet(brightness)),
+          const SizedBox(width: 8),
+          // Its 🔖 lives in the label, not in front of it.
+          _chip(brightness, index: 4, emoji: null, label: strings.filterSaved, style: AppPalette.chipRose(brightness)),
         ],
       ),
     );
   }
 
-  Widget _chip(Brightness brightness, {required int index, required String emoji, required String label, required ChipStyle style}) {
+  Widget _chip(Brightness brightness, {required int index, required String? emoji, required String label, required ChipStyle style}) {
     final selected = _selectedFilterIndex == index;
     return GestureDetector(
       onTap: () => setState(() {
@@ -449,8 +462,10 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 14)),
-            const SizedBox(width: 6),
+            if (emoji != null) ...[
+              Text(emoji, style: const TextStyle(fontSize: 14)),
+              const SizedBox(width: 6),
+            ],
             Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: selected ? style.foreground : AppPalette.textSecondary(brightness))),
           ],
         ),

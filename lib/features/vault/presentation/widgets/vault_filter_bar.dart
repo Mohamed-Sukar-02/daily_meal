@@ -8,8 +8,8 @@ import '../../../../core/widgets/app_icons.dart';
 import '../../providers/vault_providers.dart';
 
 /// Horizontal filter chips for the vault grid, styled after the mockups:
-/// green "All" pill, pastel protein chips with emoji badges, Quick-30m and
-/// the tag filters (favorite / friday / budget) + carbs.
+/// green "All" pill, the loved heart, pastel protein chips with emoji badges,
+/// Quick-30m and the remaining tag filters (friday / budget) + carbs.
 class VaultFilterBar extends ConsumerWidget {
   final bool quickOnly;
   final ValueChanged<bool> onQuickChanged;
@@ -47,6 +47,20 @@ class VaultFilterBar extends ConsumerWidget {
               onFilterApplied?.call();
             },
           ),
+          // First real filter: the loved (hearted) meals.
+          const SizedBox(width: 8),
+          _Chip(
+            brightness: brightness,
+            selected: filter.isFavoriteOnly,
+            style: AppPalette.chipRose(brightness),
+            emoji: null,
+            glyph: null,
+            label: strings.filterLoved,
+            onTap: () {
+              notifier.toggleFavoriteFilter();
+              onFilterApplied?.call();
+            },
+          ),
           for (final p in ProteinType.values) ...[
             const SizedBox(width: 8),
             _Chip(
@@ -72,19 +86,6 @@ class VaultFilterBar extends ConsumerWidget {
             label: strings.filterQuick,
             onTap: () {
               onQuickChanged(!quickOnly);
-              onFilterApplied?.call();
-            },
-          ),
-          const SizedBox(width: 8),
-          _Chip(
-            brightness: brightness,
-            selected: filter.isFavoriteOnly,
-            style: AppPalette.chipRose(brightness),
-            emoji: null,
-            glyph: AppGlyph.heartFill,
-            label: strings.filterFavorites,
-            onTap: () {
-              notifier.toggleFavoriteFilter();
               onFilterApplied?.call();
             },
           ),

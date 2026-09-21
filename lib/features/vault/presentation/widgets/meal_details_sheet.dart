@@ -458,8 +458,9 @@ class MealDetailsSheet extends ConsumerWidget {
             ? null
             : () => _download(context, ref),
         icon: AppIcon(
-          isSavedToVault ? AppGlyph.bookmark : AppGlyph.cloudDown,
-          color: Colors.white,
+          // Saved reads as a solid bookmark, not an outline.
+          isSavedToVault ? AppGlyph.bookmarkFill : AppGlyph.cloudDown,
+          color: isSavedToVault ? AppPalette.brandGreen : Colors.white,
           size: 16,
         ),
         label: Text(

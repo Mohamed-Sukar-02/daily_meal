@@ -11,7 +11,8 @@ import '../../providers/vault_providers.dart';
 import 'meal_details_sheet.dart';
 
 /// Vault grid card, styled after the mockups: full-bleed photo on top,
-/// bold name, emoji badges + time pill and a bookmark (favourite) toggle.
+/// bold name, emoji badges + time pill and a heart (loved) toggle that fills
+/// green once the meal is loved.
 ///
 /// Gestures: tap = details sheet (with edit/delete actions), long-press =
 /// delete (keys kept for the test-suite).
@@ -111,7 +112,7 @@ class MealVaultCard extends ConsumerWidget {
                             child: _timePill(context, brightness),
                           ),
                         ),
-                        _bookmarkButton(context, ref, brightness),
+                        _LoveButton(meal: meal),
                       ],
                     ),
                   ],
@@ -179,27 +180,6 @@ class MealVaultCard extends ConsumerWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _bookmarkButton(BuildContext context, WidgetRef ref, Brightness brightness) {
-    return InkWell(
-      customBorder: const CircleBorder(),
-      onTap: () =>
-          ref.read(vaultControllerProvider.notifier).toggleFavorite(meal.id, meal.isFavorite),
-      child: SizedBox(
-        width: 34,
-        height: 34,
-        child: Center(
-          child: AppIcon(
-            AppGlyph.bookmark,
-            color: meal.isFavorite
-                ? AppPalette.brandGreen
-                : AppPalette.textSecondary(brightness),
-            size: 18,
-          ),
-        ),
       ),
     );
   }
@@ -333,7 +313,7 @@ class MealVaultListTile extends ConsumerWidget {
                   ],
                 ),
               ),
-              _ListBookmarkButton(meal: meal),
+              _LoveButton(meal: meal),
             ],
           ),
         ),
@@ -388,15 +368,20 @@ Widget _listTimePill(BuildContext context, Brightness brightness, Meal meal) {
   );
 }
 
-class _ListBookmarkButton extends ConsumerWidget {
+/// The "loved" toggle shared by the vault grid card and list row. Writes the
+/// same `Meal.isFavorite` flag the "loved ❤️" vault filter reads, and fills
+/// green while loved.
+class _LoveButton extends ConsumerWidget {
   final Meal meal;
 
-  const _ListBookmarkButton({required this.meal});
+  const _LoveButton({required this.meal});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final brightness = Theme.of(context).brightness;
+    final isLoved = meal.isFavorite;
     return InkWell(
+      key: ValueKey('meal_love_button_${meal.id}'),
       customBorder: const CircleBorder(),
       onTap: () => ref
           .read(vaultControllerProvider.notifier)
@@ -406,8 +391,8 @@ class _ListBookmarkButton extends ConsumerWidget {
         height: 34,
         child: Center(
           child: AppIcon(
-            AppGlyph.bookmark,
-            color: meal.isFavorite
+            isLoved ? AppGlyph.heartFill : AppGlyph.heartOutline,
+            color: isLoved
                 ? AppPalette.brandGreen
                 : AppPalette.textSecondary(brightness),
             size: 18,

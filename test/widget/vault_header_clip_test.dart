@@ -40,19 +40,23 @@ void main() {
 
     const strings = AppStrings(Locale('ar'));
     final appBar = tester.getRect(find.byType(FlexibleSpaceBar).first);
-    final title = tester.getRect(find.text(strings.vaultTitle).first);
+    final localCount =
+        tester.getRect(find.byKey(const ValueKey('vault_local_count')));
     final subtitle = tester.getRect(find.text(strings.vaultSubtitle).first);
-    final syncButton = tester.getRect(find.byKey(const ValueKey('vault_sync_defaults_button')));
+    final syncButton =
+        tester.getRect(find.byKey(const ValueKey('vault_sync_defaults_button')));
 
     expect(
       subtitle.bottom,
       lessThanOrEqualTo(appBar.bottom + 0.5),
-      reason: 'subtitle is pushed out of the 85px toolbar — the original bug',
+      reason: 'subtitle is pushed out of the toolbar — the original bug',
     );
     expect(subtitle.top, greaterThanOrEqualTo(appBar.top));
-    // The counter sits beside the title, so the sync icon must not stack below it.
-    expect(syncButton.top, greaterThanOrEqualTo(title.top));
-    expect(syncButton.bottom, lessThanOrEqualTo(title.bottom + 1));
+    // The sync icon sits inline on the meals chip's trailing side (its left in
+    // Arabic) — stacking it under the chip was what pushed the subtitle out.
+    expect(syncButton.right, lessThanOrEqualTo(localCount.left + 0.5));
+    expect(syncButton.top, lessThanOrEqualTo(localCount.bottom));
+    expect(syncButton.bottom, lessThanOrEqualTo(appBar.bottom + 0.5));
 
     await db.close();
   });
