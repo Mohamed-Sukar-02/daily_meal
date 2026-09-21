@@ -52,9 +52,9 @@ void main() {
       reason: 'subtitle is pushed out of the toolbar — the original bug',
     );
     expect(subtitle.top, greaterThanOrEqualTo(appBar.top));
-    // The sync icon sits inline on the meals chip's trailing side (its left in
+    // The sync icon sits inline on the meals chip's leading side (its right in
     // Arabic) — stacking it under the chip was what pushed the subtitle out.
-    expect(syncButton.right, lessThanOrEqualTo(localCount.left + 0.5));
+    expect(syncButton.left, greaterThanOrEqualTo(localCount.right - 0.5));
     expect(syncButton.top, lessThanOrEqualTo(localCount.bottom));
     expect(syncButton.bottom, lessThanOrEqualTo(appBar.bottom + 0.5));
 

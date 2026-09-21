@@ -337,3 +337,45 @@ final vaultViewModeProvider =
     NotifierProvider<VaultViewModeNotifier, bool>(() {
   return VaultViewModeNotifier();
 });
+
+const String _kSavedCloudMealsKey = 'saved_cloud_meals';
+
+class SavedCloudMealsNotifier extends Notifier<Set<String>> {
+  @override
+  Set<String> build() {
+    _loadPreference();
+    return const {};
+  }
+
+  Future<void> _loadPreference() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getStringList(_kSavedCloudMealsKey);
+      if (saved != null) {
+        state = saved.toSet();
+      }
+    } catch (_) {
+      // Fallback silently in test or offline environments
+    }
+  }
+
+  Future<void> toggleSaved(String cloudId) async {
+    final newState = Set<String>.from(state);
+    if (newState.contains(cloudId)) {
+      newState.remove(cloudId);
+    } else {
+      newState.add(cloudId);
+    }
+    state = newState;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_kSavedCloudMealsKey, newState.toList());
+    } catch (_) {
+      // Fallback silently in test or offline environments
+    }
+  }
+}
+
+final savedCloudMealsProvider = NotifierProvider<SavedCloudMealsNotifier, Set<String>>(() {
+  return SavedCloudMealsNotifier();
+});

@@ -11,6 +11,7 @@ import '../../../../core/widgets/meal_image.dart';
 import '../../application/meal_proposal_service.dart';
 import '../../data/models/cloud_meal.dart';
 import '../../providers/discovery_providers.dart';
+import '../../providers/vault_providers.dart';
 
 /// Which screen a [MealDetailsSheet] was opened from. Controls the
 /// context-specific action area (if any) rendered at the bottom.
@@ -275,14 +276,25 @@ class MealDetailsSheet extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    info.name,
-                    style: TextStyle(
-                      fontSize: 22,
-                      height: 1.2,
-                      fontWeight: FontWeight.w900,
-                      color: AppPalette.textPrimary(brightness),
-                    ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          info.name,
+                          style: TextStyle(
+                            fontSize: 22,
+                            height: 1.2,
+                            fontWeight: FontWeight.w900,
+                            color: AppPalette.textPrimary(brightness),
+                          ),
+                        ),
+                      ),
+                      if (detailsContext == MealDetailsContext.explore && cloudMeal != null)
+                        _buildExploreBookmark(ref, brightness),
+                      if (detailsContext == MealDetailsContext.vault && meal != null)
+                        _buildVaultLoveButton(ref, brightness),
+                    ],
                   ),
                   const SizedBox(height: 12),
                   _buildBadges(brightness, strings, info),
@@ -704,6 +716,47 @@ class MealDetailsSheet extends ConsumerWidget {
       case ProteinType.none:
         return AppPalette.chipGreen(b);
     }
+  }
+
+  Widget _buildExploreBookmark(WidgetRef ref, Brightness brightness) {
+    final savedCloudIds = ref.watch(savedCloudMealsProvider);
+    final isSaved = savedCloudIds.contains(cloudMeal!.id);
+    return InkWell(
+      customBorder: const CircleBorder(),
+      onTap: () {
+        ref.read(savedCloudMealsProvider.notifier).toggleSaved(cloudMeal!.id);
+      },
+      child: Padding(
+        padding: const EdgeInsets.all(4.0),
+        child: AppIcon(
+          isSaved ? AppGlyph.bookmarkFill : AppGlyph.bookmark,
+          color: isSaved
+              ? AppPalette.brandGreen
+              : AppPalette.textSecondary(brightness),
+          size: 24,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVaultLoveButton(WidgetRef ref, Brightness brightness) {
+    final isLoved = meal!.isFavorite;
+    return InkWell(
+      customBorder: const CircleBorder(),
+      onTap: () {
+        ref.read(vaultControllerProvider.notifier).toggleFavorite(meal!.id, isLoved);
+      },
+      child: Padding(
+        padding: const EdgeInsets.all(4.0),
+        child: AppIcon(
+          isLoved ? AppGlyph.heartFill : AppGlyph.heartOutline,
+          color: isLoved
+              ? AppPalette.brandGreen
+              : AppPalette.textSecondary(brightness),
+          size: 24,
+        ),
+      ),
+    );
   }
 }
  

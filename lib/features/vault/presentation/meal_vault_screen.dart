@@ -321,6 +321,14 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  _buildSyncDefaultsIcon(
+                    context,
+                    brightness,
+                    strings,
+                    localMeals,
+                    publicMealsAsync,
+                  ),
+                  const SizedBox(width: 6),
                   Container(
                     key: const ValueKey('vault_local_count'),
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -336,17 +344,6 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                         color: AppPalette.chipGreen(brightness).foreground,
                       ),
                     ),
-                  ),
-                  // Inline, on the badge's trailing side (its left in Arabic),
-                  // so the counter stays a single line and the subtitle below
-                  // it is never pushed down.
-                  const SizedBox(width: 6),
-                  _buildSyncDefaultsIcon(
-                    context,
-                    brightness,
-                    strings,
-                    localMeals,
-                    publicMealsAsync,
                   ),
                 ],
               )

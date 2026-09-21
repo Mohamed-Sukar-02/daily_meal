@@ -283,12 +283,9 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                   return publicMealsAsync.when(
                     data: (cloudMeals) {
                       final localMeals = allMealsAsync.valueOrNull ?? [];
-                      final savedCloudIds = localMeals
-                          .map((m) => m.cloudId)
-                          .whereType<String>()
-                          .toSet();
+                      final bookmarkedCloudIds = ref.watch(savedCloudMealsProvider);
                       final filtered =
-                          _filterCloudMeals(cloudMeals, savedCloudIds);
+                          _filterCloudMeals(cloudMeals, bookmarkedCloudIds);
                       if (cloudMeals.isEmpty) {
                         return SliverFillRemaining(
                           hasScrollBody: false,
@@ -824,6 +821,8 @@ class _CloudMealCard extends ConsumerWidget {
                       _miniBadge(brightness, _proteinEmoji(cloudMeal.proteinType), _proteinStyle(cloudMeal.proteinType, brightness)),
                       const SizedBox(width: 6),
                       _timePill(brightness, cloudMeal.prepTimeMinutes, strings),
+                      const Spacer(),
+                      _BookmarkCloudButton(cloudId: cloudMeal.id),
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -1056,6 +1055,8 @@ class _CloudMealListTile extends ConsumerWidget {
                     _listMiniBadge(brightness, _listProteinEmoji(cloudMeal.proteinType), _listProteinStyle(cloudMeal.proteinType, brightness)),
                     const SizedBox(width: 6),
                     Flexible(child: _listTimePill(brightness, cloudMeal.prepTimeMinutes, strings)),
+                    const Spacer(),
+                    _BookmarkCloudButton(cloudId: cloudMeal.id),
                   ],
                 ),
               ],
@@ -1136,5 +1137,39 @@ ChipStyle _listProteinStyle(String p, Brightness b) {
     case 'fish': return AppPalette.chipBlue(b);
     case 'meatless': return AppPalette.chipGreen(b);
     default: return AppPalette.chipGreen(b);
+  }
+}
+
+class _BookmarkCloudButton extends ConsumerWidget {
+  final String cloudId;
+
+  const _BookmarkCloudButton({required this.cloudId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final brightness = Theme.of(context).brightness;
+    final savedCloudIds = ref.watch(savedCloudMealsProvider);
+    final isSaved = savedCloudIds.contains(cloudId);
+    
+    return InkWell(
+      key: ValueKey('cloud_bookmark_$cloudId'),
+      customBorder: const CircleBorder(),
+      onTap: () {
+        ref.read(savedCloudMealsProvider.notifier).toggleSaved(cloudId);
+      },
+      child: SizedBox(
+        width: 34,
+        height: 34,
+        child: Center(
+          child: AppIcon(
+            isSaved ? AppGlyph.bookmarkFill : AppGlyph.bookmark,
+            color: isSaved
+                ? AppPalette.brandGreen
+                : AppPalette.textSecondary(brightness),
+            size: 18,
+          ),
+        ),
+      ),
+    );
   }
 }
