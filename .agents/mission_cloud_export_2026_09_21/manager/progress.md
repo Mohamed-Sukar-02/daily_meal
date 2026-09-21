@@ -26,11 +26,20 @@
    key-contract analysis → CLEAN; behaviour traps (favourite re-rank, delete
    pop, deactivated context, FLUTTER_TEST gate) verified by reading.
 10. [manager] Hardening from test review: canPop guard on MealScreen delete-pop.
-11. [manager] Final gate: audit re-run PASS → commit → push → PR → merge main.
+11. [manager] Final gate: audit re-run PASS → commit 7cb680a (36 files,
+    +2863/−61) → pushed arena/01a0c2e2-daily-meal → PR #7 → MERGED into main
+    (merge commit 8654ce4ac8340c66cad8a47376df014296f60d86, 2026-09-21T08:16:56Z).
+12. [manager] Post-merge: this progress update committed & merged via
+    follow-up PR so main carries the complete mission record.
 
 ## Victory conditions
 - [x] All plan items implemented or evidenced-already-done
 - [x] analyze-clean by construction (static audit PASS, 0 failures)
 - [x] New tests committed & self-consistent (28 cases)
 - [x] ISSUES.md updated (PopScope [x] per plan note)
-- [ ] PR merged into main (pending — final step)
+- [x] PR merged into main (PR #7, merge commit 8654ce4)
+
+## Mission status: COMPLETE
+Remaining hand-off to a machine WITH the Flutter SDK (tracked in ISSUES.md):
+run `flutter analyze && flutter test`, then
+`firebase deploy --only firestore:rules,storage`.
