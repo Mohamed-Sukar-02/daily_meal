@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:just_audio/just_audio.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/localization/app_strings.dart';
 
@@ -28,6 +29,7 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
   Meal? _winnerMeal;
   bool _isSpinning = false;
   int _lastSegment = 0;
+  late AudioPlayer _audioPlayer;
 
   final List<Color> _palette = const [
     Color(0xFFE57373), // Coral Red
@@ -43,6 +45,8 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
   @override
   void initState() {
     super.initState();
+    _audioPlayer = AudioPlayer();
+    _audioPlayer.setAsset('assets/audio/tick.wav');
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 5000), // Longer for premium casino feel
@@ -52,6 +56,7 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
 
   @override
   void dispose() {
+    _audioPlayer.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -99,7 +104,8 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
         if (currentSegment != _lastSegment) {
           _lastSegment = currentSegment;
           HapticFeedback.selectionClick();
-          SystemSound.play(SystemSoundType.click);
+          _audioPlayer.seek(Duration.zero);
+          _audioPlayer.play();
         }
         setState(() {});
       });
