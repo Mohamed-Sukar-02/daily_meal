@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../../../core/localization/app_strings.dart';
@@ -7,6 +8,7 @@ import '../../../../core/theme/app_palette.dart';
 import '../../../../core/widgets/app_icons.dart';
 import '../../../../core/widgets/app_toast.dart';
 import '../../../../core/widgets/meal_image.dart';
+import '../../application/meal_proposal_service.dart';
 import '../../data/models/cloud_meal.dart';
 import '../../providers/discovery_providers.dart';
 
@@ -290,7 +292,7 @@ class MealDetailsSheet extends ConsumerWidget {
                     MealDetailsContext.explore =>
                       _buildExploreSection(context, ref, brightness, strings),
                     MealDetailsContext.vault =>
-                      _buildVaultSection(context, brightness, strings),
+                      _buildVaultSection(context, ref, brightness, strings),
                   },
                 ],
               ),
@@ -491,67 +493,165 @@ class MealDetailsSheet extends ConsumerWidget {
     }
   }
 
-  /// Vault: Edit / Update + Delete action buttons.
+  /// Vault: Edit / Update + Delete action buttons, plus the Cloud Staging
+  /// Export entry point (propose to cloud) and the full meal screen link.
   Widget _buildVaultSection(
     BuildContext context,
+    WidgetRef ref,
     Brightness brightness,
     AppStrings strings,
   ) {
-    return Row(
+    final meal = this.meal;
+    final isProposing =
+        meal != null && ref.watch(activeProposalMealIdProvider) == meal.id;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(
-          child: SizedBox(
-            height: 48,
-            child: FilledButton.icon(
-              key: const Key('meal_details_edit_button'),
-              onPressed: () {
-                final onEdit = this.onEdit;
-                if (onEdit == null) return;
-                Navigator.of(context).pop();
-                onEdit();
-              },
-              icon: AppIcon(AppGlyph.pencil, color: Colors.white, size: 16),
-              label: Text(
-                strings.edit,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
-              ),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppPalette.brandGreen,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+        Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 48,
+                child: FilledButton.icon(
+                  key: const Key('meal_details_edit_button'),
+                  onPressed: () {
+                    final onEdit = this.onEdit;
+                    if (onEdit == null) return;
+                    Navigator.of(context).pop();
+                    onEdit();
+                  },
+                  icon: AppIcon(AppGlyph.pencil, color: Colors.white, size: 16),
+                  label: Text(
+                    strings.edit,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppPalette.brandGreen,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    elevation: 0,
+                  ),
                 ),
-                elevation: 0,
               ),
             ),
-          ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: SizedBox(
+                height: 48,
+                child: OutlinedButton.icon(
+                  key: const Key('meal_details_delete_button'),
+                  onPressed: () {
+                    final onDelete = this.onDelete;
+                    if (onDelete == null) return;
+                    Navigator.of(context).pop();
+                    onDelete();
+                  },
+                  icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                  label: Text(
+                    strings.delete,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red.shade700,
+                    side: BorderSide(color: Colors.red.shade100),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: SizedBox(
-            height: 48,
-            child: OutlinedButton.icon(
-              key: const Key('meal_details_delete_button'),
-              onPressed: () {
-                final onDelete = this.onDelete;
-                if (onDelete == null) return;
-                Navigator.of(context).pop();
-                onDelete();
-              },
-              icon: const Icon(Icons.delete_outline_rounded, size: 16),
-              label: Text(
-                strings.delete,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
-              ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.red.shade700,
-                side: BorderSide(color: Colors.red.shade100),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            // Cloud Staging Export — sends the meal for admin review.
+            Expanded(
+              child: SizedBox(
+                height: 44,
+                child: OutlinedButton.icon(
+                  key: const Key('meal_details_propose_button'),
+                  onPressed: meal == null || isProposing
+                      ? null
+                      : () => runProposalFlow(context, ref, meal),
+                  icon: isProposing
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : AppIcon(
+                          AppGlyph.cloudUp,
+                          color: AppPalette.brandGreen,
+                          size: 16,
+                        ),
+                  label: Text(
+                    isProposing
+                        ? strings.proposalInProgress
+                        : strings.proposalCta,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: AppPalette.brandGreen,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(
+                      color: AppPalette.brandGreen.withValues(alpha: 0.45),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                  ),
                 ),
               ),
             ),
-          ),
+            const SizedBox(width: 12),
+            // Full meal screen (/meal/:id) — grab the router BEFORE popping so
+            // navigation never depends on the sheet's deactivated context.
+            Expanded(
+              child: SizedBox(
+                height: 44,
+                child: OutlinedButton.icon(
+                  key: const Key('meal_details_fullscreen_button'),
+                  onPressed: meal == null
+                      ? null
+                      : () {
+                          final router = GoRouter.of(context);
+                          Navigator.of(context).pop();
+                          router.push('/meal/${meal.id}');
+                        },
+                  icon: const Icon(Icons.arrow_outward_rounded, size: 16),
+                  label: Text(
+                    strings.fullDetails,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: AppPalette.textSecondary(brightness),
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppPalette.textSecondary(brightness),
+                    side: BorderSide(color: AppPalette.hairline(brightness)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );

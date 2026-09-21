@@ -37,6 +37,7 @@ enum AppGlyph {
   moon,
   cloud,
   cloudDown,
+  cloudUp,
   pencil,
   chevron,
   minus,
@@ -415,6 +416,23 @@ class _GlyphPainter extends CustomPainter {
         canvas.drawLine(const Offset(12, 11.4), const Offset(12, 19.4), stroke);
         canvas.drawLine(const Offset(9.2, 16.8), const Offset(12, 19.6), stroke);
         canvas.drawLine(const Offset(14.8, 16.8), const Offset(12, 19.6), stroke);
+
+      case AppGlyph.cloudUp:
+        canvas.drawPath(
+          Path()
+            ..moveTo(7.4, 15.2)
+            ..arcToPoint(const Offset(7.4, 8.4),
+                radius: const Radius.circular(3.4), clockwise: false)
+            ..arcToPoint(const Offset(14.6, 6.6),
+                radius: const Radius.circular(4.2), clockwise: true)
+            ..arcToPoint(const Offset(17.4, 15.2),
+                radius: const Radius.circular(3.6), clockwise: true)
+            ..close(),
+          stroke,
+        );
+        canvas.drawLine(const Offset(12, 19.6), const Offset(12, 11.6), stroke);
+        canvas.drawLine(const Offset(9.2, 14.2), const Offset(12, 11.4), stroke);
+        canvas.drawLine(const Offset(14.8, 14.2), const Offset(12, 11.4), stroke);
 
       case AppGlyph.pencil:
         canvas.save();

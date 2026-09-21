@@ -389,6 +389,36 @@ class AppStrings {
   String get savedInVault =>
       isEn ? 'Saved to your vault' : 'محفوظة في خزانتك';
 
+  // Full meal screen
+  String get mealDetailsTitle => isEn ? 'Meal details' : 'تفاصيل الأكلة';
+  String get mealNotFound => isEn
+      ? 'This meal is no longer in the vault'
+      : 'هذه الأكلة لم تعد موجودة في الخزانة';
+  String get fullDetails => isEn ? 'Full details' : 'التفاصيل الكاملة';
+  String get notesLabel => isEn ? 'Notes' : 'ملاحظات';
+
+  // Cloud Staging Export (propose a meal for the public cloud vault)
+  String get proposalCta => isEn ? 'Propose to cloud' : 'اقتراح للسحابة';
+  String get proposalInProgress => isEn ? 'Sending…' : 'جاري الإرسال...';
+  String get proposalSuccess => isEn
+      ? 'Sent for review — thank you!'
+      : 'تم إرسال اقتراحك للمراجعة — شكراً!';
+  String get proposalAlready => isEn
+      ? 'Already proposed — edit the meal to send it again'
+      : 'مُقترحة من قبل — عدّل الأكلة لإرسالها مرة أخرى';
+  String get proposalInvalidName => isEn
+      ? 'The meal name is too short to propose (2 letters minimum)'
+      : 'اسم الأكلة قصير جداً للاقتراح (حرفان على الأقل)';
+  String get proposalOffline => isEn
+      ? 'No connection — your proposal was not sent'
+      : 'لا يوجد اتصال — لم يتم إرسال الاقتراح';
+  String get proposalWifiOnly => isEn
+      ? 'Cloud is Wi-Fi-only right now — connect to Wi-Fi or change the setting'
+      : 'السحابة على وضع الواي فاي فقط — اتصل بالواي فاي أو غيّر الإعداد';
+  String get proposalFailed => isEn
+      ? 'Proposal failed — try again later'
+      : 'فشل إرسال الاقتراح — حاول لاحقاً';
+
   // ===========================================================================
   // History
   // ===========================================================================
