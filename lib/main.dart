@@ -15,7 +15,18 @@ import 'core/database/database_providers.dart';
 import 'core/services/orphan_image_sweeper.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  final binding = WidgetsFlutterBinding.ensureInitialized();
+
+  // Photo-heavy UI (vault grid, home heroes, cloud images). The stock image
+  // cache (1000 images / 100 MB) evicts decoded JPEGs while scrolling a large
+  // vault — a 720px-wide decoded frame is ~2 MB, so ~50 photos already fill
+  // it and scrolling back re-decodes (visible jank). Raise the budget to a
+  // still Android-friendly 200 MB / 1200 images; every MealImage already
+  // passes cacheWidth, so entries stay proportionally small.
+  binding.imageCache
+    ..maximumSize = 1200
+    ..maximumSizeBytes = 200 << 20;
+
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,

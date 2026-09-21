@@ -803,12 +803,17 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                           itemCount: visible.length,
                           itemBuilder: (context, index) {
                             final meal = visible[index];
-                            return MealVaultCard(
-                              meal: meal,
-                              onEdit: () => QuickAddSheet.show(
-                                  context, mealToEdit: meal),
-                              onDelete: () =>
-                                  DeleteMealDialog.show(context, meal),
+                            // Repaint isolation: ink splashes / heart
+                            // animations repaint only their own card, never
+                            // the neighbouring grid cells.
+                            return RepaintBoundary(
+                              child: MealVaultCard(
+                                meal: meal,
+                                onEdit: () => QuickAddSheet.show(
+                                    context, mealToEdit: meal),
+                                onDelete: () =>
+                                    DeleteMealDialog.show(context, meal),
+                              ),
                             );
                           },
                         )
@@ -818,12 +823,15 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                             final meal = visible[index];
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 12),
-                              child: MealVaultListTile(
-                                meal: meal,
-                                onEdit: () => QuickAddSheet.show(
-                                    context, mealToEdit: meal),
-                                onDelete: () =>
-                                    DeleteMealDialog.show(context, meal),
+                              // Repaint isolation (see grid branch above).
+                              child: RepaintBoundary(
+                                child: MealVaultListTile(
+                                  meal: meal,
+                                  onEdit: () => QuickAddSheet.show(
+                                      context, mealToEdit: meal),
+                                  onDelete: () =>
+                                      DeleteMealDialog.show(context, meal),
+                                ),
                               ),
                             );
                           },

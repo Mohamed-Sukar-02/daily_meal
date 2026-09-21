@@ -9,6 +9,7 @@ import '../../features/vault/presentation/meal_vault_screen.dart';
 import '../../features/history/presentation/history_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
+import '../../features/meals/presentation/meal_screen.dart';
 
 import '../../features/welcome/presentation/welcome_screen.dart';
 import '../../features/welcome/presentation/splash_screen.dart';
@@ -60,6 +61,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => const NoTransitionPage(
           child: WelcomeScreen(),
         ),
+      ),
+      // Full meal screen (root-level: renders above the tab shell).
+      // Reached from the meal details sheet ("full details") and deep links.
+      GoRoute(
+        path: '/meal/:id',
+        name: 'meal',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (context, state) {
+          final id = int.tryParse(state.pathParameters['id'] ?? '') ?? -1;
+          return MaterialPage<void>(
+            key: state.pageKey,
+            child: MealScreen(mealId: id),
+          );
+        },
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
