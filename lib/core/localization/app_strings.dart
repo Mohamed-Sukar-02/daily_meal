@@ -215,6 +215,17 @@ class AppStrings {
   String get favorite => isEn ? 'Favorite' : 'مفضلة';
   String get mealFlagsLabel => isEn ? 'Meal options' : 'خيارات الوجبة';
 
+  // Full meal screen (mockup-aligned)
+  String get moreFavorites => isEn ? 'More Favorites' : 'مزيد من المفضلات';
+  String get freshAndNatural => isEn ? 'Fresh & Natural' : 'طازج وطبيعي';
+  String get healthyTag => isEn ? 'Healthy' : 'صحي';
+  String get balancedTag => isEn ? 'Balanced' : 'متوازن';
+  String get deliciousTag => isEn ? 'Delicious' : 'لذيذ';
+  String get mealScreenBottomHint => isEn
+      ? 'Actions coming soon'
+      : 'سيب الجزء دا زي ما هو على ما نحط فيه حاجة';
+  String prepMinutesShort(int minutes) => isEn ? '$minutes min' : '$minutes د';
+
   // Spin the wheel
   String get spinWheelTitle => isEn ? 'Wheel of Fortune' : 'عجلة الحظ';
   String get spinWheelTitleEmoji => isEn ? 'Wheel of Fortune 🎡' : 'عجلة الحظ 🎡';
