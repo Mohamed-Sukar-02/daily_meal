@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -88,9 +89,34 @@ class _DailyMealAppState extends ConsumerState<DailyMealApp> {
         GlobalCupertinoLocalizations.delegate,
       ],
       builder: (context, child) {
-        return Directionality(
-          textDirection: locale.languageCode == 'ar' ? TextDirection.rtl : TextDirection.ltr,
-          child: child ?? const SizedBox.shrink(),
+        // Single source of truth for the system-overlay style. Flutter only
+        // updates the status-bar icons when an AnnotatedRegion sits under
+        // the status bar, and screens without an AppBar (home, vault,
+        // history, settings, welcome) never set one — so the icons used to
+        // stay stuck on whatever the previous screen left behind (invisible
+        // light icons on the light background). Deriving the style from the
+        // *effective* theme brightness covers every screen by default and
+        // re-applies instantly when the user switches light/dark.
+        // Individual screens can still override locally (e.g. MealScreen's
+        // dark hero keeps light icons via its own AnnotatedRegion).
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            // Android: icon color. Dark icons on the light theme, light
+            // icons on the dark theme.
+            statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+            // iOS: brightness of the status-bar *background*, so the meaning
+            // is inverted relative to the Android flag above.
+            statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+            systemNavigationBarColor: Colors.transparent,
+            systemNavigationBarIconBrightness:
+                isDark ? Brightness.light : Brightness.dark,
+          ),
+          child: Directionality(
+            textDirection: locale.languageCode == 'ar' ? TextDirection.rtl : TextDirection.ltr,
+            child: child ?? const SizedBox.shrink(),
+          ),
         );
       },
     );
