@@ -12,8 +12,27 @@ final engineProvider = Provider<CooldownEngine>((ref) {
   return const CooldownEngine();
 });
 
-final currentTimeProvider = Provider<DateTime>((ref) {
-  return DateTime.now();
+/// Wall clock for day-scoped providers. A plain `Provider<DateTime>` freezes
+/// `DateTime.now()` at its first read, so an app left open past midnight kept
+/// filtering cooldowns by yesterday until a restart. This stream stays silent
+/// all day and fires once when the local calendar day rolls over; consumers
+/// rebuild, their eligibility key changes, and the new day is computed.
+final currentTimeProvider = StreamProvider<DateTime>((ref) {
+  var lastDay = app_date_utils.toLocalDay(DateTime.now());
+  final controller = StreamController<DateTime>();
+  final timer = Timer.periodic(const Duration(minutes: 1), (_) {
+    final now = DateTime.now();
+    final day = app_date_utils.toLocalDay(now);
+    if (day != lastDay) {
+      lastDay = day;
+      controller.add(now);
+    }
+  });
+  ref.onDispose(() {
+    timer.cancel();
+    controller.close();
+  });
+  return controller.stream;
 });
 
 final refreshSeedProvider = StateProvider<int>((ref) => 0);
@@ -53,6 +72,7 @@ class TodayRecommendationsNotifier
   String? _pinnedKey;
   List<int>? _pinnedIds;
   RecommendationResult<Meal>? _pinnedResult;
+  int _lastRefreshSeed = 0;
 
   @override
   AsyncValue<RecommendationResult<Meal>> build() {
@@ -60,7 +80,9 @@ class TodayRecommendationsNotifier
     final historyAsync = ref.watch(mealHistoryProvider);
     final settingsAsync = ref.watch(appSettingsProvider);
     final engine = ref.watch(engineProvider);
-    final now = ref.watch(currentTimeProvider);
+    // No blocking on the day-ticker for the very first frame: until it emits
+    // (it only fires at midnight rollover) DateTime.now() is the truth.
+    final now = ref.watch(currentTimeProvider).valueOrNull ?? DateTime.now();
     final refreshSeed = ref.watch(refreshSeedProvider);
 
     if (mealsAsync.hasError) {
@@ -121,9 +143,18 @@ class TodayRecommendationsNotifier
           relaxationLevel: pinned.relaxationLevel,
           isEmptyVault: pinned.isEmptyVault,
           computedDate: pinned.computedDate,
+          repeatedIds: pinned.repeatedIds,
         ));
       }
     }
+
+    // A recompute caused by the pull-to-refresh seed must keep the confirm
+    // dialog's promise ("change the 3 current suggestions"): the engine gets
+    // the ids currently on screen and avoids re-serving them while the pool
+    // still has alternatives. Any OTHER key change (new day, history write,
+    // meal added/removed, settings change) wants the natural best selection.
+    final isExplicitRefresh =
+        _pinnedIds != null && refreshSeed != _lastRefreshSeed;
 
     try {
       final result = engine.compute<Meal>(
@@ -132,10 +163,12 @@ class TodayRecommendationsNotifier
         settings: settings,
         today: now,
         shuffleSeed: refreshSeed,
+        excludeIds: isExplicitRefresh ? _pinnedIds!.toSet() : null,
       );
       _pinnedKey = key;
       _pinnedIds = result.recommendations.map((m) => m.id).toList();
       _pinnedResult = result;
+      _lastRefreshSeed = refreshSeed;
       return AsyncValue.data(result);
     } catch (err, st) {
       return AsyncValue.error(err, st);
