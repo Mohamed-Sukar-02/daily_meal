@@ -6,12 +6,13 @@ import '../../../core/database/app_database.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/app_icons.dart';
+import '../../../core/widgets/meal_image.dart';
 import '../../vault/application/meal_proposal_service.dart';
 import '../../vault/presentation/widgets/delete_meal_dialog.dart';
 import '../../vault/presentation/widgets/quick_add_sheet.dart';
 import '../../vault/providers/vault_providers.dart';
-import '../../../core/widgets/meal_image.dart';
-import 'quick_meal_view.dart';
+import 'widgets/meal_dish_section.dart';
+import 'widgets/meal_name_scrim.dart';
 
 /// Full meal screen — the complete view of one vault meal.
 ///
@@ -20,22 +21,34 @@ import 'quick_meal_view.dart';
 /// from `allMealsProvider` by id, so the screen survives a deep link and
 /// reflects edits/deletes made elsewhere without extra wiring.
 ///
-/// Layout: [QuickMealView] hero (photo, name, badges) → notes card →
-/// Cloud Staging Export button → Edit / Delete row. Favourite toggle lives
-/// in the app bar and writes through `vaultControllerProvider` (the same
-/// notifier the vault cards use), which never re-ranks home recommendations
-/// (the eligibility key is blind to the favourite flag).
-class MealScreen extends ConsumerWidget {
+/// Layout (mockup-aligned):
+///   AppBar (back · title · cloud · favourite)
+///   → short name
+///   → hero photo with theme-aware fading full-name scrim
+///   → info rectangle (protein / carbs / prep / budget)
+///   → hairline
+///   → Main / Side 1 / Side 2 tabs + selected pane (frontend shell)
+///   → circular decorative placeholder
+///   → notes card · Edit / Delete
+class MealScreen extends ConsumerStatefulWidget {
   final int mealId;
 
   const MealScreen({super.key, required this.mealId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MealScreen> createState() => _MealScreenState();
+}
+
+class _MealScreenState extends ConsumerState<MealScreen> {
+  MealDishTab _selectedDish = MealDishTab.main;
+
+  @override
+  Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
     final strings = AppStrings.of(context);
     final mealsAsync = ref.watch(allMealsProvider);
-    final isProposing = ref.watch(activeProposalMealIdProvider) == mealId;
+    final isProposing =
+        ref.watch(activeProposalMealIdProvider) == widget.mealId;
 
     return Scaffold(
       key: const Key('meal_screen'),
@@ -43,6 +56,7 @@ class MealScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: AppPalette.background(brightness),
         surfaceTintColor: Colors.transparent,
+        elevation: 0,
         title: Text(
           strings.mealDetailsTitle,
           style: TextStyle(
@@ -64,21 +78,25 @@ class MealScreen extends ConsumerWidget {
           color: AppPalette.textPrimary(brightness),
         ),
         actions: [
-          // Favourite toggle mirrors the vault-card heart.
+          // Three app-native marks live here: cloud sync · favourite · (status).
+          // They already exist in the app icon language (AppGlyph) — no new assets.
           mealsAsync.maybeWhen(
             data: (meals) {
               final meal = _findMeal(meals);
               if (meal == null) return const SizedBox.shrink();
-              
+
               final isSynced = meal.cloudId != null;
-              
+
               return Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Cloud Sync Icon
                   IconButton(
-                    tooltip: isProposing ? strings.proposalInProgress : strings.proposalCta,
-                    onPressed: isProposing || isSynced ? null : () => runProposalFlow(context, ref, meal),
+                    tooltip: isProposing
+                        ? strings.proposalInProgress
+                        : strings.proposalCta,
+                    onPressed: isProposing || isSynced
+                        ? null
+                        : () => runProposalFlow(context, ref, meal),
                     icon: isProposing
                         ? const SizedBox(
                             width: 18,
@@ -87,11 +105,12 @@ class MealScreen extends ConsumerWidget {
                           )
                         : AppIcon(
                             isSynced ? AppGlyph.cloudDown : AppGlyph.cloudUp,
-                            color: isSynced ? AppPalette.brandGreen : AppPalette.textSecondary(brightness),
+                            color: isSynced
+                                ? AppPalette.brandGreen
+                                : AppPalette.textSecondary(brightness),
                             size: 22,
                           ),
                   ),
-                  // Favorite toggle
                   IconButton(
                     key: const Key('meal_screen_favorite_button'),
                     tooltip: strings.favorite,
@@ -99,13 +118,29 @@ class MealScreen extends ConsumerWidget {
                         .read(vaultControllerProvider.notifier)
                         .toggleFavorite(meal.id, meal.isFavorite),
                     icon: AppIcon(
-                      meal.isFavorite ? AppGlyph.heartFill : AppGlyph.heartOutline,
+                      meal.isFavorite
+                          ? AppGlyph.heartFill
+                          : AppGlyph.heartOutline,
                       color: meal.isFavorite
                           ? Colors.red.shade400
                           : AppPalette.textSecondary(brightness),
                       size: 22,
                     ),
                   ),
+                  // Third mark — Friday / budget status glyph when flagged.
+                  if (meal.isFridaySpecial || meal.isBudgetFriendly)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: AppIcon(
+                        meal.isFridaySpecial ? AppGlyph.flame : AppGlyph.wallet,
+                        color: meal.isFridaySpecial
+                            ? AppPalette.sparkOrange
+                            : AppPalette.brandGreen,
+                        size: 20,
+                      ),
+                    )
+                  else
+                    const SizedBox(width: 4),
                 ],
               );
             },
@@ -118,7 +153,13 @@ class MealScreen extends ConsumerWidget {
         data: (meals) {
           final meal = _findMeal(meals);
           if (meal == null) return _buildNotFound(brightness, strings);
-          return _buildBody(context, ref, brightness, strings, meal, isProposing);
+          return _buildBody(
+            context,
+            brightness,
+            strings,
+            meal,
+            isProposing,
+          );
         },
         loading: () =>
             const Center(child: CircularProgressIndicator.adaptive()),
@@ -138,7 +179,7 @@ class MealScreen extends ConsumerWidget {
 
   Meal? _findMeal(List<Meal> meals) {
     for (final meal in meals) {
-      if (meal.id == mealId) return meal;
+      if (meal.id == widget.mealId) return meal;
     }
     return null;
   }
@@ -174,40 +215,54 @@ class MealScreen extends ConsumerWidget {
 
   Widget _buildBody(
     BuildContext context,
-    WidgetRef ref,
     Brightness brightness,
     AppStrings strings,
     Meal meal,
     bool isProposing,
   ) {
     final notes = meal.notes?.trim() ?? '';
-    final shortName = meal.shortName?.trim().isNotEmpty == true ? meal.shortName! : meal.name;
+    final shortName = (meal.shortName?.trim().isNotEmpty == true)
+        ? meal.shortName!.trim()
+        : meal.name;
     final fullName = meal.name;
+    final textDirection = Directionality.of(context);
+
+    // Main-dish pane reuses notes when present; sides stay as UI shells until
+    // the backend composition payload lands.
+    Widget? panelBody;
+    if (_selectedDish == MealDishTab.main && notes.isNotEmpty) {
+      panelBody = _DishNotesBody(notes: notes, brightness: brightness);
+    }
 
     return ListView(
       key: const Key('meal_screen_body'),
       padding: const EdgeInsets.only(bottom: 32),
       children: [
-        // Top: Short name
+        // ── Short name ────────────────────────────────────────────────
         Padding(
-          padding: const EdgeInsets.only(top: 8, bottom: 16),
+          padding: const EdgeInsets.only(top: 8, bottom: 14),
           child: Center(
             child: Text(
               shortName,
+              key: const Key('meal_screen_short_name'),
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w900,
+                letterSpacing: -0.2,
                 color: AppPalette.textPrimary(brightness),
               ),
             ),
           ),
         ),
-        // Image with gradient and full name
+
+        // ── Hero photo + full-name scrim ──────────────────────────────
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(20),
             child: SizedBox(
+              key: const Key('meal_screen_hero'),
               height: 260,
               child: Stack(
                 fit: StackFit.expand,
@@ -215,6 +270,7 @@ class MealScreen extends ConsumerWidget {
                   MealImage(
                     photoPath: meal.photoPath,
                     cacheWidth: 900,
+                    fit: BoxFit.cover,
                     fallback: Container(
                       color: AppPalette.tabContainer(brightness),
                       child: Center(
@@ -226,48 +282,24 @@ class MealScreen extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  // Gradient overlay
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.fromLTRB(16, 32, 16, 12),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            brightness == Brightness.dark
-                                ? Colors.black.withOpacity(0.85)
-                                : Colors.white.withOpacity(0.9),
-                          ],
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          fullName,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: AppPalette.textPrimary(brightness),
-                          ),
-                        ),
-                      ),
-                    ),
+                  MealNameScrim(
+                    fullName: fullName,
+                    brightness: brightness,
+                    textDirection: textDirection,
+                    nameKey: const Key('meal_screen_full_name'),
                   ),
                 ],
               ),
             ),
           ),
         ),
-        // Rectangular box for meal info
+
+        // ── Info rectangle ────────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            key: const Key('meal_screen_info_card'),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color: AppPalette.card(brightness),
               borderRadius: BorderRadius.circular(16),
@@ -275,69 +307,128 @@ class MealScreen extends ConsumerWidget {
               boxShadow: [
                 BoxShadow(
                   color: brightness == Brightness.dark
-                      ? Colors.black.withOpacity(0.3)
-                      : const Color(0xFF1E293B).withOpacity(0.05),
+                      ? Colors.black.withValues(alpha: 0.3)
+                      : const Color(0xFF1E293B).withValues(alpha: 0.05),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
               ],
             ),
             child: Wrap(
-              spacing: 12,
-              runSpacing: 12,
+              spacing: 14,
+              runSpacing: 10,
               alignment: WrapAlignment.center,
               children: [
                 if (meal.proteinType != ProteinType.none)
-                  _infoItem(brightness, meal.proteinType.emoji, meal.proteinType.label(strings)),
+                  _InfoChip(
+                    brightness: brightness,
+                    leading: Text(
+                      meal.proteinType.emoji,
+                      style: const TextStyle(fontSize: 15),
+                    ),
+                    label: meal.proteinType.label(strings),
+                  ),
                 if (meal.carbsType != CarbsType.none)
-                  _infoItem(brightness, \'🌾\', meal.carbsType.label(strings)),
+                  _InfoChip(
+                    brightness: brightness,
+                    leading: AppIcon(
+                      AppGlyph.pot,
+                      color: AppPalette.textSecondary(brightness),
+                      size: 14,
+                    ),
+                    label: meal.carbsType.label(strings),
+                  ),
                 if (meal.prepTime > 0)
-                  _infoItem(brightness, \'⏱️\', strings.minutes(meal.prepTime)),
+                  _InfoChip(
+                    brightness: brightness,
+                    leading: AppIcon(
+                      AppGlyph.clock,
+                      color: AppPalette.textSecondary(brightness),
+                      size: 14,
+                    ),
+                    label: strings.minutes(meal.prepTime),
+                  ),
                 if (meal.isBudgetFriendly)
-                  _infoItem(brightness, \'🌿\', strings.budgetFriendly),
+                  _InfoChip(
+                    brightness: brightness,
+                    leading: AppIcon(
+                      AppGlyph.wallet,
+                      color: AppPalette.brandGreen,
+                      size: 14,
+                    ),
+                    label: strings.budgetFriendly,
+                  ),
+                if (meal.isFridaySpecial)
+                  _InfoChip(
+                    brightness: brightness,
+                    leading: AppIcon(
+                      AppGlyph.flame,
+                      color: AppPalette.sparkOrange,
+                      size: 14,
+                    ),
+                    label: strings.fridaySpecial,
+                  ),
               ],
             ),
           ),
         ),
-        // Tabs
+
+        // ── Hairline separator ────────────────────────────────────────
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _buildTab(strings.mainDish, true, brightness),
-                const SizedBox(width: 8),
-                _buildTab(strings.sideDish1, false, brightness),
-                const SizedBox(width: 8),
-                _buildTab(strings.sideDish2, false, brightness),
-              ],
-            ),
+          padding: const EdgeInsets.fromLTRB(28, 20, 28, 4),
+          child: Divider(
+            height: 1,
+            thickness: 1,
+            color: AppPalette.hairline(brightness),
           ),
         ),
-        // Circular placeholder
+
+        // ── Dish tabs + selected pane ─────────────────────────────────
         Padding(
-          padding: const EdgeInsets.only(top: 32, bottom: 24),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+          child: MealDishSection(
+            selected: _selectedDish,
+            onChanged: (tab) => setState(() => _selectedDish = tab),
+            // Frontend shell: always expose the three mockup tabs. Backend
+            // will later gate side visibility on real composition data.
+            showSide1: true,
+            showSide2: true,
+            panelBody: panelBody,
+          ),
+        ),
+
+        // ── Circular decorative placeholder (UI only) ─────────────────
+        Padding(
+          padding: const EdgeInsets.only(top: 28, bottom: 20),
           child: Center(
             child: Container(
-              width: 100,
-              height: 100,
+              key: const Key('meal_screen_circle_placeholder'),
+              width: 108,
+              height: 108,
               decoration: BoxDecoration(
                 color: AppPalette.tabContainer(brightness),
                 shape: BoxShape.circle,
-                border: Border.all(color: AppPalette.hairline(brightness), width: 2),
-              ),
-              child: Center(
-                child: Icon(
-                  Icons.restaurant_menu,
-                  color: AppPalette.textSecondary(brightness),
-                  size: 32,
+                border: Border.all(
+                  color: AppPalette.hairline(brightness),
+                  width: 2,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: brightness == Brightness.dark
+                        ? Colors.black.withValues(alpha: 0.25)
+                        : const Color(0xFF1E293B).withValues(alpha: 0.06),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
+              // Intentionally empty — more marks land here later.
             ),
           ),
         ),
-        if (notes.isNotEmpty)
+
+        // ── Notes (only when the main pane is not already showing them) ─
+        if (notes.isNotEmpty && _selectedDish != MealDishTab.main)
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
             child: Container(
@@ -375,6 +466,8 @@ class MealScreen extends ConsumerWidget {
               ),
             ),
           ),
+
+        // ── Edit / Delete ─────────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
           child: Row(
@@ -453,13 +546,26 @@ class MealScreen extends ConsumerWidget {
       ],
     );
   }
+}
 
-  Widget _infoItem(Brightness brightness, String emoji, String label) {
+class _InfoChip extends StatelessWidget {
+  final Brightness brightness;
+  final Widget leading;
+  final String label;
+
+  const _InfoChip({
+    required this.brightness,
+    required this.leading,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(emoji, style: const TextStyle(fontSize: 14)),
-        const SizedBox(width: 4),
+        leading,
+        const SizedBox(width: 5),
         Text(
           label,
           style: TextStyle(
@@ -471,25 +577,40 @@ class MealScreen extends ConsumerWidget {
       ],
     );
   }
+}
 
-  Widget _buildTab(String label, bool isSelected, Brightness brightness) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: isSelected ? AppPalette.brandGreen : AppPalette.tabContainer(brightness),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isSelected ? AppPalette.brandGreen : AppPalette.hairline(brightness),
+class _DishNotesBody extends StatelessWidget {
+  final String notes;
+  final Brightness brightness;
+
+  const _DishNotesBody({required this.notes, required this.brightness});
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          strings.notesLabel,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            color: AppPalette.textSecondary(brightness),
+          ),
         ),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-          color: isSelected ? Colors.white : AppPalette.textSecondary(brightness),
+        const SizedBox(height: 6),
+        Text(
+          notes,
+          style: TextStyle(
+            fontSize: 14,
+            height: 1.5,
+            fontWeight: FontWeight.w600,
+            color: AppPalette.textPrimary(brightness),
+          ),
         ),
-      ),
+      ],
     );
   }
 }
