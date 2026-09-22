@@ -1,0 +1,31 @@
+Goal: Fix the Spinning Wheel state retention and modify its BottomSheet UI.
+
+Target Files:
+- lib/features/home/presentation/widgets/spin_wheel_dialog.dart
+- (Any other file directly managing the spin wheel dialog state or app lifecycle for it)
+- lib/core/localization/app_strings.dart (if strings need updating, though no new strings strictly requested, just UI changes).
+
+Implementation Plan:
+1. UI Modifications in SpinWheelDialog (BottomSheet):
+   - Set the bottom sheet to occupy 3/4 of the screen height (e.g., using `isScrollControlled: true` and a `FractionallySizedBox(heightFactor: 0.75)` or similar in the builder).
+   - In the header row of the bottom sheet:
+     - Center the title "عجلة الحظ".
+     - Remove the icon/emoji currently next to the title.
+     - Remove the close ('X') button from this header row completely.
+2. Result Section Modifications:
+   - When the spinning finishes and the result section appears (showing "أكلة النهاردة وقعت على : " or similar), add a new close ('X') button next to it (e.g., aligned to the edge).
+   - This new 'X' button should NOT close the bottom sheet. Instead, it should reset the internal state of the SpinWheelDialog back to its initial state (before the result was shown), allowing the user to spin again.
+3. State Retention Bug Fix:
+   - The user reports: "When I have the spinning wheel open, go somewhere else, and come back, I find it still open. I want it to open on the Home Page immediately."
+   - If this means minimizing the app and resuming, use `WidgetsBindingObserver` to pop the dialog if the app is paused/resumed.
+   - If this means navigating to another tab (via bottom nav) and coming back, ensure the modal bottom sheet is popped when the screen loses focus or route changes. A common fix is using a `RouteObserver` or hooking into the navigation to `Navigator.of(context).pop()` when leaving. Please analyze the context and implement a robust fix to ensure the wheel closes when navigating away.
+
+Rules:
+- Do not use hardcoded strings; if a new text is needed, use `app_strings.dart`.
+- The user uses Arabic for UI.
+
+Verification:
+- The bottom sheet opens to 0.75 of the screen.
+- Title is centered, no icon, no top X button.
+- Result section has an X button that resets the state.
+- Navigating away and back doesn't keep the wheel open.

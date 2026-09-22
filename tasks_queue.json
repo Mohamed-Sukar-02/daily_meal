@@ -1,0 +1,51 @@
+{
+  "total_tasks": 5,
+  "current_task": 3,
+  "tasks": [
+    {
+      "id": 1,
+      "title": "Spinning Wheel state logic & UI bottom sheet adjustments",
+      "worker": "opencode-qwen",
+      "cli": "opencode",
+      "model": "qwen/qwen-2.5-coder-32b-instruct:free",
+      "status": "completed",
+      "brief_file": "brief_task_1.txt"
+    },
+    {
+      "id": 2,
+      "title": "Vault filter translation changes",
+      "worker": "qoder",
+      "cli": "qoder",
+      "model": "Qwen3.8-Flash",
+      "status": "completed",
+      "brief_file": "brief_task_2.txt"
+    },
+    {
+      "id": 3,
+      "title": "Leftovers history behavior",
+      "worker": "qoder",
+      "cli": "qoder",
+      "model": "Qwen3.8-Flash",
+      "status": "completed",
+      "brief_file": "brief_task_3.txt"
+    },
+    {
+      "id": 4,
+      "title": "Notification settings routing and blink animation",
+      "worker": "agy",
+      "cli": "agy",
+      "model": "gemini-2.5-flash",
+      "status": "completed",
+      "brief_file": "brief_task_4.txt"
+    },
+    {
+      "id": 5,
+      "title": "Meals Screen details UI update",
+      "worker": "qoder",
+      "cli": "qoder",
+      "model": "Qwen3.8-Flash",
+      "status": "completed",
+      "brief_file": "brief_task_5.txt"
+    }
+  ]
+}

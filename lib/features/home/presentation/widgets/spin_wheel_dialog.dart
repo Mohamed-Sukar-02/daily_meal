@@ -22,7 +22,7 @@ class SpinWheelBottomSheet extends StatefulWidget {
 }
 
 class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late final AnimationController _controller;
   late Animation<double> _animation;
 
@@ -46,6 +46,7 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initAudioSession();
     _audioPlayer = AudioPlayer();
     _audioPlayer.setAsset('assets/audio/tick.wav');
@@ -54,6 +55,15 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
       duration: const Duration(milliseconds: 5000), // Longer for premium casino feel
     );
     _animation = Tween<double>(begin: 0, end: 0).animate(_controller);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    }
   }
 
   Future<void> _initAudioSession() async {
@@ -76,6 +86,7 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _audioPlayer.dispose();
     _controller.dispose();
     super.dispose();
@@ -176,7 +187,7 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
     return PopScope(
       canPop: !_isSpinning,
       child: Container(
-        height: MediaQuery.sizeOf(context).height * 0.90,
+        height: MediaQuery.sizeOf(context).height * 0.75,
         decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
@@ -199,21 +210,13 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
           // Header
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    strings.spinWheelTitleEmoji,
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+            child: Center(
+              child: Text(
+                strings.spinWheelTitle,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: _isSpinning ? null : () => Navigator.pop(context),
-                ),
-              ],
+              ),
             ),
           ),
 
@@ -271,13 +274,32 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            strings.spinWheelLandedOn,
-            style: TextStyle(
-              fontSize: 18,
-              color: theme.colorScheme.primary,
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Center(
+                  child: Text(
+                    strings.spinWheelLandedOn,
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: const Icon(Icons.close),
+                onPressed: () {
+                  setState(() {
+                    _winnerMeal = null;
+                  });
+                },
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           Container(

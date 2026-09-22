@@ -19,6 +19,7 @@ import 'widgets/cooldown_details_sheet.dart';
 import 'widgets/legal_policies_dialog.dart' as widgets;
 import 'widgets/profile_edit_dialog.dart';
 import 'widgets/time_wheel_picker.dart';
+import 'widgets/blinking_card.dart';
 
 /// Settings screen rebuilt from the approved mockups (light + dark):
 /// header with shine marks, profile card, then titled sections whose cards
@@ -90,6 +91,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
         _scrollToNotificationsSection(attempt: 0));
   }
 
+  bool _shouldBlinkNotifications = false;
+
   /// The section only exists once the settings data has loaded, so the first
   /// frame may not have it yet — retry a bounded number of frames.
   void _scrollToNotificationsSection({required int attempt}) {
@@ -101,7 +104,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
         alignment: 0.0,
         duration: const Duration(milliseconds: 350),
         curve: Curves.easeInOutCubic,
-      );
+      ).then((_) {
+        if (mounted) {
+          setState(() => _shouldBlinkNotifications = true);
+          Future.delayed(const Duration(milliseconds: 1050), () {
+            if (mounted) {
+              setState(() => _shouldBlinkNotifications = false);
+            }
+          });
+        }
+      });
       return;
     }
     if (attempt < 30) {
@@ -516,7 +528,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
       children: [
         _SectionHeader(brightness: brightness, title: strings.notifications),
         const SizedBox(height: 12),
-        _Card(
+        BlinkingCard(
+          shouldBlink: _shouldBlinkNotifications,
           brightness: brightness,
           child: Column(
             children: [

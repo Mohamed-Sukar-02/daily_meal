@@ -479,14 +479,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
     if (latestMeal != null) {
       historyEntryId = await controller.markLeftoverEntry(
         mealId: latestMeal.mealId,
-        mealName: latestMeal.mealName,
+        mealName: '${strings.leftoverPrefix} ${latestMeal.mealName}',
         proteinType: latestMeal.proteinType,
         carbsType: latestMeal.carbsType,
       );
       message = strings.leftoverSuccess(latestMeal.mealName);
     } else {
       historyEntryId = await controller.markLeftoverEntry(
-        mealName: strings.eatYesterdayLeftovers,
+        mealName: strings.leftoverOnly,
       );
       message = strings.leftoverSuccessGeneral;
     }

@@ -201,8 +201,14 @@ class AppStrings {
       : 'هل أنت متأكد من تغيير الـ 3 اقتراحات الحالية؟';
   String get confirmRefreshConfirm => isEn ? 'Yes, change' : 'نعم، غيّرها';
   String get leftoverSuccessGeneral => isEn
-      ? 'Logged leftover for today.'
-      : 'تم تسجيل أكل بايت لليوم.';
+      ? 'Done, but there is no record of yesterday\'s meal.'
+      : 'تم ولكن لا يوجد سجل بأكلة أمس.';
+  String get leftoverPrefix => isEn ? '(Leftovers)' : '(بقايا امبارح)';
+  String get leftoverOnly => isEn ? 'Leftovers' : 'بقايا امبارح';
+
+  String get mainDish => isEn ? 'Main Dish' : 'الطبق الرئيسي';
+  String get sideDish1 => isEn ? 'Side Dish 1' : 'طبق جانبي ١';
+  String get sideDish2 => isEn ? 'Side Dish 2' : 'طبق جانبي ٢';
 
   String get fridaySpecial => isEn ? 'Friday special' : 'أكلة جمعة';
   String get budgetFriendly => isEn ? 'Budget friendly' : 'اقتصادي';
@@ -263,10 +269,10 @@ class AppStrings {
   String get filterQuick => isEn ? 'Quick 30m' : 'سريع 30م';
 
   /// My Vault: meals the user loved (the `Meal.isFavorite` flag).
-  String get filterLoved => isEn ? 'Loved ❤️' : 'المحبوبة ❤️';
+  String get filterLoved => isEn ? 'Fav ❤️' : 'المفضلة ❤️';
 
   /// Explore: cloud meals that already have a copy in the local vault.
-  String get filterSaved => isEn ? 'Saved 🔖' : 'المحفوظة 🔖';
+  String get filterSaved => isEn ? 'Saved 🔖' : 'مضافة 🔖';
 
   String get vaultNoResultsTitle => isEn ? 'No matching results' : 'لا توجد نتائج مطابقة';
   String get vaultNoResultsDesc => isEn
