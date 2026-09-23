@@ -6,6 +6,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../database/app_database.dart';
+import 'meal_image_localizer.dart';
 import 'reachability_service.dart';
 
 class SystemDefaults {
@@ -203,11 +204,15 @@ class AppConfigSyncService {
           // Exists in both, update it with cloud properties (preserving local isFavorite, etc)
           final rDoc = remoteMap[lName]!;
           final rData = rDoc.data();
+          // Store the photo FILE, not the bare URL, so the vault renders
+          // offline (URL falls back through if the download fails).
+          final localPhoto = await MealImageLocalizer.instance
+              .localize(rData['imageUrl'] as String?);
           await db.mealsDao.updateMealCompanion(
             l.id,
             MealsCompanion(
               cloudId: Value(rDoc.id),
-              photoPath: Value(rData['imageUrl'] as String?),
+              photoPath: Value(localPhoto),
               shortName: Value(rData['shortName'] as String?),
               proteinType: Value(_mapProtein(rData['proteinType'] as String? ?? 'other')),
               carbsType: Value(_mapCarbs(rData['carbsType'] as String? ?? 'none')),
@@ -231,11 +236,14 @@ class AppConfigSyncService {
         if (!localMap.containsKey(rName)) {
           final rDoc = remoteMap[rName]!;
           final rData = rDoc.data();
+          // Same offline-first rule as the update branch above.
+          final localPhoto = await MealImageLocalizer.instance
+              .localize(rData['imageUrl'] as String?);
           await db.mealsDao.insertMeal(
             MealsCompanion(
               name: Value(rName),
               cloudId: Value(rDoc.id),
-              photoPath: Value(rData['imageUrl'] as String?),
+              photoPath: Value(localPhoto),
               shortName: Value(rData['shortName'] as String?),
               proteinType: Value(_mapProtein(rData['proteinType'] as String? ?? 'other')),
               carbsType: Value(_mapCarbs(rData['carbsType'] as String? ?? 'none')),
