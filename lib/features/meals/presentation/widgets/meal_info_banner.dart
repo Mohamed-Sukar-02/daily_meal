@@ -2,23 +2,20 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../../../core/localization/app_strings.dart';
-import '../../../../core/widgets/app_icons.dart';
 import 'meal_screen_palette.dart';
 
-/// The dark-green info card that overlaps the bottom of the hero photo.
+/// The dark-green info card that directly precedes the dish tabs —
+/// mockup-exact: two text columns with a divider, nothing else.
 ///
-/// Layout mirrors the mockup 1:1:
-/// ```
-/// ┌──────────────────────────┬──────────────────────────┐
-/// │  Title (short / name)    │  Fresh & Natural         │
-/// │  protein, carbs, …       │  healthy, balanced, …    │
-/// ├──────────────────────────┴──────────────────────────┤
-/// │  🌿 budget/category              ⏱ 30 min           │
-/// └─────────────────────────────────────────────────────┘
-/// ```
-/// Top corners rounded; bottom edge is a soft wave that seats into the
-/// sheet below (drawn by the parent clip / stack).
+/// Height is FIXED ([MealInfoBanner.height]) so the parent's interlock
+/// painter can fuse the tab strip into the card's bottom edge with exact
+/// seam geometry, and the content (ellipsized, two lines max) is designed
+/// to stay comfortably above that seam. White-ish outline + LTR column
+/// order, both locked to the mockups: the meal column is at the left and
+/// the tag column at the right in every locale.
 class MealInfoBanner extends StatelessWidget {
+  static const double height = 86;
+
   final Meal meal;
   final Brightness brightness;
 
@@ -40,6 +37,7 @@ class MealInfoBanner extends StatelessWidget {
 
     return Container(
       key: const Key('meal_screen_info_card'),
+      height: height,
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -51,6 +49,10 @@ class MealInfoBanner extends StatelessWidget {
           ],
         ),
         borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: MealScreenPalette.interlockStroke(brightness),
+          width: 1.2,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.28),
@@ -59,136 +61,92 @@ class MealInfoBanner extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
-            child: IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // ── Left column ────────────────────────────────────
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          short,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            height: 1.2,
-                            color: MealScreenPalette.infoOnGreen(brightness),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          leftSubtitle,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            height: 1.35,
-                            fontWeight: FontWeight.w500,
-                            color:
-                                MealScreenPalette.infoOnGreenMuted(brightness),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // ── Divider ────────────────────────────────────────
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Container(
-                      width: 1,
-                      color: Colors.white.withValues(alpha: 0.28),
-                    ),
-                  ),
-                  // ── Right column ───────────────────────────────────
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          strings.freshAndNatural,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            height: 1.2,
-                            color: MealScreenPalette.infoOnGreen(brightness),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          rightTags,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            height: 1.35,
-                            fontWeight: FontWeight.w500,
-                            color:
-                                MealScreenPalette.infoOnGreenMuted(brightness),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // ── Bottom meta row (leaf + clock) ─────────────────────────
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(18, 0, 18, 14),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 12, 18, 10),
+        child: IntrinsicHeight(
+          // Mockup truth: meal-name column at the LEFT, tag column at
+          // the RIGHT, in every locale (mirrors `MealDishTabs`).
+          child: Directionality(
+            textDirection: TextDirection.ltr,
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                AppIcon(
-                  AppGlyph.wallet,
-                  color: MealScreenPalette.infoOnGreen(brightness),
-                  size: 14,
-                ),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    meal.isBudgetFriendly
-                        ? strings.budgetFriendly
-                        : meal.category.label(strings),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: MealScreenPalette.infoOnGreen(brightness),
-                    ),
+                // ── Left column ────────────────────────────────────
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        short,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          height: 1.2,
+                          color: MealScreenPalette.infoOnGreen(brightness),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        leftSubtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          height: 1.35,
+                          fontWeight: FontWeight.w500,
+                          color:
+                              MealScreenPalette.infoOnGreenMuted(brightness),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const Spacer(),
-                AppIcon(
-                  AppGlyph.clock,
-                  color: MealScreenPalette.infoOnGreen(brightness),
-                  size: 14,
+                // ── Divider ────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Container(
+                    width: 1,
+                    color: Colors.white.withValues(alpha: 0.28),
+                  ),
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  strings.prepMinutesShort(meal.prepTime > 0 ? meal.prepTime : 0),
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: MealScreenPalette.infoOnGreen(brightness),
+                // ── Right column ───────────────────────────────────
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        strings.freshAndNatural,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          height: 1.2,
+                          color: MealScreenPalette.infoOnGreen(brightness),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        rightTags,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          height: 1.35,
+                          fontWeight: FontWeight.w500,
+                          color:
+                              MealScreenPalette.infoOnGreenMuted(brightness),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
