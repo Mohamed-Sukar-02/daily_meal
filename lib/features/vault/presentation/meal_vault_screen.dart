@@ -532,14 +532,11 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,
               tween: ColorTween(end: iconColor),
-              builder: (context, color, child) {
-                return Image.asset(
-                  'assets/icons/sync_icon.png',
-                  width: 22,
-                  height: 22,
-                  color: color,
-                );
-              },
+              builder: (context, color, child) => AppIcon(
+                AppGlyph.cloudDown,
+                color: color ?? iconColor,
+                size: 22,
+              ),
             ),
             if (badgeCount != null)
               // Overflows away from the meals chip (its `end` side) so the

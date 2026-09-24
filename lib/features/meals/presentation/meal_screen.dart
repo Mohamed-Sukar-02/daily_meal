@@ -306,7 +306,7 @@ class _MealHeaderBar extends StatelessWidget {
             ),
             child: Row(
               children: [
-                // Upload mark — the mockup's cloud doodle (top-right in RTL).
+                // Upload mark — the bundled cloud-upload glyph (top-right in RTL).
                 IconButton(
                   key: const Key('meal_screen_cloud_button'),
                   tooltip: isProposing
@@ -394,9 +394,9 @@ class _MealHeaderBar extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Upload mark: prefers the bundled `assets/icons/upload_icon.png`; while the
-// asset is absent it falls back to an exact gold line-drawing of the mockup
-// doodle (cloud + up arrow) so the chrome never breaks.
+// Upload mark: the cloud-transfer glyphs bundled in `assets/icons/` (see
+// [AppIcon]), so the header pill always shows the same artwork the rest of the
+// app uses for publishing a meal.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _UploadMark extends StatelessWidget {
@@ -426,67 +426,8 @@ class _UploadMark extends StatelessWidget {
       // Already published to the cloud vault — keep the synced variant.
       return AppIcon(AppGlyph.cloudDown, color: color, size: 24);
     }
-    return Image.asset(
-      'assets/icons/upload_icon.png',
-      width: 26,
-      height: 26,
-      fit: BoxFit.contain,
-      errorBuilder: (context, error, stackTrace) => CustomPaint(
-        size: const Size(26, 26),
-        painter: _UploadDoodlePainter(color),
-      ),
-    );
+    return AppIcon(AppGlyph.cloudUp, color: color, size: 26);
   }
-}
-
-/// Line-art replica of the mockup's hand-drawn upload doodle: a cloud
-/// outline with an up arrow inside, drawn with round caps so it keeps the
-/// same playful feel at any size/colour.
-class _UploadDoodlePainter extends CustomPainter {
-  final Color color;
-
-  _UploadDoodlePainter(this.color);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final s = size.width / 24.0;
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.7
-      ..strokeJoin = StrokeJoin.round
-      ..strokeCap = StrokeCap.round;
-
-    canvas.save();
-    canvas.scale(s);
-
-    // Cloud silhouette (classic cloud outline, bounds y 4 → 20).
-    final cloud = Path()
-      ..moveTo(19.35, 10.04)
-      ..cubicTo(18.67, 6.59, 15.64, 4.0, 12.0, 4.0)
-      ..cubicTo(9.11, 4.0, 6.6, 5.64, 5.35, 8.04)
-      ..cubicTo(2.34, 8.36, 0.0, 10.91, 0.0, 14.0)
-      ..cubicTo(0.0, 17.31, 2.69, 20.0, 6.0, 20.0)
-      ..lineTo(19.0, 20.0)
-      ..cubicTo(21.76, 20.0, 24.0, 17.76, 24.0, 15.0)
-      ..cubicTo(24.0, 12.36, 21.95, 10.22, 19.35, 10.04)
-      ..close();
-    canvas.drawPath(cloud, paint);
-
-    // Up arrow centred inside the cloud.
-    final arrow = Path()
-      ..moveTo(12.0, 18.4)
-      ..lineTo(12.0, 10.8)
-      ..moveTo(9.4, 13.3)
-      ..lineTo(12.0, 10.7)
-      ..lineTo(14.6, 13.3);
-    canvas.drawPath(arrow, paint);
-
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant _UploadDoodlePainter old) => old.color != color;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
