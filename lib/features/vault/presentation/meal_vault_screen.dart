@@ -533,7 +533,7 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
               curve: Curves.easeInOut,
               tween: ColorTween(end: iconColor),
               builder: (context, color, child) => AppIcon(
-                AppGlyph.sync,
+                AppGlyph.cloudDown,
                 color: color ?? iconColor,
                 size: 22,
               ),
