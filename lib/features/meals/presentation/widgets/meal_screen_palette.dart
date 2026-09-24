@@ -68,4 +68,23 @@ class MealScreenPalette {
       Colors.white.withValues(alpha: isDark(b) ? 0.95 : 1.0);
   static Color infoOnGreenMuted(Brightness b) =>
       Colors.white.withValues(alpha: isDark(b) ? 0.70 : 0.82);
+
+  // ── Header pill & banner↔tabs interlock (locked to mockups) ───────────
+  /// Fill of the short-name header bar at the top of the screen.
+  static Color headerBar(Brightness b) =>
+      isDark(b) ? const Color(0xFF10251E) : lightHeader;
+  static Color headerBarDeep(Brightness b) =>
+      isDark(b) ? const Color(0xFF0A1B15) : lightHeaderDeep;
+  /// Soft champagne border of the header bar.
+  static Color headerBarBorder(Brightness b) =>
+      (isDark(b) ? darkGold : Colors.white).withValues(alpha: isDark(b) ? 0.30 : 0.35);
+  /// Cream display text inside the header bar.
+  static Color headerBarText(Brightness b) =>
+      isDark(b) ? const Color(0xFFF0DFAE) : Colors.white;
+
+  /// White-ish outline shared by the info banner and the dish-tab strip —
+  /// the mockup's attractive white edges ("حواف بيضاء").
+  static Color interlockStroke(Brightness b) => isDark(b)
+      ? Colors.white.withValues(alpha: 0.62)
+      : lightHeaderDeep.withValues(alpha: 0.45);
 }
