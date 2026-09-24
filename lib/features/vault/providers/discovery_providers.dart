@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
 import '../../../core/database/app_database.dart';
+import '../../../core/services/meal_image_localizer.dart';
 import '../data/models/cloud_meal.dart';
 import '../data/discovery_repository.dart';
 import '../../../core/database/database_providers.dart';
@@ -18,7 +19,7 @@ class DiscoveryNotifier extends StateNotifier<AsyncValue<void>> {
   Future<void> downloadMeal(CloudMeal cloudMeal) async {
     state = const AsyncValue.loading();
     try {
-      final companion = _createCompanion(cloudMeal);
+      final companion = await _createCompanion(cloudMeal);
       await _mealsDao.insertMeal(companion);
       state = const AsyncValue.data(null);
     } catch (e, st) {
@@ -29,7 +30,7 @@ class DiscoveryNotifier extends StateNotifier<AsyncValue<void>> {
   Future<void> updateMeal(int localId, CloudMeal cloudMeal) async {
     state = const AsyncValue.loading();
     try {
-      final companion = _createCompanion(cloudMeal);
+      final companion = await _createCompanion(cloudMeal);
       await _mealsDao.updateMealCompanion(localId, companion);
       state = const AsyncValue.data(null);
     } catch (e, st) {
@@ -46,7 +47,7 @@ class DiscoveryNotifier extends StateNotifier<AsyncValue<void>> {
       ));
       
       // 2. Insert new meal with cloudId
-      final companion = _createCompanion(cloudMeal);
+      final companion = await _createCompanion(cloudMeal);
       await _mealsDao.insertMeal(companion);
       
       state = const AsyncValue.data(null);
@@ -55,10 +56,15 @@ class DiscoveryNotifier extends StateNotifier<AsyncValue<void>> {
     }
   }
 
-  MealsCompanion _createCompanion(CloudMeal cloudMeal) {
+  Future<MealsCompanion> _createCompanion(CloudMeal cloudMeal) async {
+    // Store the photo FILE, not the bare URL, so the vault renders offline.
+    // On failure the URL is kept (works online) and the startup backfill in
+    // MealImageLocalizer retries on a later launch.
+    final localPhoto =
+        await MealImageLocalizer.instance.localize(cloudMeal.imageUrl);
     return MealsCompanion(
       name: drift.Value(cloudMeal.name),
-      photoPath: drift.Value(cloudMeal.imageUrl),
+      photoPath: drift.Value(localPhoto),
       shortName: drift.Value(cloudMeal.shortName),
       proteinType: drift.Value(_mapProtein(cloudMeal.proteinType)),
       carbsType: drift.Value(_mapCarbs(cloudMeal.carbsType)),

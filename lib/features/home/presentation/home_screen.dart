@@ -118,6 +118,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
                 _buildRelaxationBanner(context, result, brightness),
                 const SizedBox(height: 12),
               ],
+              if (result.repeatedIds.isNotEmpty) ...[
+                _buildRefreshNoteBanner(context, result, brightness),
+                const SizedBox(height: 12),
+              ],
               for (int i = 0; i < meals.length; i++) ...[
                 MealCard(
                   meal: meals[i],
@@ -226,6 +230,50 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
           Expanded(
             child: Text(
               strings.varietyAlertDetailed(result.relaxationLevel, reason),
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.5,
+                fontWeight: FontWeight.w600,
+                color: style.foreground,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Honest-refresh note. Appears only after an explicit "change my
+  /// suggestions" pull when the engine could not swap everything out: the
+  /// cards it was forced to re-serve are reported in
+  /// [RecommendationResult.repeatedIds]. All-slots-repeated means the pool
+  /// has nothing new today; fewer means some slots kept their best pick.
+  Widget _buildRefreshNoteBanner(
+    BuildContext context,
+    RecommendationResult<Meal> result,
+    Brightness brightness,
+  ) {
+    final style = AppPalette.chipGold(brightness);
+    final strings = AppStrings.of(context);
+    final keptCount = result.repeatedIds.length;
+    final message = keptCount >= result.recommendations.length
+        ? strings.refreshNoNewSuggestions
+        : strings.refreshKeptSuggestions(keptCount);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: style.background,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: style.foreground.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          AppIcon(AppGlyph.swap, color: style.foreground, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
               style: TextStyle(
                 fontSize: 12,
                 height: 1.5,

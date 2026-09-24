@@ -200,6 +200,24 @@ class AppStrings {
       ? 'Are you sure you want to change the 3 current suggestions?'
       : 'هل أنت متأكد من تغيير الـ 3 اقتراحات الحالية؟';
   String get confirmRefreshConfirm => isEn ? 'Yes, change' : 'نعم، غيّرها';
+  String get refreshNoNewSuggestions => isEn
+      ? 'No new suggestions available today — these are still your best picks.'
+      : 'مفيش اقتراحات جديدة متاحة النهارده — دي لسه أفضل ترشيحات ليك.';
+  String refreshKeptSuggestions(int keptCount) {
+    if (isEn) {
+      return keptCount == 1
+          ? 'One suggestion stayed the same — no better alternative is available today.'
+          : '$keptCount suggestions stayed the same — no better alternatives are available today.';
+    }
+    switch (keptCount) {
+      case 1:
+        return 'اقتراح واحد فضل زي ما هو — مفيش بديل أنسب متاح النهارده.';
+      case 2:
+        return 'اقتراحين فضلوا زي ما هما — مفيش بدائل أنسب متاحة النهارده.';
+      default:
+        return '$keptCount اقتراحات فضلت زي ما هي — مفيش بدائل أنسب متاحة النهارده.';
+    }
+  }
   String get leftoverSuccessGeneral => isEn
       ? 'Done, but there is no record of yesterday\'s meal.'
       : 'تم ولكن لا يوجد سجل بأكلة أمس.';
@@ -214,6 +232,17 @@ class AppStrings {
   String get budgetFriendly => isEn ? 'Budget friendly' : 'اقتصادي';
   String get favorite => isEn ? 'Favorite' : 'مفضلة';
   String get mealFlagsLabel => isEn ? 'Meal options' : 'خيارات الوجبة';
+
+  // Full meal screen (mockup-aligned)
+  String get moreFavorites => isEn ? 'More Favorites' : 'مزيد من المفضلات';
+  String get freshAndNatural => isEn ? 'Fresh & Natural' : 'طازج وطبيعي';
+  String get healthyTag => isEn ? 'Healthy' : 'صحي';
+  String get balancedTag => isEn ? 'Balanced' : 'متوازن';
+  String get deliciousTag => isEn ? 'Delicious' : 'لذيذ';
+  String get mealScreenBottomHint => isEn
+      ? 'Actions coming soon'
+      : 'سيب الجزء دا زي ما هو على ما نحط فيه حاجة';
+  String prepMinutesShort(int minutes) => isEn ? '$minutes min' : '$minutes د';
 
   // Spin the wheel
   String get spinWheelTitle => isEn ? 'Wheel of Fortune' : 'عجلة الحظ';
