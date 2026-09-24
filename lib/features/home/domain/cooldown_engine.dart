@@ -14,6 +14,13 @@ class RecommendationResult<T> {
   /// True when the vault itself was empty (a distinct message from "relaxed").
   final bool isEmptyVault;
 
+  /// Ids the caller asked the engine to avoid (the cards currently on screen)
+  /// that still had to be re-served because the pool offered no alternative
+  /// to fill their slot. Empty unless an explicit refresh passed `excludeIds`.
+  /// The UI uses this to be honest ("no new suggestions today") instead of
+  /// silently reshuffling the same cards.
+  final List<int> repeatedIds;
+
   final DateTime computedDate;
 
   const RecommendationResult({
@@ -21,18 +28,27 @@ class RecommendationResult<T> {
     required this.relaxationLevel,
     required this.computedDate,
     this.isEmptyVault = false,
+    this.repeatedIds = const [],
   });
 }
 
 class CooldownEngine {
   const CooldownEngine();
 
+  /// [excludeIds]: ids of the cards currently on screen. Passed ONLY for an
+  /// explicit "change my suggestions" refresh: selection then prefers meals
+  /// the user is not already looking at, and any id it is forced to re-serve
+  /// is reported back in [RecommendationResult.repeatedIds]. Without it the
+  /// seed used to be nothing more than a tie-breaker inside score bands, so
+  /// dominant meals were pinned in place across refreshes — the very bug this
+  /// parameter exists to fix.
   RecommendationResult<T> compute<T>({
     required List<T> meals,
     required List<dynamic> history,
     required dynamic settings,
     DateTime? today,
     int shuffleSeed = 0,
+    Set<int>? excludeIds,
   }) {
     final now = today ?? DateTime.now();
     final normalizedToday = app_date_utils.toLocalDay(now);
@@ -95,6 +111,7 @@ class CooldownEngine {
     }
 
     final targetCount = min(3, meals.length);
+    final excluded = excludeIds ?? const <int>{};
 
     for (int level = 0; level <= 5; level++) {
       final candidates = _filterCandidates(
@@ -109,7 +126,7 @@ class CooldownEngine {
         level: level,
       );
 
-      final ranked = _rankAndSelectDiversity(
+      final ranked = _rankCandidates(
         candidates: candidates,
         lastCookedByMealId: lastCookedByMealId,
         today: normalizedToday,
@@ -121,12 +138,20 @@ class CooldownEngine {
         shuffleSeed: shuffleSeed,
       );
 
+      // Pool-size acceptance is judged against the FULL ranked pool, exactly
+      // as before; the novelty split below never pushes selection into a more
+      // relaxed level, it only re-orders who gets a slot inside this level.
       if (ranked.length >= targetCount || level == 5) {
-        final selectedRaw = ranked.take(targetCount).map((c) => c.rawMeal as T).toList();
+        final selection = _selectWithNovelty(ranked, targetCount, excluded);
+        final selectedRaw = selection.map((c) => c.rawMeal as T).toList();
         return RecommendationResult<T>(
           recommendations: selectedRaw,
           relaxationLevel: level,
           computedDate: normalizedToday,
+          repeatedIds: selection
+              .where((c) => excluded.contains(c.id))
+              .map((c) => c.id)
+              .toList(),
         );
       }
     }
@@ -226,7 +251,8 @@ class CooldownEngine {
 
   /// Pure meal quality: how overdue it is, Friday fit, favourite and budget
   /// flags. Deliberately contains no randomness — variety is decided in
-  /// [_rankAndSelectDiversity], so this stays a stable "goodness" number.
+  /// [_rankCandidates] and [_selectDiverse], so this stays a stable
+  /// "goodness" number.
   double calculateMealScore({
     required dynamic meal,
     dynamic history = const [],
@@ -307,7 +333,11 @@ class CooldownEngine {
   /// meal cooked around the same time stay interchangeable.
   static const double _interchangeableBand = 5.0;
 
-  List<_MealCandidate> _rankAndSelectDiversity({
+  /// Scores every candidate and returns the WHOLE pool ranked best-first:
+  /// band (score bracket) first, the seeded lottery inside the band, then id
+  /// for total stability. Selection and diversity picking happen afterwards,
+  /// separately, so this stays a pure ordering.
+  List<_MealCandidate> _rankCandidates({
     required List<_MealCandidate> candidates,
     required Map<int, DateTime> lastCookedByMealId,
     required DateTime today,
@@ -336,13 +366,17 @@ class CooldownEngine {
       );
     }).toList();
 
-    // One seeded draw per meal, taken in [candidates] order (which the DAO
-    // query keeps stable). Re-seeding with the same day + shuffleSeed replays
-    // the same sequence, so browsing never moves the cards — only a refresh
-    // does. Within a band the draw decides; across bands quality still rules.
+    // One seeded draw per meal, taken in ascending id order — NOT in list
+    // order. The DAO sorts by name, so drawing in list order meant renaming
+    // a dish silently dealt every other meal a new lottery value. Drawing by
+    // id pins each meal's value to the seed: re-seeding with the same day +
+    // shuffleSeed replays the same values, so browsing never moves the cards
+    // — only a refresh does. Within a band the draw decides; across bands
+    // quality still rules.
     final draw = Random(app_date_utils.daysSinceEpoch(today) + shuffleSeed * 7919);
+    final ordered = [...candidates]..sort((a, b) => a.id.compareTo(b.id));
     final lottery = <int, double>{
-      for (final candidate in candidates) candidate.id: draw.nextDouble(),
+      for (final candidate in ordered) candidate.id: draw.nextDouble(),
     };
 
     scored.sort((a, b) {
@@ -354,34 +388,63 @@ class CooldownEngine {
       return b.key.id.compareTo(a.key.id);
     });
 
-    final selected = <_MealCandidate>[];
-    final remaining = scored.map((e) => e.key).toList();
+    return scored.map((e) => e.key).toList();
+  }
 
-    selected.add(remaining.removeAt(0));
+  /// Picks [targetCount] slots from the ranked [pool] while honouring an
+  /// explicit "show me something else" request: ids in [excluded] are only
+  /// re-served when the rest of the pool cannot fill a slot. With an empty
+  /// [excluded] this is exactly the classic selection.
+  List<_MealCandidate> _selectWithNovelty(
+    List<_MealCandidate> ranked,
+    int targetCount,
+    Set<int> excluded,
+  ) {
+    if (excluded.isEmpty) return _selectDiverse(ranked, targetCount);
 
-    if (remaining.isNotEmpty) {
-      final card2Index = remaining.indexWhere((m) => m.proteinName != selected[0].proteinName);
-      if (card2Index != -1) {
-        selected.add(remaining.removeAt(card2Index));
-      } else {
-        selected.add(remaining.removeAt(0));
-      }
+    // Rank is preserved inside both sides, so fresh picks stay "best first"
+    // and repeats are backfilled best-of-the-worst case.
+    final novel = <_MealCandidate>[];
+    final repeats = <_MealCandidate>[];
+    for (final candidate in ranked) {
+      (excluded.contains(candidate.id) ? repeats : novel).add(candidate);
     }
 
-    if (remaining.isNotEmpty) {
-      final existingProteins = selected.map((m) => m.proteinName).toSet();
-      var card3Index = remaining.indexWhere((m) => !existingProteins.contains(m.proteinName));
+    var selection = _selectDiverse(novel, targetCount);
+    if (selection.length < targetCount && repeats.isNotEmpty) {
+      selection = _selectDiverse(repeats, targetCount, selection);
+    }
+    return selection;
+  }
 
-      if (card3Index == -1) {
-        final existingCarbs = selected.map((m) => m.carbsName).toSet();
-        card3Index = remaining.indexWhere((m) => !existingCarbs.contains(m.carbsName));
-      }
+  /// Greedy diversity pick over an already-ranked [pool]: the first card
+  /// takes the best meal, every later card takes the best meal whose protein
+  /// the earlier cards don't already have (falling back to carbs variety once
+  /// two cards exist, then to plain rank order). [preselected] seeds the
+  /// selection when backfilling with repeats after a refresh, so variety is
+  /// judged against the cards already chosen.
+  List<_MealCandidate> _selectDiverse(
+    List<_MealCandidate> pool,
+    int targetCount, [
+    List<_MealCandidate> preselected = const [],
+  ]) {
+    final selected = List<_MealCandidate>.of(preselected);
+    final remaining = List<_MealCandidate>.of(pool);
 
-      if (card3Index != -1) {
-        selected.add(remaining.removeAt(card3Index));
-      } else {
+    while (selected.length < targetCount && remaining.isNotEmpty) {
+      if (selected.isEmpty) {
         selected.add(remaining.removeAt(0));
+        continue;
       }
+
+      final proteins = selected.map((m) => m.proteinName).toSet();
+      var index = remaining.indexWhere((m) => !proteins.contains(m.proteinName));
+      if (index == -1 && selected.length >= 2) {
+        final carbs = selected.map((m) => m.carbsName).toSet();
+        index = remaining.indexWhere((m) => !carbs.contains(m.carbsName));
+      }
+
+      selected.add(remaining.removeAt(index == -1 ? 0 : index));
     }
 
     return selected;

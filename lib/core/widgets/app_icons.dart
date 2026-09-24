@@ -8,6 +8,10 @@ import 'package:flutter/material.dart';
 /// rainbow wheel…). Until the Figma SVG exports are dropped in, every glyph is
 /// hand-drawn here on a 24×24 grid so it stays crisp, tint-able per theme and
 /// dependency-free. Swapping a glyph later = editing one `case` below.
+///
+/// The two cloud transfer marks ([AppGlyph.cloudDown], [AppGlyph.cloudUp]) are
+/// the exception: they ship as PNGs in `assets/icons/` and are tinted through
+/// [AppIcon] like any vector, so call sites stay unaware of the difference.
 enum AppGlyph {
   home,
   vault,
@@ -39,7 +43,6 @@ enum AppGlyph {
   cloud,
   cloudDown,
   cloudUp,
-  download,
   pencil,
   chevron,
   minus,
@@ -62,8 +65,23 @@ class AppIcon extends StatelessWidget {
     this.size = 24,
   });
 
+  static const Map<AppGlyph, String> _pngGlyphs = {
+    AppGlyph.cloudDown: 'assets/icons/download_icon.png',
+    AppGlyph.cloudUp: 'assets/icons/upload_icon.png',
+  };
+
   @override
   Widget build(BuildContext context) {
+    final asset = _pngGlyphs[glyph];
+    if (asset != null) {
+      return Image.asset(
+        asset,
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+        color: color,
+      );
+    }
     return CustomPaint(
       size: Size.square(size),
       painter: _GlyphPainter(glyph, color),
@@ -396,52 +414,10 @@ class _GlyphPainter extends CustomPainter {
           fill,
         );
 
+      // Shipped as tinted PNGs by [AppIcon]; never painted.
       case AppGlyph.cloudDown:
-        canvas.drawPath(
-          Path()
-            ..moveTo(7.4, 15.2)
-            ..arcToPoint(const Offset(7.4, 8.4),
-                radius: const Radius.circular(3.4), clockwise: false)
-            ..arcToPoint(const Offset(14.6, 6.6),
-                radius: const Radius.circular(4.2), clockwise: true)
-            ..arcToPoint(const Offset(17.4, 15.2),
-                radius: const Radius.circular(3.6), clockwise: true)
-            ..close(),
-          stroke,
-        );
-        canvas.drawLine(const Offset(12, 11.4), const Offset(12, 19.4), stroke);
-        canvas.drawLine(const Offset(9.2, 16.8), const Offset(12, 19.6), stroke);
-        canvas.drawLine(const Offset(14.8, 16.8), const Offset(12, 19.6), stroke);
-
       case AppGlyph.cloudUp:
-        canvas.drawPath(
-          Path()
-            ..moveTo(7.4, 15.2)
-            ..arcToPoint(const Offset(7.4, 8.4),
-                radius: const Radius.circular(3.4), clockwise: false)
-            ..arcToPoint(const Offset(14.6, 6.6),
-                radius: const Radius.circular(4.2), clockwise: true)
-            ..arcToPoint(const Offset(17.4, 15.2),
-                radius: const Radius.circular(3.6), clockwise: true)
-            ..close(),
-          stroke,
-        );
-        canvas.drawLine(const Offset(12, 19.6), const Offset(12, 11.6), stroke);
-        canvas.drawLine(const Offset(9.2, 14.2), const Offset(12, 11.4), stroke);
-        canvas.drawLine(const Offset(14.8, 14.2), const Offset(12, 11.4), stroke);
-
-      case AppGlyph.download:
-        canvas.drawLine(const Offset(12, 3.6), const Offset(12, 14.2), stroke);
-        canvas.drawLine(const Offset(8.2, 10.4), const Offset(12, 14.4), stroke);
-        canvas.drawLine(const Offset(15.8, 10.4), const Offset(12, 14.4), stroke);
-        canvas.drawPath(
-          Path()
-            ..moveTo(4.6, 15.6)
-            ..lineTo(4.6, 20)
-            ..lineTo(19.4, 20)
-            ..lineTo(19.4, 15.6),
-          stroke,
-        );
+        break;
 
       case AppGlyph.pencil:
         canvas.save();
