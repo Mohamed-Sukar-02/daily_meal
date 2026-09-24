@@ -35,6 +35,12 @@ class QuickAddSheet extends ConsumerStatefulWidget {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
+      // Drag-to-close is popped imperatively by `BottomSheet.onClosing`
+      // (`Navigator.pop`), which `PopScope.canPop` cannot veto — so a swipe
+      // down past the header strip used to throw a half-typed meal away without
+      // ever asking. Leaving is done through the barrier, the X, Cancel or
+      // back, and every one of those goes through the unsaved-changes guard.
+      enableDrag: false,
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black.withValues(alpha: 0.35),
       builder: (ctx) => QuickAddSheet(mealToEdit: mealToEdit),
@@ -59,6 +65,18 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
   String? _photoPath;
   File? _pickedImageFile;
   bool _isPicking = false;
+  bool _saving = false;
+
+  /// Set the moment the sheet closes itself (a committed save, or a discard the
+  /// user just confirmed). [PopScope.canPop] never gates an imperative
+  /// `Navigator.pop`, so this flag is what keeps a back press landing on the
+  /// exit animation — or on an in-flight write — from asking "Discard
+  /// changes?" about a meal that is already stored.
+  bool _isPopping = false;
+
+  /// `true` while the discard prompt is on screen, so a rapid double back press
+  /// cannot stack a second one.
+  bool _confirmOpen = false;
 
   final ImagePicker _picker = ImagePicker();
 
@@ -78,6 +96,10 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
 
   /// `true` when any field (including the photo) differs from the original
   /// values — the sheet asks before discarding in that case.
+  ///
+  /// Read during `build` (for [PopScope.canPop]) *and* at pop time (in
+  /// [_requestClose]) — the text controllers push a rebuild through
+  /// [_onFormChanged] so the two can never disagree.
   bool get hasUnsavedChanges =>
       _nameController.text.trim() != _initialName ||
       _prepTimeController.text.trim() != _initialPrepTime ||
@@ -89,17 +111,36 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
       _isFavorite != _initialFavorite ||
       _photoPath != _initialPhotoPath;
 
-  /// Back button / X / cancel / swipe-down exit path: when the form is dirty,
+  /// A [TextEditingController] does not rebuild its owner widget, so
+  /// [hasUnsavedChanges] — and therefore `canPop` — kept the value it had when
+  /// the sheet was built: typing a meal name left the route poppable and back
+  /// destroyed the half-written meal without asking. Listening keeps it live.
+  void _onFormChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// Back button / X / cancel / barrier-tap exit path: when the form is dirty,
   /// confirm the discard first; otherwise close immediately and silently.
   Future<void> _requestClose() async {
+    // The write already happened (or is running): the sheet closes itself and a
+    // prompt here would ask about a meal that is already saved.
+    if (_saving || _isPopping || _confirmOpen) return;
     if (!hasUnsavedChanges) {
-      Navigator.of(context).pop();
+      _closeSelf();
       return;
     }
+    _confirmOpen = true;
     final discard = await showDiscardChangesDialog(context);
-    if (discard == true && mounted) {
-      Navigator.of(context).pop();
-    }
+    if (!mounted) return;
+    _confirmOpen = false;
+    if (discard == true) _closeSelf();
+  }
+
+  /// Pops the sheet and records that it is on its way out.
+  void _closeSelf() {
+    if (_isPopping) return;
+    _isPopping = true;
+    Navigator.of(context).pop();
   }
 
   @override
@@ -110,6 +151,8 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     final m = widget.mealToEdit;
     _nameController = TextEditingController(text: m?.name ?? '');
     _prepTimeController = TextEditingController(text: m?.prepTime.toString() ?? '30');
+    _nameController.addListener(_onFormChanged);
+    _prepTimeController.addListener(_onFormChanged);
     _selectedCategory = m?.category ?? MealCategory.egyptianTraditional;
     _selectedProtein = m?.proteinType ?? ProteinType.chicken;
     _selectedCarbs = m?.carbsType ?? CarbsType.rice;
@@ -139,6 +182,8 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
 
   @override
   void dispose() {
+    _nameController.removeListener(_onFormChanged);
+    _prepTimeController.removeListener(_onFormChanged);
     _nameController.dispose();
     _prepTimeController.dispose();
     super.dispose();
@@ -416,9 +461,11 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
   }
 
   Future<void> _save() async {
+    if (_saving) return;
     if (!_formKey.currentState!.validate()) return;
     final name = _nameController.text.trim();
     final prep = int.parse(_prepTimeController.text.trim());
+    setState(() => _saving = true);
     try {
       if (isEditing) {
         await ref.read(vaultControllerProvider.notifier).updateMeal(widget.mealToEdit!.copyWith(
@@ -434,7 +481,9 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
               updatedAt: DateTime.now(),
             ));
         if (mounted) {
-          Navigator.pop(context);
+          // Written already: leave without asking, and with the guard released
+          // so nothing intercepts this pop and re-opens the prompt.
+          _closeSelf();
           AppToast.showSuccess(context, AppStrings.of(context).mealUpdated(name));
         }
       } else {
@@ -443,12 +492,15 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
               prepTimeMinutes: prep, photoPath: _photoPath, isFridaySpecial: _isFridaySpecial,
               isBudgetFriendly: _isBudgetFriendly, isFavorite: _isFavorite);
         if (mounted) {
-          Navigator.pop(context);
+          _closeSelf();
           AppToast.showSuccess(context, AppStrings.of(context).mealAdded(name));
         }
       }
     } catch (e) {
-      if (mounted) AppToast.showError(context, AppStrings.of(context).saveError(e));
+      if (!mounted) return;
+      // The write failed: re-arm the guard so abandoning really does ask.
+      setState(() => _saving = false);
+      AppToast.showError(context, AppStrings.of(context).saveError(e));
     }
   }
 
@@ -462,7 +514,10 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     return Directionality(
       textDirection: TextDirection.ltr,
       child: PopScope(
-        canPop: !hasUnsavedChanges,
+        // [_isPopping] keeps the route free once the sheet decides to close
+        // itself, so a back press landing on the exit animation (or on an
+        // in-flight write) can never gate on the pre-save snapshot.
+        canPop: _isPopping || !hasUnsavedChanges,
         onPopInvokedWithResult: (didPop, result) {
           // canPop=false (dirty form) → ask before leaving; clean form pops
           // straight through (didPop=true) without any dialog.
@@ -818,7 +873,9 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                               Expanded(
                                 child: FilledButton.icon(
                                   key: const Key('meal_form_save_button'),
-                                  onPressed: _save,
+                                  // Disabled while the write runs: a second tap
+                                  // would store the meal twice.
+                                  onPressed: _saving ? null : _save,
                                   icon: const Icon(Icons.restaurant_menu, size: 18, color: Colors.white),
                                   label: Text(isEditing ? strings.saveChanges : strings.saveMeal, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
                                   style: FilledButton.styleFrom(

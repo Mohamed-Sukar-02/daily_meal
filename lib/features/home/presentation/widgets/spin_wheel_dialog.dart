@@ -1,11 +1,13 @@
 import 'dart:math' as math;
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:audio_session/audio_session.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/localization/app_strings.dart';
+import 'spin_wheel_candidate_tile.dart';
+import 'spin_wheel_painter.dart';
+import 'spin_wheel_pointer.dart';
 
 class SpinWheelBottomSheet extends StatefulWidget {
   final List<Meal> candidates;
@@ -31,17 +33,6 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
   bool _isSpinning = false;
   int _lastSegment = 0;
   late AudioPlayer _audioPlayer;
-
-  final List<Color> _palette = const [
-    Color(0xFFE57373), // Coral Red
-    Color(0xFFFFB74D), // Saffron Amber
-    Color(0xFF4DB6AC), // Nile Teal
-    Color(0xFF81C784), // Mint Green
-    Color(0xFFBA68C8), // Violet
-    Color(0xFFFFD54F), // Mustard
-    Color(0xFF4DD0E1), // Cyan
-    Color(0xFFA1887F), // Warm Spice
-  ];
 
   @override
   void initState() {
@@ -241,19 +232,32 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
   }
 
   Widget _buildCandidatesList(bool isRtl) {
-    return ListView.builder(
-      itemCount: widget.candidates.length,
-      padding: EdgeInsets.zero,
-      itemBuilder: (context, index) {
-        final meal = widget.candidates[index];
-        final color = _palette[index % _palette.length];
-        return _GlassyCandidateItem(
-          index: index,
-          meal: meal,
-          baseColor: color,
-          isRtl: isRtl,
-        );
-      },
+    return AnimatedOpacity(
+      // The wheel owns the moment while it spins; the list steps back.
+      opacity: _isSpinning ? 0.45 : 1,
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOut,
+      child: ListView.builder(
+        itemCount: widget.candidates.length,
+        padding: const EdgeInsets.only(top: 2, bottom: 14),
+        itemBuilder: (context, index) {
+          return TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0, end: 1),
+            duration: Duration(milliseconds: 420 + math.min(index, 9) * 55),
+            curve: Curves.easeOutQuint,
+            builder: (context, value, child) => Transform.translate(
+              offset: Offset((1 - value) * (isRtl ? 26 : -26), 0),
+              child: Opacity(opacity: value.clamp(0.0, 1.0), child: child),
+            ),
+            child: SpinWheelCandidateTile(
+              index: index,
+              meal: widget.candidates[index],
+              tint: kSpinWheelTints[index % kSpinWheelTints.length],
+              isRtl: isRtl,
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -370,8 +374,10 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
 
     final phase = ((currentA + math.pi / 2) % sweepAngle + sweepAngle) % sweepAngle;
     final phaseNormalized = phase / sweepAngle;
-    // Slowly gets pushed back, then snaps to 0 when passing the peg.
-    final flapperAngle = -0.5 * math.pow(phaseNormalized, 4).toDouble();
+    // Slowly gets pushed back, then snaps to 0 when passing the peg. The pin
+    // now pivots on its rivet instead of its top edge, so the amplitude is
+    // raised to keep the same visible flick at the tip.
+    final flapperAngle = -0.68 * math.pow(phaseNormalized, 4).toDouble();
 
     return SizedBox(
       height: (wheelSize / 2) + 24, 
@@ -387,28 +393,19 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
               angle: _controller.isAnimating ? _animation.value : _currentAngle,
               child: CustomPaint(
                 size: Size(wheelSize, wheelSize),
-                painter: _WheelPainter(
+                painter: SpinWheelPainter(
                   candidates: widget.candidates,
-                  palette: _palette,
+                  tints: kSpinWheelTints,
                   isDark: isDark,
                 ),
               ),
             ),
           ),
 
-          // Top Arrow Indicator
+          // Pawl riding the pegs.
           Positioned(
             top: 0,
-            child: Transform.rotate(
-              angle: flapperAngle,
-              alignment: Alignment.topCenter,
-              child: Icon(
-                Icons.arrow_drop_down,
-                size: 64,
-                color: Colors.redAccent.shade400,
-                shadows: const [Shadow(color: Colors.black45, blurRadius: 6, offset: Offset(0, 2))],
-              ),
-            ),
+            child: SpinWheelPointer(angle: flapperAngle),
           ),
 
           // Central SPIN Button
@@ -440,260 +437,5 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
         ],
       ),
     );
-  }
-}
-
-class _GlassyCandidateItem extends StatelessWidget {
-  final int index;
-  final Meal meal;
-  final Color baseColor;
-  final bool isRtl;
-
-  const _GlassyCandidateItem({
-    required this.index,
-    required this.meal,
-    required this.baseColor,
-    required this.isRtl,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: Duration(milliseconds: 700 + (index * 150)),
-      curve: Curves.elasticOut, // High quality elastic bounce
-      builder: (context, value, child) {
-        final offset = (1 - value) * (isRtl ? 150 : -150);
-        return Transform.translate(
-          offset: Offset(offset, 0),
-          child: Opacity(
-            opacity: value.clamp(0.0, 1.0),
-            child: child,
-          ),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        height: 64,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8), // Glassmorphism effect
-            child: CustomPaint(
-              painter: _GlassyItemPainter(
-                baseColor: baseColor,
-                isDark: isDark,
-              ),
-              child: Row(
-                children: [
-                  if (!isRtl) ...[
-                    // LTR Layout
-                    Expanded(child: _buildNameText(isDark)),
-                    _buildNumberText(),
-                  ] else ...[
-                    // RTL Layout (first child is visually on the right)
-                    _buildNumberText(),
-                    Expanded(child: _buildNameText(isDark)),
-                  ]
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNumberText() {
-    return Container(
-      width: 60,
-      alignment: Alignment.center,
-      child: Text(
-        '${index + 1}',
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w900,
-          fontSize: 22,
-          shadows: [Shadow(color: Colors.black45, blurRadius: 2, offset: Offset(0, 1))],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNameText(bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Text(
-        meal.name,
-        style: TextStyle(
-          color: isDark ? Colors.white : Colors.black87,
-          fontWeight: FontWeight.bold,
-          fontSize: 16,
-        ),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-    );
-  }
-}
-
-class _GlassyItemPainter extends CustomPainter {
-  final Color baseColor;
-  final bool isDark;
-
-  _GlassyItemPainter({
-    required this.baseColor,
-    required this.isDark,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final bgOpacity = isDark ? 0.2 : 0.15;
-    final blockOpacity = isDark ? 0.9 : 1.0;
-
-    // Background fill
-    final bgPaint = Paint()
-      ..color = baseColor.withValues(alpha: bgOpacity)
-      ..style = PaintingStyle.fill;
-    
-    // Slanted block fill
-    final blockPaint = Paint()
-      ..color = baseColor.withValues(alpha: blockOpacity)
-      ..style = PaintingStyle.fill;
-
-    canvas.drawRect(Offset.zero & size, bgPaint);
-
-    final path = Path();
-    final blockWidth = 60.0;
-    final slant = 15.0;
-
-    // Draw block on the right side with a slant `\`. 
-    // Top-left is at width - blockWidth + slant (further right)
-    // Bottom-left is at width - blockWidth - slant (further left)
-    // This creates a `/` shape divider.
-    path.moveTo(size.width - blockWidth + slant, 0);
-    path.lineTo(size.width, 0);
-    path.lineTo(size.width, size.height);
-    path.lineTo(size.width - blockWidth - slant, size.height);
-    path.close();
-
-    canvas.drawPath(path, blockPaint);
-    
-    // Subtle inner border for glass effect
-    final borderPaint = Paint()
-      ..color = Colors.white.withValues(alpha: isDark ? 0.1 : 0.4)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
-    
-    final rrect = RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(12));
-    canvas.drawRRect(rrect, borderPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _GlassyItemPainter oldDelegate) => 
-      oldDelegate.baseColor != baseColor || oldDelegate.isDark != isDark;
-}
-
-class _WheelPainter extends CustomPainter {
-  final List<Meal> candidates;
-  final List<Color> palette;
-  final bool isDark;
-
-  _WheelPainter({
-    required this.candidates,
-    required this.palette,
-    required this.isDark,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2;
-    final count = candidates.length;
-    
-    // Distribute into many segments evenly
-    int multiplier = 12 ~/ count;
-    if (multiplier < 2) multiplier = 2; // guarantees at least 12 or 14 segments for >6 items
-    final totalSegments = count * multiplier;
-    
-    final sweepAngle = (2 * math.pi) / totalSegments;
-
-    final paint = Paint()..style = PaintingStyle.fill;
-    final borderPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0
-      ..color = Colors.black.withValues(alpha: 0.15); // soft segment dividers
-
-    final bgOpacity = isDark ? 0.2 : 0.15;
-
-    for (int i = 0; i < totalSegments; i++) {
-      final mealIndex = i % count;
-      final startAngle = i * sweepAngle;
-
-      // Match the exact faded color of the list item name section
-      paint.color = palette[mealIndex % palette.length].withValues(alpha: bgOpacity);
-
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        startAngle,
-        sweepAngle,
-        true,
-        paint,
-      );
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        startAngle,
-        sweepAngle,
-        true,
-        borderPaint,
-      );
-
-      final textAngle = startAngle + sweepAngle / 2;
-      canvas.save();
-      canvas.translate(center.dx, center.dy);
-      canvas.rotate(textAngle);
-
-      final shortName = candidates[mealIndex].shortName?.isNotEmpty == true
-          ? candidates[mealIndex].shortName!
-          : candidates[mealIndex].name;
-
-      final span = TextSpan(
-        text: shortName,
-        style: TextStyle(
-          color: isDark ? Colors.white : Colors.black87,
-          fontSize: 14,
-          fontWeight: FontWeight.w900,
-          shadows: isDark 
-              ? const [Shadow(color: Colors.black54, blurRadius: 4, offset: Offset(0, 1))]
-              : const [Shadow(color: Colors.white70, blurRadius: 2, offset: Offset(0, 1))],
-        ),
-      );
-
-      final tp = TextPainter(
-        text: span,
-        textDirection: TextDirection.rtl,
-      )..layout();
-
-      // Place text nicely along the outer radius (2/3 from center)
-      tp.paint(canvas, Offset(radius * 0.66 - tp.width / 2, -tp.height / 2));
-      canvas.restore();
-    }
-    
-    // Draw an elegant outer ring
-    canvas.drawCircle(
-      center,
-      radius - 2,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 4
-        ..color = Colors.white.withValues(alpha: 0.2),
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _WheelPainter oldDelegate) {
-    return oldDelegate.candidates != candidates || oldDelegate.isDark != isDark;
   }
 }

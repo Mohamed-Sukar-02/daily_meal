@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -6,6 +7,7 @@ import '../../../core/localization/app_strings.dart';
 import '../../../core/services/avatar_service.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/app_toast.dart';
+import '../../../core/widgets/discard_changes_dialog.dart';
 import '../../settings/providers/settings_providers.dart';
 
 /// Modern two-step Welcome & Onboarding flow for "أكلة النهاردة".
@@ -14,6 +16,11 @@ import '../../settings/providers/settings_providers.dart';
 ///         blue pot logo, convex curved white card, and "START NOW" pill button).
 /// Step 2: Personal Profile & Kitchen Setup (compact hero header, name, gender,
 ///         interactive avatar selector matching gender, and optional email).
+///
+/// Back navigation is owned by this screen (see [_handleBackAttempt]): the
+/// profile the user is typing exists nowhere but in memory until the finish
+/// button commits it, and this route is the app's first page while onboarding
+/// is unfinished — an ungated back press would destroy the draft.
 class WelcomeScreen extends ConsumerStatefulWidget {
   const WelcomeScreen({super.key});
 
@@ -29,6 +36,61 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
 
   String? _selectedGender;
   String? _selectedAvatar;
+
+  /// Visible page: 0 = hero landing, 1 = profile setup. Kept in state because
+  /// the back handling needs it, and a [PageView] with
+  /// [NeverScrollableScrollPhysics] only ever changes it through this object.
+  int _page = 0;
+
+  /// `true` while the discard prompt is on screen, so a rapid double back press
+  /// cannot stack a second one.
+  bool _confirmOpen = false;
+
+  /// Set as soon as the setup is over — submitted or deliberately abandoned —
+  /// which releases [PopScope.canPop] so nothing asks again about work that is
+  /// already saved.
+  bool _leaving = false;
+
+  /// Anything the user put into the setup form but has not submitted yet.
+  ///
+  /// Read when the pop is attempted (not during `build`), so it is always live
+  /// even though a [TextEditingController] does not rebuild this widget.
+  bool get hasUnsavedSetup =>
+      _nameController.text.trim().isNotEmpty ||
+      _emailController.text.trim().isNotEmpty ||
+      _selectedGender != null;
+
+  /// System back / no where-left-to-go path.
+  ///
+  /// Step 2 has step 1 behind it and the draft survives the hop (the
+  /// controllers live in this state object), so back simply goes one step up —
+  /// the same thing the on-page arrow does, and no prompt belongs there. On
+  /// step 1 there is nothing behind the draft but leaving, so the shared
+  /// discard prompt stands between the user and their lost typing.
+  Future<void> _handleBackAttempt() async {
+    if (_confirmOpen || _leaving) return;
+    if (_page > 0) {
+      _goToStep1();
+      return;
+    }
+    if (!hasUnsavedSetup) {
+      await _leaveSetup();
+      return;
+    }
+    _confirmOpen = true;
+    final discard = await showDiscardChangesDialog(context);
+    if (!mounted) return;
+    _confirmOpen = false;
+    if (discard) await _leaveSetup();
+  }
+
+  /// `/welcome` is the app's first route during onboarding, so "leaving" means
+  /// closing the app — the same exit the nav shell's double-back performs.
+  Future<void> _leaveSetup() async {
+    if (!mounted) return;
+    setState(() => _leaving = true);
+    await SystemNavigator.pop();
+  }
 
   @override
   void dispose() {
@@ -51,6 +113,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
   }
 
   void _goToStep2() {
+    setState(() => _page = 1);
     _pageController.nextPage(
       duration: const Duration(milliseconds: 400),
       curve: Curves.easeInOutCubic,
@@ -58,6 +121,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
   }
 
   void _goToStep1() {
+    setState(() => _page = 0);
     _pageController.previousPage(
       duration: const Duration(milliseconds: 350),
       curve: Curves.easeInOutCubic,
@@ -88,6 +152,9 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
           );
 
       if (mounted) {
+        // Committed: release the back guard before replacing the route, so the
+        // finished setup can never be met with a discard prompt.
+        setState(() => _leaving = true);
         if (GoRouter.maybeOf(context) != null) {
           context.go('/');
         }
@@ -103,15 +170,25 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
 
-    return Scaffold(
-      backgroundColor: AppPalette.background(brightness),
-      body: PageView(
-        controller: _pageController,
-        physics: const NeverScrollableScrollPhysics(),
-        children: [
-          _buildHeroWelcomePage(brightness),
-          _buildProfileSetupPage(brightness),
-        ],
+    return PopScope(
+      // The pop is vetoed and handled in [_handleBackAttempt]: this route is the
+      // app root while onboarding runs, so an ungated back would either throw
+      // the draft away or empty the navigator.
+      canPop: _leaving,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) _handleBackAttempt();
+      },
+      child: Scaffold(
+        backgroundColor: AppPalette.background(brightness),
+        body: PageView(
+          controller: _pageController,
+          physics: const NeverScrollableScrollPhysics(),
+          onPageChanged: (index) => setState(() => _page = index),
+          children: [
+            _buildHeroWelcomePage(brightness),
+            _buildProfileSetupPage(brightness),
+          ],
+        ),
       ),
     );
   }

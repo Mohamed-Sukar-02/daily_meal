@@ -34,16 +34,23 @@ import 'meal_sync_diff.dart';
 //     NOTE TO AI AGENTS: We DO NOT use Firebase Storage. Firebase recently
 //     began enforcing the Blaze plan for new buckets, breaking free Spark
 //     accounts. Therefore, all images are uploaded directly to Cloudinary
-//     (cloudName: bzd1vjrs, preset: daily meal). Oversized or
-//     unreadable photos are skipped — the proposal still goes through.
+//     (cloudName: bzd1vjrs, preset: daily meal). A photo that cannot ship
+//     aborts the proposal with the reason it cannot ship — a picture the user
+//     picked is never dropped silently behind a "success" toast. Readable-but-
+//     too-big and missing are reported as two different problems, and so are a
+//     host that refused the upload and one that never answered.
 //     No new compression dependency is introduced (per the implementation plan).
 //   • Auth: staging creates require `request.auth != null`; the app has no
 //     user accounts, so we sign in anonymously via firebase_auth (already a
 //     project dependency) exactly when a proposal is made.
-//   • Failure reporting: every stage (ledger, sign-in, write) is caught
-//     separately and classified into a [ProposalFailureReason], because a
-//     disabled anonymous provider, rejected security rules and a dead network
-//     all look identical to the user otherwise.
+//   • Connectivity: [resolveProposalCloudAccess] is the single Wi-Fi/offline
+//     gate, applied by the UI flow *and* by [proposeMeal] itself, so the two
+//     buttons and any direct service call cannot diverge.
+//   • Failure reporting: every stage (gate, ledger, sign-in, photo, write) is
+//     caught separately and classified into a [ProposalFailureReason] — from
+//     the provider `code` first, the message only as a fallback — because a
+//     disabled anonymous provider, rejected security rules, an expired
+//     deadline and a dead network all look identical to the user otherwise.
 //   • Duplicate guard: `staging_meals` is admin-read-only, so the client
 //     cannot query its own proposals. A SharedPreferences ledger
 //     (mealId → updatedAt-ms at submit time) blocks accidental re-sends and
@@ -87,8 +94,16 @@ enum ProposalOutcomeCode {
 ///
 /// The app used to report every rejection with one generic message, which made
 /// a misconfigured Firebase project indistinguishable from a dead network. Each
-/// reason maps to a short localised line in [AppStrings]; the raw provider
-/// error is appended only when nothing matched ([unknown]).
+/// reason maps to a short localised line in [AppStrings] (the `proposalFail*`
+/// getters, named after these values); the raw provider error is appended only
+/// when nothing matched ([unknown]).
+///
+/// Every value here is reachable: the classifier in
+/// [ProposalFailureDiagnoser.classify] produces the provider-shaped ones from
+/// the Firebase `code`, the flow itself produces the local-stage ones
+/// ([ledgerUnavailable], [signInReturnedNoUser], the photo reasons), and
+/// [proposalFailureLabel] maps all of them to a string. The unit test that
+/// walks `ProposalFailureReason.values` is what keeps that promise.
 enum ProposalFailureReason {
   /// `Firebase.initializeApp` never completed, or the client API key is wrong,
   /// so no Firebase singleton exists to call.
@@ -101,19 +116,68 @@ enum ProposalFailureReason {
   /// Anonymous sign-in exists but rejected the caller for another reason.
   anonymousSignInRejected,
 
+  /// The credentials that were valid a moment ago stopped being accepted
+  /// (`unauthenticated`): the anonymous session was dropped, so the write
+  /// never counted as authorised. Nothing about the meal is wrong.
+  signInStateLost,
+
+  /// Anonymous sign-in "succeeded" but handed back no uid, so there is no
+  /// `proposedBy` value to write. A broken project configuration, not a
+  /// network problem and not a rejection.
+  signInReturnedNoUser,
+
   /// Firestore refused the `staging_meals` create — deployed security rules do
   /// not accept this payload, or the caller is not the `proposedBy` uid.
   writePermissionDenied,
 
-  /// Firestore was unreachable at write time (no route, DNS failure, timeout).
+  /// The cloud could not be reached, or did not answer before its deadline
+  /// expired. Deliberately one reason for both shapes: `unavailable`, DNS
+  /// failures, socket errors and `deadline-exceeded` all mean "the request
+  /// never got a reply", and the user's fix is the same — check the network.
   writeUnreachable,
 
-  /// The meal carries a local photo that could not be shipped (missing file,
-  /// unreadable, or over the size the staging document allows). The proposal
-  /// is aborted rather than filed photoless behind the user's back.
-  photoRejected,
+  /// The request was cancelled or aborted part-way (`cancelled`, `aborted`) —
+  /// typically the app being backgrounded, not a broken connection and not a
+  /// rejected payload.
+  requestCancelled,
 
-  /// The photo host refused or failed the upload.
+  /// Firestore answered but the write target does not exist (`not-found`):
+  /// the database or the `staging_meals` collection is missing from the
+  /// project this build points at.
+  cloudTargetMissing,
+
+  /// The cloud spent its allowance on this caller (`resource-exhausted`):
+  /// rate limit or quota reached, so retrying immediately will not help.
+  cloudQuotaExhausted,
+
+  /// The on-device proposal record (SharedPreferences ledger / daily counter)
+  /// could not be read or written, so the flow cannot tell whether this meal
+  /// was already sent or whether today's allowance is gone.
+  ledgerUnavailable,
+
+  /// There is no readable photo to ship: the file is gone, empty, or its path
+  /// cannot be opened. The proposal is aborted rather than filed photoless
+  /// behind the user's back.
+  photoUnreadable,
+
+  /// The local photo is a real file but bigger than the staging cap, so the
+  /// only honest advice is to pick another picture or retake it.
+  photoTooLarge,
+
+  /// The meal points at a remote photo whose stored link is too long to put in
+  /// the document — re-picking the photo is what fixes it, not reconnecting.
+  photoLinkInvalid,
+
+  /// The photo host was contacted and never answered within
+  /// [MealProposalService.imageUploadTimeout].
+  photoUploadTimeout,
+
+  /// The photo host answered with a refusal (non-200): the upload preset or
+  /// its server-side configuration rejected the file.
+  photoUploadRefused,
+
+  /// The upload stage failed in some other way (connection dropped mid-body,
+  /// an unreadable response body, no URL in it).
   photoUploadFailed,
 
   /// Anything else — the UI shows the raw error instead of a guess.
@@ -125,13 +189,51 @@ enum ProposalFailureReason {
 class ProposalFailureDiagnoser {
   const ProposalFailureDiagnoser._();
 
+  /// Firebase/Firestore status codes that mean "no reply came back".
+  /// `deadline-exceeded` belongs here and NOT in a message sniff: Firestore
+  /// reports an expired deadline with that code and a body that never contains
+  /// the word "timeout", so the old substring test let it fall through to
+  /// [ProposalFailureReason.unknown] — a timeout described as "something else".
+  static const Set<String> _connectivityCodes = <String>{
+    'unavailable',
+    'deadline-exceeded',
+    'network-request-failed',
+    'connect-error',
+    'timeout',
+  };
+
+  /// The session existed and stopped being accepted. Distinct from both
+  /// `permission-denied` (authenticated, rules said no) and a disabled
+  /// provider (nothing to authenticate against).
+  static const Set<String> _signInLostCodes = <String>{
+    'unauthenticated',
+    'auth-expired',
+    'token-expired',
+  };
+
+  /// "You may do this, but not this often / not more of this."
+  static const Set<String> _quotaCodes = <String>{
+    'resource-exhausted',
+    'quota-exceeded',
+    'rate-limit-exceeded',
+  };
+
+  /// The caller (or the OS, when the app was backgrounded) stopped the request.
+  static const Set<String> _cancelledCodes = <String>{
+    'cancelled',
+    'aborted',
+  };
+
   static ProposalFailureReason classify(Object error) {
-    final code = errorCode(error);
+    final code = errorCode(error)?.trim().toLowerCase();
     final haystack = '$code ${error.toString()}'.toLowerCase();
+    bool hasCode(Set<String> codes) => code != null && codes.contains(code);
 
     // Auth never initialised: `FirebaseAuth.instance` / `FirebaseFirestore
     // .instance` throw a plain StateError before any network call happens.
-    if (haystack.contains('no firebase app') ||
+    if (code == 'invalid-api-key' ||
+        code == 'api-key-not-valid' ||
+        haystack.contains('no firebase app') ||
         haystack.contains('firebase apps were not initialised') ||
         haystack.contains('invalid-api-key') ||
         haystack.contains('api-key-not-valid')) {
@@ -140,11 +242,33 @@ class ProposalFailureDiagnoser {
 
     // `operation-not-allowed` / `unsupported-operation` / `configuration-
     // not-found` are the shapes Firebase Auth uses for a disabled provider.
-    if (haystack.contains('operation-not-allowed') ||
+    if (hasCode(const {
+          'operation-not-allowed',
+          'unsupported-operation',
+          'configuration-not-found',
+        }) ||
+        haystack.contains('operation-not-allowed') ||
         haystack.contains('unsupported-operation') ||
         haystack.contains('configuration-not-found') ||
         haystack.contains('provider is disabled')) {
       return ProposalFailureReason.anonymousProviderDisabled;
+    }
+
+    // The connectivity family is checked BEFORE the blanket auth branch:
+    // `FirebaseAuthException(code: network-request-failed)` is thrown by the
+    // sign-in stage, but what it says is "the host was unreachable" — labelling
+    // that "sign-in was rejected" sent users to the Firebase console to enable
+    // a provider that was already enabled.
+    if (hasCode(_connectivityCodes) ||
+        haystack.contains('failed host lookup') ||
+        haystack.contains('socketexception') ||
+        haystack.contains('network-request-failed') ||
+        haystack.contains('timeout')) {
+      return ProposalFailureReason.writeUnreachable;
+    }
+
+    if (hasCode(_signInLostCodes) || haystack.contains('unauthenticated')) {
+      return ProposalFailureReason.signInStateLost;
     }
 
     // FirebaseAuthException codes are bare (`Too-Many-Requests`, `user-disabled`)
@@ -154,17 +278,24 @@ class ProposalFailureDiagnoser {
       return ProposalFailureReason.anonymousSignInRejected;
     }
 
+    if (hasCode(_quotaCodes) ||
+        haystack.contains('resource-exhausted') ||
+        haystack.contains('quota-exceeded')) {
+      return ProposalFailureReason.cloudQuotaExhausted;
+    }
+
     if (code == 'permission-denied' ||
         haystack.contains('permission-denied') ||
         haystack.contains('permission denied')) {
       return ProposalFailureReason.writePermissionDenied;
     }
 
-    if (code == 'unavailable' ||
-        haystack.contains('failed host lookup') ||
-        haystack.contains('socketexception') ||
-        haystack.contains('timeout')) {
-      return ProposalFailureReason.writeUnreachable;
+    if (hasCode(_cancelledCodes) || haystack.contains('cancelled')) {
+      return ProposalFailureReason.requestCancelled;
+    }
+
+    if (code == 'not-found') {
+      return ProposalFailureReason.cloudTargetMissing;
     }
 
     return ProposalFailureReason.unknown;
@@ -181,6 +312,20 @@ class ProposalFailureDiagnoser {
       return null;
     }
   }
+
+  /// The reason a local photo did not qualify, or `null` when it did.
+  ///
+  /// One mapping, shared by the gate and the flow, so "the file is not there"
+  /// and "the file is too big" can never be folded back into a single label —
+  /// they are the two causes users most often mix up, and only one of them is
+  /// fixed by retaking the picture.
+  static ProposalFailureReason? localPhotoReason(LocalPhotoIssue issue) =>
+      switch (issue) {
+        LocalPhotoIssue.none => null,
+        LocalPhotoIssue.missing => ProposalFailureReason.photoUnreadable,
+        LocalPhotoIssue.empty => ProposalFailureReason.photoUnreadable,
+        LocalPhotoIssue.tooLarge => ProposalFailureReason.photoTooLarge,
+      };
 
   /// One-line raw error for the debug-only suffix: code plus message, collapsed
   /// to a single line and capped so it cannot blow out the toast.
@@ -251,6 +396,24 @@ class ProposalOutcome {
   }
 
   bool get isSuccess => code == ProposalOutcomeCode.submitted;
+}
+
+/// Why a locally-stored photo could not be shipped, decided from facts the
+/// caller reads off the filesystem. Splitting "not there" from "too big" is the
+/// point: they need different advice, and merging them into one label is what
+/// made users toggle Wi-Fi over a picture they simply had to retake.
+enum LocalPhotoIssue {
+  /// Nothing wrong — the file is there and fits the staging budget.
+  none,
+
+  /// No file at that path (deleted, moved, or never saved).
+  missing,
+
+  /// The file exists but has no bytes to upload.
+  empty,
+
+  /// The file exists but exceeds [MealProposalPayload.maxImageBytes].
+  tooLarge,
 }
 
 /// Pure local→cloud vocabulary bridges. The cloud schema (see `CloudMeal` and
@@ -332,8 +495,16 @@ class MealProposalPayload {
   static const int maxNotesLength = 500;
   static const int maxImageUrlLength = 2048;
 
-  /// Upload gate for locally-picked photos (rules cap staging images at
-  /// 500 KB — see `storage.rules::staging_meal_images`).
+  /// Client-only size gate for locally-picked photos: `inspectLocalPhoto`
+  /// reports `LocalPhotoIssue.tooLarge` for a file above this size (and
+  /// `eligibleImageFile` returns null for it), so such a photo is never handed
+  /// to Cloudinary. Nothing server-side enforces a byte limit —
+  /// `firestore.rules::isValidStagingMeal` only bounds the stored `imageUrl`
+  /// *string* (2048 chars), and the Firebase Storage path that used to host
+  /// staging photos is retired (`storage.rules::staging_meal_images` is
+  /// `allow write: if false`). This number is therefore a product policy, not a
+  /// rules mirror; the picker settings that keep ordinary captures under it
+  /// (`maxWidth: 1080`, `imageQuality: 85`) are part of the same decision.
   static const int maxImageBytes = 500 * 1024;
 
   /// Clamps into the rule-enforced window; kept explicit (rather than
@@ -421,6 +592,41 @@ class MealProposalPayload {
       return file;
     } catch (_) {
       return null;
+    }
+  }
+
+  /// The same gate as [eligibleImageFile], but it reports *why* the photo did
+  /// not qualify so the user gets told the truth. Pure (existence and length
+  /// are passed in) so it is unit-testable without a filesystem.
+  static LocalPhotoIssue localPhotoIssue({
+    required bool exists,
+    required int byteLength,
+    int? maxBytes,
+  }) {
+    if (!exists) return LocalPhotoIssue.missing;
+    if (byteLength <= 0) return LocalPhotoIssue.empty;
+    if (byteLength > (maxBytes ?? maxImageBytes)) return LocalPhotoIssue.tooLarge;
+    return LocalPhotoIssue.none;
+  }
+
+  /// Reads [localPhotoIssue] off the disk for a non-remote `photoPath`.
+  /// A path that cannot be stat'ed at all reports as [LocalPhotoIssue.missing]
+  /// — from the user's side a photo they cannot open is the same as one that
+  /// is not there, and neither is ever reported as "too large".
+  static LocalPhotoIssue inspectLocalPhoto(String photoPath, {int? maxBytes}) {
+    final path = photoPath.trim();
+    if (path.isEmpty) return LocalPhotoIssue.missing;
+    try {
+      final file = File(path);
+      final exists = file.existsSync();
+      if (!exists) return LocalPhotoIssue.missing;
+      return localPhotoIssue(
+        exists: true,
+        byteLength: file.lengthSync(),
+        maxBytes: maxBytes,
+      );
+    } catch (_) {
+      return LocalPhotoIssue.missing;
     }
   }
 }
@@ -535,58 +741,118 @@ class CloudinaryConfig {
 /// [url] stays null when the meal simply has no photo to ship. [error] is set
 /// only when a photo *did* exist and could not be shipped — a case the user is
 /// told about rather than having a photoless proposal presented as success.
+/// [reason] says which of the photo failures it was, so "the file is gone" and
+/// "the host refused it" never share a label.
 class StagedPhoto {
   final String? url;
   final Object? error;
 
-  /// Whether the photo host was actually contacted, so a file that never made
-  /// it off the device reports as rejected rather than as a failed upload.
-  final bool uploadAttempted;
+  /// Set whenever [error] is, and only then.
+  final ProposalFailureReason? reason;
 
-  const StagedPhoto._(this.url, this.error, this.uploadAttempted);
+  const StagedPhoto._(this.url, this.error, this.reason);
 
-  const StagedPhoto.none() : this._(null, null, false);
-  const StagedPhoto.withUrl(String url) : this._(url, null, false);
-  const StagedPhoto.rejected(Object why) : this._(null, why, false);
-  const StagedPhoto.uploadFailed(Object why) : this._(null, why, true);
+  const StagedPhoto.none() : this._(null, null, null);
+  const StagedPhoto.withUrl(String url) : this._(url, null, null);
+
+  /// The photo never left the device (missing, empty, oversized, bad link).
+  const StagedPhoto.rejected(Object why, ProposalFailureReason reason)
+      : this._(null, why, reason);
+
+  /// The photo host was contacted and the upload did not land.
+  const StagedPhoto.uploadFailed(Object why, ProposalFailureReason reason)
+      : this._(null, why, reason);
+
+  /// Whether a photo was available to ship but could not be.
+  bool get failed => error != null;
 }
 
-/// Executes the export: daily quota → duplicate guard → anonymous auth →
-/// optional photo upload → Firestore create. All dependencies are injectable
-/// for tests; defaults are the live Firebase singletons (the app initialises
-/// Firebase in `main()`).
+/// Upper bound on the connectivity precondition itself. The reachability probe
+/// has its own 3-second timeout; this is the belt that keeps a proposal from
+/// waiting on a gate that never answers.
+const Duration proposalAccessTimeout = Duration(seconds: 8);
+
+/// The precondition every proposal passes, in one place.
+///
+/// [runProposalFlow] reads it so it can toast before the spinner starts, and
+/// [MealProposalService.proposeMeal] reads it again where the payload is built,
+/// so the meal details sheet button, the meal screen button and any direct
+/// service call are gated by the same rule instead of two copies of it.
+///
+/// A gate that throws or never answers means [CloudAccessStatus.noConnection]:
+/// the proposal stops before any Firebase call rather than hanging on a stage
+/// nothing is waiting on.
+Future<CloudAccessStatus> resolveProposalCloudAccess(
+  Future<CloudAccessStatus> Function() gate,
+) async {
+  try {
+    return await gate().timeout(proposalAccessTimeout);
+  } catch (_) {
+    return CloudAccessStatus.noConnection;
+  }
+}
+
+/// Stand-in gate for instances built without one (unit tests, direct
+/// construction): there is no connectivity plumbing to ask, so it reports
+/// "allowed" instead of inventing a network failure it cannot observe. The app
+/// wires the real, provider-backed gate through `mealProposalServiceProvider`.
+Future<CloudAccessStatus> _alwaysAllowedGate() async =>
+    CloudAccessStatus.allowed;
+
+/// Executes the export: connectivity gate → daily quota → duplicate guard →
+/// anonymous auth → optional photo upload → Firestore create. All dependencies
+/// are injectable for tests; defaults are the live Firebase singletons (the app
+/// initialises Firebase in `main()`).
 class MealProposalService {
   MealProposalService({
     FirebaseFirestore? firestore,
     FirebaseAuth? auth,
     SharedPreferences? prefs,
+    Future<CloudAccessStatus> Function()? accessStatus,
   })  : _firestore = firestore,
         _auth = auth,
-        _prefs = prefs;
+        _prefs = prefs,
+        _accessStatus = accessStatus ?? _alwaysAllowedGate;
 
   final FirebaseFirestore? _firestore;
   final FirebaseAuth? _auth;
   SharedPreferences? _prefs;
 
+  /// How this instance answers "is the cloud reachable right now?" — see
+  /// [resolveProposalCloudAccess].
+  final Future<CloudAccessStatus> Function() _accessStatus;
+
   FirebaseFirestore get _fs => _firestore ?? FirebaseFirestore.instance;
   FirebaseAuth get _au => _auth ?? FirebaseAuth.instance;
 
   Future<SharedPreferences> _preferences() async =>
-      _prefs ??= await SharedPreferences.getInstance();
+      _prefs ??= await SharedPreferences.getInstance().timeout(prefsTimeout);
 
   static const String stagingCollection = 'staging_meals';
 
-  /// Upper bounds for the network stages. Firestore's `add()` only completes
+  /// Upper bounds for the blocking stages. Firestore's `add()` only completes
   /// on a server ack, so on a flaky connection the flow used to hang and leave
   /// the propose button spinning forever with no message at all; the failure
   /// now surfaces through the normal `blockedNoConnection` / `failed` paths.
+  /// The plugin-backed stages (`SharedPreferences`, the photo host's response
+  /// body) are bounded too, so no await in this flow can sit there indefinitely.
+  static const Duration prefsTimeout = Duration(seconds: 5);
   static const Duration signInTimeout = Duration(seconds: 15);
   static const Duration writeTimeout = Duration(seconds: 20);
   static const Duration imageUploadTimeout = Duration(seconds: 25);
 
-  /// One try/catch per stage, because the three of them fail for completely
-  /// different reasons and the user needs to be told which one to go fix.
+  /// One try/catch (and one bound) per stage, because the stages fail for
+  /// completely different reasons and the user needs to be told which one to
+  /// go fix — the gate, the on-device ledger, sign-in, the photo and the write
+  /// are five different problems with five different answers.
   Future<ProposalOutcome> proposeMeal(Meal meal) async {
+    // Checked here, not only in the UI flow: the payload builder must never run
+    // on a device that cannot deliver it, whichever button called it.
+    final access = await resolveProposalCloudAccess(_accessStatus);
+    if (access != CloudAccessStatus.allowed) {
+      return ProposalOutcome.blocked(access);
+    }
+
     final ProposalGuard guard;
     final ProposalQuota quota;
     try {
@@ -600,7 +866,14 @@ class MealProposalService {
         return ProposalOutcome.alreadyProposed();
       }
     } catch (error) {
-      return ProposalOutcome.failed(error, stage: 'proposal ledger');
+      // Reading (or timing out on) the on-device proposal record. Not a network
+      // failure and not the cloud's doing — the plugin backing this never came
+      // back, which is its own honest answer.
+      return ProposalOutcome.failed(
+        error,
+        stage: 'proposal ledger',
+        reason: ProposalFailureReason.ledgerUnavailable,
+      );
     }
 
     // Firestore rules demand an authenticated caller for staging creates.
@@ -610,9 +883,14 @@ class MealProposalService {
       user ??= (await _au.signInAnonymously().timeout(signInTimeout)).user;
       final signedInUid = user?.uid;
       if (signedInUid == null || signedInUid.isEmpty) {
+        // Sign-in resolved without a user. Nothing was rejected by the provider
+        // and no write was attempted: this project's auth is answering with an
+        // empty identity, which is a configuration problem, so it gets its own
+        // reason instead of a bare `unknown` carrying our own sentence.
         return ProposalOutcome.failed(
           'anonymous sign-in returned no uid',
           stage: 'anonymous sign-in',
+          reason: ProposalFailureReason.signInReturnedNoUser,
         );
       }
       uid = signedInUid;
@@ -621,13 +899,11 @@ class MealProposalService {
     }
 
     final photo = await _resolvePhoto(meal);
-    if (photo.error != null) {
+    if (photo.failed) {
       return ProposalOutcome.failed(
         photo.error!,
         stage: 'photo',
-        reason: photo.uploadAttempted
-            ? ProposalFailureReason.photoUploadFailed
-            : ProposalFailureReason.photoRejected,
+        reason: photo.reason ?? ProposalFailureReason.photoUploadFailed,
       );
     }
     final imageUrl = photo.url;
@@ -668,20 +944,38 @@ class MealProposalService {
     if (MealProposalPayload.isRemoteUrl(photo)) {
       return photo.length <= MealProposalPayload.maxImageUrlLength
           ? StagedPhoto.withUrl(photo)
-          : const StagedPhoto.rejected('the stored photo link is too long');
+          : StagedPhoto.rejected(
+              'stored photo link is longer than '
+              '${MealProposalPayload.maxImageUrlLength} characters',
+              ProposalFailureReason.photoLinkInvalid,
+            );
     }
 
-    final file = MealProposalPayload.eligibleImageFile(photo);
-    if (file == null) {
+    // Why can this photo not ship? Missing/empty and oversized are different
+    // problems with different fixes, and lumping them together told users to
+    // retake a picture that was fine, or to wait for a connection that was
+    // never the issue.
+    final issue = MealProposalPayload.inspectLocalPhoto(photo);
+    final issueReason = ProposalFailureDiagnoser.localPhotoReason(issue);
+    if (issueReason != null) {
       return StagedPhoto.rejected(
-        'the local photo is missing or over '
-        '${MealProposalPayload.maxImageBytes ~/ 1024} KB',
+        'local photo $issue ('
+        '${MealProposalPayload.maxImageBytes ~/ 1024} KB cap)',
+        issueReason,
       );
     }
 
+    final file = File(photo);
+    final Uint8List fileBytes;
     try {
-      final fileBytes = await file.readAsBytes();
+      fileBytes = await file.readAsBytes();
+    } catch (error) {
+      // The size gate read it a moment ago; a read that still failed is a
+      // storage problem, not an upload problem — the host was never called.
+      return StagedPhoto.rejected(error, ProposalFailureReason.photoUnreadable);
+    }
 
+    try {
       final request = http.MultipartRequest('POST', CloudinaryConfig.uploadEndpoint)
         ..fields['upload_preset'] = CloudinaryConfig.uploadPreset
         ..files.add(
@@ -698,15 +992,21 @@ class MealProposalService {
           .timeout(imageUploadTimeout);
 
       if (response.statusCode != 200) {
+        // The host answered and said no — a preset/permission problem, not a
+        // dead connection.
         return StagedPhoto.uploadFailed(
           'photo host returned HTTP ${response.statusCode}',
+          ProposalFailureReason.photoUploadRefused,
         );
       }
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       final secureUrl = data['secure_url'] as String?;
       if (secureUrl == null || secureUrl.isEmpty) {
-        return const StagedPhoto.uploadFailed('photo host returned no URL');
+        return StagedPhoto.uploadFailed(
+          'photo host returned no URL',
+          ProposalFailureReason.photoUploadFailed,
+        );
       }
 
       return StagedPhoto.withUrl(
@@ -714,8 +1014,18 @@ class MealProposalService {
             ? secureUrl.replaceFirst('/upload/', '/upload/f_auto,q_auto/')
             : secureUrl,
       );
+    } on TimeoutException catch (error) {
+      // The body never arrived in time: waiting longer or retrying is the fix,
+      // not re-picking the photo.
+      return StagedPhoto.uploadFailed(
+        error,
+        ProposalFailureReason.photoUploadTimeout,
+      );
     } catch (error) {
-      return StagedPhoto.uploadFailed(error);
+      return StagedPhoto.uploadFailed(
+        error,
+        ProposalFailureReason.photoUploadFailed,
+      );
     }
   }
 }
@@ -725,7 +1035,13 @@ class MealProposalService {
 // ---------------------------------------------------------------------------
 
 final mealProposalServiceProvider = Provider<MealProposalService>((ref) {
-  return MealProposalService();
+  // The service is handed the *same* gate [runProposalFlow] reads — Wi-Fi-only
+  // policy plus the real reachability probe — so its internal precondition is
+  // one implementation shared by every entry point, not a second copy that can
+  // drift from the first.
+  return MealProposalService(
+    accessStatus: () => ref.read(cloudAccessStatusFutureProvider.future),
+  );
 });
 
 /// Id of the meal whose proposal is in flight (drives exactly one button
@@ -770,12 +1086,12 @@ Future<ProposalOutcome> runProposalFlow(
 ) async {
   final strings = AppStrings.of(context);
 
-  CloudAccessStatus status;
-  try {
-    status = await ref.read(cloudAccessStatusFutureProvider.future);
-  } catch (_) {
-    status = CloudAccessStatus.noConnection;
-  }
+  // Same helper the service calls — see [resolveProposalCloudAccess]. Running
+  // it here first is what lets the button stop with a reason instead of a
+  // spinner, and keeps the two gates from being written twice.
+  final status = await resolveProposalCloudAccess(
+    () => ref.read(cloudAccessStatusFutureProvider.future),
+  );
   if (status != CloudAccessStatus.allowed) {
     final blocked = ProposalOutcome.blocked(status);
     if (context.mounted) showProposalOutcomeToast(context, strings, blocked);
@@ -846,34 +1162,58 @@ void showProposalOutcomeToast(
     case ProposalOutcomeCode.failed:
       AppToast.showError(
         context,
-        strings.proposalFailedReason(_proposalFailureDetail(strings, outcome)),
+        strings.proposalFailedReason(
+          proposalFailureLabel(strings, outcome.reason,
+              cause: outcome.cause ?? ''),
+        ),
       );
       break;
   }
 }
 
-/// The suffix that tells the user *which* stage rejected them. Unrecognised
-/// errors surface their raw provider text, because a guess would be worse than
-/// an ugly string; known ones stay clean outside debug builds.
-String _proposalFailureDetail(AppStrings strings, ProposalOutcome outcome) {
-  final label = switch (outcome.reason) {
+/// The suffix that tells the user *which* stage rejected them, in one place so
+/// every surface reports identically. Unrecognised errors surface their raw
+/// provider text, because a guess would be worse than an ugly string; known
+/// ones stay clean outside debug builds.
+///
+/// An exhaustive switch expression (no `default`), so adding a reason to
+/// [ProposalFailureReason] without giving it a string in [AppStrings] is a
+/// compile error rather than a silent fall-through to the generic message.
+String proposalFailureLabel(
+  AppStrings strings,
+  ProposalFailureReason reason, {
+  Object cause = '',
+}) {
+  final label = switch (reason) {
     ProposalFailureReason.firebaseNotReady =>
       strings.proposalFailFirebaseNotReady,
     ProposalFailureReason.anonymousProviderDisabled =>
       strings.proposalFailAnonymousDisabled,
     ProposalFailureReason.anonymousSignInRejected =>
       strings.proposalFailAnonymousRejected,
+    ProposalFailureReason.signInStateLost => strings.proposalFailSignInLost,
+    ProposalFailureReason.signInReturnedNoUser =>
+      strings.proposalFailSignInNoUid,
     ProposalFailureReason.writePermissionDenied =>
       strings.proposalFailPermissionDenied,
     ProposalFailureReason.writeUnreachable => strings.proposalFailUnreachable,
-    ProposalFailureReason.photoRejected => strings.proposalFailPhotoRejected,
+    ProposalFailureReason.requestCancelled => strings.proposalFailCancelled,
+    ProposalFailureReason.cloudTargetMissing => strings.proposalFailTargetMissing,
+    ProposalFailureReason.cloudQuotaExhausted => strings.proposalFailQuotaExhausted,
+    ProposalFailureReason.ledgerUnavailable => strings.proposalFailLedger,
+    ProposalFailureReason.photoUnreadable => strings.proposalFailPhotoUnreadable,
+    ProposalFailureReason.photoTooLarge => strings.proposalFailPhotoTooLarge,
+    ProposalFailureReason.photoLinkInvalid => strings.proposalFailPhotoLinkInvalid,
+    ProposalFailureReason.photoUploadTimeout =>
+      strings.proposalFailPhotoUploadTimeout,
+    ProposalFailureReason.photoUploadRefused =>
+      strings.proposalFailPhotoUploadRefused,
     ProposalFailureReason.photoUploadFailed =>
       strings.proposalFailPhotoUploadFailed,
-    ProposalFailureReason.unknown =>
-      ProposalFailureDiagnoser.describe(outcome.cause ?? ''),
+    ProposalFailureReason.unknown => ProposalFailureDiagnoser.describe(cause),
   };
-  if (outcome.reason == ProposalFailureReason.unknown || !kDebugMode) {
+  if (reason == ProposalFailureReason.unknown || !kDebugMode) {
     return label;
   }
-  return '$label · ${ProposalFailureDiagnoser.describe(outcome.cause ?? '')}';
+  return '$label · ${ProposalFailureDiagnoser.describe(cause)}';
 }

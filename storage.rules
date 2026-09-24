@@ -3,32 +3,49 @@
 // there). Keep both files byte-identical below this header; edit the admin one
 // first.
 //
-// Firebase Storage is retired in this project: proposal photos and meal photos
-// go straight to Cloudinary, and no code path uploads here any more. The only
-// remaining references to Firebase Storage are the vestigial instance injected
-// into the admin panel's repository, which never uses it.
+// Firebase Storage is RETIRED in this project. This file is the honest record
+// of that state, not an upload surface:
+//   • Proposal photos and meal photos go to Cloudinary (Unsigned Direct
+//     Upload); no code path in the mobile app or the admin panel writes here.
+//   • The `firebase_storage` package is gone from this app's pubspec, and the
+//     admin panel never imported it either — so nothing in shipped code can
+//     even reach this bucket.
 //
-// Uploads are therefore closed unconditionally. The copy of this file that
-// lives in the deploy source (`Admin Auth Screen/storage.rules`) used to grant
-// `allow write: if request.auth != null` on /meal_images — and since the mobile
-// app signs in anonymously the moment a meal is proposed, that rule let any
-// device on any network write unlimited, arbitrary-type objects into the
+// Every write is therefore closed unconditionally. One piece of history is
+// worth keeping: the deployed rules used to grant
+// `allow write: if request.auth != null` on /meal_images, and because the
+// mobile app signs in anonymously the moment a meal is proposed, that rule let
+// any device on any network write unlimited, arbitrary-type objects into the
 // bucket.
 //
-// Reads stay open: meals and pending proposals seeded before the Cloudinary
-// move may still carry /meal_images or /staging_meal_images URLs, and locking
-// reads would blank their photos rather than protect anything.
+// Reads stay open on exactly the two legacy prefixes below, and deliberately:
+// rows seeded before the Cloudinary move still carry /meal_images/... or
+// /staging_meal_images/<uid>/... URLs in their `imageUrl` field, and closing
+// those reads would not protect anything — it would only blank the photos of
+// existing data. Newly written rows never reference Storage.
+//
+// `/staging_meal_images/{uid}/{fileName}` is NOT dead code even though the app
+// stopped uploading to it: the admin dashboard still renders the stored
+// `imageUrl` of pending proposals (Admin Auth Screen →
+// admin_dashboard_screen.dart, staging triage list and dialog), and pending
+// documents created before the Cloudinary move point at this path. Delete this
+// block only once those legacy rows are purged or their URLs rewritten to
+// Cloudinary — until then it is a read-only tombstone.
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    // Legacy, read-only: meal photos seeded before the Cloudinary move.
     match /meal_images/{fileName} {
       allow read: if true;
       allow write: if false;
     }
+    // Legacy, read-only: staging ("proposal") photos seeded before the
+    // Cloudinary move — still displayed by the admin panel. See header.
     match /staging_meal_images/{uid}/{fileName} {
       allow read: if true;
       allow write: if false;
     }
+    // Anything else in the bucket is unreachable in both directions.
     match /{allPaths=**} {
       allow read, write: if false;
     }

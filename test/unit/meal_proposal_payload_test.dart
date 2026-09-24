@@ -677,5 +677,358 @@ void main() {
       );
       expect(ProposalFailureDiagnoser.errorCode('no code here'), isNull);
     });
+
+    // --- The honesty gaps: every code Firebase can answer with gets a name ---
+
+    test('an expired deadline is the no-connection family, not unknown', () {
+      // Shaped like the real Firestore error: the code says deadline, the
+      // message never contains the word "timeout", so the old substring test
+      // classified a timeout as "something we cannot identify".
+      final expired = FirebaseException(
+        plugin: 'cloud_firestore',
+        code: 'deadline-exceeded',
+        message: 'The write was acknowledged by nobody before the deadline',
+      );
+      expect(
+        ProposalFailureDiagnoser.classify(expired),
+        ProposalFailureReason.writeUnreachable,
+      );
+      // A locally-enforced bound belongs in the same family.
+      expect(
+        ProposalFailureDiagnoser.classify(
+          TimeoutException(
+            'Future not completed',
+            MealProposalService.writeTimeout,
+          ),
+        ),
+        ProposalFailureReason.writeUnreachable,
+      );
+    });
+
+    test('an unreachable network during sign-in is not called a rejection', () {
+      final unreachable = FirebaseAuthException(
+        code: 'network-request-failed',
+        message: 'A network error (such as timeout, interrupted connection or '
+            'unreachable host) has occurred.',
+      );
+      expect(
+        ProposalFailureDiagnoser.classify(unreachable),
+        ProposalFailureReason.writeUnreachable,
+        reason: 'auth network failure must read as connectivity',
+      );
+      expect(
+        ProposalFailureDiagnoser.classify(unreachable),
+        isNot(ProposalFailureReason.anonymousSignInRejected),
+      );
+      // A real rejection still says so: the reorder did not swallow it.
+      expect(
+        ProposalFailureDiagnoser.classify(
+          FirebaseAuthException(code: 'user-disabled', message: 'account disabled'),
+        ),
+        ProposalFailureReason.anonymousSignInRejected,
+      );
+    });
+
+    test('each remaining Firestore code names its own cause', () {
+      ProposalFailureReason forCode(String code) =>
+          ProposalFailureDiagnoser.classify(
+            FirebaseException(
+              plugin: 'cloud_firestore',
+              code: code,
+              message: 'provider said nothing useful',
+            ),
+          );
+
+      expect(forCode('unavailable'), ProposalFailureReason.writeUnreachable);
+      expect(forCode('deadline-exceeded'),
+          ProposalFailureReason.writeUnreachable);
+      expect(
+        forCode('unauthenticated'),
+        ProposalFailureReason.signInStateLost,
+      );
+      expect(
+        forCode('resource-exhausted'),
+        ProposalFailureReason.cloudQuotaExhausted,
+      );
+      expect(forCode('cancelled'), ProposalFailureReason.requestCancelled);
+      expect(forCode('aborted'), ProposalFailureReason.requestCancelled);
+      expect(forCode('not-found'), ProposalFailureReason.cloudTargetMissing);
+      expect(
+        forCode('permission-denied'),
+        ProposalFailureReason.writePermissionDenied,
+      );
+      // Genuinely unidentifiable codes still fall through to the raw text.
+      expect(forCode('internal'), ProposalFailureReason.unknown);
+      expect(
+        forCode('deadline-exceeded'),
+        isNot(ProposalFailureReason.unknown),
+      );
+    });
+
+    test('the flow-only reasons exist for the UI to render', () {
+      // These never come from a provider error: the service attaches them at
+      // the stage that produced them, so they must still be enum members.
+      for (final reason in const [
+        ProposalFailureReason.ledgerUnavailable,
+        ProposalFailureReason.signInReturnedNoUser,
+        ProposalFailureReason.photoUnreadable,
+        ProposalFailureReason.photoTooLarge,
+        ProposalFailureReason.photoLinkInvalid,
+        ProposalFailureReason.photoUploadTimeout,
+        ProposalFailureReason.photoUploadRefused,
+      ]) {
+        expect(ProposalFailureReason.values, contains(reason));
+        expect(
+          ProposalOutcome.failed('raw', reason: reason).reason,
+          reason,
+          reason: '$reason must survive outcome construction',
+        );
+      }
+    });
+  });
+
+  // A photo that never ships has two very different causes. Telling them apart
+  // is the whole difference between "retake the picture" and "check Wi-Fi".
+  group('Local photo gate — missing and oversized split apart', () {
+    test('each issue maps to its own reason, and none maps to nothing', () {
+      final missing = ProposalFailureDiagnoser.localPhotoReason(
+        LocalPhotoIssue.missing,
+      );
+      final empty =
+          ProposalFailureDiagnoser.localPhotoReason(LocalPhotoIssue.empty);
+      final tooLarge = ProposalFailureDiagnoser.localPhotoReason(
+        LocalPhotoIssue.tooLarge,
+      );
+
+      expect(missing, ProposalFailureReason.photoUnreadable);
+      expect(empty, ProposalFailureReason.photoUnreadable);
+      expect(tooLarge, ProposalFailureReason.photoTooLarge);
+      expect(missing, isNot(tooLarge));
+      expect(
+        ProposalFailureDiagnoser.localPhotoReason(LocalPhotoIssue.none),
+        isNull,
+      );
+    });
+
+    test('localPhotoIssue is pure at the size boundary', () {
+      expect(
+        MealProposalPayload.localPhotoIssue(exists: false, byteLength: 10),
+        LocalPhotoIssue.missing,
+      );
+      expect(
+        MealProposalPayload.localPhotoIssue(exists: true, byteLength: 0),
+        LocalPhotoIssue.empty,
+      );
+      expect(
+        MealProposalPayload.localPhotoIssue(
+          exists: true,
+          byteLength: MealProposalPayload.maxImageBytes,
+        ),
+        LocalPhotoIssue.none,
+      );
+      expect(
+        MealProposalPayload.localPhotoIssue(
+          exists: true,
+          byteLength: MealProposalPayload.maxImageBytes + 1,
+        ),
+        LocalPhotoIssue.tooLarge,
+      );
+    });
+
+    test('inspectLocalPhoto reads the same difference off the disk', () {
+      final dir = Directory.systemTemp.createTempSync('photo_gate_reasons');
+      try {
+        final small = File('${dir.path}/small.jpg')
+          ..writeAsBytesSync(List<int>.filled(2048, 3));
+        final empty = File('${dir.path}/empty.jpg')..writeAsBytesSync(<int>[]);
+        final big = File('${dir.path}/big.jpg')..writeAsBytesSync(
+              List<int>.filled(MealProposalPayload.maxImageBytes + 1, 3),
+            );
+        final ghost = '${dir.path}/ghost.jpg';
+
+        expect(
+          MealProposalPayload.inspectLocalPhoto(ghost),
+          LocalPhotoIssue.missing,
+        );
+        expect(
+          MealProposalPayload.inspectLocalPhoto(empty.path),
+          LocalPhotoIssue.empty,
+        );
+        expect(
+          MealProposalPayload.inspectLocalPhoto(big.path),
+          LocalPhotoIssue.tooLarge,
+        );
+        expect(
+          MealProposalPayload.inspectLocalPhoto(small.path),
+          LocalPhotoIssue.none,
+        );
+
+        // …and the two causes really do produce different user reasons.
+        expect(
+          ProposalFailureDiagnoser.localPhotoReason(
+            MealProposalPayload.inspectLocalPhoto(ghost),
+          ),
+          ProposalFailureReason.photoUnreadable,
+        );
+        expect(
+          ProposalFailureDiagnoser.localPhotoReason(
+            MealProposalPayload.inspectLocalPhoto(big.path),
+          ),
+          ProposalFailureReason.photoTooLarge,
+        );
+      } finally {
+        if (dir.existsSync()) dir.deleteSync(recursive: true);
+      }
+    });
+
+    test('inspectLocalPhoto never calls an unstatable path "too large"', () {
+      expect(
+        MealProposalPayload.inspectLocalPhoto(''),
+        LocalPhotoIssue.missing,
+      );
+      expect(
+        MealProposalPayload.inspectLocalPhoto('C:/definitely/not/here.jpg'),
+        LocalPhotoIssue.missing,
+      );
+    });
+  });
+
+  // The rule the whole audit exists to enforce: a reason the service can
+  // produce must always have something to say, in both languages. Iterating
+  // the enum means a new reason cannot be added without a string.
+  group('ProposalFailureReason → AppStrings — nothing renders blank', () {
+    const arabic = AppStrings(Locale('ar'));
+    const english = AppStrings(Locale('en'));
+    final arabicScript = RegExp(r'[؀-ۿ]');
+    // A stand-in provider error: `unknown` is allowed to print it, every other
+    // reason must print its own copy instead.
+    const cause = 'test-cause';
+
+    test('every reason has a non-empty line in BOTH locales', () {
+      for (final reason in ProposalFailureReason.values) {
+        final ar = proposalFailureLabel(arabic, reason, cause: cause);
+        final en = proposalFailureLabel(english, reason, cause: cause);
+        expect(ar.trim(), isNotEmpty, reason: '$reason has no Arabic copy');
+        expect(en.trim(), isNotEmpty, reason: '$reason has no English copy');
+      }
+    });
+
+    test('every translated reason is actually translated', () {
+      for (final reason in ProposalFailureReason.values) {
+        // `unknown` deliberately shows the raw provider text in both locales.
+        if (reason == ProposalFailureReason.unknown) continue;
+        final ar = proposalFailureLabel(arabic, reason, cause: cause);
+        final en = proposalFailureLabel(english, reason, cause: cause);
+        expect(ar, isNot(en), reason: '$reason was written in one language only');
+        expect(
+          arabicScript.hasMatch(ar),
+          isTrue,
+          reason: '$reason Arabic line carries no Arabic',
+        );
+        expect(
+          arabicScript.hasMatch(en),
+          isFalse,
+          reason: '$reason English line carries Arabic',
+        );
+      }
+    });
+
+    test('no translated reason is just the raw error dumped at the user', () {
+      // A reason that fell through to the `unknown` path would print the raw
+      // provider text in both locales — this catches a new reason whose value
+      // was added to the enum but never wired into the rendering switch.
+      for (final reason in ProposalFailureReason.values) {
+        final en = proposalFailureLabel(english, reason, cause: cause);
+        if (reason == ProposalFailureReason.unknown) {
+          // The one deliberate exception: unknown shows the provider's own
+          // text, which is exactly the cause string the label was handed.
+          expect(en, contains(cause));
+          continue;
+        }
+        expect(
+          en.trim(),
+          isNot(cause),
+          reason: '$reason renders as raw provider text instead of a label',
+        );
+      }
+    });
+
+    test('the enum stays big enough to name every stage', () {
+      // Every stage of the flow must be distinguishable: firebase init,
+      // provider disabled, sign-in rejected, sign-in lost, sign-in with no uid,
+      // rules, connectivity, cancelled, missing target, quota, ledger, the
+      // three photo-causes-on-device, the three upload shapes, unknown.
+      expect(ProposalFailureReason.values.length, greaterThanOrEqualTo(18));
+      expect(
+        ProposalFailureReason.values.toSet().length,
+        ProposalFailureReason.values.length,
+      );
+    });
+  });
+
+  // Gap 6: the gate lives where the payload is built, not only in the UI flow.
+  group('proposeMeal — the shared connectivity precondition', () {
+    MealProposalService gated(CloudAccessStatus status) =>
+        MealProposalService(accessStatus: () async => status);
+
+    test('a blocked network stops before Firebase, with the right code',
+        () async {
+      const cases = <CloudAccessStatus, ProposalOutcomeCode>{
+        CloudAccessStatus.noConnection:
+            ProposalOutcomeCode.blockedNoConnection,
+        CloudAccessStatus.requiresWifi: ProposalOutcomeCode.blockedRequiresWifi,
+      };
+      for (final entry in cases.entries) {
+        final outcome = await gated(entry.key).proposeMeal(_meal());
+        expect(outcome.code, entry.value, reason: entry.key.name);
+        expect(outcome.isSuccess, isFalse);
+      }
+    });
+
+    test('a gate that throws is read as no connection', () async {
+      final outcome = await MealProposalService(
+        accessStatus: () async => throw StateError('connectivity plugin missing'),
+      ).proposeMeal(_meal());
+      expect(outcome.code, ProposalOutcomeCode.blockedNoConnection);
+    });
+
+    test('the shared helper normalises both outcomes the same way', () async {
+      expect(
+        await resolveProposalCloudAccess(
+          () async => CloudAccessStatus.allowed,
+        ),
+        CloudAccessStatus.allowed,
+      );
+      expect(
+        await resolveProposalCloudAccess(
+          () async => throw Exception('boom'),
+        ),
+        CloudAccessStatus.noConnection,
+      );
+    });
+
+    test('an allowed gate lets the flow reach the next stage', () async {
+      SharedPreferences.setMockInitialValues({});
+      final outcome = await MealProposalService(
+        prefs: await SharedPreferences.getInstance(),
+        accessStatus: () async => CloudAccessStatus.allowed,
+      ).proposeMeal(_meal());
+
+      // No Firebase exists in a unit test, so the very next stage (anonymous
+      // sign-in) fails. The point is that the gate did not stop it, and the
+      // reason named is the honest one rather than `unknown`.
+      expect(outcome.code, ProposalOutcomeCode.failed);
+      expect(outcome.reason, ProposalFailureReason.firebaseNotReady);
+    });
+
+    test('a service built without a gate does not invent a network failure',
+        () async {
+      final outcome = await MealProposalService().proposeMeal(_meal());
+      expect(
+        outcome.code,
+        isNot(ProposalOutcomeCode.blockedNoConnection),
+        reason: 'direct construction has no connectivity plumbing to ask',
+      );
+    });
   });
 }

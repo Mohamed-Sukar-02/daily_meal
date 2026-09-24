@@ -309,7 +309,7 @@ class _MealBody extends StatelessWidget {
             children: [
               SingleChildScrollView(
                 key: const Key('meal_screen_body'),
-                physics: const BouncingScrollPhysics(),
+                physics: const ClampingScrollPhysics(),
                 child: ColoredBox(
                   // The active folder tab is cut in this same colour, so the tab
                   // and the surface it stands on have to be one continuous fill.

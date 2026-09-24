@@ -38,22 +38,69 @@ final currentTimeProvider = StreamProvider<DateTime>((ref) {
 final refreshSeedProvider = StateProvider<int>((ref) => 0);
 
 /// Fingerprint of everything that is allowed to change *which* meals get
-/// suggested. Deliberately blind to a meal's own fields: the drift stream emits
-/// on every write, and treating a heart tap as a re-rank trigger makes the
-/// cards the user is looking at jump mid-click.
+/// suggested. Deliberately blind to a meal's own cosmetic fields: the drift
+/// stream emits on every write, and treating a heart tap as a re-rank trigger
+/// makes the cards the user is looking at jump mid-click.
+///
+/// Every part of it maps to a value [CooldownEngine] actually reads:
+///  * [dayEpoch] + [refreshSeed] — the seeded lottery in `_rankCandidates`;
+///  * the five cooldown ints — `_resolveSpecificCooldown` turns a protein into
+///    a window, which is what `_filterCandidates` screens on;
+///  * one `id:protein:carbs:friday` token per meal — `proteinType` picks the
+///    cooldown window *and* the variety rule in `_selectDiverse`, `carbsType`
+///    is that rule's second axis, and `isFridaySpecial` is a +15/-5 swing in
+///    `calculateMealScore`, i.e. enough to move a meal across the 5-point
+///    interchangeable score bands. Ids alone missed them, so a meal
+///    that just became ineligible (or a new Friday feast) kept its pinned slot;
+///  * the history signature — see below, the row count was not enough.
+///
+/// Left out on purpose: `isFavorite` (+5) and `isBudgetFriendly` (+2) are pure
+/// score nudges and the heart button is exactly the tap that must never move a
+/// card; `name`, `photoPath`, `shortName`, `prepTime`, `category`,
+/// `updatedAt` and the history `notes`/`entryType` snapshot are never read by
+/// the engine. None of them make a meal ineligible, and the pin-replay below
+/// still rebuilds the cards from the fresh rows, so those edits show up without
+/// reshuffling anything.
 String _eligibilityKey({
   required int dayEpoch,
   required int refreshSeed,
   required List<Meal> meals,
-  required int historyLength,
+  required List<MealHistoryData> history,
   required AppSettingsData settings,
 }) {
-  final mealIds = meals.map((m) => m.id).toList()..sort();
+  final mealSignature = (meals
+          .map((m) =>
+              '${m.id}:${m.proteinType.name}:${m.carbsType.name}:${m.isFridaySpecial ? 'F' : '-'}')
+          .toList()
+        ..sort())
+      .join(',');
+
+  // WHY newest-cooked-day-per-meal instead of history.length: the engine only
+  // ever reads that same map (`lastCookedByMealId`), so the count missed real
+  // changes — editing a row's date, or a delete+insert landing in one frame,
+  // keep the length and left the day's pinned slots stale. It stays blind to
+  // history.length itself (older duplicate rows and takeout/skip rows with no
+  // meal id) because the engine is blind to them too — re-ranking for those
+  // would just move cards for no reason. Day granularity, because
+  // `toLocalDay` is what the engine normalises to: a time-only edit inside the
+  // same calendar day cannot change the selection.
+  final newestDayByMeal = <int, int>{};
+  for (final entry in history) {
+    final mealId = entry.mealId;
+    if (mealId == null) continue;
+    final day = app_date_utils.daysSinceEpoch(entry.cookedAt);
+    final known = newestDayByMeal[mealId];
+    if (known == null || day > known) newestDayByMeal[mealId] = day;
+  }
+  final historySignature = (newestDayByMeal.keys.toList()..sort())
+      .map((id) => '$id@${newestDayByMeal[id]}')
+      .join(',');
+
   return [
     dayEpoch,
     refreshSeed,
-    historyLength,
-    mealIds.join(','),
+    mealSignature,
+    historySignature,
     settings.cooldownDays,
     settings.chickenCooldownDays,
     settings.beefCooldownDays,
@@ -126,7 +173,7 @@ class TodayRecommendationsNotifier
       dayEpoch: app_date_utils.daysSinceEpoch(now),
       refreshSeed: refreshSeed,
       meals: meals,
-      historyLength: history.length,
+      history: history,
       settings: settings,
     );
 

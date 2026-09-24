@@ -492,15 +492,45 @@ class AppStrings {
   String get proposalFailAnonymousRejected => isEn
       ? 'Anonymous sign-in was rejected'
       : 'رُفض تسجيل الدخول المجهول';
+  String get proposalFailSignInLost => isEn
+      ? 'The anonymous sign-in expired — send the proposal again'
+      : 'انتهت جلسة تسجيل الدخول المجهول — ابعت الاقتراح مرة تانية';
+  String get proposalFailSignInNoUid => isEn
+      ? 'Firebase returned an empty user id for the anonymous sign-in'
+      : 'Firebase رجّع معرّف مستخدم فاضي لتسجيل الدخول المجهول';
   String get proposalFailPermissionDenied => isEn
       ? 'Firestore security rules rejected the upload'
       : 'قواعد أمان Firestore رفضت الرفع';
   String get proposalFailUnreachable => isEn
-      ? 'Could not reach Firestore'
-      : 'تعذّر الوصول إلى Firestore';
-  String get proposalFailPhotoRejected => isEn
-      ? 'The meal photo is missing or too large to upload'
-      : 'صورة الأكلة غير موجودة أو أكبر من الحد المسموح';
+      ? 'Could not reach the cloud — no connection, or it took too long'
+      : 'ما وصلنش للسحابة — لا يوجد اتصال أو الطلب أخد وقت أكتر من اللازم';
+  String get proposalFailCancelled => isEn
+      ? 'The request was cancelled before it reached the cloud'
+      : 'الطلب اتلغى قبل ما يوصل للسحابة';
+  String get proposalFailTargetMissing => isEn
+      ? 'This Firebase project has nowhere to store proposals'
+      : 'مشروع Firebase ده مفيهوش مكان بيتخزن فيه الاقتراحات';
+  String get proposalFailQuotaExhausted => isEn
+      ? 'The cloud used up its limit for this device — try again later'
+      : 'السحابة استهلكت حد الطلبات للجهاز ده — حاول بعد شوية';
+  String get proposalFailLedger => isEn
+      ? 'The proposal record on this phone could not be read'
+      : 'سجل الاقتراحات على الموبايل ده ما قدرناش نقراه';
+  String get proposalFailPhotoUnreadable => isEn
+      ? 'The meal photo could not be read — open the meal and pick it again'
+      : 'صورة الأكلة ما قدرناش نقراها — افتح الأكلة واختارها تاني';
+  String get proposalFailPhotoTooLarge => isEn
+      ? 'The meal photo is too large — pick another photo or retake it'
+      : 'صورة الأكلة أكبر من الحد المسموح — اختار صورة تانية أو صوّرها من جديد';
+  String get proposalFailPhotoLinkInvalid => isEn
+      ? 'The saved photo link is too long to send'
+      : 'لينك الصورة المحفوظ أطول من إنه يتبعت';
+  String get proposalFailPhotoUploadTimeout => isEn
+      ? 'Uploading the meal photo took too long'
+      : 'رفع صورة الأكلة اخد وقت أكتر من اللازم';
+  String get proposalFailPhotoUploadRefused => isEn
+      ? 'The photo host refused the upload'
+      : 'مضيف الصور رفض عملية الرفع';
   String get proposalFailPhotoUploadFailed => isEn
       ? 'Uploading the meal photo failed'
       : 'فشل رفع صورة الأكلة';

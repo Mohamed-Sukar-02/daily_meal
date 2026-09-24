@@ -43,6 +43,17 @@ class _ProfileEditDialogState extends ConsumerState<ProfileEditDialog> {
   String? _avatar;
   bool _saving = false;
 
+  /// Set the moment the dialog closes itself (a committed save, or a discard the
+  /// user just confirmed). [PopScope.canPop] never gates an imperative
+  /// `Navigator.pop`, so this flag is what keeps a second back press — during
+  /// the exit animation, or while the write is still in flight — from opening
+  /// "Discard changes?" on top of work that is already saved.
+  bool _isPopping = false;
+
+  /// `true` while the discard prompt is on screen, so a rapid double back press
+  /// cannot stack a second one.
+  bool _confirmOpen = false;
+
   // Effective initial values captured in [initState]. [hasUnsavedChanges]
   // compares the current fields against them — the avatar snapshot accounts
   // for the auto-correction done when the stored picture mismatches the
@@ -53,23 +64,46 @@ class _ProfileEditDialogState extends ConsumerState<ProfileEditDialog> {
   String? _initialAvatar;
 
   /// `true` when any field differs from the original profile data.
+  ///
+  /// Read during `build` (for [PopScope.canPop]) *and* at pop time (in
+  /// [_requestClose]) — the text controllers push a rebuild through
+  /// [_onFormChanged] so the two can never disagree.
   bool get hasUnsavedChanges =>
       _nameController.text.trim() != _initialName ||
       _emailController.text.trim() != _initialEmail ||
       _gender != _initialGender ||
       _avatar != _initialAvatar;
 
+  /// A [TextEditingController] does not rebuild its owner widget, so
+  /// [hasUnsavedChanges] — and therefore `canPop` — would keep the value it had
+  /// when the dialog was built: typing a name left the route poppable and back
+  /// destroyed the edit without asking. Listening makes the guard live.
+  void _onFormChanged() {
+    if (mounted) setState(() {});
+  }
+
   /// Back button / cancel / barrier-tap exit path: when the form is dirty,
   /// confirm the discard first; otherwise close immediately and silently.
   Future<void> _requestClose() async {
+    // The write already happened (or is running): the dialog closes itself and
+    // a prompt here would ask about edits that are already saved.
+    if (_saving || _isPopping || _confirmOpen) return;
     if (!hasUnsavedChanges) {
-      Navigator.of(context).pop();
+      _closeSelf();
       return;
     }
+    _confirmOpen = true;
     final discard = await showDiscardChangesDialog(context);
-    if (discard == true && mounted) {
-      Navigator.of(context).pop();
-    }
+    if (!mounted) return;
+    _confirmOpen = false;
+    if (discard == true) _closeSelf();
+  }
+
+  /// Pops the dialog and records that it is on its way out.
+  void _closeSelf() {
+    if (_isPopping) return;
+    _isPopping = true;
+    Navigator.of(context).pop();
   }
 
   @override
@@ -78,6 +112,8 @@ class _ProfileEditDialogState extends ConsumerState<ProfileEditDialog> {
     final settings = widget.settings;
     _nameController = TextEditingController(text: settings.userName ?? '');
     _emailController = TextEditingController(text: settings.userEmail ?? '');
+    _nameController.addListener(_onFormChanged);
+    _emailController.addListener(_onFormChanged);
 
     if (UserGender.isValid(settings.userGender)) {
       _gender = settings.userGender;
@@ -106,6 +142,8 @@ class _ProfileEditDialogState extends ConsumerState<ProfileEditDialog> {
 
   @override
   void dispose() {
+    _nameController.removeListener(_onFormChanged);
+    _emailController.removeListener(_onFormChanged);
     _nameController.dispose();
     _emailController.dispose();
     super.dispose();
@@ -144,7 +182,9 @@ class _ProfileEditDialogState extends ConsumerState<ProfileEditDialog> {
             userAvatar: avatar,
           );
       if (!mounted) return;
-      Navigator.of(context).pop();
+      // Committed: leave without asking. [_closeSelf] flips the guard off so
+      // nothing can intercept this pop and re-ask about saved work.
+      _closeSelf();
       AppToast.showSuccess(context, strings.profileSaved);
     } catch (e) {
       if (!mounted) return;
@@ -161,7 +201,10 @@ class _ProfileEditDialogState extends ConsumerState<ProfileEditDialog> {
     final avatars = AvatarService.avatarsForGender(_gender);
 
     return PopScope(
-      canPop: !hasUnsavedChanges,
+      // [_isPopping] keeps the route free once the dialog decides to close
+      // itself, so a back press landing on the exit animation (or on an
+      // in-flight write) can never gate on the pre-save snapshot.
+      canPop: _isPopping || !hasUnsavedChanges,
       onPopInvokedWithResult: (didPop, result) {
         // canPop=false (dirty form) → ask before leaving; clean form pops
         // straight through (didPop=true) without any dialog.

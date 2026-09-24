@@ -8,10 +8,20 @@ import 'meal_screen_palette.dart';
 enum MealDishTab { main, side1, side2 }
 
 /// Half-width of the S-curve where the active tab meets the bar.
-const double _curve = 24;
+const double _curve = 18;
 
 /// Corner radius shared by the bar and the clip that shapes the tab.
 const double _radius = 16;
+
+/// Horizontal inset, so the strip's ends line up with the info banner it tucks
+/// under instead of running edge to edge.
+const double _inset = 16;
+
+/// How far a curve's control points run in from its own ends, as a fraction of
+/// the run. Both sit on the level they leave or arrive at, which is what keeps
+/// the tangent flat where the curve meets the bar's hairlines; sharing one X
+/// instead collapses the middle into a vertical cliff.
+const double _alpha = 0.38;
 
 /// The dish strip — Main / Side 1 / Side 2 — drawn as a raised bar whose
 /// ACTIVE segment is a folder tab cut in the page colour, joined to the bar by
@@ -58,9 +68,10 @@ class MealDishTabs extends StatelessWidget {
     final activeVisual = rtl ? n - 1 - activeIndex : activeIndex;
     final visualTarget = activeVisual.toDouble();
 
-    return SizedBox(
+    return Container(
       key: const Key('meal_screen_dish_tabs'),
       height: height,
+      margin: const EdgeInsets.symmetric(horizontal: _inset),
       child: TweenAnimationBuilder<double>(
         tween: Tween(end: visualTarget),
         duration: reduceMotion
@@ -241,7 +252,7 @@ class _FolderTabPainter extends CustomPainter {
     );
 
     if (segmentCount > 1) {
-      _paintActiveTab(canvas, size);
+      _paintActiveTab(canvas, size, bar);
     }
 
     // A divider is only drawn between two neighbouring INACTIVE segments.
@@ -256,45 +267,116 @@ class _FolderTabPainter extends CustomPainter {
     }
   }
 
-  /// The page-coloured tab plus its own outline, clipped to the bar so the
-  /// curve never spills above it.
-  void _paintActiveTab(Canvas canvas, Size size) {
+  /// The page-coloured tab plus the two S-curves that carry the bar's outline
+  /// up into it, clipped to the bar so nothing spills past its rounded corners.
+  ///
+  /// Each curve runs the full height of the bar between its hairlines, with the
+  /// control points spread along X so the bend reads as a smooth S. At the outer
+  /// edges the curve is dropped and the bar's own rounded corner becomes the
+  /// tab's corner, as in the reference.
+  void _paintActiveTab(Canvas canvas, Size size, RRect bar) {
     final w = size.width;
     final h = size.height;
     final slotW = w / segmentCount;
 
     final left = visualPosition * slotW;
     final right = left + slotW;
-    // At the outer edges push the curve outside the slot so the bar's clip
-    // radius becomes the tab's rounded top corner, as in the reference.
-    final leftX = left - _curve * math.max(0, 1 - visualPosition);
-    final rightX =
-        right + _curve * math.max(0, visualPosition - (segmentCount - 2));
+    // Land the strokes on the bar's hairlines so the outline stays continuous.
+    final top = 0.5;
+    final bottom = h - 0.5;
+    // Below the clip, so the fill closes cleanly across the bar's base.
+    final skirt = h + 2;
+    // Each curve straddles its slot edge by [_curve] on both sides; the clamps
+    // pull it in at the outer edges, where the bar's own rounded corner already
+    // stands in for the tab's corner.
+    final leftBase = (left - _curve).clamp(0.0, w);
+    final leftTop = (left + _curve).clamp(0.0, w);
+    final rightTop = (right - _curve).clamp(0.0, w);
+    final rightBase = (right + _curve).clamp(0.0, w);
+    final leftRun = leftTop - leftBase;
+    final rightRun = rightBase - rightTop;
 
-    final edge = Path()
-      ..moveTo(leftX - _curve, h + 1)
-      ..cubicTo(leftX, h + 1, leftX, 0.5, leftX + _curve, 0.5)
-      ..lineTo(rightX - _curve, 0.5)
-      ..cubicTo(rightX, 0.5, rightX, h + 1, rightX + _curve, h + 1);
+    final fill = Path();
+    if (left <= 0) {
+      fill
+        ..moveTo(0, skirt)
+        ..lineTo(0, 0);
+    } else {
+      fill
+        ..moveTo(leftBase, skirt)
+        ..lineTo(leftBase, bottom)
+        ..cubicTo(
+          leftBase + leftRun * _alpha,
+          bottom,
+          leftTop - leftRun * _alpha,
+          top,
+          leftTop,
+          top,
+        );
+    }
+
+    fill.lineTo(rightTop, top);
+
+    if (right >= w) {
+      fill
+        ..lineTo(w, 0)
+        ..lineTo(w, skirt);
+    } else {
+      fill
+        ..cubicTo(
+          rightTop + rightRun * _alpha,
+          top,
+          rightBase - rightRun * _alpha,
+          bottom,
+          rightBase,
+          bottom,
+        )
+        ..lineTo(rightBase, skirt);
+    }
+    fill.close();
 
     canvas.save();
-    canvas.clipRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(0, 0, w, h),
-        const Radius.circular(_radius),
-      ),
-    );
-    canvas.drawPath(Path.from(edge)..close(), Paint()..color = tabFill);
-    canvas.drawPath(
-      edge,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1
-        ..color = stroke,
-    );
+    canvas.clipRRect(bar);
+    canvas.drawPath(fill, Paint()..color = tabFill);
 
-    /// The active mark: a short accent bar under the label that rides along
-    /// with the sliding tab, standing in for the ink splash.
+    final strokePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..color = stroke;
+
+    if (left > 0.001) {
+      canvas.drawPath(
+        Path()
+          ..moveTo(leftBase, bottom)
+          ..cubicTo(
+            leftBase + leftRun * _alpha,
+            bottom,
+            leftTop - leftRun * _alpha,
+            top,
+            leftTop,
+            top,
+          ),
+        strokePaint,
+      );
+    }
+    if (right < w - 0.001) {
+      canvas.drawPath(
+        Path()
+          ..moveTo(rightTop, top)
+          ..cubicTo(
+            rightTop + rightRun * _alpha,
+            top,
+            rightBase - rightRun * _alpha,
+            bottom,
+            rightBase,
+            bottom,
+          ),
+        strokePaint,
+      );
+    }
+
+    // The active mark: a short accent bar under the label that rides along
+    // with the sliding tab, standing in for the ink splash.
     final markWidth = math.min(slotW * 0.44, 56.0);
     canvas.drawRRect(
       RRect.fromRectAndRadius(

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'app_palette.dart';
 
@@ -9,8 +8,17 @@ import 'app_palette.dart';
 /// The colour schemes are declared explicitly (no `ColorScheme.fromSeed`) so
 /// every Material widget – sliders, switches, dialogs, snack-bars – renders
 /// with the mockup colours instead of a generated tonal palette.
+///
+/// Typography uses the Cairo family bundled with the app (see the `fonts:`
+/// section of `pubspec.yaml`) — nothing is fetched at runtime, so the UI keeps
+/// its identity offline.
 class AppTheme {
   AppTheme._();
+
+  /// Bundled Cairo family. Static weights 400/500/600/700/800/900 are declared
+  /// in `pubspec.yaml`; Cairo publishes no italic faces, so a
+  /// `FontStyle.italic` (used once, decoratively) is synthesised by the engine.
+  static const String fontFamily = 'Cairo';
 
   /// Deep-gray dark ramp matching the mockup backgrounds
   /// (`#0B0E14` page on `#151B23` cards). Ordered by rising luminance.
@@ -103,8 +111,8 @@ class AppTheme {
       useMaterial3: true,
       colorScheme: colorScheme,
       brightness: colorScheme.brightness,
-      fontFamily: GoogleFonts.cairo().fontFamily,
-      textTheme: GoogleFonts.cairoTextTheme(baseTextTheme),
+      fontFamily: AppTheme.fontFamily,
+      textTheme: baseTextTheme.apply(fontFamily: AppTheme.fontFamily),
       scaffoldBackgroundColor: AppPalette.background(colorScheme.brightness),
       appBarTheme: AppBarTheme(
         centerTitle: false,
@@ -156,7 +164,8 @@ class AppTheme {
         backgroundColor: isDark
             ? const Color(0xFFF2F2F7).withValues(alpha: 0.96)
             : const Color(0xFF1C1C1E).withValues(alpha: 0.96),
-        contentTextStyle: GoogleFonts.cairo(
+        contentTextStyle: TextStyle(
+          fontFamily: AppTheme.fontFamily,
           color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
           fontWeight: FontWeight.w600,
           fontSize: 14,
