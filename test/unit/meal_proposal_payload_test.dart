@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -438,6 +439,123 @@ void main() {
       expect(outcome.code, ProposalOutcomeCode.failed);
       expect(outcome.cause, 'boom');
       expect(outcome.isSuccess, isFalse);
+    });
+  });
+
+  // A proposal that dies on an invisible error is undebuggable: these are the
+  // shapes Firebase actually throws for the three real-world causes.
+  group('ProposalFailureDiagnoser — names the failing stage', () {
+    test('an uninitialised Firebase is not reported as a network problem', () {
+      expect(
+        ProposalFailureDiagnoser.classify(
+          StateError(
+            "No Firebase App '[DEFAULT]' has been created - call "
+            'Firebase.initializeApp() first',
+          ),
+        ),
+        ProposalFailureReason.firebaseNotReady,
+      );
+      expect(
+        ProposalFailureDiagnoser.classify(
+          FirebaseAuthException(
+            code: 'invalid-api-key',
+            message: 'Your API key is invalid',
+          ),
+        ),
+        ProposalFailureReason.firebaseNotReady,
+      );
+    });
+
+    test('a disabled anonymous provider is called out by name', () {
+      const message = 'The given sign-in provider is disabled for this '
+          'Firebase project. Enable it in the Firebase console.';
+      for (final code in const [
+        'operation-not-allowed',
+        'unsupported-operation',
+        'configuration-not-found',
+      ]) {
+        expect(
+          ProposalFailureDiagnoser.classify(
+            FirebaseAuthException(code: code, message: message),
+          ),
+          ProposalFailureReason.anonymousProviderDisabled,
+          reason: code,
+        );
+      }
+    });
+
+    test('other auth codes stay anonymous-sign-in failures, not provider ones',
+        () {
+      expect(
+        ProposalFailureDiagnoser.classify(
+          FirebaseAuthException(code: 'Too-Many-Requests', message: 'quota'),
+        ),
+        ProposalFailureReason.anonymousSignInRejected,
+      );
+    });
+
+    test('permission-denied means the deployed rules rejected the write', () {
+      expect(
+        ProposalFailureDiagnoser.classify(
+          FirebaseException(
+            plugin: 'cloud_firestore',
+            code: 'permission-denied',
+            message: 'Missing or insufficient permissions.',
+          ),
+        ),
+        ProposalFailureReason.writePermissionDenied,
+      );
+    });
+
+    test('transport failures separate from rule failures', () {
+      expect(
+        ProposalFailureDiagnoser.classify(
+          FirebaseException(
+            plugin: 'cloud_firestore',
+            code: 'unavailable',
+            message: 'Failed to reach Firestore',
+          ),
+        ),
+        ProposalFailureReason.writeUnreachable,
+      );
+      expect(
+        ProposalFailureDiagnoser.classify(
+          FirebaseException(
+            plugin: 'cloud_firestore',
+            code: 'deadline-exceeded',
+            message:
+                'java.net.SocketException: Failed host lookup for firestore.googleapis.com',
+          ),
+        ),
+        ProposalFailureReason.writeUnreachable,
+      );
+    });
+
+    test('anything unrecognised reports unknown, and describe keeps it readable',
+        () {
+      expect(
+        ProposalFailureDiagnoser.classify('boom'),
+        ProposalFailureReason.unknown,
+      );
+      expect(ProposalFailureDiagnoser.describe('boom'), 'boom');
+
+      final long = FirebaseException(
+        plugin: 'cloud_firestore',
+        code: 'internal',
+        message: 'x' * 400,
+      );
+      expect(ProposalFailureDiagnoser.describe(long).length, lessThanOrEqualTo(180));
+      expect(ProposalFailureDiagnoser.describe(long), contains('internal'));
+    });
+
+    test('errorCode reads the provider code structurally', () {
+      expect(
+        ProposalFailureDiagnoser.errorCode(
+          FirebaseAuthException(code: 'network-request-failed'),
+        ),
+        'network-request-failed',
+      );
+      expect(ProposalFailureDiagnoser.errorCode('no code here'), isNull);
     });
   });
 }

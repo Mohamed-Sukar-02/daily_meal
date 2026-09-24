@@ -7,7 +7,7 @@ import '../../../../core/localization/app_strings.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/widgets/app_icons.dart';
 import '../../../../core/widgets/app_toast.dart';
-import '../../../../core/widgets/meal_image.dart';
+import '../../../meals/presentation/quick_meal_view.dart';
 import '../../application/meal_proposal_service.dart';
 import '../../data/models/cloud_meal.dart';
 import '../../providers/discovery_providers.dart';
@@ -34,8 +34,10 @@ class _MealDetailsInfo {
   final String? photoPath;
   final ProteinType proteinType;
   final CarbsType carbsType;
+  final MealCategory? category;
   final int? prepTimeMinutes;
   final bool isBudgetFriendly;
+  final bool isFridaySpecial;
   final DateTime? cookedAt;
 
   const _MealDetailsInfo({
@@ -43,8 +45,10 @@ class _MealDetailsInfo {
     this.photoPath,
     required this.proteinType,
     required this.carbsType,
+    this.category,
     this.prepTimeMinutes,
     this.isBudgetFriendly = false,
+    this.isFridaySpecial = false,
     this.cookedAt,
   });
 }
@@ -141,6 +145,7 @@ class MealDetailsSheet extends ConsumerWidget {
         carbsType: _mapCarbs(c.carbsType),
         prepTimeMinutes: c.prepTimeMinutes,
         isBudgetFriendly: c.isBudgetFriendly,
+        isFridaySpecial: c.isFridaySpecial,
       );
     }
 
@@ -153,8 +158,10 @@ class MealDetailsSheet extends ConsumerWidget {
         photoPath: m.photoPath,
         proteinType: m.proteinType,
         carbsType: m.carbsType,
+        category: m.category,
         prepTimeMinutes: m.prepTime,
         isBudgetFriendly: m.isBudgetFriendly,
+        isFridaySpecial: m.isFridaySpecial,
         cookedAt: historyEntry?.cookedAt,
       );
     }
@@ -252,52 +259,33 @@ class MealDetailsSheet extends ConsumerWidget {
                 ),
               ),
             ),
-            // Wide meal photo
-            SizedBox(
-              height: 210,
-              child: MealImage(
-                photoPath: info.photoPath,
-                cacheWidth: 720,
-                fallback: Container(
-                  color: AppPalette.tabContainer(brightness),
-                  child: Center(
-                    child: AppIcon(
-                      AppGlyph.pot,
-                      color: AppPalette.textSecondary(brightness),
-                      size: 48,
-                    ),
-                  ),
-                ),
-              ),
+            // Meal identity — the single visual vocabulary for a meal.
+            QuickMealView(
+              name: info.name,
+              photoPath: info.photoPath,
+              proteinType: info.proteinType,
+              carbsType: info.carbsType,
+              category: info.category,
+              prepTimeMinutes: info.prepTimeMinutes,
+              isBudgetFriendly: info.isBudgetFriendly,
+              isFridaySpecial: info.isFridaySpecial,
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+              nameTrailing: switch (detailsContext) {
+                MealDetailsContext.explore => cloudMeal != null
+                    ? _buildExploreBookmark(ref, brightness)
+                    : null,
+                MealDetailsContext.vault => meal != null
+                    ? _buildVaultLoveButton(ref, brightness)
+                    : null,
+                MealDetailsContext.history => null,
+              },
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          info.name,
-                          style: TextStyle(
-                            fontSize: 22,
-                            height: 1.2,
-                            fontWeight: FontWeight.w900,
-                            color: AppPalette.textPrimary(brightness),
-                          ),
-                        ),
-                      ),
-                      if (detailsContext == MealDetailsContext.explore && cloudMeal != null)
-                        _buildExploreBookmark(ref, brightness),
-                      if (detailsContext == MealDetailsContext.vault && meal != null)
-                        _buildVaultLoveButton(ref, brightness),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  _buildBadges(brightness, strings, info),
                   switch (detailsContext) {
                     MealDetailsContext.history =>
                       _buildHistorySection(context, brightness, strings, info),
@@ -312,96 +300,6 @@ class MealDetailsSheet extends ConsumerWidget {
           ],
         ),
       ),
-    );
-  }
-
-  /// Row of nutrition badges: protein (emoji + label), carbs, prep time and
-  /// the budget-friendly flag. Empty variants are skipped.
-  Widget _buildBadges(
-    Brightness brightness,
-    AppStrings strings,
-    _MealDetailsInfo info,
-  ) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        if (info.proteinType != ProteinType.none)
-          _pill(
-            brightness,
-            _proteinStyle(info.proteinType, brightness),
-            [
-              Text(info.proteinType.emoji, style: const TextStyle(fontSize: 13)),
-              const SizedBox(width: 5),
-              Text(
-                info.proteinType.label(strings),
-                maxLines: 1,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: _proteinStyle(info.proteinType, brightness).foreground,
-                ),
-              ),
-            ],
-          ),
-        if (info.carbsType != CarbsType.none)
-          _pill(
-            brightness,
-            _neutralStyle(brightness),
-            [
-              Text(
-                info.carbsType.label(strings),
-                maxLines: 1,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppPalette.textSecondary(brightness),
-                ),
-              ),
-            ],
-            border: Border.all(color: AppPalette.hairline(brightness)),
-          ),
-        if (info.prepTimeMinutes != null)
-          _pill(
-            brightness,
-            AppPalette.chipViolet(brightness),
-            [
-              AppIcon(
-                AppGlyph.clock,
-                color: AppPalette.chipViolet(brightness).foreground,
-                size: 13,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                strings.minutes(info.prepTimeMinutes!),
-                maxLines: 1,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppPalette.chipViolet(brightness).foreground,
-                ),
-              ),
-            ],
-          ),
-        if (info.isBudgetFriendly)
-          _pill(
-            brightness,
-            AppPalette.chipGreen(brightness),
-            [
-              const Text('🌿', style: TextStyle(fontSize: 13)),
-              const SizedBox(width: 5),
-              Text(
-                strings.budgetFriendly,
-                maxLines: 1,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppPalette.chipGreen(brightness).foreground,
-                ),
-              ),
-            ],
-          ),
-      ],
     );
   }
 
@@ -668,54 +566,6 @@ class MealDetailsSheet extends ConsumerWidget {
         ),
       ],
     );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Helpers
-  // ---------------------------------------------------------------------------
-
-  Widget _pill(
-    Brightness brightness,
-    ChipStyle style,
-    List<Widget> children, {
-    Border? border,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: style.background,
-        borderRadius: BorderRadius.circular(10),
-        border: border,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: children,
-      ),
-    );
-  }
-
-  ChipStyle _neutralStyle(Brightness b) {
-    return ChipStyle(
-      background: AppPalette.tabContainer(b),
-      foreground: AppPalette.textSecondary(b),
-    );
-  }
-
-  ChipStyle _proteinStyle(ProteinType p, Brightness b) {
-    switch (p) {
-      case ProteinType.chicken:
-        return AppPalette.chipGold(b);
-      case ProteinType.beef:
-        return AppPalette.chipRose(b);
-      case ProteinType.fish:
-        return AppPalette.chipBlue(b);
-      case ProteinType.legume:
-        return AppPalette.chipGreen(b);
-      case ProteinType.dairy:
-        return AppPalette.chipViolet(b);
-      case ProteinType.none:
-        return AppPalette.chipGreen(b);
-    }
   }
 
   Widget _buildExploreBookmark(WidgetRef ref, Brightness brightness) {

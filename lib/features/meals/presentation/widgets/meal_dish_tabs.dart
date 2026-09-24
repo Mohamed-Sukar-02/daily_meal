@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../../../core/localization/app_strings.dart';
@@ -5,107 +7,106 @@ import 'meal_screen_palette.dart';
 
 enum MealDishTab { main, side1, side2 }
 
-/// Curved tab strip — Main / Side 1 / Side 2 — locked to the meal-screen
-/// mockups:
-///  * the strip keeps a fixed LTR slot order (Main at the left) in every
-///    locale, exactly like the reference images;
-///  * white-ish outline, dark fill;
-///  * the SELECTED tab is raised a few pixels above the strip edge and filled
-///    with the info-banner deep green, so when the parent opens the borders
-///    around it (see `_InterlockedInfoTabs`) tab and banner read as one
-///    fused shape.
-/// Fixed height (46) so the parent's fusion painter can compute the seam
-/// geometry deterministically.
+/// Half-width of the S-curve where the active tab meets the bar.
+const double _curve = 24;
+
+/// Corner radius shared by the bar and the clip that shapes the tab.
+const double _radius = 16;
+
+/// The dish strip — Main / Side 1 / Side 2 — drawn as a raised bar whose
+/// ACTIVE segment is a folder tab cut in the page colour, joined to the bar by
+/// a pair of bezier S-curves so tab and page read as one continuous surface.
+///
+/// The bar's geometry (height, radius, margins, stroke) never changes; only
+/// the number of segments does, so a meal with no side dishes shows a single
+/// full-width tab rather than a collapsed row.
+///
+/// Slot order mirrors with the locale: Main sits at the reading start.
 class MealDishTabs extends StatelessWidget {
-  static const double height = 46;
+  static const double height = 52;
+
+  /// How far the strip tucks up over the info banner's bottom edge.
+  static const double overlap = 18;
 
   final MealDishTab selected;
   final ValueChanged<MealDishTab> onChanged;
+
+  /// Segments to render, in reading order. Defaults to the full set.
+  final List<MealDishTab> tabs;
 
   const MealDishTabs({
     super.key,
     required this.selected,
     required this.onChanged,
+    this.tabs = MealDishTab.values,
   });
 
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
     final strings = AppStrings.of(context);
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+
+    final n = tabs.length;
+    final activeIndex = math.max(0, tabs.indexOf(selected));
+    // Painter works in visual (left-to-right pixel) space.
+    final activeVisual = rtl ? n - 1 - activeIndex : activeIndex;
+    final visualTarget = activeVisual.toDouble();
 
     return SizedBox(
       key: const Key('meal_screen_dish_tabs'),
       height: height,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16),
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-        decoration: BoxDecoration(
-          color: MealScreenPalette.tabBar(brightness),
-          borderRadius: BorderRadius.circular(26),
-          border: Border.all(
-            color: MealScreenPalette.interlockStroke(brightness),
-            width: 1.2,
-          ),
-        ),
-        // Mockup truth: slot order is Main → Side1 → Side2 left-to-right in
-        // every locale, so the fused-tab geometry stays identical RTL/LTR.
-        child: Directionality(
-          textDirection: TextDirection.ltr,
-          child: Row(
-            children: [
-              _Tab(
-                key: const Key('meal_screen_tab_main'),
-                label: strings.mainDish,
-                selected: selected == MealDishTab.main,
-                brightness: brightness,
-                onTap: () => onChanged(MealDishTab.main),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(end: visualTarget),
+        duration: reduceMotion
+            ? Duration.zero
+            : const Duration(milliseconds: 260),
+        curve: Curves.easeOutCubic,
+        builder: (context, visualPosition, child) {
+          return CustomPaint(
+            painter: _FolderTabPainter(
+              segmentCount: n,
+              activeVisualIndex: activeVisual,
+              visualPosition: visualPosition,
+              barTop: MealScreenPalette.tabBarTop(brightness),
+              barBottom: MealScreenPalette.tabBarBottom(brightness),
+              stroke: MealScreenPalette.tabStroke(brightness),
+              tabFill: MealScreenPalette.sheet(brightness),
+            ),
+            child: child,
+          );
+        },
+        child: Row(
+          children: [
+            for (final tab in tabs)
+              Expanded(
+                child: _TabButton(
+                  key: Key('meal_screen_tab_${tab.name}'),
+                  label: switch (tab) {
+                    MealDishTab.main => strings.mainDish,
+                    MealDishTab.side1 => strings.sideDish1,
+                    MealDishTab.side2 => strings.sideDish2,
+                  },
+                  selected: tab == selected,
+                  brightness: brightness,
+                  onTap: () => onChanged(tab),
+                ),
               ),
-              _Sep(brightness: brightness),
-              _Tab(
-                key: const Key('meal_screen_tab_side1'),
-                label: strings.sideDish1,
-                selected: selected == MealDishTab.side1,
-                brightness: brightness,
-                onTap: () => onChanged(MealDishTab.side1),
-              ),
-              _Sep(brightness: brightness),
-              _Tab(
-                key: const Key('meal_screen_tab_side2'),
-                label: strings.sideDish2,
-                selected: selected == MealDishTab.side2,
-                brightness: brightness,
-                onTap: () => onChanged(MealDishTab.side2),
-              ),
-            ],
-          ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _Sep extends StatelessWidget {
-  final Brightness brightness;
-  const _Sep({required this.brightness});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 18,
-      margin: const EdgeInsets.symmetric(horizontal: 2),
-      color: MealScreenPalette.muted(brightness).withValues(alpha: 0.35),
-    );
-  }
-}
-
-class _Tab extends StatelessWidget {
+class _TabButton extends StatelessWidget {
   final String label;
   final bool selected;
   final Brightness brightness;
   final VoidCallback onTap;
 
-  const _Tab({
+  const _TabButton({
     super.key,
     required this.label,
     required this.selected,
@@ -115,49 +116,25 @@ class _Tab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(22),
-          // The raised fill that pokes above the strip edge (selected only).
-          // Horizontal inset 3 matches the parent's seam-erasure band exactly,
-          // so the tab bridge never paints over the strip outline.
-          child: Transform.translate(
-            offset: selected ? const Offset(0, -4) : Offset.zero,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeOut,
-              margin: EdgeInsets.symmetric(horizontal: selected ? 3 : 0),
-              padding: EdgeInsets.only(
-                top: selected ? 8 : 8,
-                bottom: 8,
-              ),
-              decoration: BoxDecoration(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(_radius),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                 color: selected
-                    ? MealScreenPalette.infoCardDeep(brightness)
-                    : Colors.transparent,
-                borderRadius: selected
-                    ? const BorderRadius.vertical(
-                        top: Radius.circular(12),
-                        bottom: Radius.circular(18),
-                      )
-                    : BorderRadius.circular(22),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                label,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                  color: selected
-                      ? MealScreenPalette.accent(brightness)
-                      : MealScreenPalette.tabIdle(brightness),
-                ),
+                    ? MealScreenPalette.tabActiveText(brightness)
+                    : MealScreenPalette.tabInactiveText(brightness),
               ),
             ),
           ),
@@ -165,4 +142,121 @@ class _Tab extends StatelessWidget {
       ),
     );
   }
+}
+
+class _FolderTabPainter extends CustomPainter {
+  final int segmentCount;
+
+  /// Committed (not animated) active slot in visual space — dividers hide
+  /// against it while the tab itself slides.
+  final int activeVisualIndex;
+  final double visualPosition;
+  final Color barTop;
+  final Color barBottom;
+  final Color stroke;
+  final Color tabFill;
+
+  _FolderTabPainter({
+    required this.segmentCount,
+    required this.activeVisualIndex,
+    required this.visualPosition,
+    required this.barTop,
+    required this.barBottom,
+    required this.stroke,
+    required this.tabFill,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    if (w <= 0 || h <= 0 || segmentCount == 0) return;
+
+    final barRect = Rect.fromLTWH(0, 0, w, h);
+    final bar = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0.5, 0.5, w - 1, h - 1),
+      const Radius.circular(_radius),
+    );
+
+    canvas.drawRRect(
+      bar,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [barTop, barBottom],
+        ).createShader(barRect),
+    );
+    canvas.drawRRect(
+      bar,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..color = stroke,
+    );
+
+    if (segmentCount > 1) {
+      _paintActiveTab(canvas, size);
+    }
+
+    // A divider is only drawn between two neighbouring INACTIVE segments.
+    final slotW = w / segmentCount;
+    final dividerPaint = Paint()
+      ..color = stroke
+      ..strokeWidth = 1;
+    for (var i = 0; i < segmentCount - 1; i++) {
+      if (i == activeVisualIndex || i + 1 == activeVisualIndex) continue;
+      final x = (i + 1) * slotW;
+      canvas.drawLine(Offset(x, 14), Offset(x, h - 14), dividerPaint);
+    }
+  }
+
+  /// The page-coloured tab plus its own outline, clipped to the bar so the
+  /// curve never spills above it.
+  void _paintActiveTab(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final slotW = w / segmentCount;
+
+    final left = visualPosition * slotW;
+    final right = left + slotW;
+    // At the outer edges push the curve outside the slot so the bar's clip
+    // radius becomes the tab's rounded top corner, as in the reference.
+    final leftX = left - _curve * math.max(0, 1 - visualPosition);
+    final rightX =
+        right + _curve * math.max(0, visualPosition - (segmentCount - 2));
+
+    final edge = Path()
+      ..moveTo(leftX - _curve, h + 1)
+      ..cubicTo(leftX, h + 1, leftX, 0.5, leftX + _curve, 0.5)
+      ..lineTo(rightX - _curve, 0.5)
+      ..cubicTo(rightX, 0.5, rightX, h + 1, rightX + _curve, h + 1);
+
+    canvas.save();
+    canvas.clipRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(0, 0, w, h),
+        const Radius.circular(_radius),
+      ),
+    );
+    canvas.drawPath(Path.from(edge)..close(), Paint()..color = tabFill);
+    canvas.drawPath(
+      edge,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..color = stroke,
+    );
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _FolderTabPainter old) =>
+      old.segmentCount != segmentCount ||
+      old.activeVisualIndex != activeVisualIndex ||
+      old.visualPosition != visualPosition ||
+      old.barTop != barTop ||
+      old.barBottom != barBottom ||
+      old.stroke != stroke ||
+      old.tabFill != tabFill;
 }

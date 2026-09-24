@@ -1,10 +1,7 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/localization/app_strings.dart';
@@ -14,20 +11,22 @@ import '../../vault/application/meal_proposal_service.dart';
 import '../../vault/providers/vault_providers.dart';
 import 'widgets/meal_dish_tabs.dart';
 import 'widgets/meal_info_banner.dart';
+import 'widgets/meal_name_scrim.dart';
 import 'widgets/meal_screen_palette.dart';
 import 'widgets/more_favorites_grid.dart';
 
-/// Full meal screen — pixel-aligned to `meal_screen - dark.png`.
+/// Full meal screen — ported from the approved `premium-flutter-meal-screen`
+/// prototype, which itself follows `meal_screen - dark.png` for structure and
+/// `meal_screen - light.png` for colour distribution.
 ///
-/// Layout (top → bottom), matching the mockup exactly:
-///   1. Header pill: short name between the upload mark and the heart,
-///      with the back bubble floating off its side.
-///   2. Rounded hero photo UNDER the header (no more full-bleed behind the
-///      status bar) with the full name overlaid at its bottom.
-///   3. Info banner whose white outline fuses with the dish-tab strip
-///      (Main sits raised, connected to the banner — [interlock]).
-///   4. Dish panel shell · "More Favorites" grid.
-///   5. Bottom pill bar (left as-is per mockup note).
+/// Layout (top → bottom):
+///   1. Solid app bar: back · centred short name · sync / favourite / status.
+///   2. Full-bleed hero photo whose bottom [_heroBleed] continues behind the
+///      info card, fading into the page. The full name sits on top of it over
+///      a corner-anchored elliptical bloom (see [MealNameScrim]).
+///   3. Green info card fused with the dish strip via the folder-tab curve.
+///   4. Selected-dish panel shell · "More Favorites" grid.
+///   5. Pinned, deliberately empty bottom pill.
 ///
 /// Reached at `/meal/:id` on the root navigator.
 class MealScreen extends ConsumerStatefulWidget {
@@ -40,6 +39,8 @@ class MealScreen extends ConsumerStatefulWidget {
 }
 
 class _MealScreenState extends ConsumerState<MealScreen> {
+  static const double _heroBleed = 110;
+
   MealDishTab _selectedDish = MealDishTab.main;
 
   @override
@@ -52,18 +53,15 @@ class _MealScreenState extends ConsumerState<MealScreen> {
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        // Page chrome is solid now (no photo behind the status bar), so the
-        // icons simply follow the theme.
-        statusBarIconBrightness: brightness == Brightness.dark
+        // The app bar is solid and dark in both modes, so the status bar
+        // inherits its colour and always shows light icons.
+        statusBarColor: MealScreenPalette.appBar(brightness),
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: MealScreenPalette.footer(brightness),
+        systemNavigationBarIconBrightness: brightness == Brightness.dark
             ? Brightness.light
             : Brightness.dark,
-        statusBarBrightness: brightness == Brightness.dark
-            ? Brightness.dark
-            : Brightness.light,
-        systemNavigationBarColor: MealScreenPalette.background(brightness),
-        systemNavigationBarIconBrightness:
-            brightness == Brightness.dark ? Brightness.light : Brightness.dark,
       ),
       child: Scaffold(
         key: const Key('meal_screen'),
@@ -72,10 +70,7 @@ class _MealScreenState extends ConsumerState<MealScreen> {
           data: (meals) {
             final meal = _findMeal(meals);
             if (meal == null) {
-              return _NotFound(
-                brightness: brightness,
-                strings: strings,
-              );
+              return _NotFound(brightness: brightness, strings: strings);
             }
             return _MealBody(
               meal: meal,
@@ -122,6 +117,8 @@ class _MealScreenState extends ConsumerState<MealScreen> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _MealBody extends StatelessWidget {
+  static const double _heroBleed = _MealScreenState._heroBleed;
+
   final Meal meal;
   final Brightness brightness;
   final AppStrings strings;
@@ -147,130 +144,136 @@ class _MealBody extends StatelessWidget {
     final shortName = (meal.shortName?.trim().isNotEmpty == true)
         ? meal.shortName!.trim()
         : meal.name;
-    final fullName = meal.name;
     final screenH = MediaQuery.sizeOf(context).height;
-    // Hero proportions from the mockup once the header sits above it.
-    final heroH = (screenH * 0.36).clamp(240.0, 380.0);
+    final heroH = (screenH * 0.36).clamp(240.0, 300.0);
+    final sheet = MealScreenPalette.sheet(brightness);
 
-    return Stack(
+    return Column(
       children: [
-        // ── Scrollable content (header included — nothing floats over it) ──
-        Positioned.fill(
-          child: CustomScrollView(
+        _MealAppBar(
+          shortName: shortName,
+          meal: meal,
+          brightness: brightness,
+          strings: strings,
+          isProposing: isProposing,
+          onCloudTap: onCloudTap,
+          onFavoriteTap: onFavoriteTap,
+        ),
+        Expanded(
+          child: SingleChildScrollView(
             key: const Key('meal_screen_body'),
             physics: const BouncingScrollPhysics(),
-            slivers: [
-              // 1) Header pill (short name + upload mark + heart + back).
-              SliverToBoxAdapter(
-                child: SafeArea(
-                  bottom: false,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
-                    child: _MealHeaderBar(
-                      shortName: shortName,
-                      brightness: brightness,
-                      strings: strings,
-                      meal: meal,
-                      isProposing: isProposing,
-                      onCloudTap: onCloudTap,
-                      onFavoriteTap: onFavoriteTap,
-                    ),
-                  ),
-                ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 10)),
-
-              // 2) Hero photo — rounded card under the header, full name
-              //    overlaid at the bottom.
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: SizedBox(
-                    height: heroH,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: _HeroPhoto(
-                        meal: meal,
-                        fullName: fullName,
-                        brightness: brightness,
-                        strings: strings,
+            child: ColoredBox(
+              // The active folder tab is cut in this same colour, so the tab
+              // and the surface it stands on have to be one continuous fill.
+              color: sheet,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  // The photo keeps running behind the info card and dissolves
+                  // into the page colour, exactly like the reference.
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: heroH + _heroBleed,
+                    child: ClipRect(
+                      key: const Key('meal_screen_hero'),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          MealImage(
+                            photoPath: meal.photoPath,
+                            cacheWidth: 1080,
+                            fit: BoxFit.cover,
+                            alignment: Alignment.topCenter,
+                            fallback: _HeroFallback(brightness: brightness),
+                          ),
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            height: _heroBleed + 30,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    sheet.withValues(alpha: 0),
+                                    sheet.withValues(alpha: 0.55),
+                                    sheet,
+                                  ],
+                                  stops: const [0, 0.45, 1],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 10)),
-
-              // 3) Info banner fused with the dish tabs (the mockup
-              //    interlock, white edges included).
-              SliverToBoxAdapter(
-                child: _InterlockedInfoTabs(
-                  meal: meal,
-                  brightness: brightness,
-                  selected: selectedDish,
-                  onChanged: onDishChanged,
-                ),
-              ),
-
-              // 4) Selected-dish panel shell (frontend only).
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                  child: _DishPanel(
-                    key: const Key('meal_screen_dish_panel'),
-                    tab: selectedDish,
-                    meal: meal,
-                    brightness: brightness,
-                    strings: strings,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(
+                        height: heroH,
+                        child: _HeroName(
+                          fullName: meal.name,
+                          heroHeight: heroH,
+                          brightness: brightness,
+                        ),
+                      ),
+                      _InterlockedInfoTabs(
+                        meal: meal,
+                        brightness: brightness,
+                        selected: selectedDish,
+                        onChanged: onDishChanged,
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                        child: _DishPanel(
+                          key: const Key('meal_screen_dish_panel'),
+                          tab: selectedDish,
+                          meal: meal,
+                          brightness: brightness,
+                          strings: strings,
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+                      MoreFavoritesGrid(currentMealId: meal.id),
+                      const SizedBox(height: 8),
+                    ],
                   ),
-                ),
+                ],
               ),
-
-              // 5) More Favorites grid
-              const SliverToBoxAdapter(child: SizedBox(height: 22)),
-              SliverToBoxAdapter(
-                child: MoreFavoritesGrid(currentMealId: meal.id),
-              ),
-
-              // Bottom breathing room above the sticky pill
-              const SliverToBoxAdapter(child: SizedBox(height: 110)),
-            ],
+            ),
           ),
         ),
-
-        // ── Bottom pill bar (left as-is per mockup note) ───────────────────
-        Positioned(
-          left: 16,
-          right: 16,
-          bottom: MediaQuery.paddingOf(context).bottom + 12,
-          child: _BottomPill(
-            brightness: brightness,
-            hint: strings.mealScreenBottomHint,
-          ),
-        ),
+        _BottomBar(brightness: brightness),
       ],
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Header pill: [back] · [upload  |  short name  |  heart]
+// App bar: [back] · short name (centred) · [sync] [favourite] [status]
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _MealHeaderBar extends StatelessWidget {
+class _MealAppBar extends StatelessWidget {
   final String shortName;
+  final Meal meal;
   final Brightness brightness;
   final AppStrings strings;
-  final Meal meal;
   final bool isProposing;
   final VoidCallback? onCloudTap;
   final VoidCallback onFavoriteTap;
 
-  const _MealHeaderBar({
+  const _MealAppBar({
     required this.shortName,
+    required this.meal,
     required this.brightness,
     required this.strings,
-    required this.meal,
     required this.isProposing,
     required this.onCloudTap,
     required this.onFavoriteTap,
@@ -278,133 +281,148 @@ class _MealHeaderBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // The mockup pins this chrome in RTL order in every locale: the pill is
-    // right-dominant with the upload mark at its right end, and the back
-    // bubble floats at the far left.
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Row(
-        children: [
-          // ── The pill itself ──────────────────────────────────────────
-          Expanded(
-            child: Container(
-              height: 52,
-              decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: AlignmentDirectional.topStart,
-                end: AlignmentDirectional.bottomEnd,
-                colors: [
-                  MealScreenPalette.headerBar(brightness),
-                  MealScreenPalette.headerBarDeep(brightness),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(26),
-              border: Border.all(
-                color: MealScreenPalette.headerBarBorder(brightness),
-                width: 1.1,
-              ),
-            ),
-            child: Row(
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    final synced = meal.cloudId != null;
+    final statusGlyph = meal.isFridaySpecial
+        ? AppGlyph.flame
+        : (meal.isBudgetFriendly ? AppGlyph.wallet : null);
+
+    return Container(
+      color: MealScreenPalette.appBar(brightness),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: SizedBox(
+            height: 56,
+            child: Stack(
+              alignment: Alignment.center,
               children: [
-                // Upload mark — the bundled cloud-upload glyph (top-right in RTL).
-                IconButton(
-                  key: const Key('meal_screen_cloud_button'),
-                  tooltip: isProposing
-                      ? strings.proposalInProgress
-                      : strings.proposalCta,
-                  onPressed: onCloudTap,
-                  icon: _UploadMark(
-                    isProposing: isProposing,
-                    synced: meal.cloudId != null,
-                    color: MealScreenPalette.cloud(brightness),
-                  ),
-                ),
-                Expanded(
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 56),
                   child: Text(
                     shortName,
                     key: const Key('meal_screen_short_name'),
                     textAlign: TextAlign.center,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.cairo(
-                      fontSize: 17.5,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.2,
-                      color: MealScreenPalette.headerBarText(brightness),
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
                     ),
                   ),
                 ),
-                // Favourite heart — second mark inside the pill.
-                IconButton(
-                  key: const Key('meal_screen_favorite_button'),
-                  tooltip: strings.favorite,
-                  onPressed: onFavoriteTap,
-                  icon: AppIcon(
-                    meal.isFavorite
-                        ? AppGlyph.heartFill
-                        : AppGlyph.heartOutline,
-                    color: meal.isFavorite
-                        ? const Color(0xFFFF6B6B)
-                        : Colors.white.withValues(alpha: 0.9),
-                    size: 22,
-                  ),
+                Row(
+                  children: [
+                    _BarButton(
+                      key: const Key('meal_screen_back_button'),
+                      tooltip: strings.welcomeBack,
+                      onTap: () {
+                        if (Navigator.of(context).canPop()) {
+                          context.pop();
+                        } else {
+                          context.go('/vault');
+                        }
+                      },
+                      child: Icon(
+                        rtl
+                            ? Icons.arrow_forward_ios_rounded
+                            : Icons.arrow_back_ios_new_rounded,
+                        color: Colors.white,
+                        size: 22,
+                      ),
+                    ),
+                    const Spacer(),
+                    _BarButton(
+                      key: const Key('meal_screen_cloud_button'),
+                      tooltip: isProposing
+                          ? strings.proposalInProgress
+                          : strings.proposalCta,
+                      onTap: onCloudTap,
+                      child: _SyncMark(
+                        isProposing: isProposing,
+                        synced: synced,
+                        color: synced
+                            ? MealScreenPalette.syncDone(brightness)
+                            : MealScreenPalette.syncIdle(brightness),
+                      ),
+                    ),
+                    _BarButton(
+                      key: const Key('meal_screen_favorite_button'),
+                      tooltip: strings.favorite,
+                      onTap: onFavoriteTap,
+                      child: AppIcon(
+                        meal.isFavorite
+                            ? AppGlyph.heartFill
+                            : AppGlyph.heartOutline,
+                        color: meal.isFavorite
+                            ? MealScreenPalette.heart(brightness)
+                            : Colors.white,
+                        size: 22,
+                      ),
+                    ),
+                    if (statusGlyph != null)
+                      Tooltip(
+                        message: meal.isFridaySpecial
+                            ? strings.fridaySpecial
+                            : strings.budgetFriendly,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          child: AppIcon(
+                            statusGlyph,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(width: 4),
+                  ],
                 ),
               ],
             ),
           ),
         ),
-        const SizedBox(width: 10),
-        // ── Back bubble floating off the pill's end ───────────────────
-        Material(
-          key: const Key('meal_screen_back_button'),
-          color: MealScreenPalette.headerBarDeep(brightness),
-          shape: const CircleBorder(),
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: () {
-              if (Navigator.of(context).canPop()) {
-                context.pop();
-              } else {
-                context.go('/vault');
-              }
-            },
-            child: Container(
-              width: 42,
-              height: 42,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: MealScreenPalette.headerBarBorder(brightness),
-                  width: 1.1,
-                ),
-              ),
-              child: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
-            ),
-          ),
-        ),
-        ],
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Upload mark: the cloud-transfer glyphs bundled in `assets/icons/` (see
-// [AppIcon]), so the header pill always shows the same artwork the rest of the
-// app uses for publishing a meal.
-// ─────────────────────────────────────────────────────────────────────────────
+class _BarButton extends StatelessWidget {
+  final Key? key;
+  final String tooltip;
+  final VoidCallback? onTap;
+  final Widget child;
 
-class _UploadMark extends StatelessWidget {
+  const _BarButton({
+    this.key,
+    required this.tooltip,
+    required this.onTap,
+    required this.child,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: IconButton(
+        onPressed: onTap,
+        iconSize: 24,
+        constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+        padding: EdgeInsets.zero,
+        splashColor: Colors.white.withValues(alpha: 0.12),
+        icon: child,
+      ),
+    );
+  }
+}
+
+class _SyncMark extends StatelessWidget {
   final bool isProposing;
   final bool synced;
   final Color color;
 
-  const _UploadMark({
+  const _SyncMark({
     required this.isProposing,
     required this.synced,
     required this.color,
@@ -416,196 +434,87 @@ class _UploadMark extends StatelessWidget {
       return const SizedBox(
         width: 18,
         height: 18,
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          color: Colors.white,
-        ),
+        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
       );
     }
-    if (synced) {
-      // Already published to the cloud vault — keep the synced variant.
-      return AppIcon(AppGlyph.cloudDown, color: color, size: 24);
-    }
-    return AppIcon(AppGlyph.cloudUp, color: color, size: 26);
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Hero photo, full-name overlay and meta chips (prep time / budget) — the
-// chips keep the data that used to sit inside the old banner meta row.
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _HeroPhoto extends StatelessWidget {
-  final Meal meal;
-  final String fullName;
-  final Brightness brightness;
-  final AppStrings strings;
-
-  const _HeroPhoto({
-    required this.meal,
-    required this.fullName,
-    required this.brightness,
-    required this.strings,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      key: const Key('meal_screen_hero'),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          MealImage(
-            photoPath: meal.photoPath,
-            cacheWidth: 1080,
-            fit: BoxFit.cover,
-            fallback: Container(
-              color: MealScreenPalette.infoCard(brightness),
-              child: Center(
-                child: AppIcon(
-                  AppGlyph.pot,
-                  color: Colors.white.withValues(alpha: 0.55),
-                  size: 56,
-                ),
-              ),
-            ),
-          ),
-          // Subtle bottom band so the name reads over any photo.
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: 120,
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withValues(alpha: 0.42),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          // Full meal name, large display type, one line when possible.
-          Positioned(
-            left: 20,
-            right: 20,
-            bottom: 12,
-            child: Text(
-              fullName,
-              key: const Key('meal_screen_full_name'),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.cairo(
-                fontSize: 26,
-                height: 1.25,
-                fontWeight: FontWeight.w900,
-                color: MealScreenPalette.fullName(brightness),
-                shadows: [
-                  Shadow(
-                    color: Colors.black.withValues(alpha: 0.5),
-                    blurRadius: 12,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // Prep-time + budget chips, tucked into the photo's top corner.
-          Positioned(
-            top: 10,
-            left: 0,
-            right: 0,
-            child: IgnorePointer(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Row(
-                  textDirection: TextDirection.ltr,
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    _MetaChip(
-                      icon: AppGlyph.clock,
-                      label: strings
-                          .prepMinutesShort(meal.prepTime > 0 ? meal.prepTime : 0),
-                      brightness: brightness,
-                    ),
-                    const SizedBox(width: 8),
-                    _MetaChip(
-                      icon: AppGlyph.wallet,
-                      label: meal.isBudgetFriendly
-                          ? strings.budgetFriendly
-                          : meal.category.label(strings),
-                      brightness: brightness,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+    return AppIcon(
+      synced ? AppGlyph.cloudDown : AppGlyph.cloudUp,
+      color: color,
+      size: 23,
     );
   }
 }
 
-class _MetaChip extends StatelessWidget {
-  final AppGlyph icon;
-  final String label;
+// ─────────────────────────────────────────────────────────────────────────────
+// Hero name + bloom
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _HeroName extends StatelessWidget {
+  final String fullName;
+  final double heroHeight;
   final Brightness brightness;
 
-  const _MetaChip({
-    required this.icon,
-    required this.label,
+  const _HeroName({
+    required this.fullName,
+    required this.heroHeight,
     required this.brightness,
   });
+
+  @override
+  Widget build(BuildContext context) {
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        MealNameScrim(brightness: brightness, heroHeight: heroHeight),
+        Positioned(
+          left: 24,
+          right: 24,
+          bottom: 12,
+          child: Text(
+            fullName,
+            key: const Key('meal_screen_full_name'),
+            textAlign: rtl ? TextAlign.right : TextAlign.left,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 30,
+              height: 1.15,
+              fontWeight: FontWeight.w700,
+              color: MealScreenPalette.fullName(brightness),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HeroFallback extends StatelessWidget {
+  final Brightness brightness;
+  const _HeroFallback({required this.brightness});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AppIcon(icon, color: Colors.white.withValues(alpha: 0.92), size: 13),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w700,
-              color: Colors.white.withValues(alpha: 0.95),
-            ),
-          ),
-        ],
+      color: MealScreenPalette.cardBottom(brightness),
+      alignment: Alignment.center,
+      child: AppIcon(
+        AppGlyph.pot,
+        color: Colors.white.withValues(alpha: 0.55),
+        size: 56,
       ),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Interlock: info banner + dish tabs.
-//
-// The tab strip overlaps the banner's lower edge (18px). Around the ACTIVE
-// tab the strip's own top border is erased ([_SeamPainter]) and the tab is
-// raised + filled with the banner's deep green — so banner border, tab fill
-// and strip border read as one continuous, white-edged shape, exactly like
-// the mockup's "تداخل".
+// Info card + dish strip interlock: the strip tucks [MealDishTabs.overlap] up
+// over the card's bottom edge, and the folder-tab curve carries the active
+// segment into the page.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _InterlockedInfoTabs extends StatelessWidget {
-  static const double _overlap = 18;
-
   final Meal meal;
   final Brightness brightness;
   final MealDishTab selected;
@@ -621,94 +530,35 @@ class _InterlockedInfoTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const bannerH = MealInfoBanner.height;
-    const pillH = MealDishTabs.height;
-    const stickOut = pillH - _overlap;
+    const stickOut = MealDishTabs.height - MealDishTabs.overlap;
 
     return SizedBox(
       height: bannerH + stickOut,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final activeIndex = switch (selected) {
-            MealDishTab.main => 0,
-            MealDishTab.side1 => 1,
-            MealDishTab.side2 => 2,
-          };
-          return Stack(
-            clipBehavior: Clip.none,
-            children: [
-              // Banner on top so its white border is drawn over the strip
-              // everywhere; the strip stays visible in its stick-out zone.
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                height: bannerH,
-                child: MealInfoBanner(meal: meal, brightness: brightness),
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                top: bannerH - _overlap,
-                height: pillH,
-                child: MealDishTabs(selected: selected, onChanged: onChanged),
-              ),
-              // Foreground seam eraser (painted last = topmost).
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: CustomPaint(
-                    painter: _SeamPainter(
-                      activeIndex: activeIndex,
-                      bannerColor:
-                          MealScreenPalette.infoCardDeep(brightness),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: bannerH,
+            child: MealInfoBanner(meal: meal, brightness: brightness),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            top: bannerH - MealDishTabs.overlap,
+            height: MealDishTabs.height,
+            child: MealDishTabs(selected: selected, onChanged: onChanged),
+          ),
+        ],
       ),
     );
   }
 }
 
-/// Erases the tab strip's top border ONLY above the active tab so the
-/// raised tab fill (same colour family as the banner bottom) merges with
-/// the banner body — the two white outlines become one.
-class _SeamPainter extends CustomPainter {
-  static const double _overlap = 18;
-  static const double _hMargin = 16; // matches banner & strip margins
-  static const double _stripPad = 6; // matches MealDishTabs padding
-
-  final int activeIndex;
-  final Color bannerColor;
-
-  _SeamPainter({required this.activeIndex, required this.bannerColor});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    const bannerH = MealInfoBanner.height;
-    const stripTop = bannerH - _overlap;
-
-    final slotW = (size.width - _hMargin * 2 - _stripPad * 2) / 3;
-    final left = _hMargin + _stripPad + slotW * activeIndex;
-
-    // Wipe the strip's top border across the active slot (inset 3 so the
-    // erased band never eats the neighbouring border, which reads as the
-    // tab's "shoulders").
-    canvas.drawRect(
-      Rect.fromLTWH(left + 3, stripTop - 0.9, slotW - 6, 3.2),
-      Paint()..color = bannerColor,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _SeamPainter old) =>
-      old.activeIndex != activeIndex || old.bannerColor != bannerColor;
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
-// Dish panel shell (Main / Side content — frontend placeholder)
+// Dish panel shell (per-dish content arrives with the backend)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _DishPanel extends StatelessWidget {
@@ -749,14 +599,7 @@ class _DishPanel extends StatelessWidget {
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: MealScreenPalette.muted(brightness),
-                    ),
-                  ),
+                  _Heading(brightness: brightness, title: title),
                   const SizedBox(height: 6),
                   Text(
                     notes,
@@ -772,14 +615,7 @@ class _DishPanel extends StatelessWidget {
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: MealScreenPalette.muted(brightness),
-                    ),
-                  ),
+                  _Heading(brightness: brightness, title: title),
                   const SizedBox(height: 10),
                   _Bone(brightness: brightness, widthFactor: 0.92),
                   const SizedBox(height: 8),
@@ -788,6 +624,24 @@ class _DishPanel extends StatelessWidget {
                   _Bone(brightness: brightness, widthFactor: 0.78),
                 ],
               ),
+      ),
+    );
+  }
+}
+
+class _Heading extends StatelessWidget {
+  final Brightness brightness;
+  final String title;
+  const _Heading({required this.brightness, required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w800,
+        color: MealScreenPalette.muted(brightness),
       ),
     );
   }
@@ -814,58 +668,56 @@ class _Bone extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Bottom pill (left empty — mockup note)
+// Pinned bottom bar — locked shell, deliberately empty until its content is
+// decided (the Arabic sentence in the mockup is an instruction, not UI copy).
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _BottomPill extends StatelessWidget {
+class _BottomBar extends StatelessWidget {
   final Brightness brightness;
-  final String hint;
-
-  const _BottomPill({required this.brightness, required this.hint});
+  const _BottomBar({required this.brightness});
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(28),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          key: const Key('meal_screen_bottom_pill'),
-          height: 56,
-          padding: const EdgeInsets.symmetric(horizontal: 18),
-          decoration: BoxDecoration(
-            color: MealScreenPalette.bottomBar(brightness)
-                .withValues(alpha: 0.92),
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.25),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    final isDark = MealScreenPalette.isDark(brightness);
+
+    return Container(
+      color: MealScreenPalette.footer(brightness),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        12,
+        16,
+        16 + MediaQuery.paddingOf(context).bottom,
+      ),
+      child: Container(
+        key: const Key('meal_screen_bottom_pill'),
+        height: 56,
+        padding: const EdgeInsetsDirectional.only(start: 18, end: 12),
+        decoration: BoxDecoration(
+          color: MealScreenPalette.bottomPill(brightness),
+          borderRadius: BorderRadius.circular(28),
+        ),
+        child: Row(
+          children: [
+            const Spacer(),
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isDark
+                    ? MealScreenPalette.accent(
+                        brightness,
+                      ).withValues(alpha: 0.16)
+                    : Colors.white.withValues(alpha: 0.16),
               ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  hint,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white.withValues(alpha: 0.85),
-                  ),
-                ),
+              child: Icon(
+                rtl ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
+                color: Colors.white,
+                size: 20,
               ),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: Colors.white.withValues(alpha: 0.85),
-                size: 22,
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

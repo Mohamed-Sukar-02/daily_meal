@@ -239,9 +239,6 @@ class AppStrings {
   String get healthyTag => isEn ? 'Healthy' : 'صحي';
   String get balancedTag => isEn ? 'Balanced' : 'متوازن';
   String get deliciousTag => isEn ? 'Delicious' : 'لذيذ';
-  String get mealScreenBottomHint => isEn
-      ? 'Actions coming soon'
-      : 'سيب الجزء دا زي ما هو على ما نحط فيه حاجة';
   String prepMinutesShort(int minutes) => isEn ? '$minutes min' : '$minutes د';
 
   // Spin the wheel
@@ -455,9 +452,28 @@ class AppStrings {
   String get proposalWifiOnly => isEn
       ? 'Cloud is Wi-Fi-only right now — connect to Wi-Fi or change the setting'
       : 'السحابة على وضع الواي فاي فقط — اتصل بالواي فاي أو غيّر الإعداد';
-  String get proposalFailed => isEn
-      ? 'Proposal failed — try again later'
-      : 'فشل إرسال الاقتراح — حاول لاحقاً';
+  // Which stage rejected the proposal. Named after ProposalFailureReason so a
+  // new reason cannot be added in the service layer without a label here.
+  String get proposalFailFirebaseNotReady => isEn
+      ? 'Firebase is not initialised in this build'
+      : 'Firebase غير مهيّأ في هذا البناء';
+  String get proposalFailAnonymousDisabled => isEn
+      ? 'Anonymous sign-in is disabled in the Firebase console'
+      : 'تسجيل الدخول المجهول مقفول من إعدادات Firebase';
+  String get proposalFailAnonymousRejected => isEn
+      ? 'Anonymous sign-in was rejected'
+      : 'رُفض تسجيل الدخول المجهول';
+  String get proposalFailPermissionDenied => isEn
+      ? 'Firestore security rules rejected the upload'
+      : 'قواعد أمان Firestore رفضت الرفع';
+  String get proposalFailUnreachable => isEn
+      ? 'Could not reach Firestore'
+      : 'تعذّر الوصول إلى Firestore';
+
+  /// The generic failure line with the identified cause appended.
+  String proposalFailedReason(String reason) => isEn
+      ? 'Proposal failed: $reason'
+      : 'فشل إرسال الاقتراح: $reason';
 
   // ===========================================================================
   // History

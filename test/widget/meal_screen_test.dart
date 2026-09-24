@@ -179,12 +179,27 @@ void main() {
     expect(find.byKey(const Key('meal_screen_dish_panel')), findsOneWidget);
   });
 
-  testWidgets('info banner shows prep time and fresh label', (tester) async {
+  testWidgets('info banner shows the ingredient and freshness columns',
+      (tester) async {
     await _pumpMealScreen(tester, meals: [_sampleMeal()]);
 
     final strings = const AppStrings(Locale('ar'));
     expect(find.text(strings.freshAndNatural), findsOneWidget);
-    expect(find.text(strings.prepMinutesShort(45)), findsWidgets);
+    expect(
+      find.text(
+        '${ProteinType.chicken.label(strings)}, '
+        '${CarbsType.rice.label(strings)}',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('bottom pill is an empty shell', (tester) async {
+    await _pumpMealScreen(tester, meals: [_sampleMeal()]);
+
+    final pill = find.byKey(const Key('meal_screen_bottom_pill'));
+    expect(pill, findsOneWidget);
+    expect(find.descendant(of: pill, matching: find.byType(Text)), findsNothing);
   });
 
   testWidgets('dark mode paints without throwing', (tester) async {

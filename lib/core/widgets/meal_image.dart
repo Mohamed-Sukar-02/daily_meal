@@ -77,6 +77,7 @@ class MealImage extends StatelessWidget {
   final double? height;
   final double? width;
   final BoxFit fit;
+  final Alignment alignment;
   final BorderRadius? borderRadius;
 
   /// Decoding hints – keeps memory sane for large Firebase photos.
@@ -90,6 +91,7 @@ class MealImage extends StatelessWidget {
     this.height,
     this.width,
     this.fit = BoxFit.cover,
+    this.alignment = Alignment.center,
     this.borderRadius,
     this.cacheWidth,
   });
@@ -101,27 +103,29 @@ class MealImage extends StatelessWidget {
     final Widget image = switch (MealImageResolver.resolve(value)) {
       MealImageSource.none => fallback,
       MealImageSource.asset => Image.asset(
-          MealImageResolver.assetKey(value),
-          height: height,
-          width: width,
-          fit: fit,
-          gaplessPlayback: true,
-          cacheWidth: cacheWidth,
-          errorBuilder: (context, error, stackTrace) => fallback,
-        ),
+        MealImageResolver.assetKey(value),
+        height: height,
+        width: width,
+        fit: fit,
+        alignment: alignment,
+        gaplessPlayback: true,
+        cacheWidth: cacheWidth,
+        errorBuilder: (context, error, stackTrace) => fallback,
+      ),
       MealImageSource.network => Image.network(
-          value,
-          height: height,
-          width: width,
-          fit: fit,
-          gaplessPlayback: true,
-          cacheWidth: cacheWidth,
-          loadingBuilder: (context, child, progress) {
-            if (progress == null) return child;
-            return loading ?? _defaultLoading(context, progress);
-          },
-          errorBuilder: (context, error, stackTrace) => fallback,
-        ),
+        value,
+        height: height,
+        width: width,
+        fit: fit,
+        alignment: alignment,
+        gaplessPlayback: true,
+        cacheWidth: cacheWidth,
+        loadingBuilder: (context, child, progress) {
+          if (progress == null) return child;
+          return loading ?? _defaultLoading(context, progress);
+        },
+        errorBuilder: (context, error, stackTrace) => fallback,
+      ),
       MealImageSource.file => _buildFileImage(value),
     };
 
@@ -137,6 +141,7 @@ class MealImage extends StatelessWidget {
       height: height,
       width: width,
       fit: fit,
+      alignment: alignment,
       gaplessPlayback: true,
       cacheWidth: cacheWidth,
       errorBuilder: (context, error, stackTrace) => fallback,

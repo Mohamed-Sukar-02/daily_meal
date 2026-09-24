@@ -4,17 +4,16 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/localization/app_strings.dart';
 import 'meal_screen_palette.dart';
 
-/// The dark-green info card that directly precedes the dish tabs —
-/// mockup-exact: two text columns with a divider, nothing else.
+/// The green info card that sits directly above the dish strip — two text
+/// columns split by a single vertical hairline.
 ///
-/// Height is FIXED ([MealInfoBanner.height]) so the parent's interlock
-/// painter can fuse the tab strip into the card's bottom edge with exact
-/// seam geometry, and the content (ellipsized, two lines max) is designed
-/// to stay comfortably above that seam. White-ish outline + LTR column
-/// order, both locked to the mockups: the meal column is at the left and
-/// the tag column at the right in every locale.
+/// Height is FIXED ([MealInfoBanner.height]) so the parent can tuck the dish
+/// strip up over its bottom edge ([MealDishTabs.overlap]) with deterministic
+/// seam geometry; the content is ellipsized to stay clear of that zone. The
+/// square bottom corners are intentionally covered by the strip, which is how
+/// card and tab bar fuse into one shape.
 class MealInfoBanner extends StatelessWidget {
-  static const double height = 86;
+  static const double height = 96;
 
   final Meal meal;
   final Brightness brightness;
@@ -32,126 +31,75 @@ class MealInfoBanner extends StatelessWidget {
         ? meal.shortName!.trim()
         : meal.name;
 
-    final leftSubtitle = _leftSubtitle(meal, strings);
-    final rightTags = _rightTags(meal, strings);
-
     return Container(
       key: const Key('meal_screen_info_card'),
       height: height,
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
           colors: [
-            MealScreenPalette.infoCard(brightness),
-            MealScreenPalette.infoCardDeep(brightness),
+            MealScreenPalette.cardTop(brightness),
+            MealScreenPalette.cardBottom(brightness),
           ],
         ),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: MealScreenPalette.interlockStroke(brightness),
-          width: 1.2,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border(
+          top: BorderSide(color: MealScreenPalette.cardStroke(brightness)),
+          left: BorderSide(color: MealScreenPalette.cardStroke(brightness)),
+          right: BorderSide(color: MealScreenPalette.cardStroke(brightness)),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.28),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
+            color: brightness == Brightness.dark
+                ? Colors.black.withValues(alpha: 0.60)
+                : const Color(0xFF14301F).withValues(alpha: 0.35),
+            blurRadius: brightness == Brightness.dark ? 24 : 20,
+            spreadRadius: -12,
+            offset: Offset(0, brightness == Brightness.dark ? -8 : -6),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 12, 18, 10),
+        // Bottom padding clears the 18pt the dish strip tucks up over us.
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         child: IntrinsicHeight(
-          // Mockup truth: meal-name column at the LEFT, tag column at
-          // the RIGHT, in every locale (mirrors `MealDishTabs`).
-          child: Directionality(
-            textDirection: TextDirection.ltr,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // ── Left column ────────────────────────────────────
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        short,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          height: 1.2,
-                          color: MealScreenPalette.infoOnGreen(brightness),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        leftSubtitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          height: 1.35,
-                          fontWeight: FontWeight.w500,
-                          color:
-                              MealScreenPalette.infoOnGreenMuted(brightness),
-                        ),
-                      ),
-                    ],
-                  ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _Column(
+                  brightness: brightness,
+                  title: short,
+                  subtitle: _ingredients(meal, strings),
                 ),
-                // ── Divider ────────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Container(
-                    width: 1,
-                    color: Colors.white.withValues(alpha: 0.28),
-                  ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
                 ),
-                // ── Right column ───────────────────────────────────
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        strings.freshAndNatural,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          height: 1.2,
-                          color: MealScreenPalette.infoOnGreen(brightness),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        rightTags,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          height: 1.35,
-                          fontWeight: FontWeight.w500,
-                          color:
-                              MealScreenPalette.infoOnGreenMuted(brightness),
-                        ),
-                      ),
-                    ],
-                  ),
+                child: Container(
+                  width: 1,
+                  color: MealScreenPalette.cardDivider(brightness),
                 ),
-              ],
-            ),
+              ),
+              Expanded(
+                child: _Column(
+                  brightness: brightness,
+                  title: strings.freshAndNatural,
+                  subtitle: _tags(meal, strings),
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  static String _leftSubtitle(Meal meal, AppStrings strings) {
+  static String _ingredients(Meal meal, AppStrings strings) {
     final parts = <String>[];
     if (meal.proteinType != ProteinType.none) {
       parts.add(meal.proteinType.label(strings));
@@ -165,16 +113,59 @@ class MealInfoBanner extends StatelessWidget {
     return parts.join(', ');
   }
 
-  static String _rightTags(Meal meal, AppStrings strings) {
+  static String _tags(Meal meal, AppStrings strings) {
     final parts = <String>[strings.healthyTag];
-    if (meal.isBudgetFriendly) {
-      parts.add(strings.balancedTag);
-    } else {
-      parts.add(strings.deliciousTag);
-    }
+    parts.add(
+      meal.isBudgetFriendly ? strings.balancedTag : strings.deliciousTag,
+    );
     if (meal.isFridaySpecial) {
       parts.add(strings.fridaySpecial);
     }
     return parts.join(', ');
+  }
+}
+
+class _Column extends StatelessWidget {
+  final Brightness brightness;
+  final String title;
+  final String subtitle;
+
+  const _Column({
+    required this.brightness,
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            height: 1.25,
+            color: MealScreenPalette.cardText(brightness),
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          subtitle,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            height: 1.3,
+            color: MealScreenPalette.cardSub(brightness),
+          ),
+        ),
+      ],
+    );
   }
 }

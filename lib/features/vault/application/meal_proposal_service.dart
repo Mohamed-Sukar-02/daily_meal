@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -35,6 +36,10 @@ import '../../../core/widgets/app_toast.dart';
 //   • Auth: staging creates require `request.auth != null`; the app has no
 //     user accounts, so we sign in anonymously via firebase_auth (already a
 //     project dependency) exactly when a proposal is made.
+//   • Failure reporting: every stage (ledger, sign-in, write) is caught
+//     separately and classified into a [ProposalFailureReason], because a
+//     disabled anonymous provider, rejected security rules and a dead network
+//     all look identical to the user otherwise.
 //   • Duplicate guard: `staging_meals` is admin-read-only, so the client
 //     cannot query its own proposals. A SharedPreferences ledger
 //     (mealId → updatedAt-ms at submit time) blocks accidental re-sends and
@@ -60,20 +65,130 @@ enum ProposalOutcomeCode {
   /// detected locally to avoid a pointless rejected round-trip.
   invalidName,
 
-  /// Auth / Firestore / Storage failure. [ProposalOutcome.cause] has details.
+  /// Auth / Firestore / Storage failure. [ProposalOutcome.reason] says which
+  /// stage broke and [ProposalOutcome.cause] keeps the raw provider error.
   failed,
+}
+
+/// Which known failure could be identified behind [ProposalOutcomeCode.failed].
+///
+/// The app used to report every rejection with one generic message, which made
+/// a misconfigured Firebase project indistinguishable from a dead network. Each
+/// reason maps to a short localised line in [AppStrings]; the raw provider
+/// error is appended only when nothing matched ([unknown]).
+enum ProposalFailureReason {
+  /// `Firebase.initializeApp` never completed, or the client API key is wrong,
+  /// so no Firebase singleton exists to call.
+  firebaseNotReady,
+
+  /// Anonymous sign-in is switched off in Firebase Console → Authentication →
+  /// Sign-in method. Staging writes demand `request.auth != null`.
+  anonymousProviderDisabled,
+
+  /// Anonymous sign-in exists but rejected the caller for another reason.
+  anonymousSignInRejected,
+
+  /// Firestore refused the `staging_meals` create — deployed security rules do
+  /// not accept this payload, or the caller is not the `proposedBy` uid.
+  writePermissionDenied,
+
+  /// Firestore was unreachable at write time (no route, DNS failure, timeout).
+  writeUnreachable,
+
+  /// Anything else — the UI shows the raw error instead of a guess.
+  unknown,
+}
+
+/// Maps a raw provider error onto a [ProposalFailureReason]. Pure: no Firebase
+/// singletons, so tests can feed it hand-built exceptions.
+class ProposalFailureDiagnoser {
+  const ProposalFailureDiagnoser._();
+
+  static ProposalFailureReason classify(Object error) {
+    final code = errorCode(error);
+    final haystack = '$code ${error.toString()}'.toLowerCase();
+
+    // Auth never initialised: `FirebaseAuth.instance` / `FirebaseFirestore
+    // .instance` throw a plain StateError before any network call happens.
+    if (haystack.contains('no firebase app') ||
+        haystack.contains('firebase apps were not initialised') ||
+        haystack.contains('invalid-api-key') ||
+        haystack.contains('api-key-not-valid')) {
+      return ProposalFailureReason.firebaseNotReady;
+    }
+
+    // `operation-not-allowed` / `unsupported-operation` / `configuration-
+    // not-found` are the shapes Firebase Auth uses for a disabled provider.
+    if (haystack.contains('operation-not-allowed') ||
+        haystack.contains('unsupported-operation') ||
+        haystack.contains('configuration-not-found') ||
+        haystack.contains('provider is disabled')) {
+      return ProposalFailureReason.anonymousProviderDisabled;
+    }
+
+    // FirebaseAuthException codes are bare (`Too-Many-Requests`, `user-disabled`)
+    // and are not prefixed with `auth/`, so the class is the reliable signal
+    // that the sign-in stage — not the write — is what answered.
+    if (error is FirebaseAuthException) {
+      return ProposalFailureReason.anonymousSignInRejected;
+    }
+
+    if (code == 'permission-denied' ||
+        haystack.contains('permission-denied') ||
+        haystack.contains('permission denied')) {
+      return ProposalFailureReason.writePermissionDenied;
+    }
+
+    if (code == 'unavailable' ||
+        haystack.contains('failed host lookup') ||
+        haystack.contains('socketexception') ||
+        haystack.contains('timeout')) {
+      return ProposalFailureReason.writeUnreachable;
+    }
+
+    return ProposalFailureReason.unknown;
+  }
+
+  /// The `code` member that `FirebaseAuthException`, `FirebaseException` and
+  /// `FirebaseFirestoreException` all carry, read structurally so this layer
+  /// does not have to depend on their exact class hierarchies.
+  static String? errorCode(Object error) {
+    try {
+      final dynamic code = (error as dynamic).code;
+      return code is String ? code : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// One-line raw error for the debug-only suffix: code plus message, collapsed
+  /// to a single line and capped so it cannot blow out the toast.
+  static String describe(Object error) {
+    final code = errorCode(error);
+    final text = error
+        .toString()
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    final joined = code == null ? text : '$code · $text';
+    return joined.length <= 180 ? joined : '${joined.substring(0, 177)}…';
+  }
 }
 
 class ProposalOutcome {
   final ProposalOutcomeCode code;
 
-  /// Raw error for [ProposalOutcomeCode.failed] (logged, never shown as-is).
+  /// Raw error for [ProposalOutcomeCode.failed] (logged verbatim, shown only
+  /// when [reason] is [ProposalFailureReason.unknown]).
   final Object? cause;
+
+  /// Which stage failed, for [ProposalOutcomeCode.failed].
+  final ProposalFailureReason reason;
 
   /// True when a photo made it into the payload (uploaded or remote URL).
   final bool imageAttached;
 
-  const ProposalOutcome._(this.code, {this.cause, this.imageAttached = false});
+  const ProposalOutcome._(this.code,
+      {this.cause, this.reason = ProposalFailureReason.unknown, this.imageAttached = false});
 
   factory ProposalOutcome.submitted({bool imageAttached = false}) =>
       ProposalOutcome._(ProposalOutcomeCode.submitted,
@@ -91,8 +206,17 @@ class ProposalOutcome {
   factory ProposalOutcome.invalidName() =>
       const ProposalOutcome._(ProposalOutcomeCode.invalidName);
 
-  factory ProposalOutcome.failed(Object cause) =>
-      ProposalOutcome._(ProposalOutcomeCode.failed, cause: cause);
+  /// Builds a [ProposalOutcomeCode.failed] outcome and classifies [error] in
+  /// one step, so no call site can forget to say *why* it failed.
+  static ProposalOutcome failed(Object error, {String? stage}) {
+    final reason = ProposalFailureDiagnoser.classify(error);
+    debugPrint(
+      'Proposal failure${stage == null ? '' : ' at $stage'}: '
+      '${ProposalFailureDiagnoser.errorCode(error) ?? '-'} '
+      '(${reason.name}) — $error',
+    );
+    return ProposalOutcome._(ProposalOutcomeCode.failed, cause: error, reason: reason);
+  }
 
   bool get isSuccess => code == ProposalOutcomeCode.submitted;
 }
@@ -333,37 +457,59 @@ class MealProposalService {
 
   static const String stagingCollection = 'staging_meals';
 
+  /// One try/catch per stage, because the three of them fail for completely
+  /// different reasons and the user needs to be told which one to go fix.
   Future<ProposalOutcome> proposeMeal(Meal meal) async {
+    final ProposalGuard guard;
     try {
-      final guard = ProposalGuard(await _preferences());
+      guard = ProposalGuard(await _preferences());
       if (guard.alreadyProposed(meal)) {
         return ProposalOutcome.alreadyProposed();
       }
+    } catch (error) {
+      return ProposalOutcome.failed(error, stage: 'proposal ledger');
+    }
 
-      // Firestore rules demand an authenticated caller for staging creates.
+    // Firestore rules demand an authenticated caller for staging creates.
+    final String uid;
+    try {
       var user = _au.currentUser;
       user ??= (await _au.signInAnonymously()).user;
-      final uid = user?.uid;
-      if (uid == null || uid.isEmpty) {
-        return ProposalOutcome.failed('anonymous sign-in returned no uid');
+      final signedInUid = user?.uid;
+      if (signedInUid == null || signedInUid.isEmpty) {
+        return ProposalOutcome.failed(
+          'anonymous sign-in returned no uid',
+          stage: 'anonymous sign-in',
+        );
       }
-
-      final imageUrl = await _resolveImageUrl(meal, uid);
-
-      final payload = MealProposalPayload.build(
-        meal: meal,
-        proposedByUid: uid,
-        imageUrl: imageUrl,
-      );
-      if (payload == null) return ProposalOutcome.invalidName();
-
-      await _fs.collection(stagingCollection).add(payload);
-      await guard.markProposed(meal);
-      return ProposalOutcome.submitted(imageAttached: imageUrl != null);
+      uid = signedInUid;
     } catch (error) {
-      debugPrint('MealProposalService.proposeMeal failed: $error');
-      return ProposalOutcome.failed(error);
+      return ProposalOutcome.failed(error, stage: 'anonymous sign-in');
     }
+
+    final imageUrl = await _resolveImageUrl(meal, uid);
+
+    final payload = MealProposalPayload.build(
+      meal: meal,
+      proposedByUid: uid,
+      imageUrl: imageUrl,
+    );
+    if (payload == null) return ProposalOutcome.invalidName();
+
+    try {
+      await _fs.collection(stagingCollection).add(payload);
+    } catch (error) {
+      return ProposalOutcome.failed(error, stage: 'staging_meals write');
+    }
+
+    try {
+      await guard.markProposed(meal);
+    } catch (error) {
+      // The proposal is filed; losing the duplicate guard afterwards is not a
+      // reason to tell the user it failed.
+      debugPrint('Proposal ledger not updated: $error');
+    }
+    return ProposalOutcome.submitted(imageAttached: imageUrl != null);
   }
 
   /// Remote photos (meals downloaded from the cloud vault) pass straight
@@ -496,7 +642,33 @@ void showProposalOutcomeToast(
       AppToast.showError(context, strings.proposalInvalidName);
       break;
     case ProposalOutcomeCode.failed:
-      AppToast.showError(context, strings.proposalFailed);
+      AppToast.showError(
+        context,
+        strings.proposalFailedReason(_proposalFailureDetail(strings, outcome)),
+      );
       break;
   }
+}
+
+/// The suffix that tells the user *which* stage rejected them. Unrecognised
+/// errors surface their raw provider text, because a guess would be worse than
+/// an ugly string; known ones stay clean outside debug builds.
+String _proposalFailureDetail(AppStrings strings, ProposalOutcome outcome) {
+  final label = switch (outcome.reason) {
+    ProposalFailureReason.firebaseNotReady =>
+      strings.proposalFailFirebaseNotReady,
+    ProposalFailureReason.anonymousProviderDisabled =>
+      strings.proposalFailAnonymousDisabled,
+    ProposalFailureReason.anonymousSignInRejected =>
+      strings.proposalFailAnonymousRejected,
+    ProposalFailureReason.writePermissionDenied =>
+      strings.proposalFailPermissionDenied,
+    ProposalFailureReason.writeUnreachable => strings.proposalFailUnreachable,
+    ProposalFailureReason.unknown =>
+      ProposalFailureDiagnoser.describe(outcome.cause ?? ''),
+  };
+  if (outcome.reason == ProposalFailureReason.unknown || !kDebugMode) {
+    return label;
+  }
+  return '$label · ${ProposalFailureDiagnoser.describe(outcome.cause ?? '')}';
 }
