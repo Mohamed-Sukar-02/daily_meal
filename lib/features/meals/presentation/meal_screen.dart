@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,7 +30,7 @@ import 'widgets/more_favorites_grid.dart';
 ///      info card, fading into the page. The full name sits directly on it.
 ///   3. Green info card fused with the dish strip via the folder-tab curve.
 ///   4. Selected-dish panel shell · "More Favorites" grid.
-///   5. Pinned, deliberately empty bottom pill.
+///   5. Floating, deliberately empty bottom pill.
 ///
 /// Reached at `/meal/:id` for a vault row. An Explore meal with no local copy
 /// opens the same screen at `/meal/cloud/:cloudId`, where the cloud mark offers
@@ -65,14 +66,16 @@ class _MealScreenState extends ConsumerState<MealScreen> {
         statusBarColor: MealScreenPalette.appBar(brightness),
         statusBarIconBrightness: Brightness.light,
         statusBarBrightness: Brightness.dark,
-        systemNavigationBarColor: MealScreenPalette.background(brightness),
+        systemNavigationBarColor: MealScreenPalette.sheet(brightness),
         systemNavigationBarIconBrightness: brightness == Brightness.dark
             ? Brightness.light
             : Brightness.dark,
       ),
       child: Scaffold(
         key: const Key('meal_screen'),
-        backgroundColor: MealScreenPalette.background(brightness),
+        // The body paints this same surface, so nothing else on the screen can
+        // read as a band of a different colour behind the bottom pill.
+        backgroundColor: MealScreenPalette.sheet(brightness),
         body: cloudId == null
             ? _buildLocalBody(brightness, strings)
             : _buildCloudBody(cloudId, brightness, strings),
@@ -82,7 +85,8 @@ class _MealScreenState extends ConsumerState<MealScreen> {
 
   Widget _buildLocalBody(Brightness brightness, AppStrings strings) {
     final mealsAsync = ref.watch(allMealsProvider);
-    final isProposing = widget.mealId != null &&
+    final isProposing =
+        widget.mealId != null &&
         ref.watch(activeProposalMealIdProvider) == widget.mealId;
 
     return mealsAsync.when(
@@ -112,31 +116,89 @@ class _MealScreenState extends ConsumerState<MealScreen> {
     );
   }
 
+  /// Body for `/meal/cloud/:cloudId`.
+  ///
+  /// The route only says the caller had no local row to open with — the vault
+  /// may still hold this meal, so the local list is consulted first: a match
+  /// renders the local row and the mark reports its real sync state, while a
+  /// miss keeps the download offer.
   Widget _buildCloudBody(
     String cloudId,
     Brightness brightness,
     AppStrings strings,
   ) {
-    return ref.watch(cloudMealByIdProvider(cloudId)).when(
-      data: (cloud) {
-        if (cloud == null) {
-          return _NotFound(brightness: brightness, strings: strings);
-        }
-        return _MealBody(
-          meal: _mealFromCloudMeal(cloud),
-          brightness: brightness,
-          strings: strings,
-          isProposing: false,
-          cloudOnly: true,
-          selectedDish: _selectedDish,
-          onDishChanged: (t) => setState(() => _selectedDish = t),
-          onCloudTap: () => _downloadCloudMeal(cloud),
+    final localMeals =
+        ref.watch(allMealsProvider).valueOrNull ?? const <Meal>[];
+
+    return ref
+        .watch(cloudMealByIdProvider(cloudId))
+        .when(
+          data: (cloud) {
+            if (cloud == null) {
+              return _NotFound(brightness: brightness, strings: strings);
+            }
+            final local = _findLocalCopy(localMeals, cloud);
+            if (local == null) {
+              return _MealBody(
+                meal: _mealFromCloudMeal(cloud),
+                brightness: brightness,
+                strings: strings,
+                isProposing: false,
+                cloudOnly: true,
+                selectedDish: _selectedDish,
+                onDishChanged: (t) => setState(() => _selectedDish = t),
+                onCloudTap: () => _downloadCloudMeal(cloud),
+              );
+            }
+            // A row that matched on name alone still has no cloud id of its
+            // own; borrowing the visited one is what lets the mark compare the
+            // two copies instead of offering an upload that would duplicate it.
+            final meal = local.cloudId == null
+                ? local.copyWith(cloudId: drift.Value(cloud.id))
+                : local;
+            final isProposing =
+                ref.watch(activeProposalMealIdProvider) == local.id;
+            return _MealBody(
+              meal: meal,
+              brightness: brightness,
+              strings: strings,
+              isProposing: isProposing,
+              cloudOnly: false,
+              selectedDish: _selectedDish,
+              onDishChanged: (t) => setState(() => _selectedDish = t),
+              // The cloud copy exists, so the mark is the sync review, never an
+              // upload proposal.
+              onCloudTap: null,
+              onFavoriteTap: () => ref
+                  .read(vaultControllerProvider.notifier)
+                  .toggleFavorite(local.id, local.isFavorite),
+            );
+          },
+          loading: () =>
+              const Center(child: CircularProgressIndicator.adaptive()),
+          error: (error, _) => _BodyError(
+            brightness: brightness,
+            strings: strings,
+            error: error,
+          ),
         );
-      },
-      loading: () => const Center(child: CircularProgressIndicator.adaptive()),
-      error: (error, _) =>
-          _BodyError(brightness: brightness, strings: strings, error: error),
-    );
+  }
+
+  /// The vault row that is this cloud meal, or null when it has no copy yet.
+  ///
+  /// The two passes keep [Meal.cloudId] authoritative: a detached row that only
+  /// matches on name (the sync window's "download as new" leaves one behind)
+  /// must never outrank the row that actually carries the cloud id.
+  Meal? _findLocalCopy(List<Meal> meals, CloudMeal cloud) {
+    for (final meal in meals) {
+      if (meal.cloudId == cloud.id) return meal;
+    }
+    final name = cloud.name.trim();
+    if (name.isEmpty) return null;
+    for (final meal in meals) {
+      if (meal.name.trim() == name) return meal;
+    }
+    return null;
   }
 
   /// Downloads the cloud row into the vault and swaps this screen onto the
@@ -148,8 +210,13 @@ class _MealScreenState extends ConsumerState<MealScreen> {
         .read(discoveryControllerProvider.notifier)
         .downloadMeal(cloud);
     if (!mounted) return;
+    // A failed insert returns null — never claim the meal landed.
+    if (localId == null) {
+      AppToast.showError(context, strings.mealDownloadFailed);
+      return;
+    }
     AppToast.showSuccess(context, strings.mealDownloaded(cloud.name));
-    if (localId != null) context.pushReplacement('/meal/$localId');
+    context.pushReplacement('/meal/$localId');
   }
 
   Meal? _findMeal(List<Meal> meals) {
@@ -238,103 +305,113 @@ class _MealBody extends StatelessWidget {
           onFavoriteTap: onFavoriteTap,
         ),
         Expanded(
-          child: SingleChildScrollView(
-            key: const Key('meal_screen_body'),
-            physics: const BouncingScrollPhysics(),
-            child: ColoredBox(
-              // The active folder tab is cut in this same colour, so the tab
-              // and the surface it stands on have to be one continuous fill.
-              color: sheet,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  // The photo keeps running behind the info card and dissolves
-                  // into the page colour, exactly like the reference.
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: heroH + _heroBleed,
-                    child: ClipRect(
-                      key: const Key('meal_screen_hero'),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          MealImage(
-                            photoPath: meal.photoPath,
-                            cacheWidth: 1080,
-                            fit: BoxFit.cover,
-                            alignment: Alignment.topCenter,
-                            fallback: _HeroFallback(brightness: brightness),
-                          ),
-                          Positioned(
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            height: _heroBleed + 30,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    sheet.withValues(alpha: 0),
-                                    sheet.withValues(alpha: 0.55),
-                                    sheet,
-                                  ],
-                                  stops: const [0, 0.45, 1],
+          child: Stack(
+            children: [
+              SingleChildScrollView(
+                key: const Key('meal_screen_body'),
+                physics: const BouncingScrollPhysics(),
+                child: ColoredBox(
+                  // The active folder tab is cut in this same colour, so the tab
+                  // and the surface it stands on have to be one continuous fill.
+                  color: sheet,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      // The photo keeps running behind the info card and dissolves
+                      // into the page colour, exactly like the reference.
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: heroH + _heroBleed,
+                        child: ClipRect(
+                          key: const Key('meal_screen_hero'),
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              MealImage(
+                                photoPath: meal.photoPath,
+                                cacheWidth: 1080,
+                                fit: BoxFit.cover,
+                                alignment: Alignment.topCenter,
+                                fallback: _HeroFallback(brightness: brightness),
+                              ),
+                              Positioned(
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                height: _heroBleed + 30,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        sheet.withValues(alpha: 0),
+                                        sheet.withValues(alpha: 0.55),
+                                        sheet,
+                                      ],
+                                      stops: const [0, 0.45, 1],
+                                    ),
+                                  ),
                                 ),
                               ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          SizedBox(
+                            height: heroH,
+                            child: _HeroName(
+                              fullName: meal.name,
+                              brightness: brightness,
                             ),
                           ),
+                          _InterlockedInfoTabs(
+                            meal: meal,
+                            brightness: brightness,
+                            selected: selectedDish,
+                            onChanged: onDishChanged,
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                            child: _DishPanel(
+                              key: const Key('meal_screen_dish_panel'),
+                              tab: selectedDish,
+                              meal: meal,
+                              brightness: brightness,
+                              strings: strings,
+                            ),
+                          ),
+                          const SizedBox(height: 22),
+                          MoreFavoritesGrid(currentMealId: meal.id),
+                          SizedBox(height: _BottomBar.clearance(context)),
                         ],
                       ),
-                    ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      SizedBox(
-                        height: heroH,
-                        child: _HeroName(
-                          fullName: meal.name,
-                          brightness: brightness,
-                        ),
-                      ),
-                      _InterlockedInfoTabs(
-                        meal: meal,
-                        brightness: brightness,
-                        selected: selectedDish,
-                        onChanged: onDishChanged,
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                        child: _DishPanel(
-                          key: const Key('meal_screen_dish_panel'),
-                          tab: selectedDish,
-                          meal: meal,
-                          brightness: brightness,
-                          strings: strings,
-                        ),
-                      ),
-                      const SizedBox(height: 22),
-                      MoreFavoritesGrid(currentMealId: meal.id),
-                      const SizedBox(height: 8),
                     ],
                   ),
-                ],
+                ),
               ),
-            ),
+              // The oval floats over the list — nothing behind it.
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: _BottomBar(brightness: brightness),
+              ),
+            ],
           ),
         ),
-        _BottomBar(brightness: brightness),
       ],
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// App bar: [back] · short name (centred) · [sync] [favourite] [status]
+// App bar: [back] · short name (true centred) · [sync] [favourite]
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _MealAppBar extends StatelessWidget {
@@ -360,15 +437,6 @@ class _MealAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rtl = Directionality.of(context) == TextDirection.rtl;
-    final statusGlyph = meal.isFridaySpecial
-        ? AppGlyph.flame
-        : (meal.isBudgetFriendly ? AppGlyph.wallet : null);
-    // Trailing cluster width, so the centred name is centred in the space the
-    // actions actually leave it instead of sliding under them.
-    final actionsW =
-        40 + (onFavoriteTap != null ? 40 : 0) + (statusGlyph != null ? 34 : 0) + 2;
-
     return Container(
       color: MealScreenPalette.appBar(brightness),
       child: SafeArea(
@@ -380,21 +448,22 @@ class _MealAppBar extends StatelessWidget {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                Padding(
-                  padding: EdgeInsetsDirectional.only(
-                    start: rtl ? actionsW + 6 : 52,
-                    end: rtl ? 52 : actionsW + 6,
-                  ),
-                  child: Text(
-                    shortName,
-                    key: const Key('meal_screen_short_name'),
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                Positioned.fill(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 88),
+                      child: Text(
+                        shortName,
+                        key: const Key('meal_screen_short_name'),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -410,10 +479,8 @@ class _MealAppBar extends StatelessWidget {
                           context.go('/vault');
                         }
                       },
-                      child: Icon(
-                        rtl
-                            ? Icons.arrow_forward_ios_rounded
-                            : Icons.arrow_back_ios_new_rounded,
+                      child: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
                         color: Colors.white,
                         size: 22,
                       ),
@@ -442,21 +509,7 @@ class _MealAppBar extends StatelessWidget {
                           size: 22,
                         ),
                       ),
-                    if (statusGlyph != null)
-                      Tooltip(
-                        message: meal.isFridaySpecial
-                            ? strings.fridaySpecial
-                            : strings.budgetFriendly,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
-                          child: AppIcon(
-                            statusGlyph,
-                            color: Colors.white,
-                            size: 22,
-                          ),
-                        ),
-                      ),
-                    const SizedBox(width: 2),
+                    const SizedBox(width: 4),
                   ],
                 ),
               ],
@@ -469,7 +522,6 @@ class _MealAppBar extends StatelessWidget {
 }
 
 class _BarButton extends StatelessWidget {
-  final Key? key;
   final String tooltip;
   final VoidCallback? onTap;
   final Widget child;
@@ -479,12 +531,12 @@ class _BarButton extends StatelessWidget {
   final double width;
 
   const _BarButton({
-    this.key,
+    super.key,
     required this.tooltip,
     required this.onTap,
     required this.child,
     this.width = 44,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -664,10 +716,7 @@ class _HeroName extends StatelessWidget {
   final String fullName;
   final Brightness brightness;
 
-  const _HeroName({
-    required this.fullName,
-    required this.brightness,
-  });
+  const _HeroName({required this.fullName, required this.brightness});
 
   @override
   Widget build(BuildContext context) {
@@ -873,11 +922,21 @@ class _Bone extends StatelessWidget {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Pinned bottom pill — deliberately empty until its content is decided (the
-// Arabic sentence in the mockup is an instruction, not UI copy). It sits
-// straight on the page colour: no band behind it.
+// Arabic sentence in the mockup is an instruction, not UI copy). It floats over
+// the list with nothing behind it; the list scrolls underneath.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _BottomBar extends StatelessWidget {
+  /// Pill height; its radius is half of this so the shape stays a true stadium.
+  static const double _pillHeight = 53;
+  static const double _topGap = 10;
+  static const double _bottomGap = 14;
+
+  /// Room the list keeps free at its end, so the last card can still scroll
+  /// clear of the floating pill.
+  static double clearance(BuildContext context) =>
+      _topGap + _pillHeight + _bottomGap + MediaQuery.paddingOf(context).bottom;
+
   final Brightness brightness;
   const _BottomBar({required this.brightness});
 
@@ -888,17 +947,24 @@ class _BottomBar extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.fromLTRB(
         16,
-        10,
+        _topGap,
         16,
-        14 + MediaQuery.paddingOf(context).bottom,
+        _bottomGap + MediaQuery.paddingOf(context).bottom,
       ),
       child: Container(
         key: const Key('meal_screen_bottom_pill'),
-        height: 48,
+        height: _pillHeight,
         padding: const EdgeInsetsDirectional.only(start: 18, end: 10),
         decoration: BoxDecoration(
           color: MealScreenPalette.bottomPill(brightness),
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(_pillHeight / 2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.60 : 0.28),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: Row(
           children: [

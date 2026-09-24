@@ -27,7 +27,6 @@ class MealScreenPalette {
   static const Color darkTabBarBottom = Color(0xFF082219);
 
   // ── Light (reference B colour distribution) ────────────────────────────
-  static const Color lightPage = Color(0xFFF0E7D7); // warm cream
   static const Color lightSheet = Color(0xFFFDF9F3);
   static const Color lightCard = Color(0xFFFFFFFF);
   static const Color lightChrome = Color(0xFF336B4C); // forest green
@@ -39,10 +38,10 @@ class MealScreenPalette {
   // ── Shared accents ─────────────────────────────────────────────────────
   static const Color gold = Color(0xFFECB131);
 
-  static Color background(Brightness b) => isDark(b) ? darkPage : lightPage;
-
-  /// The surface the content below the hero sits on. Dark has no separate
-  /// sheet, so the grid lands straight on the page colour.
+  /// The one surface this screen is built on — scaffold, body and the strip
+  /// under the bottom pill all share it, so no band of a second colour can
+  /// read behind any of them. Dark has no separate sheet, so the grid lands
+  /// straight on the page colour.
   static Color sheet(Brightness b) => isDark(b) ? darkPage : lightSheet;
 
   static Color card(Brightness b) => isDark(b) ? darkCard : lightCard;

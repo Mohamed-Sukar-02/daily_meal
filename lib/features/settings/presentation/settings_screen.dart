@@ -4,16 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/app_icons.dart';
-import '../../../core/widgets/app_toast.dart';
 import '../../home/presentation/widgets/emphasis_marks.dart';
 import '../../../core/localization/app_strings.dart';
-import '../../../core/services/admin_auth_service.dart';
 import '../../../core/navigation/nav_lifecycle.dart';
+import '../../../core/providers/network_provider.dart';
 import '../providers/settings_providers.dart';
 import 'widgets/cooldown_details_sheet.dart';
 import 'widgets/legal_policies_dialog.dart' as widgets;
@@ -153,6 +151,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                   key: _notificationsSectionKey,
                   child: _buildNotificationsSection(context, ref, settings, brightness, strings),
                 ),
+                const SizedBox(height: 24),
+                _buildNetworkSection(brightness, strings),
                 const SizedBox(height: 24),
                 _buildAppearanceSection(context, ref, settings, brightness, strings),
                 const SizedBox(height: 24),
@@ -694,6 +694,70 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   // Appearance & Backup
   // ---------------------------------------------------------------------------
 
+  // ---------------------------------------------------------------------------
+  // Network & Cloud
+  // ---------------------------------------------------------------------------
+
+  /// The only control for `wifiOnlyCloudProvider`. The gate existed (and the
+  /// proposal toast told users to "change the setting") but nothing in the UI
+  /// could change it, so mobile-data users were locked out of cloud features.
+  Widget _buildNetworkSection(Brightness brightness, AppStrings strings) {
+    final wifiOnly = ref.watch(wifiOnlyCloudProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionHeader(brightness: brightness, title: strings.networkCloud),
+        const SizedBox(height: 12),
+        _Card(
+          brightness: brightness,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            child: Row(
+              children: [
+                _iconCircle(brightness, Icons.wifi_rounded, AppPalette.chipBlue(brightness)),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        strings.wifiOnly,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: AppPalette.textPrimary(brightness),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        strings.wifiOnlyDesc,
+                        maxLines: 3,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppPalette.textSecondary(brightness),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Switch(
+                  key: const Key('settings_wifi_only_switch'),
+                  value: wifiOnly,
+                  onChanged: (v) =>
+                      ref.read(wifiOnlyCloudProvider.notifier).setWifiOnly(v),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildAppearanceSection(
     BuildContext context,
     WidgetRef ref,
@@ -912,166 +976,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     return showWheelTimePicker(context, brightness, initial, strings: strings);
   }
 
-  // Secure admin password handling - replaced by AdminAuthService (see lib/core/services/admin_auth_service.dart)
-  // Uses env var ADMIN_PASSWORD_HASH + Firebase Auth + rate limiting, no plain text
-
-  void _showAdminPasswordDialog(BuildContext context, Brightness brightness, AppStrings strings) {
-    final passwordController = TextEditingController();
-    var obscure = true;
-    var errorText = '';
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setState) => AlertDialog(
-          backgroundColor: AppPalette.card(brightness),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppPalette.chipViolet(brightness).background,
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Icon(Icons.storage_rounded, color: AppPalette.chipViolet(brightness).foreground, size: 22),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  strings.adminAccessTitle,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: AppPalette.textPrimary(brightness),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                strings.adminAccessDesc,
-                style: TextStyle(
-                  fontSize: 13,
-                  height: 1.4,
-                  color: AppPalette.textSecondary(brightness),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: passwordController,
-                obscureText: obscure,
-                keyboardType: TextInputType.number,
-                style: TextStyle(color: AppPalette.textPrimary(brightness)),
-                decoration: InputDecoration(
-                  hintText: strings.adminPasswordHint,
-                  hintStyle: TextStyle(color: AppPalette.textSecondary(brightness)),
-                  prefixIcon: Icon(Icons.lock_rounded, color: AppPalette.textSecondary(brightness)),
-                  suffixIcon: IconButton(
-                    icon: Icon(obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: AppPalette.textSecondary(brightness)),
-                    onPressed: () => setState(() => obscure = !obscure),
-                  ),
-                  filled: true,
-                  fillColor: AppPalette.tabContainer(brightness),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: errorText.isNotEmpty ? Colors.red : AppPalette.hairline(brightness)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: errorText.isNotEmpty ? Colors.red : AppPalette.hairline(brightness)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: errorText.isNotEmpty ? Colors.red : AppPalette.brandGreen, width: 1.5),
-                  ),
-                  errorText: errorText.isEmpty ? null : errorText,
-                ),
-                onSubmitted: (_) => _attemptAdminLogin(ctx, context, passwordController.text, brightness, strings, (err) => setState(() => errorText = err)),
-              ),
-            ],
-          ),
-          actionsAlignment: MainAxisAlignment.spaceBetween,
-          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          actions: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AppIcon(AppGlyph.shield, color: AppPalette.textSecondary(brightness), size: 14),
-                const SizedBox(width: 4),
-                Text(
-                  strings.encrypted,
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppPalette.textSecondary(brightness)),
-                ),
-              ],
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: Text(strings.cancel),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppPalette.brandGreen,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: () => _attemptAdminLogin(ctx, context, passwordController.text, brightness, strings, (err) => setState(() => errorText = err)),
-                  child: Text(strings.adminLogin, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _attemptAdminLogin(BuildContext dialogCtx, BuildContext context, String input, Brightness brightness, AppStrings strings, ValueChanged<String> onError) async {
-    // Use secure AdminAuthService with rate limiting and env hash
-    final result = await AdminAuthService.instance.verifyPassword(input.trim());
-    if (!result.isSuccess) {
-      onError(_adminFailureMessage(result, strings));
-      return;
-    }
-    if (dialogCtx.mounted) Navigator.pop(dialogCtx);
-    final uri = Uri.parse('https://daily-meal000.web.app/#/admin');
-    try {
-      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!launched && context.mounted) {
-        AppToast.showError(context, strings.adminOpenFailed);
-      }
-    } catch (e) {
-      if (context.mounted) {
-        AppToast.showError(context, strings.errorGeneric(e));
-      }
-    }
-  }
-
-  /// Maps the locale-free failure code from [AdminAuthService] onto user copy.
-  String _adminFailureMessage(AdminAuthResult result, AppStrings strings) {
-    switch (result.failure) {
-      case AdminAuthFailure.emptyPassword:
-        return strings.adminPasswordEmpty;
-      case AdminAuthFailure.lockedOut:
-        return strings.adminLockedOut(result.lockoutMinutes);
-      case AdminAuthFailure.notConfigured:
-        return strings.adminNotConfigured;
-      case AdminAuthFailure.wrongPassword:
-        return strings.adminAttemptsLeft(result.remainingAttempts);
-      case null:
-        return strings.adminPasswordWrong;
-    }
-  }
 
   Widget _buildAdminSection(
     BuildContext context,
@@ -1087,21 +991,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
           brightness: brightness,
           child: Column(
             children: [
-              _linkRow(
-                context,
-                brightness,
-                Icons.storage_rounded,
-                AppPalette.chipViolet(brightness),
-                strings.adminDashboardTitle,
-                () => _showAdminPasswordDialog(context, brightness, strings),
-                trailing: Icon(
-                  Icons.open_in_new_rounded,
-                  color: AppPalette.textSecondary(brightness),
-                  size: 19,
-                  textDirection: TextDirection.ltr,
-                ),
-              ),
-              _divider(brightness),
               _linkRow(
                 context,
                 brightness,

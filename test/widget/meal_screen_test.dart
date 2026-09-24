@@ -1,5 +1,6 @@
 import 'package:daily_meal/core/database/app_database.dart';
 import 'package:daily_meal/core/localization/app_strings.dart';
+import 'package:daily_meal/core/widgets/app_icons.dart';
 import 'package:daily_meal/features/meals/presentation/meal_screen.dart';
 import 'package:daily_meal/features/meals/presentation/widgets/meal_dish_tabs.dart';
 import 'package:daily_meal/features/meals/presentation/widgets/meal_info_banner.dart';
@@ -235,6 +236,135 @@ void main() {
     expect(find.text(strings.sideDish2), findsOneWidget);
     expect(find.text(strings.moreFavorites), findsOneWidget);
     expect(find.text('Molokhia'), findsWidgets);
+  });
+
+  testWidgets('app bar short name is true-centered and status glyph is absent',
+      (tester) async {
+    await _pumpMealScreen(
+      tester,
+      meals: [_sampleMeal(friday: true, budget: true), _favMeal(8, 'كشري')],
+    );
+
+    final nameFinder = find.byKey(const Key('meal_screen_short_name'));
+    expect(nameFinder, findsOneWidget);
+
+    final size = tester.binding.renderViews.first.size;
+    final centerDx = tester.getCenter(nameFinder).dx;
+    expect((centerDx - (size.width / 2)).abs(), lessThan(1.0));
+
+    final strings = const AppStrings(Locale('ar'));
+    expect(find.byTooltip(strings.fridaySpecial), findsNothing);
+    expect(find.byTooltip(strings.budgetFriendly), findsNothing);
+
+    // More Favorites keeps drawing a wallet tag, so banning the status glyphs
+    // from the header is a real geometric cut and not an empty tree.
+    final statusGlyph = find.byWidgetPredicate(
+      (widget) =>
+          widget is AppIcon &&
+          (widget.glyph == AppGlyph.flame || widget.glyph == AppGlyph.wallet),
+    );
+    expect(statusGlyph, findsWidgets);
+
+    final backButton = find.byKey(const Key('meal_screen_back_button'));
+    final headerBottom = tester.getRect(backButton).bottom;
+    for (var i = 0; i < statusGlyph.evaluate().length; i++) {
+      expect(
+        tester.getCenter(statusGlyph.at(i)).dy,
+        greaterThan(headerBottom),
+        reason: 'status glyph $i leaked into the app bar',
+      );
+    }
+
+    expect(
+      find.descendant(
+        of: backButton,
+        matching: find.byIcon(Icons.arrow_back_ios_new_rounded),
+      ),
+      findsOneWidget,
+    );
+
+    // Cloud + favorite form one adjacent pair, kept apart from back.
+    final cloudRect = tester
+        .getRect(find.byKey(const Key('meal_screen_cloud_button')));
+    final favoriteRect = tester
+        .getRect(find.byKey(const Key('meal_screen_favorite_button')));
+    final backRect = tester.getRect(backButton);
+
+    expect((cloudRect.center.dy - favoriteRect.center.dy).abs(), lessThan(1.0));
+    final pairGap = (cloudRect.center.dx - favoriteRect.center.dx).abs() -
+        (cloudRect.width + favoriteRect.width) / 2;
+    expect(pairGap, lessThan(8.0));
+    final pairToBackGap = (cloudRect.center.dx - backRect.center.dx).abs() -
+        (cloudRect.width + backRect.width) / 2;
+    expect(pairToBackGap, greaterThan(pairGap));
+  });
+
+  testWidgets('LTR English header keeps the back arrow and the action pair',
+      (tester) async {
+    await _pumpMealScreen(
+      tester,
+      meals: [
+        _sampleMeal(
+          name: 'Green Molokhia with Chicken',
+          shortName: 'Molokhia',
+          notes: 'Fry the garlic well',
+          friday: false,
+          budget: true,
+        ),
+        _favMeal(8, 'Koshary'),
+      ],
+      locale: const Locale('en'),
+      direction: TextDirection.ltr,
+    );
+
+    final nameFinder = find.byKey(const Key('meal_screen_short_name'));
+    final size = tester.binding.renderViews.first.size;
+    expect(
+      (tester.getCenter(nameFinder).dx - size.width / 2).abs(),
+      lessThan(1.0),
+    );
+
+    final backButton = find.byKey(const Key('meal_screen_back_button'));
+    expect(
+      find.descendant(
+        of: backButton,
+        matching: find.byIcon(Icons.arrow_back_ios_new_rounded),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byIcon(Icons.arrow_back_ios_rounded), findsNothing);
+
+    final strings = const AppStrings(Locale('en'));
+    expect(find.byTooltip(strings.fridaySpecial), findsNothing);
+    expect(find.byTooltip(strings.budgetFriendly), findsNothing);
+    final headerBottom = tester.getRect(backButton).bottom;
+    final statusGlyph = find.byWidgetPredicate(
+      (widget) =>
+          widget is AppIcon &&
+          (widget.glyph == AppGlyph.flame || widget.glyph == AppGlyph.wallet),
+    );
+    expect(statusGlyph, findsWidgets);
+    for (var i = 0; i < statusGlyph.evaluate().length; i++) {
+      expect(
+        tester.getCenter(statusGlyph.at(i)).dy,
+        greaterThan(headerBottom),
+        reason: 'status glyph $i leaked into the app bar',
+      );
+    }
+
+    final cloudRect = tester
+        .getRect(find.byKey(const Key('meal_screen_cloud_button')));
+    final favoriteRect = tester
+        .getRect(find.byKey(const Key('meal_screen_favorite_button')));
+    final backRect = tester.getRect(backButton);
+
+    expect((cloudRect.center.dy - favoriteRect.center.dy).abs(), lessThan(1.0));
+    final pairGap = (cloudRect.center.dx - favoriteRect.center.dx).abs() -
+        (cloudRect.width + favoriteRect.width) / 2;
+    expect(pairGap, lessThan(8.0));
+    final pairToBackGap = (cloudRect.center.dx - backRect.center.dx).abs() -
+        (cloudRect.width + backRect.width) / 2;
+    expect(pairToBackGap, greaterThan(pairGap));
   });
 
   testWidgets('hides more-favorites when no other favorites exist',

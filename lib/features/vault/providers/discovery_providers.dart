@@ -85,6 +85,7 @@ class DiscoveryNotifier extends StateNotifier<AsyncValue<void>> {
       isFridaySpecial: drift.Value(cloudMeal.isFridaySpecial),
       isBudgetFriendly: drift.Value(cloudMeal.isBudgetFriendly),
       cloudId: drift.Value(cloudMeal.id),
+      notes: drift.Value(cloudMeal.notes),
     );
   }
 }
@@ -116,6 +117,8 @@ MealCategory cloudCategory(String c) {
     case 'casserole': return MealCategory.ovenBaked;
     case 'dry_sandwich': return MealCategory.fastFood;
     case 'seafood': return MealCategory.seafood;
+    case 'soup_stew': return MealCategory.soupStew;
+    case 'vegetarian': return MealCategory.vegetarian;
     default: return MealCategory.egyptianTraditional;
   }
 }

@@ -29,17 +29,18 @@ Future<void> showMealSyncWindow(
   return showDialog<void>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      key: const Key('meal_sync_window'),
-      icon: Icon(
-        Icons.sync_rounded,
+      key: const Key('sync-diff-window'),
+      icon: const AppIcon(
+        AppGlyph.swap,
         size: 34,
-        color: Theme.of(dialogContext).colorScheme.primary,
+        color: Color(0xFFFFA53C),
       ),
       title: Text(
         strings.syncWindowTitle,
         style: const TextStyle(fontWeight: FontWeight.bold),
       ),
       content: SizedBox(
+        key: const Key('meal_sync_window'),
         width: double.maxFinite,
         child: SingleChildScrollView(
           child: Column(
@@ -110,6 +111,10 @@ Future<void> showMealSyncWindow(
     ),
   );
 }
+
+/// Alias for [showMealSyncWindow] so developers can call either name at a
+/// call site. Same signature, same behaviour.
+const showSyncDiffWindow = showMealSyncWindow;
 
 class _DiffRow extends StatelessWidget {
   final MealCloudDiff diff;

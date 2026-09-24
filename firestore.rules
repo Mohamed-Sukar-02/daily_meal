@@ -1,3 +1,8 @@
+// MIRROR — the deployed source of truth is `Admin Auth Screen/firestore.rules`
+// (only that project has a `.firebaserc`, so `firebase deploy` runs from there).
+// This copy used to be an older fork (no roles, no `.lower()` on the admin
+// email, narrower category list) and silently drifted. Keep both files
+// byte-identical below this header; edit the admin one first.
 rules_version = '2';
 
 service cloud.firestore {
@@ -9,10 +14,33 @@ service cloud.firestore {
     }
 
     // Helper: Check if caller is a whitelisted admin
+    //
+    // Every helper below performs exactly ONE document read. Rules cost one
+    // document access per get()/exists() call against a per-request budget
+    // (10 for single-document requests, 20 for multi-document ones), so an
+    // `exists()` + `get()` pair here would double the cost and make batched
+    // admin writes fail with permission-denied.
     function isAdmin() {
       return isAuthenticated() &&
         request.auth.token.email != null &&
-        exists(/databases/$(database)/documents/admins/$(request.auth.token.email));
+        exists(/databases/$(database)/documents/admins/$(request.auth.token.email.lower()));
+    }
+
+    // Role of the caller; null when the admins document is missing.
+    function getAdminRole() {
+      return isAuthenticated() && request.auth.token.email != null
+        ? get(/databases/$(database)/documents/admins/$(request.auth.token.email.lower())).data.role
+        : null;
+    }
+
+    // Helper: Check if caller is allowed to write data (Editing Admin or Super Admin)
+    function isEditingAdmin() {
+      return getAdminRole() in ['editing_admin', 'super_admin', 'admin'];
+    }
+
+    // Helper: Check if caller is super admin
+    function isSuperAdmin() {
+      return getAdminRole() == 'super_admin';
     }
 
     // Comprehensive anti-spam and schema validator for staging meals
@@ -41,7 +69,7 @@ service cloud.firestore {
         data.carbsType is string &&
         data.carbsType in ['rice', 'pasta', 'bread', 'none'] &&
         data.category is string &&
-        data.category in ['tabeekh', 'casserole', 'dry_sandwich', 'popular', 'seafood'] &&
+        data.category in ['tabeekh', 'casserole', 'dry_sandwich', 'popular', 'seafood', 'soup_stew', 'vegetarian'] &&
         (data.prepTimeMinutes is int || data.prepTimeMinutes is number) &&
         data.prepTimeMinutes >= 5 &&
         data.prepTimeMinutes <= 720 &&
@@ -59,29 +87,71 @@ service cloud.firestore {
       );
     }
 
-    // Admins Collection: read and write restricted to admins
+    // Admins: every admin may see the roster and their own row. Only a super
+    // admin may create, promote, demote or remove one. This clause used to also
+    // let a caller write *its own* document — and the role lives inside that
+    // document — so a viewing_admin could hand itself super_admin with one
+    // direct SDK call, which made every role check downstream advisory.
+    //
+    // The one self-write that stays is signing in: a caller may stamp its own
+    // row's activity so the roster can tell "granted" apart from "granted and
+    // the address really exists". Creating the role, or changing it, is not on
+    // this list, so the promotion hole stays shut.
     match /admins/{email} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin() || (isAuthenticated() && request.auth.token.email.lower() == email);
+      allow create, delete: if isSuperAdmin();
+      allow update: if isSuperAdmin()
+        || (isAdmin()
+          && request.auth.token.email.lower() == email
+          && !request.resource.data.diff(resource.data).affectedKeys()
+               .hasAny(['role', 'email']));
     }
 
     // Vault Meals: public read for discovery, admin-only write
     match /vault_meals/{mealId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isEditingAdmin();
     }
 
     // Staging Meals: admin-only read/update/delete, authenticated + validated create
     match /staging_meals/{mealId} {
-      allow read, update, delete: if isAdmin();
-      allow create: if isAdmin() || (isAuthenticated() && isValidStagingMeal());
+      allow read: if isAdmin();
+      allow update, delete: if isEditingAdmin();
+      allow create: if isEditingAdmin() || (isAuthenticated() && isValidStagingMeal());
     }
 
-    // Admin Config: public read (mobile app fetches password hash without auth),
-    // admin-only write (only authenticated admins can update the hash via web panel).
+    // Backup Meals: Super Admin only read and write
+    match /backup_meals/{mealId} {
+      allow read, write: if isSuperAdmin();
+    }
+
+    // Admin Audit: who granted, changed or removed which address, and when.
+    // Append-only — nobody may edit or delete history, not even a super admin,
+    // otherwise the log stops being evidence. `actor` has to be the caller's own
+    // address so an entry cannot be pinned on somebody else.
+    match /admin_audit/{entry} {
+      allow read: if isAdmin();
+      allow create: if isSuperAdmin()
+        && request.resource.data.actor == request.auth.token.email.lower()
+        && request.resource.data.action in ['add', 'set_role', 'remove']
+        && request.resource.data.target is string;
+      allow update, delete: if false;
+    }
+
+    // Admin Config. Two documents live here and they are not equally public:
+    //   system_defaults — the starter-meal catalogue the mobile app downloads
+    //                     with no sign-in, so this one must stay world-readable.
+    //   security        — the verifier for the mobile "admin" password. It used
+    //                     to be readable by anyone, which put an unsalted
+    //                     SHA-256 digest online for offline guessing. Blocking
+    //                     it makes the phone's dialog fail closed, which is
+    //                     correct: on success that dialog only prints the panel
+    //                     URL, and the URL is already public. The mobile
+    //                     AdminAuthService read is now dead code to delete.
+    // Anything else in this collection stays admin-visible only.
     match /admin_config/{doc} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read: if isAdmin() || doc == 'system_defaults';
+      allow write: if isSuperAdmin();
     }
   }
 }
-

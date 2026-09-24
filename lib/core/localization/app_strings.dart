@@ -675,40 +675,7 @@ class AppStrings {
   String get languageArabic => isEn ? 'Arabic' : 'العربية';
   String get languageCodeEn => 'EN';
   String get languageCodeAr => 'AR';
-  String get adminLogin => isEn ? 'Login' : 'دخول';
-  String get adminAccessTitle => isEn ? 'Admin Access' : 'دخول المسؤول';
-  String get adminAccessDesc => isEn
-      ? 'Enter the admin password'
-      : 'أدخل كلمة مرور المسؤول';
-  String get adminPasswordHint => isEn ? 'Password' : 'كلمة المرور';
-  String get adminPasswordWrong => isEn ? 'Incorrect password' : 'كلمة المرور غير صحيحة';
-  String get adminOpenFailed => isEn
-      ? 'Could not open the admin page'
-      : 'تعذر فتح صفحة الإدارة';
-  String get adminDashboardTitle => isEn ? 'Admin database' : 'Admin database';
   String get privacyPolicyTitle => isEn ? 'Privacy policy' : 'Privacy policy';
-  String get adminDashboardSubtitle => isEn
-      ? 'Admin dashboard — password protected'
-      : 'لوحة تحكم المسؤول - محمية بكلمة مرور';
-  String get adminPasswordEmpty => isEn
-      ? 'Password cannot be empty'
-      : 'كلمة المرور لا يمكن أن تكون فارغة';
-  String adminLockedOut(int minutes) => isEn
-      ? 'Attempts suspended temporarily — try again in $minutes minutes'
-      : 'تم تعليق المحاولات مؤقتاً — حاول مجدداً بعد $minutes دقائق';
-  String get adminLockedOutShort => isEn
-      ? 'Attempts suspended temporarily'
-      : 'تم تعليق المحاولات مؤقتاً';
-  String get adminNotConfigured => isEn
-      ? 'No admin password has been set yet.\nPlease set it from the dashboard on the website.'
-      : 'لم يتم إعداد كلمة مرور الأدمن بعد.\nيرجى تعيينها من لوحة التحكم على الموقع.';
-  String adminAttemptsLeft(int remaining) => isEn
-      ? 'Incorrect password — $remaining attempts left'
-      : 'كلمة المرور غير صحيحة — تبقى $remaining محاولة';
-
-  // ===========================================================================
-  // Legal policies
-  // ===========================================================================
   String get privacyBody => isEn
       ? 'The "Daily Meal" app is built with an offline-first approach.\n\n'
           'We do not track, collect, or transmit your personal data, location, or usage habits.\n\n'

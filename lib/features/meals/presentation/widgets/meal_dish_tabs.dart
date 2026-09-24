@@ -129,28 +129,32 @@ class _TabButton extends StatefulWidget {
 class _TabButtonState extends State<_TabButton> {
   bool _pressed = false;
 
+  void _setPressed(bool value) {
+    if (_pressed != value) setState(() => _pressed = value);
+  }
+
   @override
   Widget build(BuildContext context) {
     final selected = widget.selected;
     final brightness = widget.brightness;
-    // Material's ink is a circle/rounded-rect that cannot follow the folder
-    // tab's S-curve, so it is switched off; press feedback is the label dip
-    // and the accent underline the painter glides along with the tab.
+    // No Material and no InkWell at all: even with every ink set to
+    // transparent, the splash still bled a faint halo that cannot follow the
+    // folder tab's S-curve. The press feedback is the label dip plus the
+    // accent underline the painter glides with the tab.
     final pressDuration = widget.reduceMotion
         ? Duration.zero
         : const Duration(milliseconds: 120);
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: widget.label,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: widget.onTap,
-        onHighlightChanged: (pressed) {
-          if (_pressed != pressed) setState(() => _pressed = pressed);
-        },
-        splashColor: Colors.transparent,
-        highlightColor: Colors.transparent,
-        focusColor: Colors.transparent,
-        hoverColor: Colors.transparent,
+        onTapDown: (_) => _setPressed(true),
+        onTapUp: (_) => _setPressed(false),
+        onTapCancel: () => _setPressed(false),
         child: Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -296,11 +300,11 @@ class _FolderTabPainter extends CustomPainter {
       RRect.fromRectAndRadius(
         Rect.fromLTWH(
           left + (slotW - markWidth) / 2,
-          h / 2 + 13,
+          h / 2 + 16,
           markWidth,
-          3,
+          2.5,
         ),
-        const Radius.circular(1.5),
+        const Radius.circular(1.25),
       ),
       Paint()..color = accent,
     );

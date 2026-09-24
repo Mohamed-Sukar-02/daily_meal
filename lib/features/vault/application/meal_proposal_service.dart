@@ -48,7 +48,7 @@ import 'meal_sync_diff.dart';
 //     cannot query its own proposals. A SharedPreferences ledger
 //     (mealId → updatedAt-ms at submit time) blocks accidental re-sends and
 //     automatically re-opens the door once the meal is edited.
-//   • Like `AdminAuthService`, this layer carries no display text: it returns
+//   • This layer carries no display text: it returns
 //     a stable [ProposalOutcomeCode] and the UI maps it through [AppStrings].
 // ---------------------------------------------------------------------------
 

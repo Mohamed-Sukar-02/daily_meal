@@ -9,8 +9,8 @@ import 'package:flutter/material.dart';
 /// hand-drawn here on a 24×24 grid so it stays crisp, tint-able per theme and
 /// dependency-free. Swapping a glyph later = editing one `case` below.
 ///
-/// The two cloud transfer marks ([AppGlyph.cloudDown], [AppGlyph.cloudUp]) are
-/// the exception: they ship as PNGs in `assets/icons/` and are tinted through
+/// The transfer marks ([AppGlyph.cloudDown], [AppGlyph.cloudUp], [AppGlyph.swap])
+/// are the exception: they ship as PNGs in `assets/icons/` and are tinted through
 /// [AppIcon] like any vector, so call sites stay unaware of the difference.
 enum AppGlyph {
   home,
@@ -69,6 +69,7 @@ class AppIcon extends StatelessWidget {
   static const Map<AppGlyph, String> _pngGlyphs = {
     AppGlyph.cloudDown: 'assets/icons/download_icon.png',
     AppGlyph.cloudUp: 'assets/icons/upload_icon.png',
+    AppGlyph.swap: 'assets/icons/sync_icon.png',
   };
 
   @override
