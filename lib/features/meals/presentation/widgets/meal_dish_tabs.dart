@@ -21,6 +21,10 @@ const double _radius = 16;
 /// the number of segments does, so a meal with no side dishes shows a single
 /// full-width tab rather than a collapsed row.
 ///
+/// No ink splash: Material draws it as a circle/rounded rectangle, which
+/// floats off the tab's silhouette. The active slot is marked instead by an
+/// accent underline that glides with it, and a tap dips the label.
+///
 /// Slot order mirrors with the locale: Main sits at the reading start.
 class MealDishTabs extends StatelessWidget {
   static const double height = 52;
@@ -73,6 +77,7 @@ class MealDishTabs extends StatelessWidget {
               barBottom: MealScreenPalette.tabBarBottom(brightness),
               stroke: MealScreenPalette.tabStroke(brightness),
               tabFill: MealScreenPalette.sheet(brightness),
+              accent: MealScreenPalette.accent(brightness),
             ),
             child: child,
           );
@@ -90,6 +95,7 @@ class MealDishTabs extends StatelessWidget {
                   },
                   selected: tab == selected,
                   brightness: brightness,
+                  reduceMotion: reduceMotion,
                   onTap: () => onChanged(tab),
                 ),
               ),
@@ -100,10 +106,11 @@ class MealDishTabs extends StatelessWidget {
   }
 }
 
-class _TabButton extends StatelessWidget {
+class _TabButton extends StatefulWidget {
   final String label;
   final bool selected;
   final Brightness brightness;
+  final bool reduceMotion;
   final VoidCallback onTap;
 
   const _TabButton({
@@ -111,30 +118,62 @@ class _TabButton extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.brightness,
+    required this.reduceMotion,
     required this.onTap,
   });
 
   @override
+  State<_TabButton> createState() => _TabButtonState();
+}
+
+class _TabButtonState extends State<_TabButton> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
+    final selected = widget.selected;
+    final brightness = widget.brightness;
+    // Material's ink is a circle/rounded-rect that cannot follow the folder
+    // tab's S-curve, so it is switched off; press feedback is the label dip
+    // and the accent underline the painter glides along with the tab.
+    final pressDuration = widget.reduceMotion
+        ? Duration.zero
+        : const Duration(milliseconds: 120);
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(_radius),
+        onTap: widget.onTap,
+        onHighlightChanged: (pressed) {
+          if (_pressed != pressed) setState(() => _pressed = pressed);
+        },
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
+        focusColor: Colors.transparent,
+        hoverColor: Colors.transparent,
         child: Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                color: selected
-                    ? MealScreenPalette.tabActiveText(brightness)
-                    : MealScreenPalette.tabInactiveText(brightness),
+            child: AnimatedOpacity(
+              duration: pressDuration,
+              opacity: _pressed ? 0.6 : 1,
+              child: AnimatedScale(
+                duration: pressDuration,
+                curve: Curves.easeOut,
+                scale: _pressed ? 0.94 : 1,
+                child: Text(
+                  widget.label,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    color: selected
+                        ? MealScreenPalette.tabActiveText(brightness)
+                        : MealScreenPalette.tabInactiveText(brightness),
+                  ),
+                ),
               ),
             ),
           ),
@@ -155,6 +194,7 @@ class _FolderTabPainter extends CustomPainter {
   final Color barBottom;
   final Color stroke;
   final Color tabFill;
+  final Color accent;
 
   _FolderTabPainter({
     required this.segmentCount,
@@ -164,6 +204,7 @@ class _FolderTabPainter extends CustomPainter {
     required this.barBottom,
     required this.stroke,
     required this.tabFill,
+    required this.accent,
   });
 
   @override
@@ -247,6 +288,22 @@ class _FolderTabPainter extends CustomPainter {
         ..strokeWidth = 1
         ..color = stroke,
     );
+
+    /// The active mark: a short accent bar under the label that rides along
+    /// with the sliding tab, standing in for the ink splash.
+    final markWidth = math.min(slotW * 0.44, 56.0);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(
+          left + (slotW - markWidth) / 2,
+          h / 2 + 13,
+          markWidth,
+          3,
+        ),
+        const Radius.circular(1.5),
+      ),
+      Paint()..color = accent,
+    );
     canvas.restore();
   }
 
@@ -258,5 +315,6 @@ class _FolderTabPainter extends CustomPainter {
       old.barTop != barTop ||
       old.barBottom != barBottom ||
       old.stroke != stroke ||
-      old.tabFill != tabFill;
+      old.tabFill != tabFill ||
+      old.accent != accent;
 }

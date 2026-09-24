@@ -38,4 +38,20 @@ class DiscoveryRepository {
       throw CloudMealsFetchException(e);
     }
   }
+
+  /// One approved meal by cloud document id, or `null` when it is gone.
+  ///
+  /// The meal screen reads a single row to answer "did the vault change this
+  /// meal?" without downloading the whole collection for it.
+  Future<CloudMeal?> fetchMealById(String cloudId) async {
+    try {
+      final doc = await _firestore.collection('vault_meals').doc(cloudId).get();
+      final data = doc.data();
+      if (!doc.exists || data == null) return null;
+      final meal = CloudMeal.fromMap(data, doc.id);
+      return meal.status == 'approved' ? meal : null;
+    } catch (e) {
+      throw CloudMealsFetchException(e);
+    }
+  }
 }

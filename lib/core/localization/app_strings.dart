@@ -50,6 +50,8 @@ class AppStrings {
   String get more => isEn ? 'More' : 'المزيد';
   String get encrypted => isEn ? 'Encrypted' : 'مشفر';
   String get loading => isEn ? 'Loading…' : 'جاري التحميل...';
+  String get flagYes => isEn ? 'Yes' : 'نعم';
+  String get flagNo => isEn ? 'No' : 'لا';
   String get am => isEn ? 'AM' : 'ص';
   String get pm => isEn ? 'PM' : 'م';
   String get pressAgainToExit => isEn ? 'Press again to exit' : 'اضغط مرة أخرى للخروج';
@@ -291,6 +293,24 @@ class AppStrings {
   String get syncUpToDate =>
       isEn ? 'Everything is up to date and synced.' : 'تمت المزامنة، كل شيء محدث.';
 
+  // Sync window — opened from the meal screen when the cloud copy changed
+  String get syncWindowCloudHint => isEn
+      ? 'The cloud version has details yours does not — tap to review'
+      : 'نسخة السحابة فيها تفاصيل مختلفة عن نسختك — اضغط للمراجعة';
+  String get syncWindowTitle => isEn ? 'Sync window' : 'نافذة المزامنة';
+  String get syncWindowMessage => isEn
+      ? 'These details differ between your device and the cloud:'
+      : 'التفاصيل دي مختلفة بين جهازك وبين السحابة:';
+  String get syncWindowLocalColumn => isEn ? 'On my device' : 'عندي';
+  String get syncWindowCloudColumn => isEn ? 'In the cloud' : 'في السحابة';
+  String get syncStateSynced => isEn
+      ? 'In sync with the cloud'
+      : 'متزامن مع نسخة السحابة';
+  String get syncWindowUpdate => isEn
+      ? 'Update from cloud'
+      : 'تحديث من السحابة';
+  String get syncWindowKeep => isEn ? 'Keep my copy' : 'الإبقاء على نسختي';
+
   String get filterAll => isEn ? 'All' : 'الكل';
   String get filterQuick => isEn ? 'Quick 30m' : 'سريع 30م';
 
@@ -364,6 +384,7 @@ class AppStrings {
   String get mealNameHint => isEn
       ? 'e.g. Grilled Chicken with Rice'
       : 'مثال: فراخ مشوية مع أرز';
+  String get shortNameLabel => isEn ? 'Short name' : 'الاسم المختصر';
   String get timeLabel => isEn ? 'Time' : 'الوقت';
   String get carbsTypeShort => isEn ? 'Carb Type' : 'نوع الكارب';
   String get saveChanges => isEn ? 'Save Changes' : 'حفظ التعديلات';

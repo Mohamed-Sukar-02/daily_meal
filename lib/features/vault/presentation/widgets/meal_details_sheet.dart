@@ -351,7 +351,8 @@ class MealDetailsSheet extends ConsumerWidget {
     );
   }
 
-  /// Explore: download / save-to-vault (disabled when already saved).
+  /// Explore: download / save-to-vault (disabled when already saved), plus the
+  /// full meal screen for a cloud-only meal (it has no local row to open).
   Widget _buildExploreSection(
     BuildContext context,
     WidgetRef ref,
@@ -360,35 +361,81 @@ class MealDetailsSheet extends ConsumerWidget {
   ) {
     final cloudMeal = this.cloudMeal;
 
-    return SizedBox(
-      key: const Key('meal_details_download_button'),
-      width: double.infinity,
-      child: FilledButton.icon(
-        onPressed: cloudMeal == null || isSavedToVault
-            ? null
-            : () => _download(context, ref),
-        icon: AppIcon(
-          // Saved reads as a solid bookmark, not an outline.
-          isSavedToVault ? AppGlyph.bookmarkFill : AppGlyph.cloudDown,
-          color: isSavedToVault ? AppPalette.brandGreen : Colors.white,
-          size: 16,
-        ),
-        label: Text(
-          isSavedToVault ? strings.savedInVault : strings.discoveryDownload,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
-        ),
-        style: FilledButton.styleFrom(
-          backgroundColor: isSavedToVault
-              ? AppPalette.brandGreen.withValues(alpha: 0.35)
-              : AppPalette.brandGreen,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+    return Row(
+      children: [
+        Expanded(
+          child: SizedBox(
+            key: const Key('meal_details_download_button'),
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: cloudMeal == null || isSavedToVault
+                  ? null
+                  : () => _download(context, ref),
+              icon: AppIcon(
+                // Saved reads as a solid bookmark, not an outline.
+                isSavedToVault ? AppGlyph.bookmarkFill : AppGlyph.cloudDown,
+                color: isSavedToVault ? AppPalette.brandGreen : Colors.white,
+                size: 16,
+              ),
+              label: Text(
+                isSavedToVault ? strings.savedInVault : strings.discoveryDownload,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: isSavedToVault
+                    ? AppPalette.brandGreen.withValues(alpha: 0.35)
+                    : AppPalette.brandGreen,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                elevation: 0,
+              ),
+            ),
           ),
-          elevation: 0,
         ),
-      ),
+        if (cloudMeal != null && !isSavedToVault) ...[
+          const SizedBox(width: 12),
+          Expanded(
+            child: SizedBox(
+              key: const Key('meal_details_cloud_fullscreen_button'),
+              height: 44,
+              child: OutlinedButton.icon(
+                // Grab the router BEFORE popping so navigation never depends on
+                // the sheet's deactivated context.
+                onPressed: () {
+                  final router = GoRouter.of(context);
+                  Navigator.of(context).pop();
+                  router.push('/meal/cloud/${cloudMeal.id}');
+                },
+                icon: const Icon(Icons.arrow_outward_rounded, size: 16),
+                label: Text(
+                  strings.fullDetails,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: AppPalette.brandGreen,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                    color: AppPalette.brandGreen.withValues(alpha: 0.45),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 

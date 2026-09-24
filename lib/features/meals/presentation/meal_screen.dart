@@ -6,12 +6,16 @@ import 'package:go_router/go_router.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/widgets/app_icons.dart';
+import '../../../core/widgets/app_toast.dart';
 import '../../../core/widgets/meal_image.dart';
 import '../../vault/application/meal_proposal_service.dart';
+import '../../vault/application/meal_sync_diff.dart';
+import '../../vault/data/models/cloud_meal.dart';
+import '../../vault/presentation/widgets/meal_sync_window.dart';
+import '../../vault/providers/discovery_providers.dart';
 import '../../vault/providers/vault_providers.dart';
 import 'widgets/meal_dish_tabs.dart';
 import 'widgets/meal_info_banner.dart';
-import 'widgets/meal_name_scrim.dart';
 import 'widgets/meal_screen_palette.dart';
 import 'widgets/more_favorites_grid.dart';
 
@@ -22,17 +26,22 @@ import 'widgets/more_favorites_grid.dart';
 /// Layout (top → bottom):
 ///   1. Solid app bar: back · centred short name · sync / favourite / status.
 ///   2. Full-bleed hero photo whose bottom [_heroBleed] continues behind the
-///      info card, fading into the page. The full name sits on top of it over
-///      a corner-anchored elliptical bloom (see [MealNameScrim]).
+///      info card, fading into the page. The full name sits directly on it.
 ///   3. Green info card fused with the dish strip via the folder-tab curve.
 ///   4. Selected-dish panel shell · "More Favorites" grid.
 ///   5. Pinned, deliberately empty bottom pill.
 ///
-/// Reached at `/meal/:id` on the root navigator.
+/// Reached at `/meal/:id` for a vault row. An Explore meal with no local copy
+/// opens the same screen at `/meal/cloud/:cloudId`, where the cloud mark offers
+/// a download instead of a sync state.
 class MealScreen extends ConsumerStatefulWidget {
-  final int mealId;
+  /// Local vault row shown by this screen; null on the cloud-only route.
+  final int? mealId;
 
-  const MealScreen({super.key, required this.mealId});
+  /// Cloud document id, set only when this meal has no local copy yet.
+  final String? cloudId;
+
+  const MealScreen({super.key, this.mealId, this.cloudId});
 
   @override
   ConsumerState<MealScreen> createState() => _MealScreenState();
@@ -47,9 +56,7 @@ class _MealScreenState extends ConsumerState<MealScreen> {
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
     final strings = AppStrings.of(context);
-    final mealsAsync = ref.watch(allMealsProvider);
-    final isProposing =
-        ref.watch(activeProposalMealIdProvider) == widget.mealId;
+    final cloudId = widget.cloudId;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
@@ -58,7 +65,7 @@ class _MealScreenState extends ConsumerState<MealScreen> {
         statusBarColor: MealScreenPalette.appBar(brightness),
         statusBarIconBrightness: Brightness.light,
         statusBarBrightness: Brightness.dark,
-        systemNavigationBarColor: MealScreenPalette.footer(brightness),
+        systemNavigationBarColor: MealScreenPalette.background(brightness),
         systemNavigationBarIconBrightness: brightness == Brightness.dark
             ? Brightness.light
             : Brightness.dark,
@@ -66,42 +73,83 @@ class _MealScreenState extends ConsumerState<MealScreen> {
       child: Scaffold(
         key: const Key('meal_screen'),
         backgroundColor: MealScreenPalette.background(brightness),
-        body: mealsAsync.when(
-          data: (meals) {
-            final meal = _findMeal(meals);
-            if (meal == null) {
-              return _NotFound(brightness: brightness, strings: strings);
-            }
-            return _MealBody(
-              meal: meal,
-              brightness: brightness,
-              strings: strings,
-              isProposing: isProposing,
-              selectedDish: _selectedDish,
-              onDishChanged: (t) => setState(() => _selectedDish = t),
-              onCloudTap: isProposing || meal.cloudId != null
-                  ? null
-                  : () => runProposalFlow(context, ref, meal),
-              onFavoriteTap: () => ref
-                  .read(vaultControllerProvider.notifier)
-                  .toggleFavorite(meal.id, meal.isFavorite),
-            );
-          },
-          loading: () =>
-              const Center(child: CircularProgressIndicator.adaptive()),
-          error: (error, _) => Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text(
-                strings.errorGeneric(error),
-                textAlign: TextAlign.center,
-                style: TextStyle(color: MealScreenPalette.muted(brightness)),
-              ),
-            ),
-          ),
-        ),
+        body: cloudId == null
+            ? _buildLocalBody(brightness, strings)
+            : _buildCloudBody(cloudId, brightness, strings),
       ),
     );
+  }
+
+  Widget _buildLocalBody(Brightness brightness, AppStrings strings) {
+    final mealsAsync = ref.watch(allMealsProvider);
+    final isProposing = widget.mealId != null &&
+        ref.watch(activeProposalMealIdProvider) == widget.mealId;
+
+    return mealsAsync.when(
+      data: (meals) {
+        final meal = _findMeal(meals);
+        if (meal == null) {
+          return _NotFound(brightness: brightness, strings: strings);
+        }
+        return _MealBody(
+          meal: meal,
+          brightness: brightness,
+          strings: strings,
+          isProposing: isProposing,
+          selectedDish: _selectedDish,
+          onDishChanged: (t) => setState(() => _selectedDish = t),
+          onCloudTap: isProposing || meal.cloudId != null
+              ? null
+              : () => runProposalFlow(context, ref, meal),
+          onFavoriteTap: () => ref
+              .read(vaultControllerProvider.notifier)
+              .toggleFavorite(meal.id, meal.isFavorite),
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator.adaptive()),
+      error: (error, _) =>
+          _BodyError(brightness: brightness, strings: strings, error: error),
+    );
+  }
+
+  Widget _buildCloudBody(
+    String cloudId,
+    Brightness brightness,
+    AppStrings strings,
+  ) {
+    return ref.watch(cloudMealByIdProvider(cloudId)).when(
+      data: (cloud) {
+        if (cloud == null) {
+          return _NotFound(brightness: brightness, strings: strings);
+        }
+        return _MealBody(
+          meal: _mealFromCloudMeal(cloud),
+          brightness: brightness,
+          strings: strings,
+          isProposing: false,
+          cloudOnly: true,
+          selectedDish: _selectedDish,
+          onDishChanged: (t) => setState(() => _selectedDish = t),
+          onCloudTap: () => _downloadCloudMeal(cloud),
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator.adaptive()),
+      error: (error, _) =>
+          _BodyError(brightness: brightness, strings: strings, error: error),
+    );
+  }
+
+  /// Downloads the cloud row into the vault and swaps this screen onto the
+  /// local row it just created, so the mark flips to its sync state and the
+  /// back stack keeps a single entry.
+  Future<void> _downloadCloudMeal(CloudMeal cloud) async {
+    final strings = AppStrings.of(context);
+    final localId = await ref
+        .read(discoveryControllerProvider.notifier)
+        .downloadMeal(cloud);
+    if (!mounted) return;
+    AppToast.showSuccess(context, strings.mealDownloaded(cloud.name));
+    if (localId != null) context.pushReplacement('/meal/$localId');
   }
 
   Meal? _findMeal(List<Meal> meals) {
@@ -110,6 +158,29 @@ class _MealScreenState extends ConsumerState<MealScreen> {
     }
     return null;
   }
+}
+
+/// A cloud row shaped like a local one so the screen renders it unchanged.
+/// Display only — it is never written back to the database.
+Meal _mealFromCloudMeal(CloudMeal cloud) {
+  return Meal(
+    id: -1,
+    name: cloud.name,
+    photoPath: cloud.imageUrl,
+    proteinType: cloudProteinType(cloud.proteinType),
+    carbsType: cloudCarbsType(cloud.carbsType),
+    category: cloudCategory(cloud.category),
+    prepTime: cloud.prepTimeMinutes,
+    isFridaySpecial: cloud.isFridaySpecial,
+    isBudgetFriendly: cloud.isBudgetFriendly,
+    isFavorite: false,
+    isStarterMeal: cloud.isStarterMeal,
+    createdAt: cloud.createdAt,
+    updatedAt: cloud.createdAt,
+    cloudId: cloud.id,
+    notes: cloud.notes,
+    shortName: cloud.shortName,
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -123,20 +194,26 @@ class _MealBody extends StatelessWidget {
   final Brightness brightness;
   final AppStrings strings;
   final bool isProposing;
+
+  /// True when this meal exists only in the cloud, so there is no local row to
+  /// love yet and the cloud mark offers a download.
+  final bool cloudOnly;
+
   final MealDishTab selectedDish;
   final ValueChanged<MealDishTab> onDishChanged;
   final VoidCallback? onCloudTap;
-  final VoidCallback onFavoriteTap;
+  final VoidCallback? onFavoriteTap;
 
   const _MealBody({
     required this.meal,
     required this.brightness,
     required this.strings,
     required this.isProposing,
+    this.cloudOnly = false,
     required this.selectedDish,
     required this.onDishChanged,
     required this.onCloudTap,
-    required this.onFavoriteTap,
+    this.onFavoriteTap,
   });
 
   @override
@@ -145,7 +222,7 @@ class _MealBody extends StatelessWidget {
         ? meal.shortName!.trim()
         : meal.name;
     final screenH = MediaQuery.sizeOf(context).height;
-    final heroH = (screenH * 0.36).clamp(240.0, 300.0);
+    final heroH = (screenH * 0.27).clamp(180.0, 225.0);
     final sheet = MealScreenPalette.sheet(brightness);
 
     return Column(
@@ -156,6 +233,7 @@ class _MealBody extends StatelessWidget {
           brightness: brightness,
           strings: strings,
           isProposing: isProposing,
+          cloudOnly: cloudOnly,
           onCloudTap: onCloudTap,
           onFavoriteTap: onFavoriteTap,
         ),
@@ -220,7 +298,6 @@ class _MealBody extends StatelessWidget {
                         height: heroH,
                         child: _HeroName(
                           fullName: meal.name,
-                          heroHeight: heroH,
                           brightness: brightness,
                         ),
                       ),
@@ -266,8 +343,9 @@ class _MealAppBar extends StatelessWidget {
   final Brightness brightness;
   final AppStrings strings;
   final bool isProposing;
+  final bool cloudOnly;
   final VoidCallback? onCloudTap;
-  final VoidCallback onFavoriteTap;
+  final VoidCallback? onFavoriteTap;
 
   const _MealAppBar({
     required this.shortName,
@@ -275,6 +353,7 @@ class _MealAppBar extends StatelessWidget {
     required this.brightness,
     required this.strings,
     required this.isProposing,
+    this.cloudOnly = false,
     required this.onCloudTap,
     required this.onFavoriteTap,
   });
@@ -282,10 +361,13 @@ class _MealAppBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rtl = Directionality.of(context) == TextDirection.rtl;
-    final synced = meal.cloudId != null;
     final statusGlyph = meal.isFridaySpecial
         ? AppGlyph.flame
         : (meal.isBudgetFriendly ? AppGlyph.wallet : null);
+    // Trailing cluster width, so the centred name is centred in the space the
+    // actions actually leave it instead of sliding under them.
+    final actionsW =
+        40 + (onFavoriteTap != null ? 40 : 0) + (statusGlyph != null ? 34 : 0) + 2;
 
     return Container(
       color: MealScreenPalette.appBar(brightness),
@@ -299,7 +381,10 @@ class _MealAppBar extends StatelessWidget {
               alignment: Alignment.center,
               children: [
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 56),
+                  padding: EdgeInsetsDirectional.only(
+                    start: rtl ? actionsW + 6 : 52,
+                    end: rtl ? 52 : actionsW + 6,
+                  ),
                   child: Text(
                     shortName,
                     key: const Key('meal_screen_short_name'),
@@ -334,41 +419,36 @@ class _MealAppBar extends StatelessWidget {
                       ),
                     ),
                     const Spacer(),
-                    _BarButton(
-                      key: const Key('meal_screen_cloud_button'),
-                      tooltip: isProposing
-                          ? strings.proposalInProgress
-                          : strings.proposalCta,
-                      onTap: onCloudTap,
-                      child: _SyncMark(
-                        isProposing: isProposing,
-                        synced: synced,
-                        color: synced
-                            ? MealScreenPalette.syncDone(brightness)
-                            : MealScreenPalette.syncIdle(brightness),
-                      ),
+                    _CloudMark(
+                      meal: meal,
+                      brightness: brightness,
+                      isProposing: isProposing,
+                      cloudOnly: cloudOnly,
+                      onActionTap: onCloudTap,
                     ),
-                    _BarButton(
-                      key: const Key('meal_screen_favorite_button'),
-                      tooltip: strings.favorite,
-                      onTap: onFavoriteTap,
-                      child: AppIcon(
-                        meal.isFavorite
-                            ? AppGlyph.heartFill
-                            : AppGlyph.heartOutline,
-                        color: meal.isFavorite
-                            ? MealScreenPalette.heart(brightness)
-                            : Colors.white,
-                        size: 22,
+                    if (onFavoriteTap != null)
+                      _BarButton(
+                        key: const Key('meal_screen_favorite_button'),
+                        width: 40,
+                        tooltip: strings.favorite,
+                        onTap: onFavoriteTap,
+                        child: AppIcon(
+                          meal.isFavorite
+                              ? AppGlyph.heartFill
+                              : AppGlyph.heartOutline,
+                          color: meal.isFavorite
+                              ? MealScreenPalette.heart(brightness)
+                              : Colors.white,
+                          size: 22,
+                        ),
                       ),
-                    ),
                     if (statusGlyph != null)
                       Tooltip(
                         message: meal.isFridaySpecial
                             ? strings.fridaySpecial
                             : strings.budgetFriendly,
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
                           child: AppIcon(
                             statusGlyph,
                             color: Colors.white,
@@ -376,7 +456,7 @@ class _MealAppBar extends StatelessWidget {
                           ),
                         ),
                       ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 2),
                   ],
                 ),
               ],
@@ -394,11 +474,16 @@ class _BarButton extends StatelessWidget {
   final VoidCallback? onTap;
   final Widget child;
 
+  /// Tap target width; the action pair is tighter than the back button so the
+  /// two glyphs read as one group.
+  final double width;
+
   const _BarButton({
     this.key,
     required this.tooltip,
     required this.onTap,
     required this.child,
+    this.width = 44,
   }) : super(key: key);
 
   @override
@@ -408,7 +493,7 @@ class _BarButton extends StatelessWidget {
       child: IconButton(
         onPressed: onTap,
         iconSize: 24,
-        constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+        constraints: BoxConstraints.tightFor(width: width, height: 44),
         padding: EdgeInsets.zero,
         splashColor: Colors.white.withValues(alpha: 0.12),
         icon: child,
@@ -417,75 +502,194 @@ class _BarButton extends StatelessWidget {
   }
 }
 
-class _SyncMark extends StatelessWidget {
+/// The app bar cloud mark, in its four states:
+///  * cloud only (Explore) → download (gold); tap copies it into the vault.
+///  * local only           → upload (gold); tap starts the staging proposal.
+///  * cloud copy matches   → sync (accent); nothing to do.
+///  * cloud copy differs   → sync (orange); tap opens the sync window.
+class _CloudMark extends StatelessWidget {
+  final Meal meal;
+  final Brightness brightness;
   final bool isProposing;
-  final bool synced;
-  final Color color;
+  final bool cloudOnly;
+  final VoidCallback? onActionTap;
 
-  const _SyncMark({
+  const _CloudMark({
+    required this.meal,
+    required this.brightness,
     required this.isProposing,
-    required this.synced,
-    required this.color,
+    this.cloudOnly = false,
+    required this.onActionTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (isProposing) {
-      return const SizedBox(
-        width: 18,
-        height: 18,
-        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+    if (cloudOnly) {
+      return _DownloadMark(brightness: brightness, onTap: onActionTap);
+    }
+    final cloudId = meal.cloudId;
+    if (cloudId == null) {
+      return _UploadMark(
+        brightness: brightness,
+        isProposing: isProposing,
+        onTap: onActionTap,
       );
     }
-    return AppIcon(
-      synced ? AppGlyph.cloudDown : AppGlyph.cloudUp,
-      color: color,
-      size: 23,
+    return _CloudSyncMark(meal: meal, cloudId: cloudId, brightness: brightness);
+  }
+}
+
+class _DownloadMark extends ConsumerWidget {
+  final Brightness brightness;
+  final VoidCallback? onTap;
+
+  const _DownloadMark({required this.brightness, required this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final strings = AppStrings.of(context);
+    final busy = ref.watch(discoveryControllerProvider).isLoading;
+
+    return _BarButton(
+      key: const Key('meal_screen_cloud_button'),
+      width: 40,
+      tooltip: strings.discoveryDownload,
+      onTap: busy ? null : onTap,
+      child: busy
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+          : AppIcon(
+              AppGlyph.cloudDown,
+              color: MealScreenPalette.syncIdle(brightness),
+              size: 22,
+            ),
+    );
+  }
+}
+
+class _UploadMark extends StatelessWidget {
+  final Brightness brightness;
+  final bool isProposing;
+  final VoidCallback? onTap;
+
+  const _UploadMark({
+    required this.brightness,
+    required this.isProposing,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    return _BarButton(
+      key: const Key('meal_screen_cloud_button'),
+      width: 40,
+      tooltip: isProposing ? strings.proposalInProgress : strings.proposalCta,
+      onTap: onTap,
+      child: isProposing
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+          : AppIcon(
+              AppGlyph.cloudUp,
+              color: MealScreenPalette.syncIdle(brightness),
+              size: 22,
+            ),
+    );
+  }
+}
+
+class _CloudSyncMark extends ConsumerWidget {
+  final Meal meal;
+  final String cloudId;
+  final Brightness brightness;
+
+  const _CloudSyncMark({
+    required this.meal,
+    required this.cloudId,
+    required this.brightness,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final strings = AppStrings.of(context);
+    // Offline, still loading or a meal the vault dropped all read as "nothing
+    // to review", so the mark only turns orange on a confirmed difference.
+    final cloud = ref.watch(cloudMealByIdProvider(cloudId)).valueOrNull;
+    final diffs = cloud == null
+        ? const <MealCloudDiff>[]
+        : mealCloudDiffs(meal, cloud, strings);
+    final differs = diffs.isNotEmpty;
+
+    return _BarButton(
+      key: const Key('meal_screen_cloud_button'),
+      width: 40,
+      tooltip: differs ? strings.syncWindowCloudHint : strings.syncStateSynced,
+      onTap: differs
+          ? () => showMealSyncWindow(
+              context,
+              ref,
+              meal: meal,
+              cloud: cloud!,
+              diffs: diffs,
+            )
+          : null,
+      child: AppIcon(
+        AppGlyph.swap,
+        color: differs
+            ? MealScreenPalette.syncDiffers(brightness)
+            : MealScreenPalette.syncDone(brightness),
+        size: 22,
+      ),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Hero name + bloom
+// Hero name
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _HeroName extends StatelessWidget {
   final String fullName;
-  final double heroHeight;
   final Brightness brightness;
 
   const _HeroName({
     required this.fullName,
-    required this.heroHeight,
     required this.brightness,
   });
 
   @override
   Widget build(BuildContext context) {
     final rtl = Directionality.of(context) == TextDirection.rtl;
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        MealNameScrim(brightness: brightness, heroHeight: heroHeight),
-        Positioned(
-          left: 24,
-          right: 24,
-          bottom: 12,
-          child: Text(
-            fullName,
-            key: const Key('meal_screen_full_name'),
-            textAlign: rtl ? TextAlign.right : TextAlign.left,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 30,
-              height: 1.15,
-              fontWeight: FontWeight.w700,
-              color: MealScreenPalette.fullName(brightness),
-            ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+      child: Align(
+        alignment: rtl ? Alignment.bottomRight : Alignment.bottomLeft,
+        child: Text(
+          fullName,
+          key: const Key('meal_screen_full_name'),
+          textAlign: rtl ? TextAlign.right : TextAlign.left,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 30,
+            height: 1.15,
+            fontWeight: FontWeight.w700,
+            color: MealScreenPalette.fullName(brightness),
           ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -668,8 +872,9 @@ class _Bone extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Pinned bottom bar — locked shell, deliberately empty until its content is
-// decided (the Arabic sentence in the mockup is an instruction, not UI copy).
+// Pinned bottom pill — deliberately empty until its content is decided (the
+// Arabic sentence in the mockup is an instruction, not UI copy). It sits
+// straight on the page colour: no band behind it.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _BottomBar extends StatelessWidget {
@@ -678,24 +883,22 @@ class _BottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rtl = Directionality.of(context) == TextDirection.rtl;
     final isDark = MealScreenPalette.isDark(brightness);
 
-    return Container(
-      color: MealScreenPalette.footer(brightness),
+    return Padding(
       padding: EdgeInsets.fromLTRB(
         16,
-        12,
+        10,
         16,
-        16 + MediaQuery.paddingOf(context).bottom,
+        14 + MediaQuery.paddingOf(context).bottom,
       ),
       child: Container(
         key: const Key('meal_screen_bottom_pill'),
-        height: 56,
-        padding: const EdgeInsetsDirectional.only(start: 18, end: 12),
+        height: 48,
+        padding: const EdgeInsetsDirectional.only(start: 18, end: 10),
         decoration: BoxDecoration(
           color: MealScreenPalette.bottomPill(brightness),
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(24),
         ),
         child: Row(
           children: [
@@ -711,13 +914,45 @@ class _BottomBar extends StatelessWidget {
                       ).withValues(alpha: 0.16)
                     : Colors.white.withValues(alpha: 0.16),
               ),
-              child: Icon(
-                rtl ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
-                color: Colors.white,
-                size: 20,
+              child: Center(
+                child: AppIcon(
+                  AppGlyph.externalLink,
+                  color: Colors.white,
+                  size: 18,
+                ),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Body load failure (local stream or the single cloud read)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _BodyError extends StatelessWidget {
+  final Brightness brightness;
+  final AppStrings strings;
+  final Object error;
+
+  const _BodyError({
+    required this.brightness,
+    required this.strings,
+    required this.error,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Text(
+          strings.errorGeneric(error),
+          textAlign: TextAlign.center,
+          style: TextStyle(color: MealScreenPalette.muted(brightness)),
         ),
       ),
     );

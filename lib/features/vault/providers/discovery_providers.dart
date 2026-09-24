@@ -11,19 +11,31 @@ final publicMealsProvider = FutureProvider<List<CloudMeal>>((ref) async {
   return repo.fetchPublicMeals();
 });
 
+/// The cloud copy of one specific meal, watched by the full meal screen's sync
+/// mark. `null` means the vault no longer carries it.
+final cloudMealByIdProvider =
+    FutureProvider.autoDispose.family<CloudMeal?, String>((ref, cloudId) {
+  return ref.watch(discoveryRepositoryProvider).fetchMealById(cloudId);
+});
+
 class DiscoveryNotifier extends StateNotifier<AsyncValue<void>> {
   final MealsDao _mealsDao;
 
   DiscoveryNotifier(this._mealsDao) : super(const AsyncValue.data(null));
 
-  Future<void> downloadMeal(CloudMeal cloudMeal) async {
+  /// Copies [cloudMeal] into the vault and returns the new local row id, or
+  /// `null` when the insert failed. The meal screen uses the id to swap itself
+  /// onto the local row right after a download.
+  Future<int?> downloadMeal(CloudMeal cloudMeal) async {
     state = const AsyncValue.loading();
     try {
       final companion = await _createCompanion(cloudMeal);
-      await _mealsDao.insertMeal(companion);
+      final id = await _mealsDao.insertMeal(companion);
       state = const AsyncValue.data(null);
+      return id;
     } catch (e, st) {
       state = AsyncValue.error(e, st);
+      return null;
     }
   }
 
@@ -66,43 +78,45 @@ class DiscoveryNotifier extends StateNotifier<AsyncValue<void>> {
       name: drift.Value(cloudMeal.name),
       photoPath: drift.Value(localPhoto),
       shortName: drift.Value(cloudMeal.shortName),
-      proteinType: drift.Value(_mapProtein(cloudMeal.proteinType)),
-      carbsType: drift.Value(_mapCarbs(cloudMeal.carbsType)),
-      category: drift.Value(_mapCategory(cloudMeal.category)),
+      proteinType: drift.Value(cloudProteinType(cloudMeal.proteinType)),
+      carbsType: drift.Value(cloudCarbsType(cloudMeal.carbsType)),
+      category: drift.Value(cloudCategory(cloudMeal.category)),
       prepTime: drift.Value(cloudMeal.prepTimeMinutes),
       isFridaySpecial: drift.Value(cloudMeal.isFridaySpecial),
       isBudgetFriendly: drift.Value(cloudMeal.isBudgetFriendly),
       cloudId: drift.Value(cloudMeal.id),
     );
   }
+}
 
-  ProteinType _mapProtein(String p) {
-    switch (p) {
-      case 'chicken': return ProteinType.chicken;
-      case 'beef': return ProteinType.beef;
-      case 'fish': return ProteinType.fish;
-      case 'meatless': return ProteinType.legume;
-      default: return ProteinType.none;
-    }
+// The cloud vocabulary is its own string set; these are the only place it is
+// translated into local enums (download and sync-diff must agree).
+ProteinType cloudProteinType(String p) {
+  switch (p) {
+    case 'chicken': return ProteinType.chicken;
+    case 'beef': return ProteinType.beef;
+    case 'fish': return ProteinType.fish;
+    case 'meatless': return ProteinType.legume;
+    default: return ProteinType.none;
   }
+}
 
-  CarbsType _mapCarbs(String c) {
-    switch (c) {
-      case 'rice': return CarbsType.rice;
-      case 'pasta': return CarbsType.pasta;
-      case 'bread': return CarbsType.bread;
-      default: return CarbsType.none;
-    }
+CarbsType cloudCarbsType(String c) {
+  switch (c) {
+    case 'rice': return CarbsType.rice;
+    case 'pasta': return CarbsType.pasta;
+    case 'bread': return CarbsType.bread;
+    default: return CarbsType.none;
   }
+}
 
-  MealCategory _mapCategory(String c) {
-    switch (c) {
-      case 'tabeekh': return MealCategory.egyptianTraditional;
-      case 'casserole': return MealCategory.ovenBaked;
-      case 'dry_sandwich': return MealCategory.fastFood;
-      case 'seafood': return MealCategory.seafood;
-      default: return MealCategory.egyptianTraditional;
-    }
+MealCategory cloudCategory(String c) {
+  switch (c) {
+    case 'tabeekh': return MealCategory.egyptianTraditional;
+    case 'casserole': return MealCategory.ovenBaked;
+    case 'dry_sandwich': return MealCategory.fastFood;
+    case 'seafood': return MealCategory.seafood;
+    default: return MealCategory.egyptianTraditional;
   }
 }
 

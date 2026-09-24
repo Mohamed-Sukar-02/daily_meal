@@ -76,6 +76,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           );
         },
       ),
+      // The same screen for an Explore meal that has no local copy yet, so the
+      // cloud mark can offer a download instead of a sync state.
+      GoRoute(
+        path: '/meal/cloud/:cloudId',
+        name: 'mealCloud',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (context, state) {
+          return MaterialPage<void>(
+            key: state.pageKey,
+            child: MealScreen(cloudId: state.pathParameters['cloudId']),
+          );
+        },
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return ScaffoldWithNavBar(navigationShell: navigationShell);

@@ -31,7 +31,6 @@ class MealScreenPalette {
   static const Color lightSheet = Color(0xFFFDF9F3);
   static const Color lightCard = Color(0xFFFFFFFF);
   static const Color lightChrome = Color(0xFF336B4C); // forest green
-  static const Color lightFooter = Color(0xFFFAF4E7);
   static const Color lightText = Color(0xFF14301F);
   static const Color lightTextSecondary = Color(0xFF6E7F72);
   static const Color lightHairline = Color(0xFFDCE7D8);
@@ -58,15 +57,15 @@ class MealScreenPalette {
   static Color bottomPill(Brightness b) =>
       isDark(b) ? darkBottomPill : lightChrome;
 
-  /// Strip the pinned bottom pill rests on.
-  static Color footer(Brightness b) => isDark(b) ? darkAppBar : lightFooter;
-
   static Color heart(Brightness b) =>
       isDark(b) ? const Color(0xFFF26D6D) : const Color(0xFFD6524F);
 
-  /// Sync mark: gold while the meal is only local, accent once published.
+  /// Sync mark: gold while the meal is only local, accent once published,
+  /// orange while the cloud copy carries a detail the local row doesn't.
   static Color syncIdle(Brightness b) => gold;
   static Color syncDone(Brightness b) => accent(b);
+  static Color syncDiffers(Brightness b) =>
+      isDark(b) ? const Color(0xFFFFA53C) : const Color(0xFFE8930C);
 
   // ── Info card shell ────────────────────────────────────────────────────
   static Color cardTop(Brightness b) => isDark(b)
@@ -94,12 +93,6 @@ class MealScreenPalette {
   static Color tabActiveText(Brightness b) => accent(b);
   static Color tabInactiveText(Brightness b) => muted(b);
 
-  // ── Hero name scrim ────────────────────────────────────────────────────
-  /// Tint colour of the soft bloom behind the full meal name.
-  static Color scrim(Brightness b) => isDark(b) ? darkPage : lightSheet;
-
-  /// Opacity of the bloom directly under the glyphs.
-  static double scrimPeak(Brightness b) => isDark(b) ? 0.72 : 0.78;
-
+  // ── Hero name ──────────────────────────────────────────────────────────
   static Color fullName(Brightness b) => text(b);
 }

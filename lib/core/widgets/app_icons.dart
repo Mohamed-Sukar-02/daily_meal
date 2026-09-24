@@ -49,6 +49,7 @@ enum AppGlyph {
   flame,
   bolt,
   globe,
+  externalLink,
   bell,
   shield,
 }
@@ -478,6 +479,25 @@ class _GlyphPainter extends CustomPainter {
         canvas.drawOval(
             const Rect.fromLTRB(8.4, 3.6, 15.6, 20.4), stroke);
         canvas.drawLine(const Offset(3.6, 12), const Offset(20.4, 12), stroke);
+
+      case AppGlyph.externalLink:
+        // Container open at the top-right corner, so the arrow leaves through
+        // the gap instead of crossing the frame.
+        canvas.drawPath(
+          Path()
+            ..moveTo(11.2, 7.6)
+            ..lineTo(5.6, 7.6)
+            ..quadraticBezierTo(3.2, 7.6, 3.2, 10.0)
+            ..lineTo(3.2, 18.4)
+            ..quadraticBezierTo(3.2, 20.8, 5.6, 20.8)
+            ..lineTo(16.4, 20.8)
+            ..quadraticBezierTo(18.8, 20.8, 18.8, 18.4)
+            ..lineTo(18.8, 12.4),
+          stroke,
+        );
+        canvas.drawLine(const Offset(10.8, 12.8), const Offset(20.6, 3), stroke);
+        canvas.drawLine(const Offset(15.2, 3), const Offset(20.6, 3), stroke);
+        canvas.drawLine(const Offset(20.6, 3), const Offset(20.6, 8.4), stroke);
 
       case AppGlyph.bell:
         // Bell body
