@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -13,6 +14,9 @@ import '../../../core/database/app_database.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/providers/network_provider.dart';
 import '../../../core/widgets/app_toast.dart';
+import '../data/models/cloud_meal.dart';
+import '../providers/discovery_providers.dart';
+import 'meal_sync_diff.dart';
 
 // ---------------------------------------------------------------------------
 // MealProposalService — Cloud Staging Export
@@ -65,6 +69,15 @@ enum ProposalOutcomeCode {
   /// detected locally to avoid a pointless rejected round-trip.
   invalidName,
 
+  /// Today's allowance is spent. Also detected locally, before any network
+  /// call, so a refused proposal costs no Firestore write.
+  dailyLimitReached,
+
+  /// A cloud-linked meal still identical to its cloud copy: the vault already
+  /// has this exact meal, so proposing it again would only buy the reviewer a
+  /// second look at something they approved once.
+  cloudUnchanged,
+
   /// Auth / Firestore / Storage failure. [ProposalOutcome.reason] says which
   /// stage broke and [ProposalOutcome.cause] keeps the raw provider error.
   failed,
@@ -94,6 +107,14 @@ enum ProposalFailureReason {
 
   /// Firestore was unreachable at write time (no route, DNS failure, timeout).
   writeUnreachable,
+
+  /// The meal carries a local photo that could not be shipped (missing file,
+  /// unreadable, or over the size the staging document allows). The proposal
+  /// is aborted rather than filed photoless behind the user's back.
+  photoRejected,
+
+  /// The photo host refused or failed the upload.
+  photoUploadFailed,
 
   /// Anything else — the UI shows the raw error instead of a guess.
   unknown,
@@ -206,16 +227,27 @@ class ProposalOutcome {
   factory ProposalOutcome.invalidName() =>
       const ProposalOutcome._(ProposalOutcomeCode.invalidName);
 
+  factory ProposalOutcome.dailyLimitReached() =>
+      const ProposalOutcome._(ProposalOutcomeCode.dailyLimitReached);
+
+  factory ProposalOutcome.cloudUnchanged() =>
+      const ProposalOutcome._(ProposalOutcomeCode.cloudUnchanged);
+
   /// Builds a [ProposalOutcomeCode.failed] outcome and classifies [error] in
   /// one step, so no call site can forget to say *why* it failed.
-  static ProposalOutcome failed(Object error, {String? stage}) {
-    final reason = ProposalFailureDiagnoser.classify(error);
+  static ProposalOutcome failed(
+    Object error, {
+    String? stage,
+    ProposalFailureReason? reason,
+  }) {
+    final classified = reason ?? ProposalFailureDiagnoser.classify(error);
     debugPrint(
       'Proposal failure${stage == null ? '' : ' at $stage'}: '
       '${ProposalFailureDiagnoser.errorCode(error) ?? '-'} '
-      '(${reason.name}) — $error',
+      '(${classified.name}) — $error',
     );
-    return ProposalOutcome._(ProposalOutcomeCode.failed, cause: error, reason: reason);
+    return ProposalOutcome._(ProposalOutcomeCode.failed,
+        cause: error, reason: classified);
   }
 
   bool get isSuccess => code == ProposalOutcomeCode.submitted;
@@ -433,9 +465,96 @@ class ProposalGuard {
   }
 }
 
-/// Executes the export: guard → anonymous auth → optional photo upload →
-/// Firestore create. All dependencies are injectable for tests; defaults are
-/// the live Firebase singletons (the app initialises Firebase in `main()`).
+/// Proposals filed per calendar day on this device.
+///
+/// A cap this belongs in the security rules, but Firestore rules cannot count
+/// documents: enforcing "N per uid per day" server-side means a counter row
+/// written in the same transaction as every proposal, or a Cloud Function.
+/// Until one of those exists this is the only thing between the anonymous
+/// sign-in the flow performs and an unbounded number of `staging_meals`
+/// documents — so it is persisted, and checked before any network work.
+class ProposalQuota {
+  static const int dailyLimit = 5;
+  static const String prefsKey = 'staging_proposal_quota_v1';
+
+  final SharedPreferences _prefs;
+
+  ProposalQuota(this._prefs);
+
+  /// The user's own calendar day, not UTC: "tomorrow" is the day they wait for.
+  static String _dayOf(DateTime now) =>
+      '${now.year}-${now.month.toString().padLeft(2, '0')}-'
+      '${now.day.toString().padLeft(2, '0')}';
+
+  /// Proposals already filed today. Rolling into a new day resets to zero, and
+  /// a corrupt stored value is treated as an empty counter rather than thrown.
+  int usedToday([DateTime? now]) {
+    final raw = _prefs.getString(prefsKey);
+    if (raw == null || raw.isEmpty) return 0;
+    final parts = raw.split('|');
+    if (parts.length != 2) return 0;
+    if (parts[0] != _dayOf(now ?? DateTime.now())) return 0;
+    return int.tryParse(parts[1]) ?? 0;
+  }
+
+  bool hasAllowance([DateTime? now]) => usedToday(now) < dailyLimit;
+
+  int remainingToday([DateTime? now]) {
+    final left = dailyLimit - usedToday(now);
+    return left < 0 ? 0 : left;
+  }
+
+  /// Called only once the document really exists, so a rejected or failed
+  /// attempt never costs the user one of their slots.
+  Future<void> recordProposal([DateTime? now]) async {
+    final day = _dayOf(now ?? DateTime.now());
+    await _prefs.setString(prefsKey, '$day|${usedToday(now) + 1}');
+  }
+}
+
+/// Unsigned-direct-upload settings for the photo host.
+///
+/// Firebase Storage is deliberately unused: the project is on the plan that no
+/// longer provisions new buckets. The preset name below is public by design —
+/// an unsigned preset is an identifier, not a credential — which is exactly why
+/// its server-side configuration has to stay scoped to the staging folder:
+/// whatever the preset permits, any client can do.
+class CloudinaryConfig {
+  const CloudinaryConfig._();
+
+  static const String cloudName = 'bzd1vjrs';
+  static const String uploadPreset = 'daily meal';
+
+  static Uri get uploadEndpoint => Uri.parse(
+        'https://api.cloudinary.com/v1_1/$cloudName/image/upload',
+      );
+}
+
+/// Result of trying to ship a meal's photo alongside its proposal.
+///
+/// [url] stays null when the meal simply has no photo to ship. [error] is set
+/// only when a photo *did* exist and could not be shipped — a case the user is
+/// told about rather than having a photoless proposal presented as success.
+class StagedPhoto {
+  final String? url;
+  final Object? error;
+
+  /// Whether the photo host was actually contacted, so a file that never made
+  /// it off the device reports as rejected rather than as a failed upload.
+  final bool uploadAttempted;
+
+  const StagedPhoto._(this.url, this.error, this.uploadAttempted);
+
+  const StagedPhoto.none() : this._(null, null, false);
+  const StagedPhoto.withUrl(String url) : this._(url, null, false);
+  const StagedPhoto.rejected(Object why) : this._(null, why, false);
+  const StagedPhoto.uploadFailed(Object why) : this._(null, why, true);
+}
+
+/// Executes the export: daily quota → duplicate guard → anonymous auth →
+/// optional photo upload → Firestore create. All dependencies are injectable
+/// for tests; defaults are the live Firebase singletons (the app initialises
+/// Firebase in `main()`).
 class MealProposalService {
   MealProposalService({
     FirebaseFirestore? firestore,
@@ -457,12 +576,26 @@ class MealProposalService {
 
   static const String stagingCollection = 'staging_meals';
 
+  /// Upper bounds for the network stages. Firestore's `add()` only completes
+  /// on a server ack, so on a flaky connection the flow used to hang and leave
+  /// the propose button spinning forever with no message at all; the failure
+  /// now surfaces through the normal `blockedNoConnection` / `failed` paths.
+  static const Duration signInTimeout = Duration(seconds: 15);
+  static const Duration writeTimeout = Duration(seconds: 20);
+  static const Duration imageUploadTimeout = Duration(seconds: 25);
+
   /// One try/catch per stage, because the three of them fail for completely
   /// different reasons and the user needs to be told which one to go fix.
   Future<ProposalOutcome> proposeMeal(Meal meal) async {
     final ProposalGuard guard;
+    final ProposalQuota quota;
     try {
-      guard = ProposalGuard(await _preferences());
+      final prefs = await _preferences();
+      guard = ProposalGuard(prefs);
+      quota = ProposalQuota(prefs);
+      if (!quota.hasAllowance()) {
+        return ProposalOutcome.dailyLimitReached();
+      }
       if (guard.alreadyProposed(meal)) {
         return ProposalOutcome.alreadyProposed();
       }
@@ -474,7 +607,7 @@ class MealProposalService {
     final String uid;
     try {
       var user = _au.currentUser;
-      user ??= (await _au.signInAnonymously()).user;
+      user ??= (await _au.signInAnonymously().timeout(signInTimeout)).user;
       final signedInUid = user?.uid;
       if (signedInUid == null || signedInUid.isEmpty) {
         return ProposalOutcome.failed(
@@ -487,7 +620,17 @@ class MealProposalService {
       return ProposalOutcome.failed(error, stage: 'anonymous sign-in');
     }
 
-    final imageUrl = await _resolveImageUrl(meal, uid);
+    final photo = await _resolvePhoto(meal);
+    if (photo.error != null) {
+      return ProposalOutcome.failed(
+        photo.error!,
+        stage: 'photo',
+        reason: photo.uploadAttempted
+            ? ProposalFailureReason.photoUploadFailed
+            : ProposalFailureReason.photoRejected,
+      );
+    }
+    final imageUrl = photo.url;
 
     final payload = MealProposalPayload.build(
       meal: meal,
@@ -497,13 +640,14 @@ class MealProposalService {
     if (payload == null) return ProposalOutcome.invalidName();
 
     try {
-      await _fs.collection(stagingCollection).add(payload);
+      await _fs.collection(stagingCollection).add(payload).timeout(writeTimeout);
     } catch (error) {
       return ProposalOutcome.failed(error, stage: 'staging_meals write');
     }
 
     try {
       await guard.markProposed(meal);
+      await quota.recordProposal();
     } catch (error) {
       // The proposal is filed; losing the duplicate guard afterwards is not a
       // reason to tell the user it failed.
@@ -513,31 +657,33 @@ class MealProposalService {
   }
 
   /// Remote photos (meals downloaded from the cloud vault) pass straight
-  /// through as `imageUrl`; local files upload only within the 500 KB budget.
-  /// Any photo problem degrades to "no image" — never blocks the proposal.
-  Future<String?> _resolveImageUrl(Meal meal, String uid) async {
+  /// through as `imageUrl`; a local photo is uploaded within the 500 KB
+  /// budget. When a photo exists and cannot be shipped the proposal is
+  /// aborted with the reason — filing it photoless would quietly drop the
+  /// half of the meal the user picked it for.
+  Future<StagedPhoto> _resolvePhoto(Meal meal) async {
     final photo = meal.photoPath?.trim() ?? '';
-    if (photo.isEmpty) return null;
+    if (photo.isEmpty) return const StagedPhoto.none();
 
     if (MealProposalPayload.isRemoteUrl(photo)) {
       return photo.length <= MealProposalPayload.maxImageUrlLength
-          ? photo
-          : null;
+          ? StagedPhoto.withUrl(photo)
+          : const StagedPhoto.rejected('the stored photo link is too long');
     }
 
     final file = MealProposalPayload.eligibleImageFile(photo);
-    if (file == null) return null;
+    if (file == null) {
+      return StagedPhoto.rejected(
+        'the local photo is missing or over '
+        '${MealProposalPayload.maxImageBytes ~/ 1024} KB',
+      );
+    }
 
-    // Firebase Storage is deliberately avoided here due to billing plan limitations.
-    // Instead, we use Cloudinary Unsigned Uploads directly via the REST API.
     try {
       final fileBytes = await file.readAsBytes();
-      const cloudName = 'bzd1vjrs';
-      const uploadPreset = 'daily meal';
 
-      final uri = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/image/upload');
-      final request = http.MultipartRequest('POST', uri)
-        ..fields['upload_preset'] = uploadPreset
+      final request = http.MultipartRequest('POST', CloudinaryConfig.uploadEndpoint)
+        ..fields['upload_preset'] = CloudinaryConfig.uploadPreset
         ..files.add(
           http.MultipartFile.fromBytes(
             'file',
@@ -546,24 +692,30 @@ class MealProposalService {
           ),
         );
 
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
+      final streamedResponse =
+          await request.send().timeout(imageUploadTimeout);
+      final response = await http.Response.fromStream(streamedResponse)
+          .timeout(imageUploadTimeout);
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        String secureUrl = data['secure_url'] as String;
-
-        if (secureUrl.contains('/upload/')) {
-          secureUrl = secureUrl.replaceFirst('/upload/', '/upload/f_auto,q_auto/');
-        }
-        return secureUrl;
-      } else {
-        debugPrint('Cloudinary error (${response.statusCode}): ${response.body}');
-        return null;
+      if (response.statusCode != 200) {
+        return StagedPhoto.uploadFailed(
+          'photo host returned HTTP ${response.statusCode}',
+        );
       }
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final secureUrl = data['secure_url'] as String?;
+      if (secureUrl == null || secureUrl.isEmpty) {
+        return const StagedPhoto.uploadFailed('photo host returned no URL');
+      }
+
+      return StagedPhoto.withUrl(
+        secureUrl.contains('/upload/')
+            ? secureUrl.replaceFirst('/upload/', '/upload/f_auto,q_auto/')
+            : secureUrl,
+      );
     } catch (error) {
-      debugPrint('Staging image upload skipped: $error');
-      return null;
+      return StagedPhoto.uploadFailed(error);
     }
   }
 }
@@ -579,6 +731,31 @@ final mealProposalServiceProvider = Provider<MealProposalService>((ref) {
 /// Id of the meal whose proposal is in flight (drives exactly one button
 /// spinner across sheet/screen surfaces).
 final activeProposalMealIdProvider = StateProvider<int?>((ref) => null);
+
+/// Whether a local row is worth proposing to the cloud vault.
+///
+/// A meal with no [Meal.cloudId] was invented on the device and is always
+/// proposable. A meal that came from the cloud is only worth proposing once the
+/// local copy has actually diverged from it — re-sending an identical row would
+/// just put the admin back through a review they already finished. The same
+/// [mealCloudDiffs] the meal screen's sync mark uses decides this, so the mark
+/// and the proposal button can never disagree about what "changed" means.
+///
+/// [cloud] is null when there is no cloud copy to compare against (purely local,
+/// or the cloud row has since been deleted) — which for a local-only meal is the
+/// proposable case.
+bool isProposableAgainstCloud({
+  required Meal meal,
+  required CloudMeal? cloud,
+  required AppStrings strings,
+}) {
+  if (meal.cloudId == null) return true;
+  if (cloud == null) {
+    // Vaulted locally, but the cloud row is gone: this is effectively new again.
+    return true;
+  }
+  return mealCloudDiffs(meal, cloud, strings).isNotEmpty;
+}
 
 /// One-stop Cloud Staging Export flow shared by `MealDetailsSheet` and
 /// `MealScreen`: connectivity/Wi-Fi gate (same policy as discovery, including
@@ -603,6 +780,25 @@ Future<ProposalOutcome> runProposalFlow(
     final blocked = ProposalOutcome.blocked(status);
     if (context.mounted) showProposalOutcomeToast(context, strings, blocked);
     return blocked;
+  }
+
+  // Checked before the quota so a meal with nothing new to contribute does not
+  // spend one of the day's proposals.
+  final cloudId = meal.cloudId;
+  if (cloudId != null) {
+    CloudMeal? cloud;
+    try {
+      cloud = await ref.read(cloudMealByIdProvider(cloudId).future);
+    } catch (_) {
+      // Unreadable cloud copy: cannot prove the meal is unchanged, so let it
+      // through rather than punishing an edit the user really did make.
+      cloud = null;
+    }
+    if (!isProposableAgainstCloud(meal: meal, cloud: cloud, strings: strings)) {
+      final unchanged = ProposalOutcome.cloudUnchanged();
+      if (context.mounted) showProposalOutcomeToast(context, strings, unchanged);
+      return unchanged;
+    }
   }
 
   ref.read(activeProposalMealIdProvider.notifier).state = meal.id;
@@ -641,6 +837,12 @@ void showProposalOutcomeToast(
     case ProposalOutcomeCode.invalidName:
       AppToast.showError(context, strings.proposalInvalidName);
       break;
+    case ProposalOutcomeCode.dailyLimitReached:
+      AppToast.showInfo(context, strings.proposalDailyLimit(ProposalQuota.dailyLimit));
+      break;
+    case ProposalOutcomeCode.cloudUnchanged:
+      AppToast.showInfo(context, strings.proposalUnchangedFromCloud);
+      break;
     case ProposalOutcomeCode.failed:
       AppToast.showError(
         context,
@@ -664,6 +866,9 @@ String _proposalFailureDetail(AppStrings strings, ProposalOutcome outcome) {
     ProposalFailureReason.writePermissionDenied =>
       strings.proposalFailPermissionDenied,
     ProposalFailureReason.writeUnreachable => strings.proposalFailUnreachable,
+    ProposalFailureReason.photoRejected => strings.proposalFailPhotoRejected,
+    ProposalFailureReason.photoUploadFailed =>
+      strings.proposalFailPhotoUploadFailed,
     ProposalFailureReason.unknown =>
       ProposalFailureDiagnoser.describe(outcome.cause ?? ''),
   };

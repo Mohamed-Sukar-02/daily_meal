@@ -426,6 +426,8 @@ class AppStrings {
       ? 'Added by ${users}k users'
       : 'أضيفت من ${users}k مستخدم';
   String mealDownloaded(String name) => isEn ? 'Downloaded: $name' : 'تم تنزيل: $name';
+
+  String get mealDownloadFailed => isEn ? 'Download failed' : 'فشل التنزيل';
   String mealUpdatedToast(String name) => isEn ? 'Updated: $name' : 'تم التحديث: $name';
   String mealAddedNewCopy(String name) => isEn
       ? 'A new copy was downloaded: $name'
@@ -467,6 +469,12 @@ class AppStrings {
   String get proposalInvalidName => isEn
       ? 'The meal name is too short to propose (2 letters minimum)'
       : 'اسم الأكلة قصير جداً للاقتراح (حرفان على الأقل)';
+  String proposalDailyLimit(int limit) => isEn
+      ? 'You reached the daily limit of $limit proposals — try again tomorrow'
+      : 'وصلت للحد اليومي للاقتراحات ($limit) — حاول تاني بكرة';
+  String get proposalUnchangedFromCloud => isEn
+      ? 'This meal already matches its cloud copy — edit it to propose changes'
+      : 'الأكلة مطابقة لنسختها في السحابة — عدّلها لاقتراح التغييرات';
   String get proposalOffline => isEn
       ? 'No connection — your proposal was not sent'
       : 'لا يوجد اتصال — لم يتم إرسال الاقتراح';
@@ -490,6 +498,12 @@ class AppStrings {
   String get proposalFailUnreachable => isEn
       ? 'Could not reach Firestore'
       : 'تعذّر الوصول إلى Firestore';
+  String get proposalFailPhotoRejected => isEn
+      ? 'The meal photo is missing or too large to upload'
+      : 'صورة الأكلة غير موجودة أو أكبر من الحد المسموح';
+  String get proposalFailPhotoUploadFailed => isEn
+      ? 'Uploading the meal photo failed'
+      : 'فشل رفع صورة الأكلة';
 
   /// The generic failure line with the identified cause appended.
   String proposalFailedReason(String reason) => isEn
@@ -581,8 +595,8 @@ class AppStrings {
   String get networkCloud => isEn ? 'Network & Cloud' : 'الشبكة والسحابة';
   String get wifiOnly => isEn ? 'Cloud on Wi-Fi Only' : 'السحابة تعمل عبر Wi-Fi فقط';
   String get wifiOnlyDesc => isEn
-      ? 'Download meals only when connected to Wi-Fi.'
-      : 'تنزيل واستكشاف الأكلات يعمل فقط عند الاتصال بشبكة واي فاي للحفاظ على باقتك.';
+      ? 'Browse, download and propose meals only on Wi-Fi to save mobile data.'
+      : 'استكشاف وتنزيل واقتراح الأكلات يعمل فقط على الواي فاي للحفاظ على باقتك.';
   String get legalPolicies => isEn ? 'Legal Policies' : 'السياسات القانونية';
   String get privacyPolicy => isEn ? 'Privacy Policy' : 'سياسة الخصوصية';
   String get termsConditions => isEn

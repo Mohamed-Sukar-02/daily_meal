@@ -1,13 +1,17 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:daily_meal/core/database/app_database.dart';
+import 'package:daily_meal/core/localization/app_strings.dart';
 import 'package:daily_meal/core/providers/network_provider.dart';
 import 'package:daily_meal/features/vault/application/meal_proposal_service.dart';
+import 'package:daily_meal/features/vault/data/models/cloud_meal.dart';
 
 // ---------------------------------------------------------------------------
 // Cloud Staging Export — payload contract tests.
@@ -96,6 +100,7 @@ Meal _meal({
   DateTime? updatedAt,
   String? notes,
   String? shortName = 'كشري',
+  String? cloudId,
 }) {
   final now = DateTime(2026, 9, 21, 12);
   return Meal(
@@ -115,6 +120,7 @@ Meal _meal({
     updatedAt: updatedAt ?? now,
     notes: notes,
     shortName: shortName,
+    cloudId: cloudId,
   );
 }
 
@@ -362,6 +368,110 @@ void main() {
     });
   });
 
+  // The proposal rule: only something new or locally diverged may be sent.
+  group('isProposableAgainstCloud — the divergence rule', () {
+    const strings = AppStrings(Locale('ar'));
+
+    CloudMeal cloud({int prepTimeMinutes = 45}) => CloudMeal(
+          id: 'c-1',
+          name: 'كشري',
+          proteinType: 'meatless',
+          carbsType: 'rice',
+          category: 'tabeekh',
+          prepTimeMinutes: prepTimeMinutes,
+          isBudgetFriendly: true,
+          createdAt: DateTime(2026, 9, 20, 12),
+        );
+
+    // Matches `cloud()` field for field, including the absent short name.
+    Meal downloaded({int prepTime = 45}) => _meal(
+          cloudId: 'c-1',
+          prepTime: prepTime,
+          shortName: null,
+        );
+
+    test('a purely local meal is always proposable', () {
+      expect(
+        isProposableAgainstCloud(meal: _meal(), cloud: null, strings: strings),
+        isTrue,
+      );
+    });
+
+    test('a cloud meal still identical to its copy is not proposable', () {
+      expect(
+        isProposableAgainstCloud(
+          meal: downloaded(), cloud: cloud(), strings: strings),
+        isFalse,
+      );
+    });
+
+    test('one edited field makes it proposable again', () {
+      expect(
+        isProposableAgainstCloud(
+          meal: downloaded(prepTime: 70),
+          cloud: cloud(),
+          strings: strings,
+        ),
+        isTrue,
+      );
+    });
+
+    test('a cloud-linked meal whose cloud row vanished is proposable again', () {
+      expect(
+        isProposableAgainstCloud(
+          meal: downloaded(), cloud: null, strings: strings),
+        isTrue,
+      );
+    });
+  });
+
+  group('ProposalQuota — daily allowance', () {
+    final today = DateTime(2026, 9, 24, 12);
+
+    test('spends the allowance and then blocks', () async {
+      SharedPreferences.setMockInitialValues({});
+      final quota = ProposalQuota(await SharedPreferences.getInstance());
+
+      expect(quota.hasAllowance(today), isTrue);
+      for (var i = 0; i < ProposalQuota.dailyLimit; i++) {
+        await quota.recordProposal(today);
+      }
+      expect(quota.usedToday(today), ProposalQuota.dailyLimit);
+      expect(quota.hasAllowance(today), isFalse);
+      expect(quota.remainingToday(today), 0);
+    });
+
+    test('a new calendar day resets the allowance', () async {
+      SharedPreferences.setMockInitialValues({
+        ProposalQuota.prefsKey: '2026-09-23|${ProposalQuota.dailyLimit}',
+      });
+      final quota = ProposalQuota(await SharedPreferences.getInstance());
+
+      expect(quota.usedToday(today), 0);
+      expect(quota.hasAllowance(today), isTrue);
+    });
+
+    test('a corrupt counter reads as unused and never throws', () async {
+      SharedPreferences.setMockInitialValues({
+        ProposalQuota.prefsKey: 'no-separator-here',
+      });
+      final quota = ProposalQuota(await SharedPreferences.getInstance());
+
+      expect(quota.usedToday(today), 0);
+      expect(quota.hasAllowance(today), isTrue);
+    });
+
+    test('remaining never goes negative against a tampered count', () async {
+      SharedPreferences.setMockInitialValues({
+        ProposalQuota.prefsKey: '2026-09-24|999',
+      });
+      final quota = ProposalQuota(await SharedPreferences.getInstance());
+
+      expect(quota.hasAllowance(today), isFalse);
+      expect(quota.remainingToday(today), 0);
+    });
+  });
+
   group('ProposalGuard — duplicate ledger', () {
     setUp(() => SharedPreferences.setMockInitialValues({}));
 
@@ -482,6 +592,16 @@ void main() {
           reason: code,
         );
       }
+    });
+
+    test('a stage that never answers is reported as unreachable, not unknown',
+        () {
+      expect(
+        ProposalFailureDiagnoser.classify(
+          TimeoutException('Future not completed', const Duration(seconds: 20)),
+        ),
+        ProposalFailureReason.writeUnreachable,
+      );
     });
 
     test('other auth codes stay anonymous-sign-in failures, not provider ones',
