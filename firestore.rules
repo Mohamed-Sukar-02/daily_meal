@@ -44,7 +44,7 @@ service cloud.firestore {
 
       let requiredKeys = [
         'name', 'proteinType', 'carbsType', 'category',
-        'prepTimeMinutes', 'createdAt', 'status'
+        'prepTimeMinutes', 'createdAt', 'status', 'proposedBy'
       ];
 
       let allowedKeys = [
@@ -78,7 +78,9 @@ service cloud.firestore {
         data.createdAt is string &&
         data.createdAt.size() >= 10 &&
         data.createdAt.size() <= 40 &&
-        (!('proposedBy' in data) || data.proposedBy == null || (isAuthenticated() && data.proposedBy == request.auth.uid))
+        data.proposedBy is string &&
+        data.proposedBy.size() > 0 &&
+        data.proposedBy == request.auth.uid
       );
     }
 
@@ -106,8 +108,12 @@ service cloud.firestore {
     // Publicly readable, so `proposedBy` (a user UID) is refused on write.
     match /vault_meals/{mealId} {
       allow read: if true;
-      allow write: if isEditingAdmin()
+      allow create, update: if isEditingAdmin()
         && !request.resource.data.keys().hasAny(['proposedBy']);
+
+      // Deletes have no request.resource. Keeping the request.resource check
+      // in a blanket `allow write` made every admin delete fail closed.
+      allow delete: if isEditingAdmin();
     }
 
     // Staging Meals: admin-only read/update/delete, authenticated + validated create
@@ -146,8 +152,22 @@ service cloud.firestore {
     //                     URL, and the URL is already public. The mobile
     //                     AdminAuthService read is now dead code to delete.
     // Anything else in this collection stays admin-visible only.
+    // Admin Config:
+    // system_defaults — the starter-meal catalogue the mobile app downloads
+    //                   with no sign-in, so this one stays world-readable.
+    match /admin_config/system_defaults {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+
+    // security — admin credentials verifier; strictly super admin only.
+    match /admin_config/security {
+      allow read, write: if isSuperAdmin();
+    }
+
+    // Anything else in this collection stays admin-visible only.
     match /admin_config/{doc} {
-      allow read: if isAdmin() || doc == 'system_defaults';
+      allow read: if isAdmin();
       allow write: if isSuperAdmin();
     }
 
