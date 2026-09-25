@@ -83,6 +83,8 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _prepTimeController;
+  late TextEditingController _notesController;
+  late TextEditingController _shortNameController;
 
   late MealCategory _selectedCategory;
   late ProteinType _selectedProtein;
@@ -112,6 +114,8 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
   // current fields against them so the sheet can ask before discarding edits.
   late String _initialName;
   late String _initialPrepTime;
+  late String _initialNotes;
+  late String _initialShortName;
   late MealCategory _initialCategory;
   late ProteinType _initialProtein;
   late CarbsType _initialCarbs;
@@ -131,6 +135,8 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
   bool get hasUnsavedChanges =>
       _nameController.text.trim() != _initialName ||
       _prepTimeController.text.trim() != _initialPrepTime ||
+      _notesController.text.trim() != _initialNotes ||
+      _shortNameController.text.trim() != _initialShortName ||
       _selectedCategory != _initialCategory ||
       _selectedProtein != _initialProtein ||
       _selectedCarbs != _initialCarbs ||
@@ -179,8 +185,12 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     final m = widget.mealToEdit;
     _nameController = TextEditingController(text: m?.name ?? '');
     _prepTimeController = TextEditingController(text: m?.prepTime.toString() ?? '30');
+    _notesController = TextEditingController(text: m?.notes ?? '');
+    _shortNameController = TextEditingController(text: m?.shortName ?? '');
     _nameController.addListener(_onFormChanged);
     _prepTimeController.addListener(_onFormChanged);
+    _notesController.addListener(_onFormChanged);
+    _shortNameController.addListener(_onFormChanged);
     _selectedCategory = m?.category ?? MealCategory.egyptianTraditional;
     _selectedProtein = m?.proteinType ?? ProteinType.chicken;
     _selectedCarbs = m?.carbsType ?? CarbsType.rice;
@@ -197,6 +207,8 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     // Snapshot the original values for the unsaved-changes check.
     _initialName = _nameController.text.trim();
     _initialPrepTime = _prepTimeController.text.trim();
+    _initialNotes = _notesController.text.trim();
+    _initialShortName = _shortNameController.text.trim();
     _initialCategory = _selectedCategory;
     _initialProtein = _selectedProtein;
     _initialCarbs = _selectedCarbs;
@@ -212,8 +224,12 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
   void dispose() {
     _nameController.removeListener(_onFormChanged);
     _prepTimeController.removeListener(_onFormChanged);
+    _notesController.removeListener(_onFormChanged);
+    _shortNameController.removeListener(_onFormChanged);
     _nameController.dispose();
     _prepTimeController.dispose();
+    _notesController.dispose();
+    _shortNameController.dispose();
     super.dispose();
   }
 
@@ -493,6 +509,8 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     if (!_formKey.currentState!.validate()) return;
     final name = _nameController.text.trim();
     final prep = int.parse(_prepTimeController.text.trim());
+    final notes = _notesController.text.trim();
+    final shortName = _shortNameController.text.trim();
     setState(() => _saving = true);
     try {
       if (isEditing) {
@@ -503,6 +521,8 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
               carbsType: _selectedCarbs,
               prepTime: prep,
               photoPath: Value(_photoPath),
+              notes: Value(notes.isEmpty ? null : notes),
+              shortName: Value(shortName.isEmpty ? null : shortName),
               isFridaySpecial: _isFridaySpecial,
               isBudgetFriendly: _isBudgetFriendly,
               isFavorite: _isFavorite,
@@ -518,7 +538,9 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
         await ref.read(vaultControllerProvider.notifier).addMeal(
               name: name, category: _selectedCategory, proteinType: _selectedProtein, carbsType: _selectedCarbs,
               prepTimeMinutes: prep, photoPath: _photoPath, isFridaySpecial: _isFridaySpecial,
-              isBudgetFriendly: _isBudgetFriendly, isFavorite: _isFavorite);
+              isBudgetFriendly: _isBudgetFriendly, isFavorite: _isFavorite,
+              notes: notes.isEmpty ? null : notes,
+              shortName: shortName.isEmpty ? null : shortName);
         if (mounted) {
           _closeSelf();
           AppToast.showSuccess(context, AppStrings.of(context).mealAdded(name));
@@ -853,6 +875,60 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                                 ],
                               ),
                             ),
+                          ),
+                          const SizedBox(height: 16),
+                          // Short name — the title MealScreen shows in its header
+                          Row(
+                            children: [
+                              Container(width: 28, height: 28, decoration: BoxDecoration(color: isDark ? Colors.white10 : const Color(0xFFE3F0FD), shape: BoxShape.circle), child: Icon(Icons.short_text_rounded, size: 16, color: isDark ? Colors.white70 : const Color(0xFF1565C0))),
+                              const SizedBox(width: 8),
+                              Flexible(child: Text(strings.mealShortNameLabel, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? Colors.white70 : const Color(0xFF16283B)))),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          TextFormField(
+                            key: const Key('meal_form_short_name_field'),
+                            controller: _shortNameController,
+                            style: TextStyle(fontSize: 13, color: isDark ? Colors.white : const Color(0xFF16283B)),
+                            decoration: InputDecoration(
+                              hintText: strings.mealShortNameHint,
+                              hintStyle: TextStyle(fontSize: 12, color: isDark ? Colors.white38 : const Color(0xFF9AA6B2)),
+                              filled: true,
+                              fillColor: isDark ? Colors.white10 : const Color(0xFFF7F8FB),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? Colors.white24 : const Color(0xFFE4E9F0))),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? Colors.white24 : const Color(0xFFE4E9F0))),
+                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppPalette.brandGreen)),
+                            ),
+                            maxLength: 30,
+                          ),
+                          const SizedBox(height: 16),
+                          // Notes / recipe
+                          Row(
+                            children: [
+                              Container(width: 28, height: 28, decoration: BoxDecoration(color: isDark ? Colors.white10 : const Color(0xFFFFF3E0), shape: BoxShape.circle), child: Icon(Icons.sticky_note_2_outlined, size: 16, color: isDark ? Colors.white70 : const Color(0xFFEF6C00))),
+                              const SizedBox(width: 8),
+                              Flexible(child: Text(strings.mealNotesLabel, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? Colors.white70 : const Color(0xFF16283B)))),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          TextFormField(
+                            key: const Key('meal_form_notes_field'),
+                            controller: _notesController,
+                            style: TextStyle(fontSize: 13, color: isDark ? Colors.white : const Color(0xFF16283B)),
+                            decoration: InputDecoration(
+                              hintText: strings.mealNotesHint,
+                              hintStyle: TextStyle(fontSize: 12, color: isDark ? Colors.white38 : const Color(0xFF9AA6B2)),
+                              filled: true,
+                              fillColor: isDark ? Colors.white10 : const Color(0xFFF7F8FB),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              alignLabelWithHint: true,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? Colors.white24 : const Color(0xFFE4E9F0))),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? Colors.white24 : const Color(0xFFE4E9F0))),
+                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppPalette.brandGreen)),
+                            ),
+                            maxLines: 3,
+                            maxLength: 500,
                           ),
                           Offstage(
                             child: TextFormField(

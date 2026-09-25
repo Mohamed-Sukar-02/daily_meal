@@ -385,6 +385,18 @@ class AppStrings {
       ? 'e.g. Grilled Chicken with Rice'
       : 'مثال: فراخ مشوية مع أرز';
   String get shortNameLabel => isEn ? 'Short name' : 'الاسم المختصر';
+  String get mealNotesLabel => isEn
+      ? 'Meal Notes or Recipe (Optional)'
+      : 'ملاحظات أو وصفة الوجبة (اختياري)';
+  String get mealNotesHint => isEn
+      ? 'Write notes, ingredients, or preparation steps...'
+      : 'اكتب ملاحظاتك، مقادير الأكلة، أو طريقة التحضير...';
+  String get mealShortNameLabel => isEn
+      ? 'Short Name (Optional)'
+      : 'اسم مختصر (اختياري)';
+  String get mealShortNameHint => isEn
+      ? 'Short title shown in header (e.g. Bechamel)'
+      : 'اسم مختصر يظهر بأعلى الشاشة (مثلاً: بشاميل)';
   String get timeLabel => isEn ? 'Time' : 'الوقت';
   String get carbsTypeShort => isEn ? 'Carb Type' : 'نوع الكارب';
   String get saveChanges => isEn ? 'Save Changes' : 'حفظ التعديلات';

@@ -206,6 +206,8 @@ class VaultController extends AsyncNotifier<void> {
     bool isFridaySpecial = false,
     bool isBudgetFriendly = false,
     bool isFavorite = false,
+    String? notes,
+    String? shortName,
   }) async {
     final cleanName = name.trim();
     if (cleanName.isEmpty) {
@@ -229,6 +231,12 @@ class VaultController extends AsyncNotifier<void> {
           isFridaySpecial: Value(isFridaySpecial),
           isBudgetFriendly: Value(isBudgetFriendly),
           isFavorite: Value(isFavorite),
+          notes: notes != null && notes.trim().isNotEmpty
+              ? Value(notes.trim())
+              : const Value.absent(),
+          shortName: shortName != null && shortName.trim().isNotEmpty
+              ? Value(shortName.trim())
+              : const Value.absent(),
         ),
       );
       state = const AsyncValue.data(null);
