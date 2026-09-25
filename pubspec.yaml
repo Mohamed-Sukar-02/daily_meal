@@ -60,7 +60,7 @@ dependencies:
   shared_preferences: ^2.5.5
   connectivity_plus: ^7.3.1
   crypto: ^3.0.6
-  firebase_remote_config: ^6.7.0
+  cached_network_image: ^3.4.1
   http: ^1.6.0
   just_audio: ^0.10.6
   audio_session: ^0.2.4
