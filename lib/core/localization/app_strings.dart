@@ -796,6 +796,15 @@ class AppStrings {
   String get localNotificationDescription => isEn
       ? 'Daily reminder to check today\'s meal'
       : 'تذكير يومي لمعرفة أكلة النهاردة';
+  String get localNotificationChannelName =>
+      isEn ? 'Daily Meal Suggestions' : 'اقتراحات أكلة النهاردة';
+
+  String get adminChannelName =>
+      isEn ? 'Daily Meal announcements & updates' : 'إعلانات وتحديثات أكلة النهاردة';
+
+  String get adminChannelDescription => isEn
+      ? 'General announcements and updates from the app team'
+      : 'إشعارات وتحديثات عامة من إدارة التطبيق';
 
   // ===========================================================================
   // Recommendation engine — relaxation reasons

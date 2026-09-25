@@ -1,6 +1,10 @@
+import 'dart:ui' show Locale;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../localization/app_strings.dart';
 import 'notification_service.dart';
 
 class NotificationSyncService {
@@ -28,6 +32,7 @@ class NotificationSyncService {
       if (snapshot.docs.isEmpty) return;
 
       DateTime newestTime = lastCheckTime;
+      final strings = AppStrings(Locale(isEn ? 'en' : 'ar'));
 
       for (final doc in snapshot.docs) {
         final data = doc.data();
@@ -41,13 +46,15 @@ class NotificationSyncService {
           final title = isEn ? (data['titleEn']?.toString() ?? '') : (data['titleAr']?.toString() ?? '');
           final body = isEn ? (data['messageEn']?.toString() ?? '') : (data['messageAr']?.toString() ?? '');
           if (title.isNotEmpty || body.isNotEmpty) {
-            // Strictly positive ID, never 0 (0 is reserved for daily reminder)
-            final notifId = (doc.id.hashCode.abs() % 100000) + 1;
+            // Strictly positive ID derived from send time; `hashCode` collides
+            // inside the 100k bucket range and would silently drop alerts.
+            final notifId = (sentAt.millisecondsSinceEpoch % 2000000000) + 1;
             await NotificationService.instance.showAdminNotification(
               id: notifId,
-              title: title.isNotEmpty ? title : 'أكلة النهاردة 🍽️',
+              title: title.isNotEmpty ? title : strings.localNotificationTitle,
               body: body,
               payload: data['route']?.toString() ?? '/',
+              strings: strings,
             );
           }
         }

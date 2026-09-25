@@ -15,6 +15,10 @@ class NotificationService {
 
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
 
+  /// Result of the exact-alarms permission request. Android refuses to fire a
+  /// precise alarm without it, so scheduling downgrades to inexact when false.
+  bool _exactAlarmsAllowed = false;
+
   /// Invoked when the user taps a system notification. The payload is the
   /// route the notification was created for, and the app's root wires this to
   /// the GoRouter (see `main.dart`).
@@ -71,8 +75,11 @@ class NotificationService {
       final granted = await androidImplementation?.requestNotificationsPermission();
       // Exact alarms is separate scheduling permission; request but don't block on it
       try {
-        await androidImplementation?.requestExactAlarmsPermission();
-      } catch (_) {}
+        _exactAlarmsAllowed =
+            await androidImplementation?.requestExactAlarmsPermission() ?? false;
+      } catch (_) {
+        _exactAlarmsAllowed = false;
+      }
       // granted == null => platform < Android 13, permission is implicitly granted
       if (granted == null) return true;
       return granted;
@@ -82,9 +89,10 @@ class NotificationService {
 
   /// Schedules the daily reminder.
   ///
-  /// [strings] carries the user's language so the notification copy matches the
-  /// app UI. Android notification channels are created once by the OS, so the
-  /// channel description keeps the app's default (Arabic) copy.
+  /// [strings] carries the user's language so the notification copy and the
+  /// channel labels shown in Android OS settings match the app UI. Channels are
+  /// created once by the OS, so the first language after install is what
+  /// survives in the settings screen until the channel is recreated.
   Future<void> scheduleDailyNotification({
     required int hour,
     required int minute,
@@ -102,7 +110,7 @@ class NotificationService {
 
     final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
       'daily_meal_channel',
-      'Daily Meal Suggestions',
+      strings.localNotificationChannelName,
       channelDescription: strings.localNotificationDescription,
       importance: Importance.high,
       priority: Priority.high,
@@ -110,17 +118,43 @@ class NotificationService {
 
     final NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
 
-    await _plugin.zonedSchedule(
-      0,
-      strings.localNotificationTitle,
-      strings.localNotificationBody,
-      scheduledDate,
-      platformDetails,
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time,
-      payload: '/',
-    );
+    final scheduleMode = _exactAlarmsAllowed
+        ? AndroidScheduleMode.exactAllowWhileIdle
+        : AndroidScheduleMode.inexactAllowWhileIdle;
+
+    try {
+      await _plugin.zonedSchedule(
+        0,
+        strings.localNotificationTitle,
+        strings.localNotificationBody,
+        scheduledDate,
+        platformDetails,
+        androidScheduleMode: scheduleMode,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time,
+        payload: '/',
+      );
+    } catch (e) {
+      if (_exactAlarmsAllowed) {
+        // Exact scheduling can still throw when the OS revokes the permission
+        // after the request; retry once without it instead of losing the alarm.
+        await _plugin.zonedSchedule(
+          0,
+          strings.localNotificationTitle,
+          strings.localNotificationBody,
+          scheduledDate,
+          platformDetails,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+          matchDateTimeComponents: DateTimeComponents.time,
+          payload: '/',
+        );
+      } else {
+        rethrow;
+      }
+    }
   }
 
   Future<void> cancelNotification() async {
@@ -133,17 +167,18 @@ class NotificationService {
     required String title,
     required String body,
     String? payload,
+    AppStrings strings = const AppStrings(Locale('ar')),
   }) async {
     if (kIsWeb) return;
-    const androidDetails = AndroidNotificationDetails(
+    final androidDetails = AndroidNotificationDetails(
       'admin_announcements_channel',
-      'إعلانات وتحديثات أكلة النهاردة',
-      channelDescription: 'إشعارات وتحديثات عامة من إدارة التطبيق',
+      strings.adminChannelName,
+      channelDescription: strings.adminChannelDescription,
       importance: Importance.max,
       priority: Priority.high,
       showWhen: true,
     );
-    const details = NotificationDetails(
+    final details = NotificationDetails(
       android: androidDetails,
     );
     await _plugin.show(id, title, body, details, payload: payload);
