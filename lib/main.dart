@@ -22,15 +22,7 @@ import 'core/services/orphan_image_sweeper.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Photo-heavy UI (vault grid, home heroes, cloud images). The stock image
-  // cache (1000 images / 100 MB) evicts decoded JPEGs while scrolling a large
-  // vault — a 720px-wide decoded frame is ~2 MB, so ~50 photos already fill
-  // it and scrolling back re-decodes (visible jank). Raise the budget to a
-  // still Android-friendly 200 MB / 1200 images; every MealImage already
-  // passes cacheWidth, so entries stay proportionally small.
-  PaintingBinding.instance.imageCache
-    ..maximumSize = 1200
-    ..maximumSizeBytes = 200 << 20;
+  configureImageCache();
 
   bool isFirebaseAvailable = false;
   try {
@@ -55,6 +47,21 @@ void main() async {
       child: const DailyMealApp(),
     ),
   );
+}
+
+/// Adaptive image cache sizing.
+/// Hardcoding 200 MB / 1200 decoded frames is aggressive for low-RAM devices (2-3 GB).
+/// Scales cache budget according to device pixel ratio and display density.
+void configureImageCache() {
+  const int lowRamBytes = 96 * 1024 * 1024; // 96 MB
+  const int highRamBytes = 160 * 1024 * 1024; // 160 MB
+
+  final views = WidgetsBinding.instance.platformDispatcher.views;
+  final bool isLowDensity = views.isEmpty || views.first.devicePixelRatio < 2.5;
+
+  PaintingBinding.instance.imageCache
+    ..maximumSize = isLowDensity ? 500 : 900
+    ..maximumSizeBytes = isLowDensity ? lowRamBytes : highRamBytes;
 }
 
 class DailyMealApp extends ConsumerStatefulWidget {
