@@ -153,5 +153,11 @@ service cloud.firestore {
       allow read: if isAdmin() || doc == 'system_defaults';
       allow write: if isSuperAdmin();
     }
+
+    // Admin Notifications: public read for mobile users, editing admin write
+    match /admin_notifications/{notification} {
+      allow read: if true;
+      allow write: if isEditingAdmin();
+    }
   }
 }

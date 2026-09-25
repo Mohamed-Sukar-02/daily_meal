@@ -10,6 +10,7 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/settings/providers/settings_providers.dart';
 import 'core/services/notification_service.dart';
+import 'core/services/notification_sync_service.dart';
 import 'core/services/avatar_service.dart';
 import 'core/services/app_config_sync_service.dart';
 import 'core/database/database_providers.dart';
@@ -17,7 +18,7 @@ import 'core/services/meal_image_localizer.dart';
 import 'core/services/orphan_image_sweeper.dart';
 
 void main() async {
-  final binding = WidgetsFlutterBinding.ensureInitialized();
+  WidgetsFlutterBinding.ensureInitialized();
 
   // Photo-heavy UI (vault grid, home heroes, cloud images). The stock image
   // cache (1000 images / 100 MB) evicts decoded JPEGs while scrolling a large
@@ -68,6 +69,29 @@ class _DailyMealAppState extends ConsumerState<DailyMealApp> {
       // once so every meal renders offline (no-op when already local/offline).
       MealImageLocalizer.instance.backfillVaultImages(db);
       AppConfigSyncService.instance.init(db: db);
+      final locale = ref.read(localeProvider);
+      NotificationSyncService.checkAndNotify(isEn: locale.languageCode == 'en');
+
+      // Tap on a notification while the app lives in background/foreground:
+      // the payload is the route it was scheduled for.
+      NotificationService.instance.onNotificationTapped = (route) {
+        if (route.isNotEmpty && mounted) {
+          ref.read(appRouterProvider).push(route);
+        }
+      };
+
+      // Cold start straight from a notification: the plugin reports the launch
+      // payload, which the router cannot accept before its first frame.
+      NotificationService.instance.getColdStartNotificationPayload().then((launchPayload) {
+        if (launchPayload != null && launchPayload.isNotEmpty && mounted) {
+          // Small post-splash delay to let initial navigation settle before pushing deep link
+          Future.delayed(const Duration(milliseconds: 300), () {
+            if (mounted) {
+              ref.read(appRouterProvider).push(launchPayload);
+            }
+          });
+        }
+      });
     });
   }
 

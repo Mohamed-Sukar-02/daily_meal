@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_palette.dart';
-import '../../../core/widgets/app_icons.dart';
 import '../providers/notifications_provider.dart';
 import '../domain/notification_item.dart';
 

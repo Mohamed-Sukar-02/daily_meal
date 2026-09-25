@@ -1,50 +1,105 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../data/remote_notification_service.dart';
 import '../domain/notification_item.dart';
 
+const String _kReadIdsKey = 'read_notification_ids';
+const String _kDismissedIdsKey = 'dismissed_notification_ids';
+
+/// The admin broadcast feed, with this device's read/dismissed state applied.
+///
+/// Firestore only says what was sent; whether the user has seen it, and what
+/// they cleared away, lives in SharedPreferences and is re-applied to every
+/// emission — so an item the user deleted stays deleted even though the
+/// collection still holds it.
 class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
-  NotificationsNotifier()
-      : super([
-          NotificationItem(
-            id: '1',
-            title: {'en': 'Koshari suggestion', 'ar': 'اقتراح كشري'},
-            subtitle: {'en': 'Your favorite meal is ready to be cooked.', 'ar': 'وجبتك المفضلة جاهزة للطبخ.'},
-            time: DateTime.now().subtract(const Duration(hours: 1)),
-            type: NotificationType.meal,
-            route: '/', // route to home/meal details
-          ),
-          NotificationItem(
-            id: '2',
-            title: {'en': 'Lunch Reminder', 'ar': 'تذكير الغداء'},
-            subtitle: {'en': 'Time to check today\'s meal!', 'ar': 'حان وقت تفقد وجبة اليوم!'},
-            time: DateTime.now().subtract(const Duration(hours: 3)),
-            type: NotificationType.reminder,
-            route: '/settings',
-          ),
-          NotificationItem(
-            id: '3',
-            title: {'en': 'Smart Filter', 'ar': 'الفلتر الذكي'},
-            subtitle: {'en': 'New filtering options are available.', 'ar': 'تمت إضافة خيارات تصفية جديدة.'},
-            time: DateTime.now().subtract(const Duration(days: 1)),
-            type: NotificationType.update,
-            route: '/',
-          ),
-        ]);
-
-  void markAsRead(String id) {
-    state = state.map((item) {
-      if (item.id == id) {
-        return item.copyWith(isRead: true);
-      }
-      return item;
-    }).toList();
+  NotificationsNotifier([RemoteNotificationService? service])
+      : _service = service ?? RemoteNotificationService(),
+        super(const []) {
+    _start();
   }
 
-  void markAllAsRead() {
-    state = state.map((item) => item.copyWith(isRead: true)).toList();
+  final RemoteNotificationService _service;
+  final Set<String> _readIds = <String>{};
+  final Set<String> _dismissedIds = <String>{};
+
+  /// Raw feed, before dismissal filtering and read-state overlay.
+  List<NotificationItem> _feed = const [];
+  StreamSubscription<List<NotificationItem>>? _subscription;
+
+  Future<void> _start() async {
+    await _load();
+    if (!mounted) return;
+
+    _subscription = _service.getNotificationsStream().listen(
+      (items) {
+        _feed = items;
+        _publish();
+      },
+      // The service already absorbs read failures into a closed stream; this is
+      // the belt-and-braces path for anything raised below it.
+      onError: (Object e) => debugPrint('NotificationsNotifier: feed error: $e'),
+    );
   }
 
-  void deleteAll() {
-    state = [];
+  Future<void> _load() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _readIds.addAll(prefs.getStringList(_kReadIdsKey) ?? const []);
+      _dismissedIds.addAll(prefs.getStringList(_kDismissedIdsKey) ?? const []);
+    } catch (e) {
+      debugPrint('NotificationsNotifier: persisted state unavailable: $e');
+    }
+  }
+
+  Future<void> _save() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_kReadIdsKey, _readIds.toList());
+      await prefs.setStringList(_kDismissedIdsKey, _dismissedIds.toList());
+    } catch (e) {
+      debugPrint('NotificationsNotifier: failed to persist state: $e');
+    }
+  }
+
+  void _publish() {
+    if (!mounted) return;
+    state = [
+      for (final item in _feed)
+        if (!_dismissedIds.contains(item.id)) item.copyWith(isRead: _readIds.contains(item.id)),
+    ];
+  }
+
+  Future<void> markAsRead(String id) async {
+    _readIds.add(id);
+    _publish();
+    await _save();
+  }
+
+  Future<void> markAllAsRead() async {
+    _readIds.addAll(state.map((item) => item.id));
+    _publish();
+    await _save();
+  }
+
+  Future<void> deleteAll() async {
+    final ids = state.map((item) => item.id).toSet();
+    _dismissedIds.addAll(ids);
+    // Nothing keeps a cleared notification, so drop its read mark too rather
+    // than letting the read set grow across every broadcast ever dismissed.
+    _readIds.removeAll(ids);
+    _publish();
+    await _save();
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
   }
 }
 

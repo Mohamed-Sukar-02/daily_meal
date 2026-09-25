@@ -15,6 +15,11 @@ class NotificationService {
 
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
 
+  /// Invoked when the user taps a system notification. The payload is the
+  /// route the notification was created for, and the app's root wires this to
+  /// the GoRouter (see `main.dart`).
+  void Function(String route)? onNotificationTapped;
+
   Future<void> init() async {
     if (kIsWeb) return;
     tz.initializeTimeZones();
@@ -33,7 +38,26 @@ class NotificationService {
       android: initializationSettingsAndroid,
     );
 
-    await _plugin.initialize(initializationSettings);
+    await _plugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        final payload = response.payload;
+        if (payload != null && payload.isNotEmpty) {
+          onNotificationTapped?.call(payload);
+        }
+      },
+    );
+  }
+
+  /// The notification the app was cold-started from, if any. Its payload is
+  /// the route to open once the first frame exists.
+  Future<String?> getColdStartNotificationPayload() async {
+    if (kIsWeb) return null;
+    final details = await _plugin.getNotificationAppLaunchDetails();
+    if (details != null && details.didNotificationLaunchApp) {
+      return details.notificationResponse?.payload;
+    }
+    return null;
   }
 
   /// Requests notification permission and returns true if granted.
@@ -95,11 +119,33 @@ class NotificationService {
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.time,
+      payload: '/',
     );
   }
 
   Future<void> cancelNotification() async {
     if (kIsWeb) return;
     await _plugin.cancel(0);
+  }
+
+  Future<void> showAdminNotification({
+    required int id,
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    if (kIsWeb) return;
+    const androidDetails = AndroidNotificationDetails(
+      'admin_announcements_channel',
+      'إعلانات وتحديثات أكلة النهاردة',
+      channelDescription: 'إشعارات وتحديثات عامة من إدارة التطبيق',
+      importance: Importance.max,
+      priority: Priority.high,
+      showWhen: true,
+    );
+    const details = NotificationDetails(
+      android: androidDetails,
+    );
+    await _plugin.show(id, title, body, details, payload: payload);
   }
 }
