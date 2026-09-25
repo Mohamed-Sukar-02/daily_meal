@@ -26,7 +26,7 @@ import 'package:daily_meal/features/vault/data/models/cloud_meal.dart';
 
 const Set<String> _requiredKeys = {
   'name', 'proteinType', 'carbsType', 'category',
-  'prepTimeMinutes', 'createdAt', 'status',
+  'prepTimeMinutes', 'createdAt', 'status', 'proposedBy',
 };
 
 const Set<String> _allowedKeys = {
@@ -38,7 +38,7 @@ const Set<String> _allowedKeys = {
 const Set<String> _cloudProteins = {'chicken', 'beef', 'fish', 'meatless', 'other'};
 const Set<String> _cloudCarbs = {'rice', 'pasta', 'bread', 'none'};
 const Set<String> _cloudCategories = {
-  'tabeekh', 'casserole', 'dry_sandwich', 'popular', 'seafood',
+  'tabeekh', 'casserole', 'dry_sandwich', 'popular', 'seafood', 'soup_stew', 'vegetarian',
 };
 
 /// Mirror of `isValidStagingMeal()` from firestore.rules.
@@ -333,7 +333,9 @@ void main() {
       expect(MealCloudVocabulary.carbsToCloud(CarbsType.grains), 'none');
     });
 
-    test('category maps into {tabeekh, casserole, dry_sandwich, popular, seafood}', () {
+    test(
+        'category maps into {tabeekh, casserole, dry_sandwich, popular, seafood, '
+        'soup_stew, vegetarian}', () {
       for (final category in MealCategory.values) {
         expect(
           _cloudCategories
@@ -350,6 +352,14 @@ void main() {
       expect(
         MealCloudVocabulary.categoryToCloud(MealCategory.fastFood),
         'dry_sandwich',
+      );
+      expect(
+        MealCloudVocabulary.categoryToCloud(MealCategory.soupStew),
+        'soup_stew',
+      );
+      expect(
+        MealCloudVocabulary.categoryToCloud(MealCategory.vegetarian),
+        'vegetarian',
       );
     });
 

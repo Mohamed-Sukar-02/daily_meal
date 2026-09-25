@@ -442,7 +442,8 @@ enum LocalPhotoIssue {
 /// must map into the allowed set:
 ///   protein: chicken | beef | fish | meatless | other
 ///   carbs:   rice | pasta | bread | none
-///   category: tabeekh | casserole | dry_sandwich | popular | seafood
+///   category: tabeekh | casserole | dry_sandwich | popular | seafood |
+///             soup_stew | vegetarian
 class MealCloudVocabulary {
   const MealCloudVocabulary._();
 
@@ -483,9 +484,10 @@ class MealCloudVocabulary {
     }
   }
 
-  /// Reverse of `DiscoveryNotifier._mapCategory`: tabeekh/casserole/
-  /// dry_sandwich/seafood round-trip; stews are طبيخ-family → tabeekh, and
-  /// vegetarian has no cloud slot → popular (the cloud catch-all).
+  /// Reverse of `DiscoveryNotifier._mapCategory`: every local category now has
+  /// its own cloud token, so uploads land back on the enum they started from.
+  /// `popular` stays cloud-only — admins use it as a catch-all and it downloads
+  /// as `egyptianTraditional`; the client never writes it.
   static String categoryToCloud(MealCategory category) {
     switch (category) {
       case MealCategory.egyptianTraditional:
@@ -497,9 +499,9 @@ class MealCloudVocabulary {
       case MealCategory.seafood:
         return 'seafood';
       case MealCategory.soupStew:
-        return 'tabeekh';
+        return 'soup_stew';
       case MealCategory.vegetarian:
-        return 'popular';
+        return 'vegetarian';
     }
   }
 }

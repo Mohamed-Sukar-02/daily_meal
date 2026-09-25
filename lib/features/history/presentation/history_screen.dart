@@ -7,6 +7,7 @@ import '../../../core/database/tables/meals_table.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/navigation/nav_lifecycle.dart';
 import '../../../core/theme/app_palette.dart';
+import '../../../core/utils/app_date_utils.dart' as app_date_utils;
 import '../../../core/widgets/app_icons.dart';
 import '../../../core/widgets/app_toast.dart';
 import '../../../core/widgets/meal_image.dart';
@@ -238,21 +239,15 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                           controller: _timelineController,
                           padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                           itemCount: entries.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 4),
+                          separatorBuilder: (_, _) => const SizedBox(height: 4),
                           itemBuilder: (context, index) {
                             final entry = entries[index].history;
                             final meal = entries[index].meal;
 
-                            final date = entry.cookedAt;
-                            final now = DateTime.now();
-                            String dateStr;
-                            if (date.year == now.year && date.month == now.month && date.day == now.day) {
-                              dateStr = strings.today;
-                            } else if (date.year == now.year && date.month == now.month && date.day == now.day - 1) {
-                              dateStr = strings.yesterday;
-                            } else {
-                              dateStr = '${date.day}/${date.month}/${date.year}';
-                            }
+                            final dateStr = app_date_utils.formatHistoryDate(
+                              entry.cookedAt,
+                              strings: strings,
+                            );
 
                             Color dotColor = AppPalette.brandGreen;
                             if (entry.proteinType == ProteinType.beef) {
