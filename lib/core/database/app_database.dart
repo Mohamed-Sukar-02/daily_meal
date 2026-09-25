@@ -1,6 +1,8 @@
+import 'dart:io' show Platform;
 import 'dart:ui';
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'tables/meals_table.dart';
 import 'tables/meal_history_table.dart';
@@ -140,10 +142,32 @@ class AppDatabase extends _$AppDatabase {
       if (from < 12) {
         await safeAddColumn(meals, meals.shortName);
       }
+      if (!Platform.environment.containsKey('FLUTTER_TEST')) {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('self_heal_schema_version');
+        } catch (_) {}
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
-      await _selfHealSchema();
+      final isTest = Platform.environment.containsKey('FLUTTER_TEST');
+      var alreadyHealed = false;
+      if (!isTest) {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          alreadyHealed = prefs.getInt('self_heal_schema_version') == schemaVersion;
+        } catch (_) {}
+      }
+      if (!alreadyHealed) {
+        await _selfHealSchema();
+        if (!isTest) {
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setInt('self_heal_schema_version', schemaVersion);
+          } catch (_) {}
+        }
+      }
     },
   );
 
