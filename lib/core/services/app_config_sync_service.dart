@@ -102,18 +102,19 @@ class AppConfigSyncService {
   Future<SystemDefaults> syncWithFirebase({AppDatabase? db}) async {
     if (Platform.environment.containsKey('FLUTTER_TEST')) return getCachedDefaults();
     if (_isSyncing) return getCachedDefaults();
+
+    // Quick reachability check
+    final reachable = await ReachabilityService.instance.isInternetReachable(
+      timeout: const Duration(seconds: 2),
+    );
+    if (!reachable) {
+      debugPrint('[AppConfigSyncService] Device is offline, keeping local defaults.');
+      return getCachedDefaults();
+    }
+
     _isSyncing = true;
 
     try {
-      // Quick reachability check
-      final reachable = await ReachabilityService.instance.isInternetReachable(
-        timeout: const Duration(seconds: 2),
-      );
-      if (!reachable) {
-        debugPrint('[AppConfigSyncService] Device is offline, keeping local defaults.');
-        return getCachedDefaults();
-      }
-
       final docSnap = await FirebaseFirestore.instance
           .collection(_collection)
           .doc(_doc)
