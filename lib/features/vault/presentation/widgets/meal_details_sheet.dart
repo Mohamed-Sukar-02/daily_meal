@@ -447,11 +447,16 @@ class MealDetailsSheet extends ConsumerWidget {
     if (cloudMeal == null) return;
     final strings = AppStrings.of(context);
 
-    await ref.read(discoveryControllerProvider.notifier).downloadMeal(cloudMeal);
-    if (context.mounted) {
-      AppToast.showSuccess(context, strings.mealDownloaded(cloudMeal.name));
-      Navigator.of(context).pop();
+    final localId = await ref
+        .read(discoveryControllerProvider.notifier)
+        .downloadMeal(cloudMeal);
+    if (!context.mounted) return;
+    if (localId == null) {
+      AppToast.showError(context, strings.mealDownloadFailed);
+      return;
     }
+    AppToast.showSuccess(context, strings.mealDownloaded(cloudMeal.name));
+    Navigator.of(context).pop();
   }
 
   /// Vault: Edit / Update + Delete action buttons, plus the Cloud Staging

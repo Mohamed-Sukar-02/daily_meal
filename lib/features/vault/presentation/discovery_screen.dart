@@ -905,12 +905,22 @@ class _CloudMealCard extends ConsumerWidget {
                           SizedBox(
                             width: double.infinity,
                             child: FilledButton.icon(
-                              onPressed: () {
+                              onPressed: () async {
                                 if (isLinked) {
-                                  _showCloudMealUpdateOptions(context, ref, linkedMeal!, cloudMeal);
+                                  _showCloudMealUpdateOptions(
+                                      context, ref, linkedMeal!, cloudMeal);
                                 } else {
-                                  ref.read(discoveryControllerProvider.notifier).downloadMeal(cloudMeal);
-                                  AppToast.showSuccess(context, strings.mealDownloaded(cloudMeal.name));
+                                  final localId = await ref
+                                      .read(discoveryControllerProvider.notifier)
+                                      .downloadMeal(cloudMeal);
+                                  if (!context.mounted) return;
+                                  if (localId != null) {
+                                    AppToast.showSuccess(context,
+                                        strings.mealDownloaded(cloudMeal.name));
+                                  } else {
+                                    AppToast.showError(
+                                        context, strings.mealDownloadFailed);
+                                  }
                                 }
                               },
                               icon: AppIcon(isLinked ? AppGlyph.swap : AppGlyph.cloudDown, color: isLinked ? AppPalette.textSecondary(brightness) : Colors.white, size: 14),
@@ -1015,10 +1025,19 @@ void _showCloudMealUpdateOptions(
                 const SizedBox(height: 16),
                 InkWell(
                   borderRadius: BorderRadius.circular(14),
-                  onTap: () {
+                  onTap: () async {
                     Navigator.pop(ctx);
-                    ref.read(discoveryControllerProvider.notifier).updateMeal(linkedMeal.id, cloudMeal);
-                    AppToast.showSuccess(context, strings.mealUpdatedToast(cloudMeal.name));
+                    final success = await ref
+                        .read(discoveryControllerProvider.notifier)
+                        .updateMeal(linkedMeal.id, cloudMeal);
+                    if (!context.mounted) return;
+                    if (success) {
+                      AppToast.showSuccess(
+                          context, strings.mealUpdatedToast(cloudMeal.name));
+                    } else {
+                      AppToast.showError(
+                          context, strings.mealDownloadFailed);
+                    }
                   },
                   child: Container(
                     padding: const EdgeInsets.all(14),
@@ -1151,12 +1170,21 @@ class _CloudMealListTile extends ConsumerWidget {
             const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
           else
             IconButton.filled(
-              onPressed: () {
+              onPressed: () async {
                 if (isLinked) {
-                  _showCloudMealUpdateOptions(context, ref, linkedMeal!, cloudMeal);
+                  _showCloudMealUpdateOptions(
+                      context, ref, linkedMeal!, cloudMeal);
                 } else {
-                  ref.read(discoveryControllerProvider.notifier).downloadMeal(cloudMeal);
-                  AppToast.showSuccess(context, strings.mealDownloaded(cloudMeal.name));
+                  final localId = await ref
+                      .read(discoveryControllerProvider.notifier)
+                      .downloadMeal(cloudMeal);
+                  if (!context.mounted) return;
+                  if (localId != null) {
+                    AppToast.showSuccess(
+                        context, strings.mealDownloaded(cloudMeal.name));
+                  } else {
+                    AppToast.showError(context, strings.mealDownloadFailed);
+                  }
                 }
               },
               icon: AppIcon(isLinked ? AppGlyph.swap : AppGlyph.cloudDown, color: isLinked ? AppPalette.textSecondary(brightness) : Colors.white, size: 16),

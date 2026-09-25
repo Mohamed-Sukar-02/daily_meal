@@ -47,14 +47,16 @@ class DiscoveryNotifier extends StateNotifier<AsyncValue<void>> {
     }
   }
 
-  Future<void> updateMeal(int localId, CloudMeal cloudMeal) async {
+  Future<bool> updateMeal(int localId, CloudMeal cloudMeal) async {
     state = const AsyncValue.loading();
     try {
       final companion = await _createCompanion(cloudMeal);
       await _mealsDao.updateMealCompanion(localId, companion);
       state = const AsyncValue.data(null);
+      return true;
     } catch (e, st) {
       state = AsyncValue.error(e, st);
+      return false;
     }
   }
 

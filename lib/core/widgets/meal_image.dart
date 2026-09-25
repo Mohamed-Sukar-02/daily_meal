@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 /// Where a meal photo should be loaded from.
@@ -112,19 +113,30 @@ class MealImage extends StatelessWidget {
         cacheWidth: cacheWidth,
         errorBuilder: (context, error, stackTrace) => fallback,
       ),
-      MealImageSource.network => Image.network(
-        value,
+      MealImageSource.network => CachedNetworkImage(
+        imageUrl: value,
         height: height,
         width: width,
         fit: fit,
         alignment: alignment,
-        gaplessPlayback: true,
-        cacheWidth: cacheWidth,
-        loadingBuilder: (context, child, progress) {
-          if (progress == null) return child;
-          return loading ?? _defaultLoading(context, progress);
-        },
-        errorBuilder: (context, error, stackTrace) => fallback,
+        memCacheWidth: cacheWidth,
+        placeholder: (context, url) =>
+            loading ??
+            Container(
+              height: height,
+              width: width,
+              color: Theme.of(context)
+                  .colorScheme
+                  .surfaceContainerHighest
+                  .withValues(alpha: 0.3),
+              alignment: Alignment.center,
+              child: const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+        errorWidget: (context, url, error) => fallback,
       ),
       MealImageSource.file => _buildFileImage(value),
     };
@@ -145,26 +157,6 @@ class MealImage extends StatelessWidget {
       gaplessPlayback: true,
       cacheWidth: cacheWidth,
       errorBuilder: (context, error, stackTrace) => fallback,
-    );
-  }
-
-  Widget _defaultLoading(BuildContext context, ImageChunkEvent progress) {
-    final theme = Theme.of(context);
-    final expected = progress.expectedTotalBytes;
-    final value = expected == null || expected == 0
-        ? null
-        : (progress.cumulativeBytesLoaded / expected).clamp(0.0, 1.0);
-
-    return Container(
-      height: height,
-      width: width,
-      color: theme.colorScheme.surfaceContainerHighest,
-      alignment: Alignment.center,
-      child: SizedBox(
-        height: 22,
-        width: 22,
-        child: CircularProgressIndicator(strokeWidth: 2, value: value),
-      ),
     );
   }
 }

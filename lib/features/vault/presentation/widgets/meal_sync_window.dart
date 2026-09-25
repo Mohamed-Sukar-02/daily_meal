@@ -89,11 +89,15 @@ Future<void> showMealSyncWindow(
           key: const Key('meal_sync_window_update_button'),
           onPressed: () async {
             Navigator.of(dialogContext).pop();
-            await ref
+            final updated = await ref
                 .read(discoveryControllerProvider.notifier)
                 .updateMeal(meal.id, cloud);
             if (context.mounted) {
-              AppToast.showSuccess(context, strings.mealUpdatedToast(cloud.name));
+              if (updated) {
+                AppToast.showSuccess(context, strings.mealUpdatedToast(cloud.name));
+              } else {
+                AppToast.showError(context, strings.mealDownloadFailed);
+              }
             }
           },
           icon: const AppIcon(AppGlyph.cloudDown, color: Colors.white, size: 16),
