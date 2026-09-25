@@ -160,7 +160,9 @@ class MealHistoryDao extends DatabaseAccessor<AppDatabase> with _$MealHistoryDao
 
   Future<int> logTakeoutMeal({DateTime? cookedAt, String? notes}) {
     return logMeal(
-      mealName: 'خارج البيت',
+      // Language-neutral key, not display copy — resolved via
+      // AppStrings.historyEntryDisplayName so switching language localizes it.
+      mealName: 'takeout',
       proteinType: ProteinType.none,
       carbsType: CarbsType.none,
       cookedAt: cookedAt ?? DateTime.now(),
@@ -171,7 +173,7 @@ class MealHistoryDao extends DatabaseAccessor<AppDatabase> with _$MealHistoryDao
 
   Future<int> logSkippedMeal({DateTime? cookedAt, String? notes}) {
     return logMeal(
-      mealName: 'تفويت الوجبة',
+      mealName: 'skipped',
       proteinType: ProteinType.none,
       carbsType: CarbsType.none,
       cookedAt: cookedAt ?? DateTime.now(),

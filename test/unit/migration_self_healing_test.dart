@@ -64,7 +64,7 @@ void main() {
       final settings = await appDb.appSettingsDao.getSettings();
       expect(settings.userName, 'Mohamed');
       expect(settings.cooldownDays, 21);
-      expect(settings.chickenCooldownDays, 2); // Was 7, updated by self-healing
+      expect(settings.chickenCooldownDays, 2); // Canonical default applied by self-healing
       expect(settings.meatlessCooldownDays, 0); // Defaults to 0 (disabled)
 
       final mealsList = await appDb.mealsDao.getAllMeals();
@@ -186,8 +186,8 @@ void main() {
     try {
       // beforeOpen self-heals the table columns!
       final settings = await appDb.appSettingsDao.getSettings();
-      expect(settings.chickenCooldownDays, 2); // Was 7
-      expect(settings.fishCooldownDays, 4); // Was 5
+      expect(settings.chickenCooldownDays, 2); // Canonical default from self-heal ALTER TABLE
+      expect(settings.fishCooldownDays, 4); // Canonical default from self-heal ALTER TABLE
 
       final mealsList = await appDb.mealsDao.getAllMeals();
       expect(mealsList.first.name, 'فول مدمس');
@@ -285,6 +285,74 @@ void main() {
       final history = await appDb.mealHistoryDao.getAllHistory();
       expect(history.length, equals(1));
       expect(history.first.mealName, equals('شاورما فراخ خاصة بالبيت'));
+    } finally {
+      await appDb.close();
+    }
+  });
+
+  test('User-chosen cooldown values survive database reopen and are never reset by self-healing', () async {
+    final rawSqlite = sqlite3.openInMemory();
+    rawSqlite.execute('''
+      CREATE TABLE meals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        protein_type TEXT NOT NULL,
+        carbs_type TEXT NOT NULL,
+        category TEXT NOT NULL,
+        prep_time INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    ''');
+    rawSqlite.execute('''
+      CREATE TABLE meal_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        meal_id INTEGER,
+        meal_name TEXT NOT NULL,
+        protein_type TEXT NOT NULL,
+        carbs_type TEXT NOT NULL,
+        cooked_at INTEGER NOT NULL,
+        entry_type TEXT NOT NULL DEFAULT 'cooked',
+        notes TEXT,
+        created_at TEXT NOT NULL
+      );
+    ''');
+    rawSqlite.execute('''
+      CREATE TABLE app_settings (
+        id INTEGER NOT NULL DEFAULT 1 PRIMARY KEY,
+        cooldown_days INTEGER NOT NULL DEFAULT 14,
+        chicken_cooldown_days INTEGER NOT NULL DEFAULT 2,
+        beef_cooldown_days INTEGER NOT NULL DEFAULT 2,
+        fish_cooldown_days INTEGER NOT NULL DEFAULT 4,
+        meatless_cooldown_days INTEGER NOT NULL DEFAULT 0,
+        notification_hour INTEGER NOT NULL DEFAULT 12,
+        notification_minute INTEGER NOT NULL DEFAULT 0,
+        notifications_enabled INTEGER NOT NULL DEFAULT 0,
+        theme_mode TEXT NOT NULL DEFAULT 'system',
+        language TEXT NOT NULL DEFAULT 'ar',
+        is_first_run INTEGER NOT NULL DEFAULT 0,
+        recommendation_source TEXT NOT NULL DEFAULT 'vault_only',
+        auto_friday_feast_filter INTEGER NOT NULL DEFAULT 0,
+        user_name TEXT,
+        user_email TEXT,
+        user_gender TEXT,
+        user_avatar TEXT
+      );
+    ''');
+    rawSqlite.execute('INSERT INTO app_settings (id) VALUES (1);');
+    // The user deliberately configured these legacy-looking values in Settings
+    rawSqlite.execute('UPDATE app_settings SET chicken_cooldown_days = 7, beef_cooldown_days = 10, fish_cooldown_days = 5 WHERE id = 1;');
+    rawSqlite.execute('PRAGMA user_version = 12;'); // Up-to-date schema: only beforeOpen self-heal runs
+
+    final appDb = AppDatabase(NativeDatabase.opened(rawSqlite));
+
+    try {
+      // beforeOpen runs _selfHealSchema(): user choices must survive untouched
+      final settings = await appDb.appSettingsDao.getSettings();
+      expect(settings.chickenCooldownDays, 7);
+      expect(settings.beefCooldownDays, 10);
+      expect(settings.fishCooldownDays, 5);
+      expect(settings.meatlessCooldownDays, 0);
     } finally {
       await appDb.close();
     }

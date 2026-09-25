@@ -1035,10 +1035,20 @@ void _showCloudMealUpdateOptions(
                 const SizedBox(height: 10),
                 InkWell(
                   borderRadius: BorderRadius.circular(14),
-                  onTap: () {
+                  onTap: () async {
                     Navigator.pop(ctx);
-                    ref.read(discoveryControllerProvider.notifier).downloadAsNew(linkedMeal.id, cloudMeal);
-                    AppToast.showSuccess(context, strings.mealAddedNewCopy(cloudMeal.name));
+                    try {
+                      await ref
+                          .read(discoveryControllerProvider.notifier)
+                          .downloadAsNew(linkedMeal.id, cloudMeal);
+                      if (!context.mounted) return;
+                      AppToast.showSuccess(
+                          context, strings.mealAddedNewCopy(cloudMeal.name));
+                    } catch (_) {
+                      if (!context.mounted) return;
+                      AppToast.showError(
+                          context, strings.mealDownloadFailed);
+                    }
                   },
                   child: Container(
                     padding: const EdgeInsets.all(14),

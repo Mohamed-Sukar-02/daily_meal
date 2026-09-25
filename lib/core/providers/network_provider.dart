@@ -15,6 +15,11 @@ const String _kWifiOnlyKey = 'wifi_only_cloud_access';
 /// behaviour for users who never chose anything.
 const bool kWifiOnlyCloudDefault = false;
 
+/// Whether `Firebase.initializeApp` succeeded at boot. `main()` overrides this
+/// with the real outcome; the default keeps providers (and tests) on the
+/// offline-safe path when nobody initialized Firebase.
+final firebaseAvailableProvider = Provider<bool>((ref) => false);
+
 final sharedPreferencesProvider = FutureProvider<SharedPreferences>((ref) async {
   return await SharedPreferences.getInstance();
 });

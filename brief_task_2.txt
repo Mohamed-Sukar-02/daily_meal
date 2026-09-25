@@ -1,0 +1,56 @@
+<task>
+Fix the Cooldown database schema, defaults inconsistency, and user-choice preservation bug in `e:\Mohamed\Personal_Project\daily-meal\app_v2`.
+
+CURRENT BEHAVIOR:
+1. In `lib/core/database/app_database.dart`:
+   - In `onCreate` (lines 48-51): inserts old/legacy defaults:
+     `chickenCooldownDays: 7, beefCooldownDays: 10, fishCooldownDays: 5, meatlessCooldownDays: 0`.
+   - In `_selfHealSchema()` (lines 214-216): runs unconditional SQL statements on every database open:
+     `UPDATE app_settings SET chicken_cooldown_days = 2 WHERE chicken_cooldown_days = 7;`
+     `UPDATE app_settings SET beef_cooldown_days = 2 WHERE beef_cooldown_days = 10;`
+     `UPDATE app_settings SET fish_cooldown_days = 4 WHERE fish_cooldown_days = 5;`
+     If a user deliberately configures chicken cooldown to 7 days in settings, restarting the app forcibly resets it to 2!
+2. In `lib/features/home/domain/cooldown_engine.dart` (lines 97-101):
+   - Dynamic fallback values are still hardcoded to legacy `7, 10, 5`:
+     `chickenCooldown = (settings as dynamic)?.chickenCooldownDays as int? ?? 7;`
+     `beefCooldown = (settings as dynamic)?.beefCooldownDays as int? ?? 10;`
+     `fishCooldown = (settings as dynamic)?.fishCooldownDays as int? ?? 5;`
+
+WHAT MUST CHANGE:
+1. In `lib/core/database/app_database.dart`:
+   - Change `onCreate` default values to canonical: `chickenCooldownDays: 2, beefCooldownDays: 2, fishCooldownDays: 4, meatlessCooldownDays: 0`.
+   - Remove the destructive `UPDATE app_settings SET ...` statements from `_selfHealSchema()` so it never overwrites user choices on app startup.
+2. In `lib/core/database/tables/app_settings_table.dart`:
+   - Ensure defaults for `chickenCooldownDays`, `beefCooldownDays`, `fishCooldownDays`, `meatlessCooldownDays` match `2, 2, 4, 0`.
+3. In `lib/features/home/domain/cooldown_engine.dart`:
+   - Change the dynamic fallback defaults from `7, 10, 5` to `2, 2, 4` (and meatless to `0`).
+4. In tests (`test/unit/migration_self_healing_test.dart` or new test):
+   - Verify that when a user sets custom cooldowns (e.g. 7, 10, 5), closing and reopening the database preserves those exact values without reverting to 2, 2, 4.
+
+WHAT MUST REMAIN UNTOUCHED:
+- Do not alter existing Drift table columns or break existing schema version without ensuring migrations pass.
+</task>
+
+<verification_loop>
+Run these commands from `e:\Mohamed\Personal_Project\daily-meal\app_v2` before reporting:
+1. `flutter analyze --no-pub` (Must pass with 0 errors, 0 warnings).
+2. `flutter test --no-pub test/unit/migration_self_healing_test.dart` (Must pass).
+3. `flutter test --no-pub` (All 235+ tests must pass).
+</verification_loop>
+
+<action_safety>
+Keep changes strictly scoped to:
+- `lib/core/database/app_database.dart`
+- `lib/core/database/tables/app_settings_table.dart`
+- `lib/features/home/domain/cooldown_engine.dart`
+- `test/unit/migration_self_healing_test.dart` (and any related unit test)
+Do NOT run git add or git commit; the orchestrator reviews and commits. Leave work uncommitted.
+</action_safety>
+
+<structured_output_contract>
+End your report with:
+1. What changed and why
+2. Files touched
+3. Gate outcomes with counts (flutter analyze, flutter test)
+4. Deviations, open items, or decisions needed
+</structured_output_contract>

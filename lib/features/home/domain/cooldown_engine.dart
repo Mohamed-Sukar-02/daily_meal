@@ -95,9 +95,9 @@ class CooldownEngine {
       meatlessCooldown = settings.meatlessCooldownDays;
     } else {
       configCooldown = (settings as dynamic)?.cooldownDays as int? ?? 14;
-      chickenCooldown = (settings as dynamic)?.chickenCooldownDays as int? ?? 7;
-      beefCooldown = (settings as dynamic)?.beefCooldownDays as int? ?? 10;
-      fishCooldown = (settings as dynamic)?.fishCooldownDays as int? ?? 5;
+      chickenCooldown = (settings as dynamic)?.chickenCooldownDays as int? ?? 2;
+      beefCooldown = (settings as dynamic)?.beefCooldownDays as int? ?? 2;
+      fishCooldown = (settings as dynamic)?.fishCooldownDays as int? ?? 4;
       meatlessCooldown = (settings as dynamic)?.meatlessCooldownDays as int? ?? 0;
     }
 

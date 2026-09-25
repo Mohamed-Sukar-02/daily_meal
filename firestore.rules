@@ -1,8 +1,3 @@
-// MIRROR — the deployed source of truth is `Admin Auth Screen/firestore.rules`
-// (only that project has a `.firebaserc`, so `firebase deploy` runs from there).
-// This copy used to be an older fork (no roles, no `.lower()` on the admin
-// email, narrower category list) and silently drifted. Keep both files
-// byte-identical below this header; edit the admin one first.
 rules_version = '2';
 
 service cloud.firestore {
@@ -107,10 +102,12 @@ service cloud.firestore {
                .hasAny(['role', 'email']));
     }
 
-    // Vault Meals: public read for discovery, admin-only write
+    // Vault Meals: public read for discovery, admin-only write.
+    // Publicly readable, so `proposedBy` (a user UID) is refused on write.
     match /vault_meals/{mealId} {
       allow read: if true;
-      allow write: if isEditingAdmin();
+      allow write: if isEditingAdmin()
+        && !request.resource.data.keys().hasAny(['proposedBy']);
     }
 
     // Staging Meals: admin-only read/update/delete, authenticated + validated create

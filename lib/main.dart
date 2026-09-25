@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'core/localization/app_strings.dart';
+import 'core/providers/network_provider.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/settings/providers/settings_providers.dart';
@@ -30,10 +31,12 @@ void main() async {
     ..maximumSize = 1200
     ..maximumSizeBytes = 200 << 20;
 
+  bool isFirebaseAvailable = false;
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    isFirebaseAvailable = true;
   } catch (e) {
     debugPrint('Firebase initialization warning: $e');
   }
@@ -44,8 +47,11 @@ void main() async {
   });
 
   runApp(
-    const ProviderScope(
-      child: DailyMealApp(),
+    ProviderScope(
+      overrides: [
+        firebaseAvailableProvider.overrideWithValue(isFirebaseAvailable),
+      ],
+      child: const DailyMealApp(),
     ),
   );
 }

@@ -1,51 +1,66 @@
 {
-  "total_tasks": 5,
-  "current_task": 3,
+  "total_tasks": 10,
+  "current_task": 10,
   "tasks": [
     {
       "id": 1,
-      "title": "Spinning Wheel state logic & UI bottom sheet adjustments",
-      "worker": "opencode-qwen",
-      "cli": "opencode",
-      "model": "qwen/qwen-2.5-coder-32b-instruct:free",
+      "title": "Fix Image Deletion Bug & Safeguard OrphanImageSweeper",
       "status": "completed",
-      "brief_file": "brief_task_1.txt"
+      "brief_file": "briefs/brief_task_1.txt"
     },
     {
       "id": 2,
-      "title": "Vault filter translation changes",
-      "worker": "qoder",
-      "cli": "qoder",
-      "model": "Qwen3.8-Flash",
+      "title": "Fix Cooldown Schema & Restore User Choices",
       "status": "completed",
-      "brief_file": "brief_task_2.txt"
+      "brief_file": "briefs/brief_task_2.txt"
     },
     {
       "id": 3,
-      "title": "Leftovers history behavior",
-      "worker": "qoder",
-      "cli": "qoder",
-      "model": "Qwen3.8-Flash",
+      "title": "Atomic downloadAsNew in Discovery & Eliminate Fake Success UI",
       "status": "completed",
-      "brief_file": "brief_task_3.txt"
+      "brief_file": "briefs/brief_task_3.txt"
     },
     {
       "id": 4,
-      "title": "Notification settings routing and blink animation",
-      "worker": "agy",
-      "cli": "agy",
-      "model": "gemini-2.5-flash",
+      "title": "Starter Meals Sync by cloudId & Empty-Response Safeguard",
       "status": "completed",
-      "brief_file": "brief_task_4.txt"
+      "brief_file": "briefs/brief_task_4.txt"
     },
     {
       "id": 5,
-      "title": "Meals Screen details UI update",
-      "worker": "qoder",
-      "cli": "qoder",
-      "model": "Qwen3.8-Flash",
+      "title": "Fix Settings Reset & Language Notification Rescheduling",
       "status": "completed",
-      "brief_file": "brief_task_5.txt"
+      "brief_file": "briefs/brief_task_5.txt"
+    },
+    {
+      "id": 6,
+      "title": "Android Manifest Hardening & Exact Alarm Policy Cleanup",
+      "status": "completed",
+      "brief_file": "briefs/brief_task_6.txt"
+    },
+    {
+      "id": 7,
+      "title": "Secure Image Downloads in MealImageLocalizer",
+      "status": "completed",
+      "brief_file": "briefs/brief_task_7.txt"
+    },
+    {
+      "id": 8,
+      "title": "Localize History DAO & Remove Hardcoded Arabic Strings",
+      "status": "completed",
+      "brief_file": "briefs/brief_task_8.txt"
+    },
+    {
+      "id": 9,
+      "title": "Fix Admin Auth Screen Data Leakage & Protein/Carb Sync",
+      "status": "completed",
+      "brief_file": "briefs/brief_task_9.txt"
+    },
+    {
+      "id": 10,
+      "title": "Graceful Firebase Offline Boot & Explore Pagination",
+      "status": "completed",
+      "brief_file": "briefs/brief_task_10.txt"
     }
   ]
 }

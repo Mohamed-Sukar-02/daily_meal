@@ -1,0 +1,46 @@
+<task>
+Harden Android Manifest permissions, Google Play exact alarm policy compliance, and app label in `e:\Mohamed\Personal_Project\daily-meal\app_v2`.
+
+CURRENT BEHAVIOR:
+1. In `android/app/src/main/AndroidManifest.xml`:
+   - `android.permission.INTERNET` is missing from the main manifest (only present in debug manifest), which risks network failures in Android release builds.
+   - `android.permission.USE_EXACT_ALARM` is declared (line 5). Google Play strictly rejects apps requesting `USE_EXACT_ALARM` unless they are dedicated alarm clocks or calendar apps. Daily meal reminders do not justify this permission.
+   - `android:label="daily_meal"` (line 13) is using the default package template name instead of the app's official name "أكلة النهاردة".
+2. In `lib/core/services/notification_service.dart`:
+   - Line 119 uses `androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle`, requiring exact alarm permissions.
+
+WHAT MUST CHANGE:
+1. In `android/app/src/main/AndroidManifest.xml`:
+   - Add `<uses-permission android:name="android.permission.INTERNET" />` inside `<manifest>`.
+   - Remove `<uses-permission android:name="android.permission.USE_EXACT_ALARM" />`.
+   - Change `android:label="daily_meal"` to `android:label="أكلة النهاردة"`.
+2. In `lib/core/services/notification_service.dart`:
+   - In `scheduleDailyNotification()`: change `androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle` to `androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle`.
+3. In `android/app/build.gradle.kts`:
+   - Add support for loading `key.properties` if present for release signing config, falling back to debug config if absent (so dev builds still work).
+
+WHAT MUST REMAIN UNTOUCHED:
+- Do not alter package name/applicationId or other intent filters.
+</task>
+
+<verification_loop>
+Run these commands from `e:\Mohamed\Personal_Project\daily-meal\app_v2` before reporting:
+1. `flutter analyze --no-pub` (Must pass with 0 errors, 0 warnings).
+2. `flutter test --no-pub` (All 251+ tests must pass).
+</verification_loop>
+
+<action_safety>
+Keep changes strictly scoped to:
+- `android/app/src/main/AndroidManifest.xml`
+- `android/app/build.gradle.kts`
+- `lib/core/services/notification_service.dart`
+Do NOT run git add or git commit; the orchestrator reviews and commits. Leave work uncommitted.
+</action_safety>
+
+<structured_output_contract>
+End your report with:
+1. What changed and why
+2. Files touched
+3. Gate outcomes with counts (flutter analyze, flutter test)
+4. Deviations, open items, or decisions needed
+</structured_output_contract>

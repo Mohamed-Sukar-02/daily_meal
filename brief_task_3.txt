@@ -1,0 +1,86 @@
+<task>
+Fix non-atomic download and premature success UI in `downloadAsNew` across `discovery_screen.dart` and `discovery_providers.dart` in `e:\Mohamed\Personal_Project\daily-meal\app_v2`.
+
+CURRENT BEHAVIOR:
+1. In `lib/features/vault/providers/discovery_providers.dart`:
+   ```dart
+   Future<void> downloadAsNew(int oldLocalId, CloudMeal cloudMeal) async {
+     state = const AsyncValue.loading();
+     try {
+       // 1. Detach old meal from cloud
+       await _mealsDao.updateMealCompanion(oldLocalId, const MealsCompanion(
+         cloudId: drift.Value(null),
+       ));
+       
+       // 2. Insert new meal with cloudId
+       final companion = await _createCompanion(cloudMeal);
+       await _mealsDao.insertMeal(companion);
+       state = const AsyncValue.data(null);
+     } catch (e, st) { ... }
+   }
+   ```
+   Problem:
+   The old meal is detached from its cloudId BEFORE `_createCompanion` (which performs network image download via `MealImageLocalizer`).
+   If the network download fails, times out, or throws an error, the old meal has already lost its cloud link forever, and the new meal is never created.
+   Furthermore, steps 1 and 2 are not executed inside an atomic database transaction.
+
+2. In `lib/features/vault/presentation/discovery_screen.dart` (lines 1038-1042):
+   ```dart
+   onTap: () {
+     Navigator.pop(ctx);
+     ref.read(discoveryControllerProvider.notifier).downloadAsNew(linkedMeal.id, cloudMeal);
+     AppToast.showSuccess(context, strings.mealAddedNewCopy(cloudMeal.name));
+   }
+   ```
+   Problem:
+   `downloadAsNew` is called fire-and-forget without `await`.
+   `AppToast.showSuccess` is displayed immediately before the download even begins or succeeds! If the download fails, the user is misled with a false success toast.
+
+WHAT MUST CHANGE:
+1. In `lib/features/vault/providers/discovery_providers.dart`:
+   - In `downloadAsNew(int oldLocalId, CloudMeal cloudMeal)`:
+     First, prepare the companion outside the transaction:
+     `final companion = await _createCompanion(cloudMeal);`
+     Then, execute both database operations inside an atomic transaction:
+     `await _db.transaction(() async {`
+     `  await _mealsDao.updateMealCompanion(oldLocalId, const MealsCompanion(cloudId: drift.Value(null)));`
+     `  await _mealsDao.insertMeal(companion);`
+     `});`
+     (Inject `AppDatabase _db` into `DiscoveryNotifier` constructor/provider if not already present).
+     Re-throw or allow errors to surface to the caller so the UI can catch failure.
+2. In `lib/features/vault/presentation/discovery_screen.dart`:
+   - Make `onTap` async.
+   - `await` the `downloadAsNew` call.
+   - Only show `AppToast.showSuccess` if the operation succeeded and `context.mounted`.
+   - On error, show an appropriate localized error toast if `context.mounted`.
+3. In tests (`test/unit/discovery_download_atomic_test.dart` or existing discovery tests):
+   - Add test coverage asserting:
+     a) If network download fails during `_createCompanion`, the old meal retains its original `cloudId`.
+     b) Successful `downloadAsNew` atomically updates the old meal's cloudId to null and inserts the new meal.
+
+WHAT MUST REMAIN UNTOUCHED:
+- Do not modify existing meal cards layout or unaffected discovery filters.
+</task>
+
+<verification_loop>
+Run these commands from `e:\Mohamed\Personal_Project\daily-meal\app_v2` before reporting:
+1. `flutter analyze --no-pub` (Must pass with 0 errors, 0 warnings).
+2. `flutter test --no-pub test/unit/` (Must pass).
+3. `flutter test --no-pub` (All 236+ tests must pass).
+</verification_loop>
+
+<action_safety>
+Keep changes strictly scoped to:
+- `lib/features/vault/providers/discovery_providers.dart`
+- `lib/features/vault/presentation/discovery_screen.dart`
+- tests under `test/`
+Do NOT run git add or git commit; the orchestrator reviews and commits. Leave work uncommitted.
+</action_safety>
+
+<structured_output_contract>
+End your report with:
+1. What changed and why
+2. Files touched
+3. Gate outcomes with counts (flutter analyze, flutter test)
+4. Deviations, open items, or decisions needed
+</structured_output_contract>

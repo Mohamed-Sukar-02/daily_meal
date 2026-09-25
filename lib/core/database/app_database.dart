@@ -45,9 +45,9 @@ class AppDatabase extends _$AppDatabase {
         AppSettingsCompanion(
           id: Value(1),
           cooldownDays: Value(14),
-          chickenCooldownDays: Value(7),
-          beefCooldownDays: Value(10),
-          fishCooldownDays: Value(5),
+          chickenCooldownDays: Value(2),
+          beefCooldownDays: Value(2),
+          fishCooldownDays: Value(4),
           meatlessCooldownDays: Value(0),
           notificationHour: Value(12),
           notificationMinute: Value(0),
@@ -161,13 +161,13 @@ class AppDatabase extends _$AppDatabase {
           await customStatement('ALTER TABLE app_settings ADD COLUMN cooldown_days INTEGER NOT NULL DEFAULT 14');
         }
         if (!settingsColNames.contains('chicken_cooldown_days')) {
-          await customStatement('ALTER TABLE app_settings ADD COLUMN chicken_cooldown_days INTEGER NOT NULL DEFAULT 7');
+          await customStatement('ALTER TABLE app_settings ADD COLUMN chicken_cooldown_days INTEGER NOT NULL DEFAULT 2');
         }
         if (!settingsColNames.contains('beef_cooldown_days')) {
-          await customStatement('ALTER TABLE app_settings ADD COLUMN beef_cooldown_days INTEGER NOT NULL DEFAULT 10');
+          await customStatement('ALTER TABLE app_settings ADD COLUMN beef_cooldown_days INTEGER NOT NULL DEFAULT 2');
         }
         if (!settingsColNames.contains('fish_cooldown_days')) {
-          await customStatement('ALTER TABLE app_settings ADD COLUMN fish_cooldown_days INTEGER NOT NULL DEFAULT 5');
+          await customStatement('ALTER TABLE app_settings ADD COLUMN fish_cooldown_days INTEGER NOT NULL DEFAULT 4');
         }
         if (!settingsColNames.contains('meatless_cooldown_days')) {
           await customStatement('ALTER TABLE app_settings ADD COLUMN meatless_cooldown_days INTEGER NOT NULL DEFAULT 0');
@@ -210,10 +210,6 @@ class AppDatabase extends _$AppDatabase {
         await customStatement('UPDATE app_settings SET beef_cooldown_days = 2 WHERE beef_cooldown_days IS NULL');
         await customStatement('UPDATE app_settings SET fish_cooldown_days = 4 WHERE fish_cooldown_days IS NULL');
         await customStatement('UPDATE app_settings SET meatless_cooldown_days = 0 WHERE meatless_cooldown_days IS NULL');
-        // Upgrade legacy defaults to new spec defaults
-        await customStatement('UPDATE app_settings SET chicken_cooldown_days = 2 WHERE chicken_cooldown_days = 7');
-        await customStatement('UPDATE app_settings SET beef_cooldown_days = 2 WHERE beef_cooldown_days = 10');
-        await customStatement('UPDATE app_settings SET fish_cooldown_days = 4 WHERE fish_cooldown_days = 5');
         await customStatement('UPDATE app_settings SET notification_hour = 12 WHERE notification_hour IS NULL');
         await customStatement('UPDATE app_settings SET notification_minute = 0 WHERE notification_minute IS NULL');
         await customStatement('UPDATE app_settings SET notifications_enabled = 0 WHERE notifications_enabled IS NULL');

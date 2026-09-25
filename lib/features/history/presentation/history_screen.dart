@@ -359,7 +359,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                                                     crossAxisAlignment: CrossAxisAlignment.start,
                                                     children: [
                                                       Text(
-                                                        entry.mealName,
+                                                        strings.historyEntryDisplayName(
+                                                          mealName: entry.mealName,
+                                                          entryType: entry.entryType.name,
+                                                        ),
                                                         maxLines: 1,
                                                         overflow: TextOverflow.ellipsis,
                                                         style: TextStyle(

@@ -917,6 +917,33 @@ class AppStrings {
     }
   }
 
+  /// Localized display name for a history entry's stored `mealName`.
+  ///
+  /// Takeout/skipped rows persist a language-neutral key (`'takeout'` /
+  /// `'skipped'`), so the raw DB string is not user-facing copy. This resolves
+  /// those keys — and legacy rows that stored Arabic directly — to the current
+  /// locale. Genuine cooked/leftover meal names pass through unchanged.
+  String historyEntryDisplayName({
+    required String mealName,
+    required String entryType,
+  }) {
+    final lowerType = entryType.toLowerCase();
+    final lowerName = mealName.trim().toLowerCase();
+    if (lowerType == 'takeout' ||
+        lowerName == 'takeout' ||
+        lowerName == 'خارج البيت' ||
+        lowerName == 'أكل من بره' ||
+        lowerName == 'تيك أواي') {
+      return isEn ? 'Takeout' : 'أكل من بره';
+    }
+    if (lowerType == 'skipped' ||
+        lowerName == 'skipped' ||
+        lowerName == 'تفويت الوجبة') {
+      return isEn ? 'Skipped Meal' : 'تفويت الوجبة';
+    }
+    return mealName;
+  }
+
   // ===========================================================================
   // Notification Center
   // ===========================================================================

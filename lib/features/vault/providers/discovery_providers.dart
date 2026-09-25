@@ -20,8 +20,16 @@ final cloudMealByIdProvider =
 
 class DiscoveryNotifier extends StateNotifier<AsyncValue<void>> {
   final MealsDao _mealsDao;
+  final AppDatabase _db;
+  final Future<String?> Function(String?) _localizeImage;
 
-  DiscoveryNotifier(this._mealsDao) : super(const AsyncValue.data(null));
+  DiscoveryNotifier(
+    this._mealsDao,
+    this._db, {
+    Future<String?> Function(String?)? localizeImage,
+  })  : _localizeImage =
+            localizeImage ?? MealImageLocalizer.instance.localize,
+        super(const AsyncValue.data(null));
 
   /// Copies [cloudMeal] into the vault and returns the new local row id, or
   /// `null` when the insert failed. The meal screen uses the id to swap itself
@@ -50,21 +58,25 @@ class DiscoveryNotifier extends StateNotifier<AsyncValue<void>> {
     }
   }
 
+  /// Detaches [oldLocalId] from its cloud link and copies [cloudMeal] in as a
+  /// fresh vault row. The image download happens BEFORE any database write so
+  /// a network failure can never orphan the old meal, and both writes share
+  /// one transaction so they commit together or not at all. Errors are set on
+  /// the state AND rethrown so the caller can show a real error toast.
   Future<void> downloadAsNew(int oldLocalId, CloudMeal cloudMeal) async {
     state = const AsyncValue.loading();
     try {
-      // 1. Detach old meal from cloud
-      await _mealsDao.updateMealCompanion(oldLocalId, const MealsCompanion(
-        cloudId: drift.Value(null),
-      ));
-      
-      // 2. Insert new meal with cloudId
       final companion = await _createCompanion(cloudMeal);
-      await _mealsDao.insertMeal(companion);
-      
+      await _db.transaction(() async {
+        await _mealsDao.updateMealCompanion(oldLocalId, const MealsCompanion(
+          cloudId: drift.Value(null),
+        ));
+        await _mealsDao.insertMeal(companion);
+      });
       state = const AsyncValue.data(null);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
+      rethrow;
     }
   }
 
@@ -72,8 +84,7 @@ class DiscoveryNotifier extends StateNotifier<AsyncValue<void>> {
     // Store the photo FILE, not the bare URL, so the vault renders offline.
     // On failure the URL is kept (works online) and the startup backfill in
     // MealImageLocalizer retries on a later launch.
-    final localPhoto =
-        await MealImageLocalizer.instance.localize(cloudMeal.imageUrl);
+    final localPhoto = await _localizeImage(cloudMeal.imageUrl);
     return MealsCompanion(
       name: drift.Value(cloudMeal.name),
       photoPath: drift.Value(localPhoto),
@@ -125,5 +136,6 @@ MealCategory cloudCategory(String c) {
 
 final discoveryControllerProvider = StateNotifierProvider<DiscoveryNotifier, AsyncValue<void>>((ref) {
   final dao = ref.watch(mealsDaoProvider);
-  return DiscoveryNotifier(dao);
+  final db = ref.watch(appDatabaseProvider);
+  return DiscoveryNotifier(dao, db);
 });

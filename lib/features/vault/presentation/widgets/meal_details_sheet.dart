@@ -132,7 +132,7 @@ class MealDetailsSheet extends ConsumerWidget {
   // Data
   // ---------------------------------------------------------------------------
 
-  _MealDetailsInfo _buildInfo() {
+  _MealDetailsInfo _buildInfo(AppStrings strings) {
     final historyEntry = this.historyEntry;
 
     // Explore → cloud meal.
@@ -169,7 +169,10 @@ class MealDetailsSheet extends ConsumerWidget {
     if (historyEntry != null) {
       final h = historyEntry;
       return _MealDetailsInfo(
-        name: h.mealName,
+        name: strings.historyEntryDisplayName(
+          mealName: h.mealName,
+          entryType: h.entryType.name,
+        ),
         proteinType: h.proteinType,
         carbsType: h.carbsType,
         cookedAt: h.cookedAt,
@@ -222,7 +225,7 @@ class MealDetailsSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final brightness = Theme.of(context).brightness;
     final strings = AppStrings.of(context);
-    final info = _buildInfo();
+    final info = _buildInfo(strings);
 
     return Container(
       key: const Key('meal_details_sheet'),

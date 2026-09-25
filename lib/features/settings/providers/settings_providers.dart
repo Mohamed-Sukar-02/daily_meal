@@ -69,6 +69,12 @@ AppStrings _stringsFor(AppSettingsData settings) => AppStrings(
           : const Locale('ar'),
     );
 
+/// Seam for the OS notification side effects so tests can swap the singleton
+/// without touching the plugin's platform channels. Production resolves to
+/// [NotificationService.instance].
+final notificationServiceProvider =
+    Provider<NotificationService>((ref) => NotificationService.instance);
+
 /// Mutation controller for application settings.
 class SettingsController extends AsyncNotifier<void> {
   @override
@@ -213,6 +219,18 @@ class SettingsController extends AsyncNotifier<void> {
     try {
       final dao = ref.read(appSettingsDaoProvider);
       await dao.updateLanguage(lang);
+
+      // The scheduled OS reminder carries frozen title/body strings, so it
+      // must be re-armed with the new language or it keeps firing the old copy.
+      final settings = await dao.watchSettings().first;
+      if (settings.notificationsEnabled) {
+        await ref.read(notificationServiceProvider).scheduleDailyNotification(
+          hour: settings.notificationHour,
+          minute: settings.notificationMinute,
+          strings: _stringsFor(settings),
+        );
+      }
+
       state = const AsyncValue.data(null);
     } catch (err, st) {
       state = AsyncValue.error(err, st);
@@ -229,7 +247,7 @@ class SettingsController extends AsyncNotifier<void> {
       
       final settings = await dao.watchSettings().first;
       if (settings.notificationsEnabled) {
-        await NotificationService.instance.scheduleDailyNotification(
+        await ref.read(notificationServiceProvider).scheduleDailyNotification(
           hour: hour,
           minute: minute,
           strings: _stringsFor(settings),
@@ -250,24 +268,32 @@ class SettingsController extends AsyncNotifier<void> {
     try {
       final dao = ref.read(appSettingsDaoProvider);
       if (enabled) {
-        final granted = await NotificationService.instance.requestPermissions();
+        final granted = await ref.read(notificationServiceProvider).requestPermissions();
         if (!granted) {
           // Permission denied — keep switch OFF and don't schedule
           await dao.toggleNotifications(false);
-          await NotificationService.instance.cancelNotification();
+          await ref.read(notificationServiceProvider).cancelNotification();
           state = const AsyncValue.data(null);
           return;
         }
         await dao.toggleNotifications(true);
         final settings = await dao.watchSettings().first;
-        await NotificationService.instance.scheduleDailyNotification(
-          hour: settings.notificationHour,
-          minute: settings.notificationMinute,
-          strings: _stringsFor(settings),
-        );
+        try {
+          await ref.read(notificationServiceProvider).scheduleDailyNotification(
+            hour: settings.notificationHour,
+            minute: settings.notificationMinute,
+            strings: _stringsFor(settings),
+          );
+        } catch (_) {
+          // Scheduling failed — roll the persisted flag back to OFF so the
+          // switch does not claim a reminder that will never fire.
+          await dao.toggleNotifications(false);
+          await ref.read(notificationServiceProvider).cancelNotification();
+          rethrow;
+        }
       } else {
         await dao.toggleNotifications(false);
-        await NotificationService.instance.cancelNotification();
+        await ref.read(notificationServiceProvider).cancelNotification();
       }
       state = const AsyncValue.data(null);
     } catch (err, st) {
@@ -310,6 +336,9 @@ class SettingsController extends AsyncNotifier<void> {
     try {
       final dao = ref.read(appSettingsDaoProvider);
       await dao.resetToDefaults();
+      // resetToDefaults flips notificationsEnabled to false in SQLite, but the
+      // OS alarm survives that write — cancel it or the reminder keeps firing.
+      await ref.read(notificationServiceProvider).cancelNotification();
       state = const AsyncValue.data(null);
     } catch (err, st) {
       state = AsyncValue.error(err, st);

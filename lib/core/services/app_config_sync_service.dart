@@ -168,100 +168,159 @@ class AppConfigSyncService {
     return getCachedDefaults();
   }
 
+  /// A remote starter-meal document, decoupled from [QueryDocumentSnapshot]
+  /// so the sync algorithm is unit-testable without a live Firestore.
+  @visibleForTesting
+  Future<List<RemoteStarterDoc>> Function()? remoteStarterDocsFetcher;
+
+  /// Test entry point for the auto-sync path (isManual defaults to false).
+  @visibleForTesting
+  Future<void> syncStarterMealsForTest(AppDatabase db, {bool isManual = false}) =>
+      _syncStarterMeals(db, isManual: isManual);
+
+  Future<List<RemoteStarterDoc>> _fetchRemoteStarterDocs() async {
+    final override = remoteStarterDocsFetcher;
+    if (override != null) return override();
+
+    final snapshot = await FirebaseFirestore.instance
+        .collection('vault_meals')
+        .where('status', isEqualTo: 'approved')
+        .where('isStarterMeal', isEqualTo: true)
+        .get()
+        .timeout(const Duration(seconds: 8));
+    return [
+      for (final doc in snapshot.docs)
+        RemoteStarterDoc(id: doc.id, data: doc.data()),
+    ];
+  }
+
   Future<void> _syncStarterMeals(AppDatabase db, {bool isManual = false}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final blacklistedIds = prefs.getStringList('deleted_starter_meals') ?? [];
 
-      final snapshot = await FirebaseFirestore.instance
-          .collection('vault_meals')
-          .where('status', isEqualTo: 'approved')
-          .where('isStarterMeal', isEqualTo: true)
-          .get()
-          .timeout(const Duration(seconds: 8));
+      final docs = await _fetchRemoteStarterDocs();
 
-      final remoteMap = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
-      for (final doc in snapshot.docs) {
+      // Safeguard: an empty response (offline snapshot hiccup, flaky network,
+      // transient permission failure) must never wipe the local starter
+      // catalog. Skip the whole pass and keep what the user has.
+      if (docs.isEmpty) {
+        debugPrint('[AppConfigSyncService] Starter meals sync: cloud returned '
+            '0 documents — skipping deletions/de-listings.');
+        return;
+      }
+
+      // Identity is the cloud document id; the trimmed name is only a legacy
+      // fallback for starter meals that predate cloudId tracking.
+      final remoteById = <String, RemoteStarterDoc>{};
+      final remoteByName = <String, RemoteStarterDoc>{};
+      for (final doc in docs) {
         if (blacklistedIds.contains(doc.id)) continue; // Respect user deletions
 
-        final name = (doc.data()['name'] as String? ?? '').trim();
-        if (name.isNotEmpty) {
-          remoteMap[name] = doc;
-        }
+        final name = (doc.data['name'] as String? ?? '').trim();
+        if (name.isEmpty) continue;
+        remoteById[doc.id] = doc;
+        remoteByName.putIfAbsent(name, () => doc);
       }
 
       final localMeals = await db.mealsDao.getStarterMeals();
-      final localMap = <String, Meal>{};
+
+      final matchByLocalId = <int, RemoteStarterDoc>{};
+      final claimedRemoteIds = <String>{};
+
+      // Pass 1: match by cloudId.
       for (final l in localMeals) {
-        if (l.name.isNotEmpty) {
-          localMap[l.name.trim()] = l;
+        final cid = l.cloudId;
+        if (cid == null) continue;
+        final r = remoteById[cid];
+        if (r != null && claimedRemoteIds.add(cid)) {
+          matchByLocalId[l.id] = r;
         }
       }
 
-      // Update or delete local starter meals
+      // Pass 2: legacy name fallback, only for meals without a cloudId.
       for (final l in localMeals) {
-        final lName = l.name.trim();
-        if (remoteMap.containsKey(lName)) {
-          // Exists in both, update it with cloud properties (preserving local isFavorite, etc)
-          final rDoc = remoteMap[lName]!;
-          final rData = rDoc.data();
-          // Store the photo FILE, not the bare URL, so the vault renders
-          // offline (URL falls back through if the download fails).
-          final localPhoto = await MealImageLocalizer.instance
-              .localize(rData['imageUrl'] as String?);
+        if (l.cloudId != null || matchByLocalId.containsKey(l.id)) continue;
+        final r = remoteByName[l.name.trim()];
+        if (r != null && claimedRemoteIds.add(r.id)) {
+          matchByLocalId[l.id] = r;
+        }
+      }
+
+      // Stage every SQLite mutation first: photo downloads happen outside the
+      // transaction so the write itself stays fast and atomic.
+      final updates = <_StarterMealUpdate>[];
+      for (final l in localMeals) {
+        final r = matchByLocalId[l.id];
+        if (r == null) continue;
+        // Exists in both — update it with cloud properties (including a
+        // renamed name), preserving local isFavorite, notes, cooldown, etc.
+        final localPhoto = await MealImageLocalizer.instance
+            .localize(r.data['imageUrl'] as String?);
+        updates.add(_StarterMealUpdate(l.id, _cloudCompanion(r, localizePhoto: localPhoto)));
+      }
+
+      // Genuinely gone from the cloud starter catalog (or user-blacklisted):
+      // de-list instead of delete — keep the row so meal_history, favourites
+      // and notes survive; only the starter flag drops.
+      final deListedIds = [
+        for (final l in localMeals)
+          if (!matchByLocalId.containsKey(l.id)) l.id,
+      ];
+
+      final inserts = <MealsCompanion>[];
+      for (final doc in docs) {
+        if (claimedRemoteIds.contains(doc.id)) continue;
+        if (blacklistedIds.contains(doc.id)) continue; // Respect user deletions
+        final name = (doc.data['name'] as String? ?? '').trim();
+        if (name.isEmpty) continue;
+        final localPhoto = await MealImageLocalizer.instance
+            .localize(doc.data['imageUrl'] as String?);
+        final companion = _cloudCompanion(doc, localizePhoto: localPhoto);
+        inserts.add(companion.copyWith(
+          name: Value(name),
+          isStarterMeal: const Value(true),
+        ));
+      }
+
+      await db.transaction(() async {
+        for (final update in updates) {
+          await db.mealsDao.updateMealCompanion(update.localId, update.companion);
+        }
+        for (final id in deListedIds) {
           await db.mealsDao.updateMealCompanion(
-            l.id,
-            MealsCompanion(
-              cloudId: Value(rDoc.id),
-              photoPath: Value(localPhoto),
-              shortName: Value(rData['shortName'] as String?),
-              proteinType: Value(_mapProtein(rData['proteinType'] as String? ?? 'other')),
-              carbsType: Value(_mapCarbs(rData['carbsType'] as String? ?? 'none')),
-              category: Value(_mapCategory(rData['category'] as String? ?? 'popular')),
-              prepTime: Value((rData['prepTimeMinutes'] as num?)?.toInt() ?? 30),
-              isFridaySpecial: Value(rData['isFridaySpecial'] as bool? ?? false),
-              isBudgetFriendly: Value(rData['isBudgetFriendly'] as bool? ?? false),
-            ),
-          );
-        } else {
-          // Exists locally as starter meal, but removed from cloud (or blacklisted)
-          if (!isManual) {
-             // Only auto-sync deletes meals. Manual sync never force-deletes user's meals.
-             await db.mealsDao.deleteMeal(l.id);
-          }
-        }
-      }
-
-      // Insert new starter meals from cloud
-      for (final rName in remoteMap.keys) {
-        if (!localMap.containsKey(rName)) {
-          final rDoc = remoteMap[rName]!;
-          final rData = rDoc.data();
-          // Same offline-first rule as the update branch above.
-          final localPhoto = await MealImageLocalizer.instance
-              .localize(rData['imageUrl'] as String?);
-          await db.mealsDao.insertMeal(
-            MealsCompanion(
-              name: Value(rName),
-              cloudId: Value(rDoc.id),
-              photoPath: Value(localPhoto),
-              shortName: Value(rData['shortName'] as String?),
-              proteinType: Value(_mapProtein(rData['proteinType'] as String? ?? 'other')),
-              carbsType: Value(_mapCarbs(rData['carbsType'] as String? ?? 'none')),
-              category: Value(_mapCategory(rData['category'] as String? ?? 'popular')),
-              prepTime: Value((rData['prepTimeMinutes'] as num?)?.toInt() ?? 30),
-              isFridaySpecial: Value(rData['isFridaySpecial'] as bool? ?? false),
-              isBudgetFriendly: Value(rData['isBudgetFriendly'] as bool? ?? false),
-              isStarterMeal: const Value(true),
-            ),
+            id,
+            MealsCompanion(isStarterMeal: Value(false)),
           );
         }
-      }
-      debugPrint('[AppConfigSyncService] Starter meals sync (manual=) completed successfully.');
+        for (final companion in inserts) {
+          await db.mealsDao.insertMeal(companion);
+        }
+      });
+      debugPrint('[AppConfigSyncService] Starter meals sync (manual=$isManual) completed successfully: '
+          '${updates.length} updated, ${deListedIds.length} de-listed, ${inserts.length} inserted.');
     } catch (e) {
       debugPrint('[AppConfigSyncService] Starter meals sync failed: ');
       if (isManual) rethrow; // Let the UI handle the error
     }
+  }
+
+  MealsCompanion _cloudCompanion(RemoteStarterDoc doc, {String? localizePhoto}) {
+    final rData = doc.data;
+    final name = (rData['name'] as String? ?? '').trim();
+    final prepTime = (rData['prepTimeMinutes'] as num?)?.toInt() ?? 30;
+    return MealsCompanion(
+      name: Value(name),
+      cloudId: Value(doc.id),
+      photoPath: Value(localizePhoto),
+      shortName: Value(rData['shortName'] as String?),
+      proteinType: Value(_mapProtein(rData['proteinType'] as String? ?? 'other')),
+      carbsType: Value(_mapCarbs(rData['carbsType'] as String? ?? 'none')),
+      category: Value(_mapCategory(rData['category'] as String? ?? 'popular')),
+      prepTime: Value(prepTime <= 0 ? 30 : prepTime),
+      isFridaySpecial: Value(rData['isFridaySpecial'] as bool? ?? false),
+      isBudgetFriendly: Value(rData['isBudgetFriendly'] as bool? ?? false),
+    );
   }
 
   /// Triggered manually by the user from the Vault screen
@@ -337,4 +396,20 @@ class AppConfigSyncService {
       return const SystemDefaults();
     }
   }
+}
+
+/// One approved starter-meal document from the cloud vault.
+@visibleForTesting
+class RemoteStarterDoc {
+  const RemoteStarterDoc({required this.id, required this.data});
+
+  final String id;
+  final Map<String, dynamic> data;
+}
+
+class _StarterMealUpdate {
+  const _StarterMealUpdate(this.localId, this.companion);
+
+  final int localId;
+  final MealsCompanion companion;
 }

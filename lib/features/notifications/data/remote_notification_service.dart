@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
 
 import '../domain/notification_item.dart';
@@ -24,6 +25,12 @@ class RemoteNotificationService {
   /// rather than pushing the error at the listener: an unreadable inbox should
   /// look empty, not crash the shell.
   Stream<List<NotificationItem>> getNotificationsStream() async* {
+    // No Firebase app (offline boot, tests, unsupported platform): reading
+    // `FirebaseFirestore.instance` below would throw [core/no-app], so end the
+    // stream quietly — an unavailable feed looks empty, not broken.
+    if (Firebase.apps.isEmpty) {
+      return;
+    }
     try {
       final query = _fs.collection('admin_notifications').orderBy('sentAt', descending: true).limit(maxItems);
 
