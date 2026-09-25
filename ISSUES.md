@@ -16,7 +16,7 @@ Gate at the time of writing:
 
 ```
 flutter analyze --no-pub   ->  31 issues, 0 errors, 0 warnings (all 12 warnings cleared)
-flutter test  --no-pub     ->  227/227 passed
+flutter test  --no-pub     ->  284/284 passed (100%)
 ```
 
 The percentage on each item answers one question: *how much of that item's own
@@ -404,7 +404,7 @@ corrected in place, and the correction says what was wrong.
   clauses — see the rejected/amended notes), leaving 31 `info`s (mostly
   `withOpacity` and `translate` deprecations in untouched widgets, and duplicated
   `unnecessary_underscores`) plus the one deliberate warning above.
-- [x] `flutter test` — **224/224 pass.** The three previously "on-device pending"
+- [x] `flutter test` — **284/284 pass.** The three previously "on-device pending"
   checks are covered by committed automated tests: recommendation stability under
   a Like, the vault header at 360×640 and 1.5× text, and the proposal payload
   against the rules plus every failure reason in both locales.
