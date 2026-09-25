@@ -13,6 +13,32 @@ void main() {
       expect(map({'route': '/meal/cloud/abc123'}).route, '/meal/cloud/abc123');
     });
 
+    test('permits every route the router registers', () {
+      for (final route in [
+        '/',
+        '/history',
+        '/notifications',
+        '/vault',
+        '/vault?tab=explore',
+        '/settings',
+        '/settings?section=notifications',
+        '/meal/7',
+        '/meal/cloud/abc123',
+      ]) {
+        expect(map({'route': route}).route, route, reason: route);
+      }
+    });
+
+    test('sanitizes external schemes, script injections, and unknown paths back to Home', () {
+      expect(map({'route': 'javascript:alert(1)'}).route, '/');
+      expect(map({'route': 'https://malicious-site.com'}).route, '/');
+      expect(map({'route': '/unknown/unregistered/route'}).route, '/');
+      expect(map({'route': '/vault?tab=evil'}).route, '/');
+      expect(map({'route': '/meal/invalid_id'}).route, '/');
+      expect(map({'route': '/meal/cloud/../../../traversal'}).route, '/');
+      expect(map({'route': '   /history   '}).route, '/history');
+    });
+
     test('falls back to Home when the route is absent, blank or not a string', () {
       expect(map({}).route, '/');
       expect(map({'route': ''}).route, '/');

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../localization/app_strings.dart';
+import '../navigation/notification_route.dart';
 import 'notification_service.dart';
 
 class NotificationSyncService {
@@ -53,7 +54,7 @@ class NotificationSyncService {
               id: notifId,
               title: title.isNotEmpty ? title : strings.localNotificationTitle,
               body: body,
-              payload: data['route']?.toString() ?? '/',
+              payload: sanitizeNotificationRoute(data['route']),
               strings: strings,
             );
           }

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'core/localization/app_strings.dart';
+import 'core/navigation/notification_route.dart';
 import 'core/providers/network_provider.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
@@ -81,8 +82,8 @@ class _DailyMealAppState extends ConsumerState<DailyMealApp> {
       // Tap on a notification while the app lives in background/foreground:
       // the payload is the route it was scheduled for.
       NotificationService.instance.onNotificationTapped = (route) {
-        if (route.isNotEmpty && mounted) {
-          ref.read(appRouterProvider).push(route);
+        if (mounted) {
+          ref.read(appRouterProvider).push(sanitizeNotificationRoute(route));
         }
       };
 
@@ -90,10 +91,10 @@ class _DailyMealAppState extends ConsumerState<DailyMealApp> {
       // payload, which the router cannot accept before its first frame.
       NotificationService.instance.getColdStartNotificationPayload().then((launchPayload) {
         if (launchPayload != null && launchPayload.isNotEmpty && mounted) {
-          // Small post-splash delay to let initial navigation settle before pushing deep link
-          Future.delayed(const Duration(milliseconds: 300), () {
+          final safeRoute = sanitizeNotificationRoute(launchPayload);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
-              ref.read(appRouterProvider).push(launchPayload);
+              ref.read(appRouterProvider).push(safeRoute);
             }
           });
         }

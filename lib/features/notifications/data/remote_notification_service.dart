@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
 
+import '../../../core/navigation/notification_route.dart';
 import '../domain/notification_item.dart';
 
 /// Reads the broadcasts the admin panel writes to `admin_notifications`.
@@ -64,7 +65,7 @@ class RemoteNotificationService {
 
   /// A missing or blank route falls back to Home: pushing an unmatched
   /// location lands the user on go_router's error page.
-  static String _route(Object? value) => value is String && value.isNotEmpty ? value : '/';
+  static String _route(Object? value) => sanitizeNotificationRoute(value);
 
   static DateTime _time(Object? value) => value is Timestamp ? value.toDate() : DateTime.now();
 

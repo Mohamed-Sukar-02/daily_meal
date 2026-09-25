@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/localization/app_strings.dart';
+import '../../../core/navigation/notification_route.dart';
 import '../../../core/theme/app_palette.dart';
 import '../providers/notifications_provider.dart';
 import '../domain/notification_item.dart';
@@ -213,7 +214,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       onTap: () {
         ref.read(notificationsProvider.notifier).markAsRead(item.id);
         if (item.route != null) {
-          context.push(item.route!);
+          context.push(sanitizeNotificationRoute(item.route));
         }
       },
       child: Container(
