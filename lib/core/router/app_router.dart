@@ -30,7 +30,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   // links can't bypass the welcome gate on a cold start.
   final setupRefresh = ValueNotifier<int>(0);
   ref.onDispose(setupRefresh.dispose);
-  ref.listen(appSettingsProvider, (_, __) => setupRefresh.value++);
+  ref.listen(appSettingsProvider, (_, _) => setupRefresh.value++);
 
   return GoRouter(
     navigatorKey: rootNavigatorKey,
@@ -124,9 +124,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/vault',
                 name: 'vault',
-                pageBuilder: (context, state) => const NoTransitionPage(
-                  child: MealVaultScreen(),
-                ),
+                pageBuilder: (context, state) {
+                  final isExplore =
+                      state.uri.queryParameters['tab'] == 'explore';
+                  return NoTransitionPage(
+                    child: MealVaultScreen(initialTab: isExplore ? 1 : 0),
+                  );
+                },
               ),
             ],
           ),
@@ -179,7 +183,19 @@ class ScaffoldWithNavBar extends ConsumerStatefulWidget {
 class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
   bool _navLock = false;
   int? _publishedBranch;
+
+  /// When non-null, the user has been warned "press again to exit" **while
+  /// already sitting on the Home tab**, and still is inside [_exitWindow].
+  ///
+  /// The invariant that matters: this is only ever written by a back press
+  /// that happened on Home. A press on a secondary tab navigates instead of
+  /// exiting, so it must not arm the timer — otherwise the warning is shown on
+  /// the way *to* Home and a fast second press kills the app before the user
+  /// ever reads it (ISSUES.md "سلوك مُضلّل في إشعار زر الرجوع العام").
   DateTime? _lastBackPressTime;
+
+  /// How long the "press again to exit" warning stays live.
+  static const Duration _exitWindow = Duration(seconds: 2);
 
   /// Publishes the visible branch so Home/History/Settings can reset their
   /// UI-only state on re-entry. Called outside of `build` (gesture callback),
@@ -197,6 +213,10 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
   void _scheduleBranchSync(int index) {
     if (_publishedBranch == index) return;
     _publishedBranch = index;
+    // Same rule as `_onTap`, for branches reached without tapping the bar
+    // (`context.go('/vault')` from the Home empty state, notification taps):
+    // a branch change makes any exit warning stale.
+    _lastBackPressTime = null;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (ref.read(activeNavBranchProvider) != index) {
@@ -206,6 +226,11 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
   }
 
   void _onTap(int index) {
+    // Leaving (or re-entering) any tab retires the exit warning: what the user
+    // was told about a moment ago no longer describes where they are. Done
+    // before the `_navLock` early-return so a dropped rapid tap can never leave
+    // a stale timer armed underneath the sheet of a half-typed meal.
+    _lastBackPressTime = null;
     // Guard rapid 30ms switching (test 5.1): defer and drop overlapping frames
     if (_navLock) return;
     _navLock = true;
@@ -250,22 +275,29 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
 
         final currentIndex = widget.navigationShell.currentIndex;
         final now = DateTime.now();
-        final isExitWarningActive = _lastBackPressTime != null &&
-            now.difference(_lastBackPressTime!) < const Duration(seconds: 2);
 
-        if (currentIndex != 0) {
-          // If not on Home tab, go to Home tab and show toast
-          _onTap(0);
+        if (currentIndex != NavBranch.home) {
+          // Back on a secondary tab is a navigation gesture, not an exit
+          // attempt: it belongs to the tab that is open, so it walks to Home
+          // and says nothing. The "press again to exit" copy is reserved for a
+          // press that lands *on* Home — showing it mid-switch both warns the
+          // user about a state they are not in and, because it used to arm the
+          // timer here, let a fast second press quit the app outright.
+          // `_onTap` clears any warning still on file.
+          _onTap(NavBranch.home);
+          return;
+        }
+
+        final isExitWarningActive = _lastBackPressTime != null &&
+            now.difference(_lastBackPressTime!) < _exitWindow;
+        if (isExitWarningActive) {
+          // The second press honours the warning it was given: leave.
+          _lastBackPressTime = null;
+          SystemNavigator.pop();
+        } else {
+          // First press while already on Home: warn, and start the window now.
           context.showToast(strings.pressAgainToExit);
           _lastBackPressTime = now;
-        } else {
-          // If on Home tab, check exit warning
-          if (isExitWarningActive) {
-            SystemNavigator.pop();
-          } else {
-            context.showToast(strings.pressAgainToExit);
-            _lastBackPressTime = now;
-          }
         }
       },
       child: Scaffold(
@@ -374,32 +406,55 @@ class _NavBarItem extends StatelessWidget {
     return Expanded(
       child: InkWell(
         onTap: onTap,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            iconWidget,
-            const SizedBox(height: 1.5),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: color,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                fontSize: 10.5,
+        // The nav strip is a fixed 54px box, so the label inside it cannot grow
+        // with a large system text scale: measured 2.1px of RenderFlex overflow
+        // at 360x640 with text at 1.5x, which the strip then painted past its
+        // own clip line. LayoutBuilder hands the Column the slot width the label
+        // still needs to ellipsize at, FittedBox(scaleDown) shrinks icon, gaps
+        // and underline together with it, and the [Center] keeps the item filled
+        // to the whole strip so neither the ink splash nor the tap target gets
+        // smaller. scaleDown never enlarges, so at a normal text scale — on any
+        // width — every box lands exactly where it used to.
+        child: LayoutBuilder(
+          builder: (context, constraints) => Center(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.center,
+              child: SizedBox(
+                width: constraints.maxWidth,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    iconWidget,
+                    const SizedBox(height: 1.5),
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: color,
+                        fontWeight:
+                            isSelected ? FontWeight.w700 : FontWeight.w500,
+                        fontSize: 10.5,
+                      ),
+                    ),
+                    const SizedBox(height: 1.5),
+                    // The green underline indicator
+                    Container(
+                      height: 2.5,
+                      width: 22,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppPalette.brandGreen
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 1.5),
-            // The green underline indicator
-            Container(
-              height: 2.5,
-              width: 22,
-              decoration: BoxDecoration(
-                color: isSelected ? AppPalette.brandGreen : Colors.transparent,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

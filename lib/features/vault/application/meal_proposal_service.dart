@@ -55,6 +55,16 @@ import 'meal_sync_diff.dart';
 //     cannot query its own proposals. A SharedPreferences ledger
 //     (mealId → updatedAt-ms at submit time) blocks accidental re-sends and
 //     automatically re-opens the door once the meal is edited.
+//   • Public-vault pre-flight: `vault_meals` IS world-readable
+//     (`firestore.rules`), so before anything is uploaded the flow probes it
+//     for the exact `name` the payload would write (and the meal's
+//     `shortName`). A hit answers "already published" and costs no photo
+//     upload, no staging write and no quota slot. Matching is on the stored
+//     strings only — Firestore equality is case- and diacritic-sensitive, so
+//     an approximate-name duplicate is deliberately left for the admin to
+//     reject at triage rather than guessed at here. A probe that throws or
+//     never answers is skipped: a broken duplicate check must never block a
+//     legitimate proposal.
 //   • This layer carries no display text: it returns
 //     a stable [ProposalOutcomeCode] and the UI maps it through [AppStrings].
 // ---------------------------------------------------------------------------
@@ -67,6 +77,12 @@ enum ProposalOutcomeCode {
 
   /// This exact meal version was already proposed (edit it to re-propose).
   alreadyProposed,
+
+  /// The public vault already serves this meal under one of its stored names.
+  /// Raised by the pre-flight read, before the photo upload and before the
+  /// daily allowance is touched, so telling the user costs nothing on either
+  /// side — and the next meal can be proposed straight after.
+  alreadyInPublicVault,
 
   /// Cloud unreachable, or the user is on mobile data with Wi-Fi-only mode on.
   blockedNoConnection,
@@ -363,6 +379,11 @@ class ProposalOutcome {
   factory ProposalOutcome.alreadyProposed() =>
       const ProposalOutcome._(ProposalOutcomeCode.alreadyProposed);
 
+  /// The vault already publishes this meal: nothing was uploaded and nothing
+  /// was recorded, so no quota and no ledger entry is spent on the answer.
+  factory ProposalOutcome.alreadyInPublicVault() =>
+      const ProposalOutcome._(ProposalOutcomeCode.alreadyInPublicVault);
+
   factory ProposalOutcome.blocked(CloudAccessStatus status) => ProposalOutcome._(
         status == CloudAccessStatus.requiresWifi
             ? ProposalOutcomeCode.blockedRequiresWifi
@@ -515,6 +536,38 @@ class MealProposalPayload {
     return minutes;
   }
 
+  /// The `name` exactly as [build] writes it: trimmed, then capped at
+  /// [maxNameLength]; `null` when the trimmed value is below [minNameLength]
+  /// (the same fast-fail [build] applies). The public-vault pre-flight probes
+  /// this value rather than `meal.name`, so the query is looking for the string
+  /// the cloud actually stores.
+  static String? payloadName(String rawName) {
+    final name = rawName.trim();
+    if (name.length < minNameLength) return null;
+    return name.length > maxNameLength ? name.substring(0, maxNameLength) : name;
+  }
+
+  /// Candidate names for the public-vault pre-flight: the payload name, then
+  /// the meal's own [Meal.shortName] when it is a different stored string
+  /// (`shortName` is never uploaded, so it can only ever match a vault row
+  /// admins published under that wording). Empty when the meal has no name the
+  /// rules would accept, which means "nothing to probe".
+  ///
+  /// Firestore string equality is case- and diacritic-sensitive, so these exact
+  /// forms are all the check attempts: an approximate-name duplicate is
+  /// deliberately left for the admin to reject at triage.
+  static List<String> vaultProbeNames(Meal meal) {
+    final candidates = <String>[];
+    final name = payloadName(meal.name);
+    if (name != null) candidates.add(name);
+    final shortName = meal.shortName;
+    if (shortName != null) {
+      final short = payloadName(shortName);
+      if (short != null && !candidates.contains(short)) candidates.add(short);
+    }
+    return candidates;
+  }
+
   /// Builds the exact document written to `staging_meals`.
   ///
   /// Returns `null` when the meal can never satisfy the rules (name shorter
@@ -533,17 +586,15 @@ class MealProposalPayload {
     String? imageUrl,
     DateTime? now,
   }) {
-    final name = meal.name.trim();
-    if (name.length < minNameLength) return null;
+    final name = payloadName(meal.name);
+    if (name == null) return null;
 
     final notes = meal.notes?.trim() ?? '';
     final createdAt = (now ?? DateTime.now()).toUtc().toIso8601String();
     final url = imageUrl?.trim() ?? '';
 
     return <String, dynamic>{
-      'name': name.length > maxNameLength
-          ? name.substring(0, maxNameLength)
-          : name,
+      'name': name,
       'proteinType': MealCloudVocabulary.proteinToCloud(meal.proteinType),
       'carbsType': MealCloudVocabulary.carbsToCloud(meal.carbsType),
       'category': MealCloudVocabulary.categoryToCloud(meal.category),
@@ -800,19 +851,25 @@ Future<CloudAccessStatus> _alwaysAllowedGate() async =>
     CloudAccessStatus.allowed;
 
 /// Executes the export: connectivity gate → daily quota → duplicate guard →
-/// anonymous auth → optional photo upload → Firestore create. All dependencies
-/// are injectable for tests; defaults are the live Firebase singletons (the app
-/// initialises Firebase in `main()`).
+/// public-vault pre-flight → anonymous auth → optional photo upload →
+/// Firestore create. All dependencies are injectable for tests; defaults are
+/// the live Firebase singletons (the app initialises Firebase in `main()`).
 class MealProposalService {
   MealProposalService({
     FirebaseFirestore? firestore,
     FirebaseAuth? auth,
     SharedPreferences? prefs,
     Future<CloudAccessStatus> Function()? accessStatus,
+    Future<bool> Function(List<String> vaultNames)? publicVaultDuplicateProbe,
   })  : _firestore = firestore,
         _auth = auth,
         _prefs = prefs,
-        _accessStatus = accessStatus ?? _alwaysAllowedGate;
+        _accessStatus = accessStatus ?? _alwaysAllowedGate,
+        // `vault_meals` is world-readable, so a `name` query needs no signed-in
+        // user and no collection scan. Tests hand in a stand-in because
+        // dev_dependencies carry no fake Firestore (`pubspec.yaml` is off-limits
+        // to this task); `null` keeps the live query in [_queryPublicVault].
+        _vaultDuplicateProbe = publicVaultDuplicateProbe;
 
   final FirebaseFirestore? _firestore;
   final FirebaseAuth? _auth;
@@ -822,6 +879,10 @@ class MealProposalService {
   /// [resolveProposalCloudAccess].
   final Future<CloudAccessStatus> Function() _accessStatus;
 
+  /// Injected answer for "does the public vault already serve one of these
+  /// names?", or `null` to ask Firestore itself.
+  final Future<bool> Function(List<String> vaultNames)? _vaultDuplicateProbe;
+
   FirebaseFirestore get _fs => _firestore ?? FirebaseFirestore.instance;
   FirebaseAuth get _au => _auth ?? FirebaseAuth.instance;
 
@@ -829,6 +890,11 @@ class MealProposalService {
       _prefs ??= await SharedPreferences.getInstance().timeout(prefsTimeout);
 
   static const String stagingCollection = 'staging_meals';
+
+  /// The published catalogue, probed before anything is uploaded. Rules:
+  /// `allow read: if true`, so this read works with (or without) the anonymous
+  /// session the flow creates further down.
+  static const String publicVaultCollection = 'vault_meals';
 
   /// Upper bounds for the blocking stages. Firestore's `add()` only completes
   /// on a server ack, so on a flaky connection the flow used to hang and leave
@@ -841,10 +907,19 @@ class MealProposalService {
   static const Duration writeTimeout = Duration(seconds: 20);
   static const Duration imageUploadTimeout = Duration(seconds: 25);
 
+  /// The pre-flight's own deadline, in the same style as the stage bounds
+  /// above: it caps the whole duplicate probe (one `limit(1)` query per
+  /// candidate name), so a vault read that never answers cannot hold the
+  /// propose button open. Exceeding it lets the proposal continue.
+  static const Duration publicVaultReadTimeout = Duration(seconds: 8);
+
   /// One try/catch (and one bound) per stage, because the stages fail for
   /// completely different reasons and the user needs to be told which one to
-  /// go fix — the gate, the on-device ledger, sign-in, the photo and the write
-  /// are five different problems with five different answers.
+  /// go fix — the gate, the on-device ledger, the vault pre-flight, sign-in,
+  /// the photo and the write are different problems with different answers.
+  /// The pre-flight is the one stage whose failure is *not* reported: it can
+  /// only say "already published", so a broken read must fall through to the
+  /// normal upload rather than refuse a legitimate proposal.
   Future<ProposalOutcome> proposeMeal(Meal meal) async {
     // Checked here, not only in the UI flow: the payload builder must never run
     // on a device that cannot deliver it, whichever button called it.
@@ -874,6 +949,17 @@ class MealProposalService {
         stage: 'proposal ledger',
         reason: ProposalFailureReason.ledgerUnavailable,
       );
+    }
+
+    // Pre-flight against the public vault, in the same precondition block as
+    // the local ledger and for the same reason: it must answer before the photo
+    // is uploaded, before the staging write, and before the daily allowance is
+    // spent. A meal the vault already serves therefore costs zero network
+    // writes and leaves the quota and the ledger untouched, so the user can
+    // propose a different meal straight after being told.
+    if (await _alreadyInPublicVault(
+        MealProposalPayload.vaultProbeNames(meal))) {
+      return ProposalOutcome.alreadyInPublicVault();
     }
 
     // Firestore rules demand an authenticated caller for staging creates.
@@ -930,6 +1016,44 @@ class MealProposalService {
       debugPrint('Proposal ledger not updated: $error');
     }
     return ProposalOutcome.submitted(imageAttached: imageUrl != null);
+  }
+
+  /// Ask the public vault whether it already serves any of [vaultNames].
+  ///
+  /// Bounded by [publicVaultReadTimeout] like every other stage, and swallowed
+  /// on any error (no network, permission, an uninitialised Firebase, an
+  /// expired deadline): the check can only save an upload, so when it cannot
+  /// answer the proposal simply goes on as if it did not exist. A broken
+  /// duplicate check must never block a legitimate proposal.
+  Future<bool> _alreadyInPublicVault(List<String> vaultNames) async {
+    if (vaultNames.isEmpty) return false;
+    final probe = _vaultDuplicateProbe;
+    try {
+      final served =
+          probe != null ? probe(vaultNames) : _queryPublicVault(vaultNames);
+      return await served.timeout(publicVaultReadTimeout);
+    } catch (error) {
+      debugPrint('Public-vault duplicate check skipped: $error');
+      return false;
+    }
+  }
+
+  /// The live probe: one `limit(1)` equality query per candidate name against
+  /// `vault_meals` (`allow read: if true`), stopping at the first hit. It never
+  /// fetches the collection and never normalises beyond the candidates
+  /// [MealProposalPayload] hands it: Firestore matches stored strings exactly,
+  /// so folding Arabic variants in here would produce answers the vault cannot
+  /// back up.
+  Future<bool> _queryPublicVault(List<String> vaultNames) async {
+    for (final name in vaultNames) {
+      final snapshot = await _fs
+          .collection(publicVaultCollection)
+          .where('name', isEqualTo: name)
+          .limit(1)
+          .get();
+      if (snapshot.docs.isNotEmpty) return true;
+    }
+    return false;
   }
 
   /// Remote photos (meals downloaded from the cloud vault) pass straight
@@ -1130,43 +1254,54 @@ Future<ProposalOutcome> runProposalFlow(
   return outcome;
 }
 
+/// The localised line behind every [ProposalOutcomeCode], in one exhaustive
+/// switch so a new outcome cannot be added without copy in both languages
+/// (the unit test that walks `ProposalOutcomeCode.values` is the other half of
+/// that promise). Kept free of `BuildContext` so it is testable on its own.
+String proposalOutcomeLabel(AppStrings strings, ProposalOutcome outcome) =>
+    switch (outcome.code) {
+      ProposalOutcomeCode.submitted => strings.proposalSuccess,
+      ProposalOutcomeCode.alreadyProposed => strings.proposalAlready,
+      ProposalOutcomeCode.alreadyInPublicVault =>
+        strings.proposalAlreadyInPublicVault,
+      ProposalOutcomeCode.blockedNoConnection => strings.proposalOffline,
+      ProposalOutcomeCode.blockedRequiresWifi => strings.proposalWifiOnly,
+      ProposalOutcomeCode.invalidName => strings.proposalInvalidName,
+      ProposalOutcomeCode.dailyLimitReached =>
+        strings.proposalDailyLimit(ProposalQuota.dailyLimit),
+      ProposalOutcomeCode.cloudUnchanged => strings.proposalUnchangedFromCloud,
+      ProposalOutcomeCode.failed => strings.proposalFailedReason(
+          proposalFailureLabel(strings, outcome.reason,
+              cause: outcome.cause ?? ''),
+        ),
+    };
+
 /// Maps a [ProposalOutcome] to the localised toast. Kept next to the flow so
-/// every surface reports identically.
+/// every surface reports identically: [proposalOutcomeLabel] says *what* to
+/// say, the switch here only says *how loudly*.
 void showProposalOutcomeToast(
   BuildContext context,
   AppStrings strings,
   ProposalOutcome outcome,
 ) {
+  final message = proposalOutcomeLabel(strings, outcome);
   switch (outcome.code) {
     case ProposalOutcomeCode.submitted:
-      AppToast.showSuccess(context, strings.proposalSuccess);
-      break;
-    case ProposalOutcomeCode.alreadyProposed:
-      AppToast.showInfo(context, strings.proposalAlready);
+      AppToast.showSuccess(context, message);
       break;
     case ProposalOutcomeCode.blockedNoConnection:
-      AppToast.showError(context, strings.proposalOffline);
-      break;
-    case ProposalOutcomeCode.blockedRequiresWifi:
-      AppToast.showInfo(context, strings.proposalWifiOnly);
-      break;
     case ProposalOutcomeCode.invalidName:
-      AppToast.showError(context, strings.proposalInvalidName);
-      break;
-    case ProposalOutcomeCode.dailyLimitReached:
-      AppToast.showInfo(context, strings.proposalDailyLimit(ProposalQuota.dailyLimit));
-      break;
-    case ProposalOutcomeCode.cloudUnchanged:
-      AppToast.showInfo(context, strings.proposalUnchangedFromCloud);
-      break;
     case ProposalOutcomeCode.failed:
-      AppToast.showError(
-        context,
-        strings.proposalFailedReason(
-          proposalFailureLabel(strings, outcome.reason,
-              cause: outcome.cause ?? ''),
-        ),
-      );
+      AppToast.showError(context, message);
+      break;
+    case ProposalOutcomeCode.alreadyProposed:
+    // Nothing went wrong and nothing was sent: the same neutral tone as the
+    // local duplicate, with the spec's 👏 doing the congratulating.
+    case ProposalOutcomeCode.alreadyInPublicVault:
+    case ProposalOutcomeCode.blockedRequiresWifi:
+    case ProposalOutcomeCode.dailyLimitReached:
+    case ProposalOutcomeCode.cloudUnchanged:
+      AppToast.showInfo(context, message);
       break;
   }
 }

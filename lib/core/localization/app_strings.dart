@@ -457,6 +457,12 @@ class AppStrings {
   String get fullDetails => isEn ? 'Full details' : 'التفاصيل الكاملة';
   String get notesLabel => isEn ? 'Notes' : 'ملاحظات';
 
+  /// Tooltip of the app bar overflow button that carries the screen's local
+  /// actions (edit · delete).
+  String get mealScreenActionsMenu => isEn
+      ? 'Meal actions'
+      : 'إجراءات الأكلة';
+
   // Cloud Staging Export (propose a meal for the public cloud vault)
   String get proposalCta => isEn ? 'Propose to cloud' : 'اقتراح للسحابة';
   String get proposalInProgress => isEn ? 'Sending…' : 'جاري الإرسال...';
@@ -475,6 +481,12 @@ class AppStrings {
   String get proposalUnchangedFromCloud => isEn
       ? 'This meal already matches its cloud copy — edit it to propose changes'
       : 'الأكلة مطابقة لنسختها في السحابة — عدّلها لاقتراح التغييرات';
+  /// The public-vault pre-flight found this exact name already published
+  /// (`ProposalOutcomeCode.alreadyInPublicVault`) — wording kept verbatim from
+  /// the backlog item so the user reads the promise they were given.
+  String get proposalAlreadyInPublicVault => isEn
+      ? 'This meal is already available in the public vault 👏'
+      : 'هذه الأكلة متوفرة بالفعل في الخزنة العامة 👏';
   String get proposalOffline => isEn
       ? 'No connection — your proposal was not sent'
       : 'لا يوجد اتصال — لم يتم إرسال الاقتراح';

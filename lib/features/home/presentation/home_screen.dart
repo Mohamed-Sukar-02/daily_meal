@@ -9,13 +9,14 @@ import '../../../core/navigation/nav_lifecycle.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/app_icons.dart';
 import '../../../core/widgets/app_toast.dart';
+import '../../meals/presentation/quick_meal_view.dart';
 import '../../vault/presentation/widgets/delete_meal_dialog.dart';
 import '../../vault/presentation/widgets/meal_details_sheet.dart';
 import '../../vault/presentation/widgets/quick_add_sheet.dart';
 import '../domain/cooldown_engine.dart';
 import '../providers/recommendation_provider.dart';
 import 'widgets/home_header.dart';
-import 'widgets/meal_card.dart';
+import 'widgets/quick_actions.dart';
 import 'widgets/spin_wheel_button.dart';
 import 'widgets/spin_wheel_dialog.dart';
 
@@ -123,10 +124,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
                 const SizedBox(height: 12),
               ],
               for (int i = 0; i < meals.length; i++) ...[
-                MealCard(
-                  meal: meals[i],
-                  cardIndex: i,
-                  onCookedToday: () => _handleCookedToday(context, ref, meals[i]),
+                // The recommendation card is the *quick entry point* of a meal:
+                // the shared [QuickMealView] drawn in its card shape, so the
+                // home list, the details sheet and any future list show one
+                // meal vocabulary instead of two overlapping widgets.
+                QuickMealView.fromMeal(
+                  meals[i],
+                  shape: MealViewShape.quick,
+                  // The card's own inset — the quick hero is a wide band, so
+                  // it needs the padding inside the surface, not around it.
+                  padding: const EdgeInsets.all(10),
+                  // Downscale big cloud photos while decoding: 3 cards at once.
+                  photoCacheWidth: 1080,
+                  footer: QuickActions(
+                    onCookedToday: () =>
+                        _handleCookedToday(context, ref, meals[i]),
+                  ),
                   onToggleFavorite: () {
                     ref
                         .read(recommendationControllerProvider.notifier)

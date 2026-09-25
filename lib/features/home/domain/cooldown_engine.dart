@@ -79,15 +79,6 @@ class CooldownEngine {
       }
     }
 
-    _HistoryCandidate? lastCooked;
-    for (final entry in adaptedHistory) {
-      final daysDiff = app_date_utils.daysBetweenLocal(entry.normalizedCookedDate, normalizedToday);
-      if (daysDiff >= 0 && daysDiff <= 1) {
-        lastCooked = entry;
-        break;
-      }
-    }
-
     final adaptedMeals = meals.map((m) => _MealCandidate.from(m)).toList();
 
     final int configCooldown;

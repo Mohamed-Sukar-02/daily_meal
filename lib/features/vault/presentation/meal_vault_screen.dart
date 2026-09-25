@@ -32,7 +32,12 @@ import 'widgets/vault_filter_bar.dart';
 ///    UI (search text + filter chips) back to its initial state, while
 ///    "Explore" keeps its own state untouched.
 class MealVaultScreen extends ConsumerStatefulWidget {
-  const MealVaultScreen({super.key});
+  const MealVaultScreen({super.key, this.initialTab = 0});
+
+  /// Which internal tab to open on (0 = My Vault, 1 = Explore). Set by the
+  /// `/vault?tab=explore` deep link so a notification tap can land directly on
+  /// Explore.
+  final int initialTab;
 
   @override
   ConsumerState<MealVaultScreen> createState() => _MealVaultScreenState();
@@ -56,6 +61,24 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
   /// Vault never fires cloud requests nobody asked for. After that first visit
   /// it stays alive inside the [IndexedStack] and keeps its own state.
   bool _exploreMounted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabIndex = widget.initialTab;
+    if (_tabIndex == _tabExplore) _exploreMounted = true;
+  }
+
+  @override
+  void didUpdateWidget(covariant MealVaultScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialTab != oldWidget.initialTab) {
+      setState(() {
+        _tabIndex = widget.initialTab;
+        if (_tabIndex == _tabExplore) _exploreMounted = true;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -238,58 +261,80 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
   ) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+      // The bar clips this header to `toolbarHeight` (85, a pinned design
+      // constant), so the title line, its counter row and the subtitle under it
+      // cannot grow with a large system text scale — measured 19px of RenderFlex
+      // overflow at 360x640 with text at 1.5x, which painted the subtitle's line
+      // past the bar's bottom edge. Same guard the counter row uses one level
+      // down: LayoutBuilder hands the Column the width its `Flexible` title
+      // needs, then FittedBox(scaleDown) shrinks the whole header as one unit.
+      // scaleDown never enlarges, so at a normal text scale the header lays out
+      // and paints exactly where it used to.
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final header = Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Flexible(
-                child: Text(
-                  strings.vaultTitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 28,
-                    height: 1.2,
-                    fontWeight: FontWeight.w800,
-                    color: AppPalette.textPrimary(brightness),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(
+                    child: Text(
+                      strings.vaultTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 28,
+                        height: 1.2,
+                        fontWeight: FontWeight.w800,
+                        color: AppPalette.textPrimary(brightness),
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    // scaleDown, not clip: on narrow screens the counter badges
+                    // shrink instead of throwing a RenderFlex overflow.
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: _buildVaultCounter(
+                        context,
+                        totalCount,
+                        localMeals,
+                        brightness,
+                        strings,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Flexible(
-                // scaleDown, not clip: on narrow screens the counter badges
-                // shrink instead of throwing a RenderFlex overflow.
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: AlignmentDirectional.centerEnd,
-                  child: _buildVaultCounter(
-                    context,
-                    totalCount,
-                    localMeals,
-                    brightness,
-                    strings,
-                  ),
+              const SizedBox(height: 4),
+              Text(
+                _tabIndex == _tabMyVault
+                    ? strings.vaultSubtitle
+                    : strings.vaultSubtitleExplore,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: AppPalette.textSecondary(brightness),
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            _tabIndex == _tabMyVault
-                ? strings.vaultSubtitle
-                : strings.vaultSubtitleExplore,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: AppPalette.textSecondary(brightness),
-            ),
-          ),
-        ],
+          );
+          if (!constraints.hasBoundedWidth || !constraints.hasBoundedHeight) {
+            // Nothing to fit into: leave the header at its natural size.
+            return header;
+          }
+          return FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.topStart,
+            child: SizedBox(width: constraints.maxWidth, child: header),
+          );
+        },
       ),
     );
   }
@@ -423,7 +468,7 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                       ),
                     ),
                   ),
-                  error: (_, __) => const SizedBox.shrink(),
+                  error: (_, _) => const SizedBox.shrink(),
                 ),
       ),
     );
@@ -1322,9 +1367,9 @@ class _AddIn10SecondsTooltipState extends State<_AddIn10SecondsTooltip>
           // Pivot around the tail tip (tailTipX, tooltipHeight) where it rests on the icon
           return Transform(
             transform: Matrix4.identity()
-              ..translate(tailTipX, tooltipHeight)
+              ..translateByDouble(tailTipX, tooltipHeight, 0.0, 1.0)
               ..rotateZ(_angleAnimation.value)
-              ..translate(-tailTipX, -tooltipHeight),
+              ..translateByDouble(-tailTipX, -tooltipHeight, 0.0, 1.0),
             child: child,
           );
         },
@@ -1339,28 +1384,52 @@ class _AddIn10SecondsTooltipState extends State<_AddIn10SecondsTooltip>
               borderRadius: 16.0,
               color: Colors.white,
             ),
-            child: Padding(
-              padding: const EdgeInsets.only(
-                left: 6,
-                right: 6,
-                top: 4,
-                bottom: 4 + tailHeight,
-              ),
-              child: Center(
-                child: Text(
-                  widget.strings.vaultAddIn10Seconds,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppPalette.brandGreen,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 11.5,
-                    height: 1.15,
-                    letterSpacing: -0.2,
+            // The 86x47 bubble is a pinned design box, the same family as the
+            // 85px header clip: its label area is 47 - 4 - (4 + 7) = 32px, but
+            // the two-line label at 11.5px / height 1.15 measures ~39.6px once
+            // the system text scale hits 1.5 — and with Padding/Center in the
+            // chain (no Flex) nothing raises a RenderFlex error, so the label
+            // just painted past the bubble body's bottom edge and over the
+            // FAB. Same guard `_buildVaultHeaderWidget` uses: LayoutBuilder +
+            // FittedBox(scaleDown) with a width-pinned child, so the label
+            // shrinks as one unit instead of hanging out. scaleDown never
+            // enlarges, so at a normal text scale the bubble stays
+            // pixel-identical.
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final label = Padding(
+                  padding: const EdgeInsets.only(
+                    left: 6,
+                    right: 6,
+                    top: 4,
+                    bottom: 4 + tailHeight,
                   ),
-                ),
-              ),
+                  child: Center(
+                    child: Text(
+                      widget.strings.vaultAddIn10Seconds,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppPalette.brandGreen,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11.5,
+                        height: 1.15,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ),
+                );
+                if (!constraints.hasBoundedWidth || !constraints.hasBoundedHeight) {
+                  // Nothing to fit into: leave the label at its natural size.
+                  return label;
+                }
+                return FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.center,
+                  child: SizedBox(width: constraints.maxWidth, child: label),
+                );
+              },
             ),
           ),
         ),

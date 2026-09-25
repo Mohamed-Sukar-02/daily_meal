@@ -1,6 +1,5 @@
 import '../localization/app_strings.dart';
 import 'dart:async';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../theme/app_palette.dart';
 
@@ -25,7 +24,6 @@ class AppToast {
   static OverlayEntry? _currentEntry;
   static Timer? _dismissTimer;
   static Timer? _countdownTimer;
-  static bool _isShowing = false;
 
   /// Show informational toast - 1.5s
   static void show(
@@ -110,7 +108,6 @@ class AppToast {
     _hideCurrent();
 
     final overlay = Overlay.of(context, rootOverlay: true);
-    if (overlay == null) return;
 
     final brightness = Theme.of(context).brightness;
     
@@ -132,7 +129,6 @@ class AppToast {
     );
 
     _currentEntry = entry;
-    _isShowing = true;
     overlay.insert(entry);
 
     // Auto dismiss timer
@@ -152,7 +148,6 @@ class AppToast {
       } catch (_) {}
       _currentEntry = null;
     }
-    _isShowing = false;
   }
 
   static void _hideEntry(OverlayEntry entry) {
@@ -166,7 +161,6 @@ class AppToast {
     try {
       entry.remove();
     } catch (_) {}
-    _isShowing = false;
   }
 
   /// Hide toast manually
@@ -432,7 +426,6 @@ class _ToastOverlayState extends State<_ToastOverlay> with SingleTickerProviderS
           iconData = Icons.restaurant_rounded;
           break;
         case AppToastType.info:
-        default:
           iconData = Icons.info_rounded;
           break;
       }
@@ -521,7 +514,6 @@ class _ToastOverlayState extends State<_ToastOverlay> with SingleTickerProviderS
       case AppToastType.action:
         return AppPalette.brandGreen;
       case AppToastType.info:
-      default:
         return isDark ? const Color(0xFF007AFF) : AppPalette.brandGreen;
     }
   }

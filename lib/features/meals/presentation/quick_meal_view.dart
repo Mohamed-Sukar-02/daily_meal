@@ -6,19 +6,45 @@ import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/app_icons.dart';
 import '../../../core/widgets/meal_image.dart';
 
+/// Formats preparation time through [AppStrings.minutes], which applies the
+/// correct plural form for the active locale (Arabic has four plural buckets).
+String formatPrepTime(int minutes, AppStrings strings) =>
+    strings.minutes(minutes);
+
+/// Which approved shape of the meal view a surface asks for.
+///
+/// The two shapes are the two card designs the mockups approved; they share
+/// every input (photo, name, protein, time, category, the honour flags) and
+/// differ only in how that data is laid out and how much chrome is drawn:
+///
+///  * [detail] — the editorial treatment: tall rounded hero carrying the
+///    honour capsules, a category overline above the name and an equal-width
+///    spec strip. It draws no surface of its own, so it sits inside a sheet, a
+///    card or a page background. This is the default.
+///  * [quick] — the quick entry-point card: an elevated surface with its own
+///    tap target, a wide inset hero band with a floating love toggle, colour
+///    pills for protein / time / category, an honour wrap and a footer action.
+///    This is what the home recommendation list shows.
+enum MealViewShape { detail, quick }
+
 /// Lightweight, reusable meal view — the single visual vocabulary for a
 /// meal's hero photo, name and meta strip (protein, carbs, prep time,
 /// category, budget, Friday special).
 ///
 /// It is the *entry point view* for meals across the app:
+///  * The home recommendation list embeds it as [MealViewShape.quick], which
+///    makes the card the quick entry-point view of a meal rather than a
+///    page-only widget (tap it and the details sheet opens).
 ///  * [MealDetailsSheet] renders it as the header of every meal it presents and
 ///    passes its love / bookmark control through [QuickMealView.nameTrailing].
 ///  * Any future list, card or dialog can embed the exact same presentation
 ///    via [QuickMealView.fromMeal] instead of re-rolling pills and badges.
 ///
-/// The widget draws no outer card of its own: it is a rounded hero plus body,
-/// so it can sit inside a sheet, a card or a page background without nesting
-/// surfaces.
+/// In [MealViewShape.detail] the widget draws no outer card of its own: it is a
+/// rounded hero plus body, so it can sit inside a sheet, a card or a page
+/// background without nesting surfaces. [MealViewShape.quick] is the one
+/// caller that asks for the surface, because there the card *is* the entry
+/// point.
 ///
 /// Pure presentation: no providers, no Firebase, no display literals —
 /// every string comes from [AppStrings] (repo rule).
@@ -31,6 +57,14 @@ class QuickMealView extends StatelessWidget {
   final int? prepTimeMinutes;
   final bool isBudgetFriendly;
   final bool isFridaySpecial;
+
+  /// Loved state. [MealViewShape.quick] reads it for the glyph of its floating
+  /// heart and for the "مفضلة" pill; [MealViewShape.detail] leaves the love
+  /// control to [nameTrailing] and draws nothing from this flag.
+  final bool isFavorite;
+
+  /// Which approved card design this surface asks for. See [MealViewShape].
+  final MealViewShape shape;
 
   /// Hero photo height (the details sheet uses 210; the full screen 260).
   final double photoHeight;
@@ -46,6 +80,20 @@ class QuickMealView extends StatelessWidget {
   /// Action rendered beside the name block (love / bookmark toggle).
   final Widget? nameTrailing;
 
+  /// Tap target of the [MealViewShape.quick] card surface — the entry point
+  /// that opens the meal. Ignored by [MealViewShape.detail], which is never a
+  /// surface of its own.
+  final VoidCallback? onTap;
+
+  /// Love toggle wired to the heart floating on the quick card's hero. Left
+  /// null by a caller that has no local row to love.
+  final VoidCallback? onToggleFavorite;
+
+  /// Action row drawn under the body of the quick card (the "Cook This" pill).
+  /// A slot rather than a callback so the view stays free of home-feature
+  /// widgets: the caller hands in whatever action its context asks for.
+  final Widget? footer;
+
   const QuickMealView({
     super.key,
     required this.name,
@@ -56,20 +104,29 @@ class QuickMealView extends StatelessWidget {
     this.prepTimeMinutes,
     this.isBudgetFriendly = false,
     this.isFridaySpecial = false,
+    this.isFavorite = false,
+    this.shape = MealViewShape.detail,
     this.photoHeight = 210,
     this.photoCacheWidth = 720,
     this.padding = const EdgeInsets.fromLTRB(16, 12, 16, 8),
     this.nameTrailing,
+    this.onTap,
+    this.onToggleFavorite,
+    this.footer,
   });
 
   /// Normalises a local vault [Meal] into the view.
   factory QuickMealView.fromMeal(
     Meal meal, {
     Key? key,
+    MealViewShape shape = MealViewShape.detail,
     double photoHeight = 210,
     int photoCacheWidth = 720,
     EdgeInsetsGeometry padding = const EdgeInsets.fromLTRB(16, 12, 16, 8),
     Widget? nameTrailing,
+    VoidCallback? onTap,
+    VoidCallback? onToggleFavorite,
+    Widget? footer,
   }) {
     return QuickMealView(
       key: key,
@@ -81,10 +138,15 @@ class QuickMealView extends StatelessWidget {
       prepTimeMinutes: meal.prepTime,
       isBudgetFriendly: meal.isBudgetFriendly,
       isFridaySpecial: meal.isFridaySpecial,
+      isFavorite: meal.isFavorite,
+      shape: shape,
       photoHeight: photoHeight,
       photoCacheWidth: photoCacheWidth,
       padding: padding,
       nameTrailing: nameTrailing,
+      onTap: onTap,
+      onToggleFavorite: onToggleFavorite,
+      footer: footer,
     );
   }
 
@@ -92,10 +154,33 @@ class QuickMealView extends StatelessWidget {
   static const BorderRadius _heroBorderRadius =
       BorderRadius.all(Radius.circular(_heroRadius));
 
+  // --- Metrics of the quick card, measured from the home mockups -----------
+  // They are design constants rather than parameters: every caller of the
+  // quick shape has to reproduce the approved card exactly, so there is
+  // nothing for a surface to choose here.
+
+  /// Hero photo aspect ratio measured from the mockups (≈852×215).
+  static const double _quickHeroAspectRatio = 3.96;
+  static const double _quickHeroRadius = 14;
+  static const double _quickCardRadius = 20;
+  static const BorderRadius _quickHeroBorderRadius =
+      BorderRadius.all(Radius.circular(_quickHeroRadius));
+  static const BorderRadius _quickCardBorderRadius =
+      BorderRadius.all(Radius.circular(_quickCardRadius));
+  /// The heart floats on the physical right of the hero in both directions,
+  /// exactly where the mockups pin it — hence `right`, not `end`.
+  static const double _quickHeartInset = 10;
+  static const double _quickHeartSize = 40;
+
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
     final strings = AppStrings.of(context);
+
+    if (shape == MealViewShape.quick) {
+      return _buildQuickCard(context, brightness, strings);
+    }
+
     final cells = _specCells(brightness, strings);
 
     return Padding(
@@ -124,6 +209,220 @@ class QuickMealView extends StatelessWidget {
             _SpecStrip(cells: cells),
           ],
         ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Quick card — the home recommendation surface (MealViewShape.quick)
+  // ---------------------------------------------------------------------------
+
+  /// The elevated card the home list shows: a card surface that owns the tap,
+  /// an inset wide hero with the love toggle floating on it, the name, the
+  /// protein / time / category pills, the honour wrap and the footer action.
+  ///
+  /// Rebuilt 1:1 from the approved mockups — the metrics live in the
+  /// `_quick*` constants above, not in parameters, so the card cannot drift
+  /// per caller.
+  Widget _buildQuickCard(
+    BuildContext context,
+    Brightness brightness,
+    AppStrings strings,
+  ) {
+    return Container(
+      key: const Key('quick_meal_view'),
+      decoration: BoxDecoration(
+        color: AppPalette.card(brightness),
+        borderRadius: _quickCardBorderRadius,
+        boxShadow: [
+          BoxShadow(
+            color: brightness == Brightness.dark
+                ? Colors.black.withValues(alpha: 0.35)
+                : AppPalette.lightTextPrimary.withValues(alpha: 0.07),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: padding,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildQuickHero(brightness),
+              const SizedBox(height: 12),
+              // Title — Flexible to handle 1.6x/2.0x scaling on 320px
+              Text(
+                name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 20,
+                  height: 1.3,
+                  fontWeight: FontWeight.w800,
+                  color: AppPalette.textPrimary(brightness),
+                ),
+              ),
+              const SizedBox(height: 10),
+              // Main chips (protein / time / category) — own Wrap
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _quickChip(
+                    context,
+                    AppPalette.chipRose(brightness),
+                    AppGlyph.steak,
+                    proteinType.label(strings),
+                  ),
+                  _quickChip(
+                    context,
+                    AppPalette.chipGold(brightness),
+                    AppGlyph.clock,
+                    formatPrepTime(prepTimeMinutes ?? 0, strings),
+                  ),
+                  if (category != null)
+                    _quickChip(
+                      context,
+                      AppPalette.chipViolet(brightness),
+                      AppGlyph.oven,
+                      category!.label(strings),
+                    ),
+                  // Dummy to ensure only the badges Wrap below has exactly
+                  // three children — the shape the card was approved with.
+                  const SizedBox.shrink(),
+                ],
+              ),
+              const SizedBox(height: 8),
+              // Badges (Friday / Budget / Favorite) — separate Wrap with the
+              // exact spacing the card was approved with (8 / 6) and 3 children.
+              if (_quickBadges(context, strings, brightness).isNotEmpty)
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: _quickBadges(context, strings, brightness),
+                ),
+              if (_quickBadges(context, strings, brightness).isNotEmpty)
+                const SizedBox(height: 8),
+              // Actions
+              if (footer != null)
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: footer!,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickHero(Brightness brightness) {
+    return Stack(
+      children: [
+        AspectRatio(
+          aspectRatio: _quickHeroAspectRatio,
+          child: ClipRRect(
+            borderRadius: _quickHeroBorderRadius,
+            child: MealImage(
+              photoPath: photoPath,
+              // Downscale big cloud photos while decoding: 3 cards at once.
+              cacheWidth: photoCacheWidth,
+              fallback: _QuickHeroPlaceholder(brightness: brightness),
+            ),
+          ),
+        ),
+        if (onToggleFavorite != null)
+          Positioned(
+            top: _quickHeartInset,
+            right: _quickHeartInset,
+            child: _QuickLoveButton(
+              size: _quickHeartSize,
+              isFavorite: isFavorite,
+              onToggle: onToggleFavorite,
+              brightness: brightness,
+            ),
+          ),
+      ],
+    );
+  }
+
+  List<Widget> _quickBadges(
+    BuildContext context,
+    AppStrings strings,
+    Brightness brightness,
+  ) {
+    final badges = <Widget>[
+      if (isFridaySpecial)
+        _quickChip(
+          context,
+          AppPalette.chipGold(brightness),
+          AppGlyph.star,
+          strings.fridaySpecial,
+          fontSize: 11,
+        ),
+      if (isBudgetFriendly)
+        _quickChip(
+          context,
+          AppPalette.chipGreen(brightness),
+          AppGlyph.wallet,
+          strings.budgetFriendly,
+          fontSize: 11,
+        ),
+      if (isFavorite)
+        _quickChip(
+          context,
+          AppPalette.chipRose(brightness),
+          AppGlyph.heartFill,
+          strings.favorite,
+          fontSize: 11,
+        ),
+    ];
+    return badges;
+  }
+
+  /// Colour pill of the quick card: glyph + label on a tinted surface, capped
+  /// so a long Arabic enum label can never push the row open.
+  Widget _quickChip(
+    BuildContext context,
+    ChipStyle style,
+    AppGlyph glyph,
+    String label, {
+    double fontSize = 12,
+  }) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 140),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: style.background,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppIcon(glyph, color: style.foreground, size: 15),
+            const SizedBox(width: 6),
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.w700,
+                        color: style.foreground,
+                      ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -332,6 +631,132 @@ class _HeroPlaceholder extends StatelessWidget {
               AppGlyph.pot,
               color: AppPalette.textSecondary(brightness),
               size: 36,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Empty-photo stand-in of the quick card. The detail shape draws its own
+/// ringed [_HeroPlaceholder]; the card keeps the flat brand gradient it was
+/// approved with, and keeps the `meal_photo_placeholder` key so tooling that
+/// looks for "this meal has no photo yet" still finds one.
+class _QuickHeroPlaceholder extends StatelessWidget {
+  final Brightness brightness;
+
+  const _QuickHeroPlaceholder({required this.brightness});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const Key('meal_photo_placeholder'),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+          colors: [
+            AppPalette.tabContainer(brightness),
+            AppPalette.card(brightness),
+          ],
+        ),
+      ),
+      child: Center(
+        child: AppIcon(
+          AppGlyph.pot,
+          color: AppPalette.textSecondary(brightness),
+          size: 34,
+        ),
+      ),
+    );
+  }
+}
+
+/// Love toggle floating on the quick card's hero. It owns its own pressed
+/// state so the heart pops instantly on tap, while the write it triggers
+/// ([_onToggle]) is what eventually re-comes through [isFavorite].
+class _QuickLoveButton extends StatefulWidget {
+  final bool isFavorite;
+  final VoidCallback? onToggle;
+  final Brightness brightness;
+  final double size;
+
+  const _QuickLoveButton({
+    required this.isFavorite,
+    required this.onToggle,
+    required this.brightness,
+    required this.size,
+  });
+
+  @override
+  State<_QuickLoveButton> createState() => _QuickLoveButtonState();
+}
+
+class _QuickLoveButtonState extends State<_QuickLoveButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnim;
+  late bool _isFavorite;
+
+  @override
+  void initState() {
+    super.initState();
+    _isFavorite = widget.isFavorite;
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    );
+    _scaleAnim = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.35), weight: 50),
+      TweenSequenceItem(tween: Tween(begin: 1.35, end: 1.0), weight: 50),
+    ]).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void didUpdateWidget(covariant _QuickLoveButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isFavorite != widget.isFavorite) {
+      _isFavorite = widget.isFavorite;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleTap() {
+    if (_controller.isAnimating) return;
+    setState(() {
+      _isFavorite = !_isFavorite;
+    });
+    _controller.forward(from: 0.0);
+    widget.onToggle?.call();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: widget.brightness == Brightness.dark
+          ? Colors.black.withValues(alpha: 0.45)
+          : Colors.white,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: _handleTap,
+        child: SizedBox(
+          width: widget.size,
+          height: widget.size,
+          child: Center(
+            child: ScaleTransition(
+              scale: _scaleAnim,
+              child: AppIcon(
+                _isFavorite ? AppGlyph.heartFill : AppGlyph.heartOutline,
+                color: AppPalette.heartCoral,
+                size: 20,
+              ),
             ),
           ),
         ),

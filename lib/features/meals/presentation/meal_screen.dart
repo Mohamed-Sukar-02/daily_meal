@@ -12,7 +12,9 @@ import '../../../core/widgets/meal_image.dart';
 import '../../vault/application/meal_proposal_service.dart';
 import '../../vault/application/meal_sync_diff.dart';
 import '../../vault/data/models/cloud_meal.dart';
+import '../../vault/presentation/widgets/delete_meal_dialog.dart';
 import '../../vault/presentation/widgets/meal_sync_window.dart';
+import '../../vault/presentation/widgets/quick_add_sheet.dart';
 import '../../vault/providers/discovery_providers.dart';
 import '../../vault/providers/vault_providers.dart';
 import 'widgets/meal_dish_tabs.dart';
@@ -25,16 +27,17 @@ import 'widgets/more_favorites_grid.dart';
 /// `meal_screen - light.png` for colour distribution.
 ///
 /// Layout (top → bottom):
-///   1. Solid app bar: back · centred short name · sync / favourite / status.
+///   1. Solid app bar: back · centred short name · sync / favourite / actions.
 ///   2. Full-bleed hero photo whose bottom [_heroBleed] continues behind the
 ///      info card, fading into the page. The full name sits directly on it.
 ///   3. Green info card fused with the dish strip via the folder-tab curve.
 ///   4. Selected-dish panel shell · "More Favorites" grid.
 ///   5. Floating, deliberately empty bottom pill.
 ///
-/// Reached at `/meal/:id` for a vault row. An Explore meal with no local copy
-/// opens the same screen at `/meal/cloud/:cloudId`, where the cloud mark offers
-/// a download instead of a sync state.
+/// Reached at `/meal/:id` for a vault row, whose edit and delete sit behind the
+/// app bar overflow. An Explore meal with no local copy opens the same screen at
+/// `/meal/cloud/:cloudId`, where the cloud mark offers a download instead of a
+/// sync state and the overflow is absent — there is no local row to change.
 class MealScreen extends ConsumerStatefulWidget {
   /// Local vault row shown by this screen; null on the cloud-only route.
   final int? mealId;
@@ -108,6 +111,10 @@ class _MealScreenState extends ConsumerState<MealScreen> {
           onFavoriteTap: () => ref
               .read(vaultControllerProvider.notifier)
               .toggleFavorite(meal.id, meal.isFavorite),
+          // A `/meal/:id` route always opens a real vault row, so both local
+          // actions belong on it.
+          onEditTap: () => _editLocalMeal(meal),
+          onDeleteTap: () => _deleteLocalMeal(meal),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator.adaptive()),
@@ -172,6 +179,11 @@ class _MealScreenState extends ConsumerState<MealScreen> {
               onFavoriteTap: () => ref
                   .read(vaultControllerProvider.notifier)
                   .toggleFavorite(local.id, local.isFavorite),
+              // The actions edit the row the vault actually holds — never the
+              // display copy above, whose borrowed `cloudId` must not be
+              // written back by a save.
+              onEditTap: () => _editLocalMeal(local),
+              onDeleteTap: () => _deleteLocalMeal(local),
             );
           },
           loading: () =>
@@ -199,6 +211,28 @@ class _MealScreenState extends ConsumerState<MealScreen> {
       if (meal.name.trim() == name) return meal;
     }
     return null;
+  }
+
+  /// Opens the shared edit sheet on [meal] — the very sheet the vault cards and
+  /// the details sheet use, so prefill, validation, the unsaved-changes guard
+  /// and the "updated" toast stay identical everywhere.
+  ///
+  /// No refresh is wired here on purpose: the sheet writes through
+  /// [VaultController], [allMealsProvider] re-emits off the drift stream and
+  /// this screen repaints the name, notes and photo by itself.
+  void _editLocalMeal(Meal meal) {
+    QuickAddSheet.show(context, mealToEdit: meal);
+  }
+
+  /// Confirms through the shared [DeleteMealDialog] — which does the write and
+  /// the app-wide "deleted, log kept" toast — and only then leaves the screen:
+  /// a route showing a meal that no longer exists has nothing left to show.
+  Future<void> _deleteLocalMeal(Meal meal) async {
+    final deleted = await DeleteMealDialog.show(context, meal);
+    // `null` = cancelled, `false` = kept. The dialog only returns `true` once
+    // the row is gone, so a failed write never pops the screen.
+    if (deleted != true || !mounted) return;
+    _leaveMealScreen(context);
   }
 
   /// Downloads the cloud row into the vault and swaps this screen onto the
@@ -250,6 +284,24 @@ Meal _mealFromCloudMeal(CloudMeal cloud) {
   );
 }
 
+/// Menu values of the app bar's overflow button.
+const String _mealActionEdit = 'edit';
+const String _mealActionDelete = 'delete';
+
+/// Leaves the meal screen: pops when something pushed it on top of another
+/// route, otherwise falls back to the vault tab — a deep link opens this screen
+/// as the whole stack, so there is nothing to pop.
+///
+/// Shared by the app bar back button and by the exit that follows a confirmed
+/// delete, so both send the user back the way they came.
+void _leaveMealScreen(BuildContext context) {
+  if (Navigator.of(context).canPop()) {
+    context.pop();
+  } else {
+    context.go('/vault');
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Body
 // ─────────────────────────────────────────────────────────────────────────────
@@ -271,6 +323,11 @@ class _MealBody extends StatelessWidget {
   final VoidCallback? onCloudTap;
   final VoidCallback? onFavoriteTap;
 
+  /// The two local actions (shared edit sheet · shared delete confirmation).
+  /// Left null for a cloud-only meal, which has no vault row to change.
+  final VoidCallback? onEditTap;
+  final VoidCallback? onDeleteTap;
+
   const _MealBody({
     required this.meal,
     required this.brightness,
@@ -281,6 +338,8 @@ class _MealBody extends StatelessWidget {
     required this.onDishChanged,
     required this.onCloudTap,
     this.onFavoriteTap,
+    this.onEditTap,
+    this.onDeleteTap,
   });
 
   @override
@@ -303,6 +362,8 @@ class _MealBody extends StatelessWidget {
           cloudOnly: cloudOnly,
           onCloudTap: onCloudTap,
           onFavoriteTap: onFavoriteTap,
+          onEditTap: onEditTap,
+          onDeleteTap: onDeleteTap,
         ),
         Expanded(
           child: Stack(
@@ -411,10 +472,20 @@ class _MealBody extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// App bar: [back] · short name (true centred) · [sync] [favourite]
+// App bar: [back] · short name (true centred) · [sync] [favourite] [actions]
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _MealAppBar extends StatelessWidget {
+  /// Room the centred name keeps clear on both sides of the header.
+  ///
+  /// The trailing group is cloud · favourite · overflow. Material's icon button
+  /// minimum forces the first two to 48dp each whatever [_BarButton] asks for,
+  /// the overflow button is its own 40dp box and 4dp closes the group — so
+  /// anything under this and a long short name would sit on top of the marks
+  /// (which it already did, by 12dp, before the fourth button arrived).
+  /// Symmetric so the name stays truly centred.
+  static const double _trailingActionsInset = 48 + 48 + 40 + 4 + 4;
+
   final String shortName;
   final Meal meal;
   final Brightness brightness;
@@ -423,6 +494,10 @@ class _MealAppBar extends StatelessWidget {
   final bool cloudOnly;
   final VoidCallback? onCloudTap;
   final VoidCallback? onFavoriteTap;
+
+  /// Edit / delete, offered only for a meal the vault actually holds.
+  final VoidCallback? onEditTap;
+  final VoidCallback? onDeleteTap;
 
   const _MealAppBar({
     required this.shortName,
@@ -433,10 +508,18 @@ class _MealAppBar extends StatelessWidget {
     this.cloudOnly = false,
     required this.onCloudTap,
     required this.onFavoriteTap,
+    this.onEditTap,
+    this.onDeleteTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final errorColor = Theme.of(context).colorScheme.error;
+    final foreground = MealScreenPalette.text(brightness);
+    // A cloud-only meal has no local row: neither action, and so no button.
+    final showActions =
+        !cloudOnly && (onEditTap != null || onDeleteTap != null);
+
     return Container(
       color: MealScreenPalette.appBar(brightness),
       child: SafeArea(
@@ -451,7 +534,9 @@ class _MealAppBar extends StatelessWidget {
                 Positioned.fill(
                   child: Center(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 88),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: _trailingActionsInset,
+                      ),
                       child: Text(
                         shortName,
                         key: const Key('meal_screen_short_name'),
@@ -472,13 +557,7 @@ class _MealAppBar extends StatelessWidget {
                     _BarButton(
                       key: const Key('meal_screen_back_button'),
                       tooltip: strings.welcomeBack,
-                      onTap: () {
-                        if (Navigator.of(context).canPop()) {
-                          context.pop();
-                        } else {
-                          context.go('/vault');
-                        }
-                      },
+                      onTap: () => _leaveMealScreen(context),
                       child: const Icon(
                         Icons.arrow_back_ios_new_rounded,
                         color: Colors.white,
@@ -508,6 +587,83 @@ class _MealAppBar extends StatelessWidget {
                               : Colors.white,
                           size: 22,
                         ),
+                      ),
+                    if (showActions)
+                      // The local actions live behind one overflow button
+                      // rather than two more glyphs: the app bar's cloud +
+                      // favourite pair is the shape the mockups lock, and
+                      // delete is not something to tap by accident.
+                      //
+                      // A `child` (not `icon`) is deliberate: PopupMenuButton
+                      // then sizes the tap target from this box instead of
+                      // wrapping an IconButton, and its own `constraints` knob
+                      // stays free — that one constrains the menu surface, not
+                      // the button.
+                      PopupMenuButton<String>(
+                        key: const Key('meal_screen_actions_button'),
+                        tooltip: strings.mealScreenActionsMenu,
+                        splashRadius: 22,
+                        color: MealScreenPalette.card(brightness),
+                        child: const SizedBox(
+                          width: 40,
+                          height: 44,
+                          child: Center(
+                            child: Icon(
+                              Icons.more_vert_rounded,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                          ),
+                        ),
+                        onSelected: (action) {
+                          if (action == _mealActionEdit) {
+                            onEditTap?.call();
+                          } else if (action == _mealActionDelete) {
+                            onDeleteTap?.call();
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          if (onEditTap != null)
+                            PopupMenuItem<String>(
+                              key: const Key('meal_screen_edit_action'),
+                              value: _mealActionEdit,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  AppIcon(
+                                    AppGlyph.pencil,
+                                    color: foreground,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    strings.edit,
+                                    style: TextStyle(color: foreground),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          if (onDeleteTap != null)
+                            PopupMenuItem<String>(
+                              key: const Key('meal_screen_delete_action'),
+                              value: _mealActionDelete,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.delete_outline_rounded,
+                                    color: errorColor,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    strings.delete,
+                                    style: TextStyle(color: errorColor),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
                       ),
                     const SizedBox(width: 4),
                   ],
@@ -1061,13 +1217,7 @@ class _NotFound extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             TextButton.icon(
-              onPressed: () {
-                if (Navigator.of(context).canPop()) {
-                  context.pop();
-                } else {
-                  context.go('/vault');
-                }
-              },
+              onPressed: () => _leaveMealScreen(context),
               icon: const Icon(Icons.arrow_back_rounded),
               label: Text(strings.close),
             ),

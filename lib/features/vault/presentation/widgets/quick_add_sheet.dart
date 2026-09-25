@@ -30,11 +30,39 @@ class QuickAddSheet extends ConsumerStatefulWidget {
   final Meal? mealToEdit;
   const QuickAddSheet({super.key, this.mealToEdit});
 
+  /// Presented on the **root** navigator on purpose.
+  ///
+  /// [showModalBottomSheet] defaults to `useRootNavigator: false`, which pushed
+  /// the sheet onto the vault branch's own [Navigator]. That navigator's
+  /// Overlay is the shell `Scaffold`'s *body*, so the modal barrier stopped
+  /// above the bottom navigation bar: with a half-typed meal on screen the tabs
+  /// stayed live, and tapping one switched branch and threw the sheet route
+  /// away without ever asking. (Measured before the fix, at 400x900: all four
+  /// destinations hit-testable and, after a tap on History, `sheet=false
+  /// dialog=false` with the History tab selected.) It is the third escape
+  /// listed in ISSUES.md and the only one `enableDrag: false` and the
+  /// controller listener could not cover.
+  ///
+  /// On the root navigator the barrier spans the whole screen, so a tap that
+  /// would have landed on a tab lands on the scrim instead, and the scrim's
+  /// dismiss goes through `Navigator.maybePop` (see
+  /// `ModalBarrier.handleDismiss` in the Flutter SDK) — which is exactly the
+  /// path [PopScope.canPop] gates. A dirty sheet therefore answers with the
+  /// discard prompt rather than silently vanishing.
+  ///
+  /// Nothing else moves: the sheet's 640dp max width comes from
+  /// `ThemeData.bottomSheetTheme`/`_BottomSheetDefaultsM3`, not from the host
+  /// navigator, so tablets are unaffected; `Localizations` and the app's RTL
+  /// `Directionality` are installed by `MaterialApp` *above* its router
+  /// navigator, so `AppStrings.of(context)` still resolves; and the only
+  /// [ProviderScope] in the app sits above `DailyMealApp` (lib/main.dart), so
+  /// `ref` still reaches the vault controller.
   static Future<void> show(BuildContext context, {Meal? mealToEdit}) {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
+      useRootNavigator: true,
       // Drag-to-close is popped imperatively by `BottomSheet.onClosing`
       // (`Navigator.pop`), which `PopScope.canPop` cannot veto — so a swipe
       // down past the header strip used to throw a half-typed meal away without

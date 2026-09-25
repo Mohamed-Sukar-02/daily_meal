@@ -241,6 +241,70 @@ void main() {
     });
   });
 
+  // The public-vault pre-flight can only match the string `vault_meals` really
+  // holds, so it probes the payload's own `name` — not `meal.name`. These
+  // tests pin that single source of truth: if the builder ever changes its
+  // trimming or its cap, the probe follows automatically or this group fails.
+  group('MealProposalPayload.vaultProbeNames — the strings the vault stores', () {
+    test('the probe name is the payload name, not the raw local name', () {
+      final meal = _meal(name: '  محشي بلدي  ', shortName: 'محشي');
+      final payload = MealProposalPayload.build(
+        meal: meal,
+        proposedByUid: 'u',
+      )!;
+
+      // The stored payload name is the first thing the probe asks for, so the
+      // two can never drift apart.
+      expect(MealProposalPayload.vaultProbeNames(meal).first, payload['name']);
+      expect(MealProposalPayload.vaultProbeNames(meal), ['محشي بلدي', 'محشي']);
+    });
+
+    test('a shortName equal to the name is probed once, not twice', () {
+      expect(
+        MealProposalPayload.vaultProbeNames(_meal(shortName: 'كشري')),
+        ['كشري'],
+      );
+    });
+
+    test('a missing or blank shortName adds no candidate', () {
+      expect(
+        MealProposalPayload.vaultProbeNames(_meal(shortName: null)),
+        ['كشري'],
+      );
+      expect(
+        MealProposalPayload.vaultProbeNames(_meal(shortName: '   ')),
+        ['كشري'],
+      );
+    });
+
+    test('the 100-char cloud cap applies to the probe too', () {
+      final long = 'أ' * 120; // local column allows up to 120
+      final candidates = MealProposalPayload.vaultProbeNames(
+        _meal(name: long, shortName: long),
+      );
+      expect(candidates, hasLength(1));
+      expect(candidates.single.length, 100);
+    });
+
+    test('a name below the rules minimum leaves nothing to probe', () {
+      expect(
+        MealProposalPayload.vaultProbeNames(_meal(name: 'ف', shortName: null)),
+        isEmpty,
+      );
+      expect(
+        MealProposalPayload.vaultProbeNames(_meal(name: '   ', shortName: null)),
+        isEmpty,
+      );
+    });
+
+    test('payloadName mirrors build exactly', () {
+      expect(MealProposalPayload.payloadName('  كشري  '), 'كشري');
+      expect(MealProposalPayload.payloadName('ف'), isNull);
+      expect(MealProposalPayload.payloadName('  '), isNull);
+      expect(MealProposalPayload.payloadName('أ' * 120), hasLength(100));
+    });
+  });
+
   group('MealCloudVocabulary — every local enum lands in the cloud set', () {
     test('proteinType maps into {chicken, beef, fish, meatless, other}', () {
       for (final protein in ProteinType.values) {
@@ -964,6 +1028,89 @@ void main() {
         ProposalFailureReason.values.length,
       );
     });
+
+    // ---- The same rule one level up: the OUTCOME codes the UI renders ----
+    //
+    // `proposalOutcomeLabel` is an exhaustive switch over
+    // [ProposalOutcomeCode], so a new outcome without copy is a compile error;
+    // walking the enum here is what catches a code that was wired but wired to
+    // the wrong string.
+    ProposalOutcome outcomeFor(ProposalOutcomeCode code) => switch (code) {
+          ProposalOutcomeCode.submitted => ProposalOutcome.submitted(),
+          ProposalOutcomeCode.alreadyProposed =>
+            ProposalOutcome.alreadyProposed(),
+          ProposalOutcomeCode.alreadyInPublicVault =>
+            ProposalOutcome.alreadyInPublicVault(),
+          ProposalOutcomeCode.blockedNoConnection =>
+            ProposalOutcome.blocked(CloudAccessStatus.noConnection),
+          ProposalOutcomeCode.blockedRequiresWifi =>
+            ProposalOutcome.blocked(CloudAccessStatus.requiresWifi),
+          ProposalOutcomeCode.invalidName => ProposalOutcome.invalidName(),
+          ProposalOutcomeCode.dailyLimitReached =>
+            ProposalOutcome.dailyLimitReached(),
+          ProposalOutcomeCode.cloudUnchanged => ProposalOutcome.cloudUnchanged(),
+          // Rendered with a named stage rather than `unknown`, which is the one
+          // reason allowed to echo the raw provider text back.
+          ProposalOutcomeCode.failed => ProposalOutcome.failed(
+              cause,
+              reason: ProposalFailureReason.writePermissionDenied,
+            ),
+        };
+
+    test('every outcome code has a non-empty line in BOTH locales', () {
+      for (final code in ProposalOutcomeCode.values) {
+        final outcome = outcomeFor(code);
+        final ar = proposalOutcomeLabel(arabic, outcome);
+        final en = proposalOutcomeLabel(english, outcome);
+        expect(ar.trim(), isNotEmpty, reason: '$code has no Arabic copy');
+        expect(en.trim(), isNotEmpty, reason: '$code has no English copy');
+      }
+    });
+
+    test('every outcome code is actually translated', () {
+      for (final code in ProposalOutcomeCode.values) {
+        final outcome = outcomeFor(code);
+        final ar = proposalOutcomeLabel(arabic, outcome);
+        final en = proposalOutcomeLabel(english, outcome);
+        expect(
+          ar,
+          isNot(en),
+          reason: '$code was written in one language only',
+        );
+        expect(
+          arabicScript.hasMatch(ar),
+          isTrue,
+          reason: '$code Arabic line carries no Arabic',
+        );
+        expect(
+          arabicScript.hasMatch(en),
+          isFalse,
+          reason: '$code English line carries Arabic',
+        );
+      }
+    });
+
+    test('a public-vault hit is its own outcome, not the local duplicate', () {
+      // Two different answers the user acts on differently: "edit it and send
+      // again" versus "the vault already serves this, nothing to send".
+      expect(
+        ProposalOutcome.alreadyInPublicVault().code,
+        isNot(ProposalOutcomeCode.alreadyProposed),
+      );
+      expect(ProposalOutcome.alreadyInPublicVault().isSuccess, isFalse);
+    });
+
+    test('the public-vault line keeps the backlog wording, the 👏 included', () {
+      final outcome = ProposalOutcome.alreadyInPublicVault();
+      expect(
+        proposalOutcomeLabel(arabic, outcome),
+        'هذه الأكلة متوفرة بالفعل في الخزنة العامة 👏',
+      );
+      expect(
+        proposalOutcomeLabel(english, outcome),
+        'This meal is already available in the public vault 👏',
+      );
+    });
   });
 
   // Gap 6: the gate lives where the payload is built, not only in the UI flow.
@@ -1028,6 +1175,204 @@ void main() {
         outcome.code,
         isNot(ProposalOutcomeCode.blockedNoConnection),
         reason: 'direct construction has no connectivity plumbing to ask',
+      );
+    });
+  });
+
+  // The fourth safeguard: `vault_meals` is public-read (`firestore.rules`), so
+  // a meal the vault already serves is answered before the photo upload, before
+  // the staging write and before the daily allowance is spent.
+  //
+  // HONEST SCOPE: dev_dependencies carry no fake Firestore and `pubspec.yaml` is
+  // off-limits here, so the queries themselves are not executed against a stub —
+  // the probe is injected. What these tests pin is the *contract around* the
+  // query: which names it is handed, what a hit/miss/error/hang does to the
+  // flow, and that a hit costs no quota and no ledger mark. The live query
+  // (`collection('vault_meals').where('name', isEqualTo: n).limit(1)`) is
+  // exercised only through the "no Firestore at all" case below, which proves it
+  // cannot block a proposal when it cannot run.
+  group('proposeMeal — the public-vault pre-flight', () {
+    Future<SharedPreferences> freshPrefs() async {
+      SharedPreferences.setMockInitialValues({});
+      return SharedPreferences.getInstance();
+    }
+
+    MealProposalService probing(
+      SharedPreferences prefs,
+      Future<bool> Function(List<String> vaultNames) probe,
+    ) =>
+        MealProposalService(
+          prefs: prefs,
+          accessStatus: () async => CloudAccessStatus.allowed,
+          publicVaultDuplicateProbe: probe,
+        );
+
+    test('a vault hit stops the proposal with its own outcome', () async {
+      final prefs = await freshPrefs();
+      final probed = <List<String>>[];
+
+      final outcome = await probing(prefs, (names) async {
+        probed.add(names);
+        return true;
+      }).proposeMeal(_meal(id: 21, name: '  محشي بلدي  ', shortName: 'محشي'));
+
+      expect(outcome.code, ProposalOutcomeCode.alreadyInPublicVault);
+      expect(outcome.isSuccess, isFalse);
+      // Probed with the payload's stored name first, then the local short name.
+      expect(probed, [
+        ['محشي بلدي', 'محشي']
+      ]);
+    });
+
+    test('a vault hit costs no quota and leaves no ledger entry', () async {
+      final prefs = await freshPrefs();
+      final meal = _meal(id: 22, name: 'كشري');
+
+      final outcome = await probing(prefs, (names) async => true)
+          .proposeMeal(meal);
+
+      expect(outcome.code, ProposalOutcomeCode.alreadyInPublicVault);
+      expect(ProposalQuota(prefs).usedToday(), 0);
+      expect(ProposalQuota(prefs).remainingToday(), ProposalQuota.dailyLimit);
+      expect(ProposalQuota(prefs).hasAllowance(), isTrue);
+      expect(ProposalGuard(prefs).alreadyProposed(meal), isFalse);
+      // The ledger really is untouched on disk, not just unread.
+      expect(prefs.getString(ProposalGuard.prefsKey), isNull);
+    });
+
+    test('after a duplicate answer another meal still gets through', () async {
+      // The point of not spending quota/ledger on a hit: the next proposal is
+      // treated exactly as it would have been.
+      final prefs = await freshPrefs();
+      await probing(prefs, (names) async => true).proposeMeal(_meal(id: 23));
+
+      final next = await probing(prefs, (names) async => false)
+          .proposeMeal(_meal(id: 24));
+
+      // No Firebase exists in a unit test, so the stage right after the
+      // pre-flight (anonymous sign-in) is what fails — proof the duplicate
+      // answer did not leave the day, or the meal, blocked.
+      expect(next.code, ProposalOutcomeCode.failed);
+      expect(next.reason, ProposalFailureReason.firebaseNotReady);
+      expect(ProposalQuota(prefs).usedToday(), 0);
+    });
+
+    test('a vault miss continues to the upload stages', () async {
+      final prefs = await freshPrefs();
+      final probed = <String>[];
+
+      final outcome = await probing(prefs, (names) async {
+        probed.addAll(names);
+        return false;
+      }).proposeMeal(_meal(name: '  فتة  ', shortName: null));
+
+      expect(probed, ['فتة']);
+      expect(outcome.code, isNot(ProposalOutcomeCode.alreadyInPublicVault));
+      expect(outcome.code, ProposalOutcomeCode.failed);
+      expect(outcome.reason, ProposalFailureReason.firebaseNotReady);
+    });
+
+    test('a vault read that throws is swallowed, never reported to the user',
+        () async {
+      final prefs = await freshPrefs();
+
+      for (final probe in <Future<bool> Function(List<String>)>[
+        // Rules/network shaped failures…
+        (names) async => throw FirebaseException(
+              plugin: 'cloud_firestore',
+              code: 'permission-denied',
+              message: 'Missing or insufficient permissions.',
+            ),
+        (names) async => throw TimeoutException('vault never answered'),
+        // …and a Firebase that was never initialised (a plain synchronous
+        // throw, the shape a unit test and a misconfigured build both produce).
+        (names) =>
+            throw StateError("No Firebase App '[DEFAULT]' has been created"),
+      ]) {
+        final outcome = await probing(prefs, probe).proposeMeal(_meal());
+
+        expect(
+          outcome.code,
+          isNot(ProposalOutcomeCode.alreadyInPublicVault),
+          reason: 'a check that cannot answer may not claim a duplicate',
+        );
+        expect(outcome.code, ProposalOutcomeCode.failed);
+        expect(
+          outcome.reason,
+          ProposalFailureReason.firebaseNotReady,
+          reason: 'the proposal kept going and died at the next stage, as before',
+        );
+        expect(ProposalQuota(prefs).usedToday(), 0);
+      }
+    });
+
+    test('a vault read that never answers is cut off by its own deadline',
+        () async {
+      final prefs = await freshPrefs();
+      final never = Completer<bool>();
+      final watch = Stopwatch()..start();
+
+      final outcome =
+          await probing(prefs, (names) => never.future).proposeMeal(_meal());
+      watch.stop();
+
+      expect(outcome.code, ProposalOutcomeCode.failed);
+      expect(outcome.reason, ProposalFailureReason.firebaseNotReady);
+      expect(
+        watch.elapsed,
+        greaterThanOrEqualTo(MealProposalService.publicVaultReadTimeout),
+        reason: 'the deadline is what released the flow',
+      );
+      expect(
+        watch.elapsed,
+        lessThan(MealProposalService.publicVaultReadTimeout * 3),
+        reason: 'the pre-flight must not hold the propose button open',
+      );
+    });
+
+    test('nothing to probe means no network read at all', () async {
+      final prefs = await freshPrefs();
+      var calls = 0;
+
+      // A name below the rules minimum can never be a vault duplicate, and the
+      // payload builder rejects it anyway — so the probe is skipped and the
+      // flow still reports the honest next-stage failure.
+      final outcome = await probing(prefs, (names) async {
+        calls++;
+        return true;
+      }).proposeMeal(_meal(name: 'ف', shortName: null));
+
+      expect(calls, 0);
+      expect(outcome.code, isNot(ProposalOutcomeCode.alreadyInPublicVault));
+    });
+
+    test('the default probe runs the live query path and cannot block',
+        () async {
+      final prefs = await freshPrefs();
+
+      // No injected stand-in and no Firebase in this process: `_queryPublicVault`
+      // fails on its very first step, is caught, and the proposal continues.
+      final outcome = await MealProposalService(
+        prefs: prefs,
+        accessStatus: () async => CloudAccessStatus.allowed,
+      ).proposeMeal(_meal());
+
+      expect(outcome.code, isNot(ProposalOutcomeCode.alreadyInPublicVault));
+      expect(outcome.reason, ProposalFailureReason.firebaseNotReady);
+      expect(ProposalQuota(prefs).usedToday(), 0);
+    });
+
+    test('the pre-flight has its own bounded timeout', () {
+      // Style check on the constant the flow awaits: a real, finite bound in the
+      // same family as the other stage deadlines, and shorter than the stages it
+      // protects.
+      expect(
+        MealProposalService.publicVaultReadTimeout,
+        greaterThan(Duration.zero),
+      );
+      expect(
+        MealProposalService.publicVaultReadTimeout,
+        lessThan(MealProposalService.writeTimeout),
       );
     });
   });

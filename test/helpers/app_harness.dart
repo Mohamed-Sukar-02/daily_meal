@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// Boots the real app against an in-memory database with onboarding already
 /// completed, so tests land on the Home tab.
-Future<AppDatabase> pumpApp(WidgetTester tester) async {
+Future<AppDatabase> pumpApp(WidgetTester tester, {List<Override> overrides = const []}) async {
   final db = AppDatabase(NativeDatabase.memory());
   await db.appSettingsDao.ensureSettings();
   await db.appSettingsDao.updateSettings(
@@ -18,7 +18,7 @@ Future<AppDatabase> pumpApp(WidgetTester tester) async {
 
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [appDatabaseProvider.overrideWithValue(db)],
+      overrides: [...overrides, appDatabaseProvider.overrideWithValue(db)],
       child: const DailyMealApp(),
     ),
   );

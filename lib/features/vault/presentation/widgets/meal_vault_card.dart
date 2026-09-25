@@ -6,7 +6,7 @@ import '../../../../core/localization/app_strings.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/widgets/app_icons.dart';
 import '../../../../core/widgets/meal_image.dart';
-import '../../../home/presentation/widgets/meal_card.dart' show formatPrepTime;
+import '../../../meals/presentation/quick_meal_view.dart' show formatPrepTime;
 import '../../providers/vault_providers.dart';
 import 'meal_details_sheet.dart';
 
@@ -75,47 +75,72 @@ class MealVaultCard extends ConsumerWidget {
                   fallback: _placeholder(brightness),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(10, 8, 6, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      meal.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: AppPalette.textPrimary(brightness),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        if (meal.proteinType != ProteinType.none)
-                          _emojiBadge(
-                            brightness,
-                            meal.proteinType.emoji,
-                            _proteinStyle(meal.proteinType, brightness),
-                          ),
-                        if (meal.isBudgetFriendly)
-                          _emojiBadge(
-                            brightness,
-                            '🌿',
-                            AppPalette.chipGreen(brightness),
-                          ),
-                        Expanded(
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: AlignmentDirectional.centerStart,
-                            child: _timePill(context, brightness),
+              // The footer gets exactly whatever height the photo band left
+              // over, and it shrinks itself to fit that height (`scaleDown`,
+              // never clip) instead of pushing past it: Arabic name lines and
+              // big system text scales make this block taller than the grid
+              // tile's slot, which is what overflowed it by 4.1px at 360px.
+              // At the widths the mockups were drawn for, the block already
+              // fits, so the guard never engages and nothing moves.
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 8, 6, 8),
+                  child: LayoutBuilder(
+                    builder: (context, footer) {
+                      return FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: AlignmentDirectional.topStart,
+                        // Width is locked to the card so the name keeps
+                        // ellipsizing at the design's line length; only the
+                        // block's height is ever scaled.
+                        child: SizedBox(
+                          width: footer.maxWidth,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                meal.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppPalette.textPrimary(brightness),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  if (meal.proteinType != ProteinType.none)
+                                    _emojiBadge(
+                                      brightness,
+                                      meal.proteinType.emoji,
+                                      _proteinStyle(meal.proteinType, brightness),
+                                    ),
+                                  if (meal.isBudgetFriendly)
+                                    _emojiBadge(
+                                      brightness,
+                                      '🌿',
+                                      AppPalette.chipGreen(brightness),
+                                    ),
+                                  Expanded(
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment:
+                                          AlignmentDirectional.centerStart,
+                                      child: _timePill(context, brightness),
+                                    ),
+                                  ),
+                                  _LoveButton(meal: meal),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
-                        _LoveButton(meal: meal),
-                      ],
-                    ),
-                  ],
+                      );
+                    },
+                  ),
                 ),
               ),
             ],

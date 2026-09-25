@@ -38,6 +38,27 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   final _viewToggleLink = LayerLink();
   final _viewTogglePortal = OverlayPortalController();
 
+  // --- Explore grid metrics (kept in sync with the tile's own layout) ---
+  static const int _gridColumns = 2;
+  static const double _gridGutter = 16.0;
+  static const double _gridSpacing = 14.0;
+
+  /// Tile height for a viewport of [crossAxisExtent].
+  ///
+  /// A cloud tile is a photo band that scales with its width plus a footer band
+  /// whose height comes from its content, so no single `childAspectRatio` can
+  /// describe both. The constant 0.92 this replaced was tuned for wide
+  /// surfaces: it left the footer 1.7px short even at 800x600 and 86px short on
+  /// a 360px phone, which is what overflowed every card in the grid.
+  double _cloudTileExtent(double crossAxisExtent) {
+    final tileWidth = (crossAxisExtent -
+            _gridGutter * 2 -
+            _gridSpacing * (_gridColumns - 1)) /
+        _gridColumns;
+    return tileWidth / _CloudMealCard.photoAspectRatio +
+        _CloudMealCard.footerHeight;
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -306,50 +327,58 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                           ),
                         );
                       }
-                      return SliverPadding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
-                        sliver: ref.watch(vaultViewModeProvider)
-                            ? SliverGrid.builder(
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 14,
-                            mainAxisSpacing: 14,
-                            childAspectRatio: 0.92,
-                          ),
-                          itemCount: filtered.length,
-                          itemBuilder: (context, index) {
-                            final cloudMeal = filtered[index];
-                            final linked = localMeals
-                                .where((m) => m.cloudId == cloudMeal.id)
-                                .toList();
-                            return _CloudMealCard(
-                              cloudMeal: cloudMeal,
-                              linkedMeal:
-                                  linked.isNotEmpty ? linked.first : null,
-                              index: index,
-                            );
-                          },
-                        )
-                            : SliverList.builder(
-                                itemCount: filtered.length,
-                                itemBuilder: (context, index) {
-                                  final cloudMeal = filtered[index];
-                                  final linked = localMeals
-                                      .where((m) => m.cloudId == cloudMeal.id)
-                                      .toList();
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 12),
-                                    child: _CloudMealListTile(
+                      // The tile height is derived from the viewport width, so
+                      // it is measured here rather than hardcoded as a ratio
+                      // (see [_cloudTileExtent]).
+                      return SliverLayoutBuilder(
+                        builder: (context, viewport) => SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(
+                              _gridGutter, 0, _gridGutter, 96),
+                          sliver: ref.watch(vaultViewModeProvider)
+                              ? SliverGrid.builder(
+                                  gridDelegate:
+                                      SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: _gridColumns,
+                                    crossAxisSpacing: _gridSpacing,
+                                    mainAxisSpacing: _gridSpacing,
+                                    mainAxisExtent: _cloudTileExtent(
+                                        viewport.crossAxisExtent),
+                                  ),
+                                  itemCount: filtered.length,
+                                  itemBuilder: (context, index) {
+                                    final cloudMeal = filtered[index];
+                                    final linked = localMeals
+                                        .where((m) => m.cloudId == cloudMeal.id)
+                                        .toList();
+                                    return _CloudMealCard(
                                       cloudMeal: cloudMeal,
-                                      linkedMeal: linked.isNotEmpty
-                                          ? linked.first
-                                          : null,
+                                      linkedMeal:
+                                          linked.isNotEmpty ? linked.first : null,
                                       index: index,
-                                    ),
-                                  );
-                                },
-                              ),
+                                    );
+                                  },
+                                )
+                              : SliverList.builder(
+                                  itemCount: filtered.length,
+                                  itemBuilder: (context, index) {
+                                    final cloudMeal = filtered[index];
+                                    final linked = localMeals
+                                        .where((m) => m.cloudId == cloudMeal.id)
+                                        .toList();
+                                    return Padding(
+                                      padding:
+                                          const EdgeInsets.only(bottom: 12),
+                                      child: _CloudMealListTile(
+                                        cloudMeal: cloudMeal,
+                                        linkedMeal: linked.isNotEmpty
+                                            ? linked.first
+                                            : null,
+                                        index: index,
+                                      ),
+                                    );
+                                  },
+                                ),
+                        ),
                       );
                     },
                     loading: () => SliverFillRemaining(
@@ -766,6 +795,16 @@ class _CloudMealCard extends ConsumerWidget {
 
   const _CloudMealCard({required this.cloudMeal, this.linkedMeal, required this.index});
 
+  /// Photo band ratio from the Explore mockups.
+  static const double photoAspectRatio = 1.42;
+
+  /// The footer band's own height: 8+10 of padding, a 20px name line, a 6px
+  /// gap, the 34px badge row, a 4px gap, a 16px meta line and the 48px action
+  /// row, plus 2px of slack so the shrink-to-fit guard below never has to
+  /// engage at the widths the design was drawn for. [_DiscoveryScreenState]
+  /// sizes the grid tile with this number, so the two must stay in sync.
+  static const double footerHeight = 148.0;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final brightness = Theme.of(context).brightness;
@@ -798,62 +837,97 @@ class _CloudMealCard extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AspectRatio(
-            aspectRatio: 1.42,
+            aspectRatio: photoAspectRatio,
             child: cloudMeal.imageUrl != null && cloudMeal.imageUrl!.isNotEmpty
                 ? MealImage(photoPath: cloudMeal.imageUrl, cacheWidth: 480, fallback: _placeholder(brightness))
                 : _placeholder(brightness),
           ),
+          // Footer band = whatever height the photo band left over. The block
+          // shrinks itself to fit that height (`scaleDown`, never clip) rather
+          // than pushing past it: Arabic lines are taller than English ones and
+          // the system text scale is unbounded, which is what overflowed this
+          // Column by 86px on a 360px phone. At the widths the mockups were
+          // drawn for the block already fits, so the guard never engages.
           Expanded(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    cloudMeal.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppPalette.textPrimary(brightness)),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      _miniBadge(brightness, _proteinEmoji(cloudMeal.proteinType), _proteinStyle(cloudMeal.proteinType, brightness)),
-                      const SizedBox(width: 6),
-                      _timePill(brightness, cloudMeal.prepTimeMinutes, strings),
-                      const Spacer(),
-                      _BookmarkCloudButton(cloudId: cloudMeal.id),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(strings.discoveryAddedBy((1.2 + (index * 0.3)).toStringAsFixed(1)), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: AppPalette.textSecondary(brightness))),
-                  const Spacer(),
-                  if (discoveryState.isLoading)
-                    Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppPalette.brandGreen)))
-                  else
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: () {
-                          if (isLinked) {
-                            _showCloudMealUpdateOptions(context, ref, linkedMeal!, cloudMeal);
-                          } else {
-                            ref.read(discoveryControllerProvider.notifier).downloadMeal(cloudMeal);
-                            AppToast.showSuccess(context, strings.mealDownloaded(cloudMeal.name));
-                          }
-                        },
-                        icon: AppIcon(isLinked ? AppGlyph.swap : AppGlyph.cloudDown, color: isLinked ? AppPalette.textSecondary(brightness) : Colors.white, size: 14),
-                        label: Text(isLinked ? strings.discoveryUpdate : strings.discoveryDownload, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: isLinked ? AppPalette.tabContainer(brightness) : btnColor,
-                          foregroundColor: isLinked ? AppPalette.textPrimary(brightness) : Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 9),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          elevation: 0,
+              child: LayoutBuilder(
+                builder: (context, footer) => FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.topStart,
+                  child: SizedBox(
+                    // Width is locked to the card so the name and the meta line
+                    // keep ellipsizing at the design's line length; only the
+                    // block's height is ever scaled.
+                    width: footer.maxWidth,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          cloudMeal.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppPalette.textPrimary(brightness)),
                         ),
-                      ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            _miniBadge(brightness, _proteinEmoji(cloudMeal.proteinType), _proteinStyle(cloudMeal.proteinType, brightness)),
+                            const SizedBox(width: 6),
+                            // The pill is the only member of this row that can
+                            // give ground — the 28px badge and the 34px bookmark
+                            // are fixed-size tap targets — so it absorbs the
+                            // narrow-width slack (the row overflowed by 52px at
+                            // 360px once the Spacer had nothing left to take).
+                            Expanded(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: AlignmentDirectional.centerStart,
+                                child: _timePill(brightness, cloudMeal.prepTimeMinutes, strings),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            _BookmarkCloudButton(cloudId: cloudMeal.id),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(strings.discoveryAddedBy((1.2 + (index * 0.3)).toStringAsFixed(1)), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: AppPalette.textSecondary(brightness))),
+                        // One constant-height action slot, so the tile height
+                        // [_DiscoveryScreenState] budgets for stays honest in
+                        // both branches (the button still grows with text).
+                        if (discoveryState.isLoading)
+                          SizedBox(
+                            height: 48,
+                            child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppPalette.brandGreen))),
+                          )
+                        else
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              onPressed: () {
+                                if (isLinked) {
+                                  _showCloudMealUpdateOptions(context, ref, linkedMeal!, cloudMeal);
+                                } else {
+                                  ref.read(discoveryControllerProvider.notifier).downloadMeal(cloudMeal);
+                                  AppToast.showSuccess(context, strings.mealDownloaded(cloudMeal.name));
+                                }
+                              },
+                              icon: AppIcon(isLinked ? AppGlyph.swap : AppGlyph.cloudDown, color: isLinked ? AppPalette.textSecondary(brightness) : Colors.white, size: 14),
+                              label: Text(isLinked ? strings.discoveryUpdate : strings.discoveryDownload, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: isLinked ? AppPalette.tabContainer(brightness) : btnColor,
+                                foregroundColor: isLinked ? AppPalette.textPrimary(brightness) : Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 9),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                elevation: 0,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
-                ],
+                  ),
+                ),
               ),
             ),
           ),
