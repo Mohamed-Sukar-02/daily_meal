@@ -319,26 +319,29 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
 
     try {
       if (source == ImageSource.camera) {
-        // Professional: request camera permission only when needed [10]
-        final cameraStatus = await Permission.camera.status;
-        if (cameraStatus.isDenied) {
-          final result = await Permission.camera.request();
-          if (!result.isGranted) {
+        // On Android, image_picker delegates to the system camera intent (MediaStore.ACTION_IMAGE_CAPTURE),
+        // which requires zero CAMERA permissions in AndroidManifest.xml.
+        if (Platform.isIOS) {
+          final cameraStatus = await Permission.camera.status;
+          if (cameraStatus.isDenied) {
+            final result = await Permission.camera.request();
+            if (!result.isGranted) {
+              if (mounted) {
+                AppToast.showError(context, AppStrings.of(context).cameraPermissionDenied);
+              }
+              return;
+            }
+          } else if (cameraStatus.isPermanentlyDenied) {
             if (mounted) {
-              AppToast.showError(context, AppStrings.of(context).cameraPermissionDenied);
+              final strings = AppStrings.of(context);
+              final open = await _showPermissionDialog(
+                title: strings.cameraPermissionTitle,
+                content: strings.cameraPermissionDesc,
+              );
+              if (open) await openAppSettings();
             }
             return;
           }
-        } else if (cameraStatus.isPermanentlyDenied) {
-          if (mounted) {
-            final strings = AppStrings.of(context);
-            final open = await _showPermissionDialog(
-              title: strings.cameraPermissionTitle,
-              content: strings.cameraPermissionDesc,
-            );
-            if (open) await openAppSettings();
-          }
-          return;
         }
       } else {
         // Gallery: use system picker, supports limited access [6][9]
