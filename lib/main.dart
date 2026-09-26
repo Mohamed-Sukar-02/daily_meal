@@ -95,7 +95,22 @@ class _DailyMealAppState extends ConsumerState<DailyMealApp> {
       MealImageLocalizer.instance.backfillVaultImages(db);
       AppConfigSyncService.instance.init(db: db);
       final locale = ref.read(localeProvider);
-      NotificationSyncService.checkAndNotify(isEn: locale.languageCode == 'en');
+      db.appSettingsDao.getSettings().then((settings) {
+        if (!mounted) return;
+        // Re-arm the daily alarm on launch when the user has it enabled.
+        if (settings.notificationsEnabled) {
+          NotificationService.instance.scheduleDailyNotification(
+            hour: settings.notificationHour,
+            minute: settings.notificationMinute,
+            strings: AppStrings(locale),
+          );
+        }
+        // Admin announcements only surface while notifications are enabled.
+        NotificationSyncService.checkAndNotify(
+          isEn: locale.languageCode == 'en',
+          notificationsEnabled: settings.notificationsEnabled,
+        );
+      });
 
       // Tap on a notification while the app lives in background/foreground:
       // the payload is the route it was scheduled for.

@@ -15,10 +15,6 @@ class NotificationService {
 
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
 
-  /// Result of the exact-alarms permission request. Android refuses to fire a
-  /// precise alarm without it, so scheduling downgrades to inexact when false.
-  bool _exactAlarmsAllowed = false;
-
   /// Invoked when the user taps a system notification. The payload is the
   /// route the notification was created for, and the app's root wires this to
   /// the GoRouter (see `main.dart`).
@@ -73,13 +69,12 @@ class NotificationService {
           _plugin.resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>();
       final granted = await androidImplementation?.requestNotificationsPermission();
-      // Exact alarms is separate scheduling permission; request but don't block on it
+      // Exact alarms is a separate scheduling permission; prompt for it but don't
+      // block on the result. Scheduling re-checks it live via
+      // canScheduleExactNotifications(), so no value is cached here.
       try {
-        _exactAlarmsAllowed =
-            await androidImplementation?.requestExactAlarmsPermission() ?? false;
-      } catch (_) {
-        _exactAlarmsAllowed = false;
-      }
+        await androidImplementation?.requestExactAlarmsPermission();
+      } catch (_) {}
       // granted == null => platform < Android 13, permission is implicitly granted
       if (granted == null) return true;
       return granted;
@@ -118,7 +113,18 @@ class NotificationService {
 
     final NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
 
-    final scheduleMode = _exactAlarmsAllowed
+    bool canExact = false;
+    if (Platform.isAndroid) {
+      try {
+        final androidImpl = _plugin.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+        canExact = await androidImpl?.canScheduleExactNotifications() ?? false;
+      } catch (_) {
+        canExact = false;
+      }
+    }
+
+    final scheduleMode = canExact
         ? AndroidScheduleMode.exactAllowWhileIdle
         : AndroidScheduleMode.inexactAllowWhileIdle;
 
@@ -136,23 +142,23 @@ class NotificationService {
         payload: '/',
       );
     } catch (e) {
-      if (_exactAlarmsAllowed) {
+      if (canExact) {
         // Exact scheduling can still throw when the OS revokes the permission
-        // after the request; retry once without it instead of losing the alarm.
-        await _plugin.zonedSchedule(
-          0,
-          strings.localNotificationTitle,
-          strings.localNotificationBody,
-          scheduledDate,
-          platformDetails,
-          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-          uiLocalNotificationDateInterpretation:
-              UILocalNotificationDateInterpretation.absoluteTime,
-          matchDateTimeComponents: DateTimeComponents.time,
-          payload: '/',
-        );
-      } else {
-        rethrow;
+        // or on battery saver. Gracefully fall back to inexact repeating reminder.
+        try {
+          await _plugin.zonedSchedule(
+            0,
+            strings.localNotificationTitle,
+            strings.localNotificationBody,
+            scheduledDate,
+            platformDetails,
+            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+            uiLocalNotificationDateInterpretation:
+                UILocalNotificationDateInterpretation.absoluteTime,
+            matchDateTimeComponents: DateTimeComponents.time,
+            payload: '/',
+          );
+        } catch (_) {}
       }
     }
   }
