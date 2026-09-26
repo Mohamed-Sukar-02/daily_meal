@@ -166,10 +166,21 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
     ));
   }
 
-  Future<int> updateMealCompanion(int id, MealsCompanion companion) {
+  /// [touchUpdatedAt]: pass `false` for background, non-user writes (e.g. starter-meal
+  /// cloud sync). `updatedAt` is the "user edited this meal" signal for the proposal
+  /// duplicate ledger (ProposalGuard.alreadyProposed), so an unattended sync pass
+  /// must not falsify it and re-open re-proposal of meals the user never touched.
+  Future<int> updateMealCompanion(
+    int id,
+    MealsCompanion companion, {
+    bool touchUpdatedAt = true,
+  }) {
     final normalizedCompanion = _withNormalizedName(companion);
-    return (update(meals)..where((t) => t.id.equals(id)))
-        .write(normalizedCompanion.copyWith(updatedAt: Value(DateTime.now())));
+    return (update(meals)..where((t) => t.id.equals(id))).write(
+      touchUpdatedAt
+          ? normalizedCompanion.copyWith(updatedAt: Value(DateTime.now()))
+          : normalizedCompanion,
+    );
   }
 
   MealsCompanion _withNormalizedName(MealsCompanion c) {

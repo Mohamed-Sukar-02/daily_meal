@@ -6,6 +6,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../database/app_database.dart';
+import '../utils/arabic_normalizer.dart';
 import 'cloud_policy.dart';
 import 'meal_image_localizer.dart';
 import 'reachability_service.dart';
@@ -228,7 +229,9 @@ class AppConfigSyncService {
         final name = (doc.data['name'] as String? ?? '').trim();
         if (name.isEmpty) continue;
         remoteById[doc.id] = doc;
-        remoteByName.putIfAbsent(name, () => doc);
+        // Match on normalized form to avoid de-listing/re-inserting identical meals
+        // due to Arabic variants (ة/ه, ى/ي, etc.)
+        remoteByName.putIfAbsent(normalizeArabic(name), () => doc);
       }
 
       final localMeals = await db.mealsDao.getStarterMeals();
@@ -249,7 +252,7 @@ class AppConfigSyncService {
       // Pass 2: legacy name fallback, only for meals without a cloudId.
       for (final l in localMeals) {
         if (l.cloudId != null || matchByLocalId.containsKey(l.id)) continue;
-        final r = remoteByName[l.name.trim()];
+        final r = remoteByName[normalizeArabic(l.name.trim())];
         if (r != null && claimedRemoteIds.add(r.id)) {
           matchByLocalId[l.id] = r;
         }
@@ -293,12 +296,17 @@ class AppConfigSyncService {
 
       await db.transaction(() async {
         for (final update in updates) {
-          await db.mealsDao.updateMealCompanion(update.localId, update.companion);
+          await db.mealsDao.updateMealCompanion(
+            update.localId,
+            update.companion,
+            touchUpdatedAt: false,
+          );
         }
         for (final id in deListedIds) {
           await db.mealsDao.updateMealCompanion(
             id,
             MealsCompanion(isStarterMeal: Value(false)),
+            touchUpdatedAt: false,
           );
         }
         for (final companion in inserts) {
@@ -320,7 +328,11 @@ class AppConfigSyncService {
     return MealsCompanion(
       name: Value(name),
       cloudId: Value(doc.id),
-      photoPath: Value(localizePhoto),
+      // Only touch photoPath when a localized file actually exists. Writing
+      // NULL here (cloud doc without imageUrl, or failed download) wiped
+      // previously localized/user-set photo on next update.
+      photoPath:
+          localizePhoto != null ? Value(localizePhoto) : const Value.absent(),
       shortName: Value(rData['shortName'] as String?),
       proteinType: Value(_mapProtein(rData['proteinType'] as String? ?? 'other')),
       carbsType: Value(_mapCarbs(rData['carbsType'] as String? ?? 'none')),
