@@ -74,13 +74,32 @@ service cloud.firestore {
         data.status is string &&
         data.status == 'pending' &&
         (!('notes' in data) || data.notes == null || (data.notes is string && data.notes.size() <= 500)) &&
-        (!('imageUrl' in data) || data.imageUrl == null || (data.imageUrl is string && data.imageUrl.size() <= 2048)) &&
+        (!('imageUrl' in data) || data.imageUrl == null || (data.imageUrl is string && data.imageUrl.size() <= 2048 && data.imageUrl.matches('^https://'))) &&
         data.createdAt is string &&
         data.createdAt.size() >= 10 &&
         data.createdAt.size() <= 40 &&
         data.proposedBy is string &&
         data.proposedBy.size() > 0 &&
         data.proposedBy == request.auth.uid
+      );
+    }
+
+    // Schema validator for admin broadcast notifications. Their title/body are
+    // pushed into a system notification on every install, so field names,
+    // types and sizes are enforced here.
+    function isValidAdminNotification() {
+      let data = request.resource.data;
+      let allowedKeys = ['titleAr', 'titleEn', 'messageAr', 'messageEn',
+                         'route', 'sentAt', 'createdBy'];
+      return (
+        data.keys().hasOnly(allowedKeys) &&
+        (!('titleAr' in data) || (data.titleAr is string && data.titleAr.size() <= 200)) &&
+        (!('titleEn' in data) || (data.titleEn is string && data.titleEn.size() <= 200)) &&
+        (!('messageAr' in data) || (data.messageAr is string && data.messageAr.size() <= 1000)) &&
+        (!('messageEn' in data) || (data.messageEn is string && data.messageEn.size() <= 1000)) &&
+        (!('route' in data) || data.route == null || (data.route is string && data.route.size() <= 256)) &&
+        (!('sentAt' in data) || data.sentAt is timestamp) &&
+        (!('createdBy' in data) || data.createdBy == null || (data.createdBy is string && data.createdBy.size() <= 254))
       );
     }
 
@@ -167,14 +186,14 @@ service cloud.firestore {
 
     // Anything else in this collection stays admin-visible only.
     match /admin_config/{doc} {
-      allow read: if isAdmin();
+      allow read: if isAdmin() && doc != 'security';
       allow write: if isSuperAdmin();
     }
 
     // Admin Notifications: public read for mobile users, editing admin write
     match /admin_notifications/{notification} {
       allow read: if true;
-      allow write: if isEditingAdmin();
+      allow write: if isEditingAdmin() && isValidAdminNotification();
     }
   }
 }

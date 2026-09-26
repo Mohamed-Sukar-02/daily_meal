@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'firebase_options.dart';
 import 'core/localization/app_strings.dart';
 import 'core/navigation/notification_route.dart';
@@ -29,6 +31,15 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    try {
+      await FirebaseAppCheck.instance.activate(
+        providerAndroid:
+            kDebugMode ? const AndroidDebugProvider() : const AndroidPlayIntegrityProvider(),
+      );
+    } catch (e) {
+      // App Check must never block startup of an offline-first app.
+      debugPrint('App Check activation warning: $e');
+    }
     isFirebaseAvailable = true;
   } catch (e) {
     debugPrint('Firebase initialization warning: $e');
