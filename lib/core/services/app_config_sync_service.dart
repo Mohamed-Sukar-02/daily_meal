@@ -6,6 +6,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../database/app_database.dart';
+import 'cloud_policy.dart';
 import 'meal_image_localizer.dart';
 import 'reachability_service.dart';
 
@@ -109,6 +110,13 @@ class AppConfigSyncService {
     );
     if (!reachable) {
       debugPrint('[AppConfigSyncService] Device is offline, keeping local defaults.');
+      return getCachedDefaults();
+    }
+
+    // Honour the user's "Cloud on Wi-Fi only" policy — reachability alone is
+    // not consent. This runs at startup and on every connectivity change.
+    if (!await CloudPolicy.isCloudAllowedNow()) {
+      debugPrint('[AppConfigSyncService] Wi-Fi-only policy active — sync deferred.');
       return getCachedDefaults();
     }
 

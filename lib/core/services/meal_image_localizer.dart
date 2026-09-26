@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
 import '../database/app_database.dart';
+import 'cloud_policy.dart';
 import 'reachability_service.dart';
 
 /// Downloads cloud-vault meal photos onto device storage so the vault works
@@ -241,6 +242,14 @@ class MealImageLocalizer {
           .where((m) => m.photoPath != null && isRemoteUrl(m.photoPath!))
           .toList();
       if (remoteMeals.isEmpty) return;
+
+      // Honour the same "Cloud on Wi-Fi only" policy: this pass downloads up to
+      // maxFileSizeBytes per photo at every cold start.
+      if (!await CloudPolicy.isCloudAllowedNow()) {
+        debugPrint('[MealImageLocalizer] Wi-Fi-only policy active — backfill '
+            'skipped (${remoteMeals.length} remote photo(s) pending).');
+        return;
+      }
 
       final reachable = await ReachabilityService.instance
           .isInternetReachable(timeout: const Duration(seconds: 2));

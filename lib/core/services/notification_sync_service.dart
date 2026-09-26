@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../localization/app_strings.dart';
 import '../navigation/notification_route.dart';
+import 'cloud_policy.dart';
 import 'notification_service.dart';
 
 class NotificationSyncService {
@@ -14,6 +15,11 @@ class NotificationSyncService {
   static Future<void> checkAndNotify({bool isEn = false}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
+
+      // Respect the "Cloud on Wi-Fi only" policy — this Firestore read fires at
+      // every cold start.
+      if (!await CloudPolicy.isCloudAllowedNow()) return;
+
       final lastCheckMillis = prefs.getInt(_kLastCheckKey);
 
       // On first launch, seed with current time so we don't spam historical notifications
