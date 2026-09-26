@@ -488,12 +488,15 @@ class _HistoryCandidate {
         proteinName = _MealCandidate._extractEnumName((rawHistory as dynamic).proteinType),
         carbsName = _MealCandidate._extractEnumName((rawHistory as dynamic).carbsType);
 
+  /// Falls back to epoch 0 ("never cooked") rather than `DateTime.now()`: a
+  /// corrupted row that reads as "cooked today" would block the meal for the
+  /// whole cooldown window, while an absent date only leaves it rankable.
   static DateTime _extractRawDate(dynamic raw) {
     try {
       final dynamic d = (raw as dynamic).cookedAt;
       if (d is DateTime) return d;
     } catch (_) {}
-    return DateTime.now();
+    return DateTime.fromMillisecondsSinceEpoch(0);
   }
 
   static DateTime _normalizeDate(DateTime dt) => app_date_utils.toLocalDay(dt);

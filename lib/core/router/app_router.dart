@@ -68,8 +68,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/meal/:id',
         name: 'meal',
         parentNavigatorKey: rootNavigatorKey,
+        redirect: (context, state) {
+          final id = int.tryParse(state.pathParameters['id'] ?? '');
+          if (id == null || id <= 0) return '/';
+          return null;
+        },
         pageBuilder: (context, state) {
-          final id = int.tryParse(state.pathParameters['id'] ?? '') ?? -1;
+          final id = int.tryParse(state.pathParameters['id'] ?? '')!;
           return MaterialPage<void>(
             key: state.pageKey,
             child: MealScreen(mealId: id),

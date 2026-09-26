@@ -109,12 +109,16 @@ class AppSettingsDao extends DatabaseAccessor<AppDatabase> with _$AppSettingsDao
     await updateSettings(AppSettingsCompanion(language: Value(lang)));
   }
 
-  /// Update daily notification time
+  /// Update daily notification time.
+  ///
+  /// Clamped at the DAO boundary because an out-of-range hour or minute would
+  /// persist silently and the reminder would then never fire at all — nothing
+  /// downstream validates the stored value.
   Future<void> updateNotificationTime(int hour, int minute) async {
     await updateSettings(
       AppSettingsCompanion(
-        notificationHour: Value(hour),
-        notificationMinute: Value(minute),
+        notificationHour: Value(hour.clamp(0, 23)),
+        notificationMinute: Value(minute.clamp(0, 59)),
       ),
     );
   }
@@ -152,7 +156,10 @@ class AppSettingsDao extends DatabaseAccessor<AppDatabase> with _$AppSettingsDao
     );
   }
 
-  /// Reset settings to defaults (using cached Firebase defaults if available)
+  /// Reset settings to defaults (using cached Firebase defaults if available).
+  ///
+  /// Deliberately skips `isFirstRun` and `language`: resetting the former sends a
+  /// returning user back to onboarding, the second overwrites an explicit choice.
   Future<void> resetToDefaults() async {
     final cached = await AppConfigSyncService.instance.getCachedDefaults();
     final companion = AppSettingsCompanion(
@@ -166,12 +173,8 @@ class AppSettingsDao extends DatabaseAccessor<AppDatabase> with _$AppSettingsDao
       notificationMinute: Value(cached.notificationMinute),
       notificationsEnabled: const Value(false),
       themeMode: const Value(AppThemeModePreference.system),
-      language: Value(
-        PlatformDispatcher.instance.locale.languageCode == 'en'
-            ? AppLanguagePreference.en
-            : AppLanguagePreference.ar,
-      ),
-      isFirstRun: const Value(true),
+      recommendationSource: const Value(RecommendationSource.vault_only),
+      autoFridayFeastFilter: const Value(false),
     );
     await (update(appSettings)..where((t) => t.id.equals(settingsRowId))).write(companion);
   }
