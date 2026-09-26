@@ -891,8 +891,6 @@ class _CloudMealCard extends ConsumerWidget {
                             _BookmarkCloudButton(cloudId: cloudMeal.id),
                           ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(strings.discoveryAddedBy((1.2 + (index * 0.3)).toStringAsFixed(1)), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: AppPalette.textSecondary(brightness))),
                         // One constant-height action slot, so the tile height
                         // [_DiscoveryScreenState] budgets for stays honest in
                         // both branches (the button still grows with text).

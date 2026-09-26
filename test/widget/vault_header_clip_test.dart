@@ -224,9 +224,6 @@ void main() {
 
     final name = tester.getRect(find.descendant(
         of: card.finder, matching: find.text(_cloudMealName(0))));
-    final meta = tester.getRect(find.descendant(
-        of: card.finder,
-        matching: find.textContaining(strings.discoveryAddedBy('1.2'))));
     final button = tester.getRect(
         find.descendant(of: card.finder, matching: find.byType(FilledButton)).first);
     final bookmark =
@@ -237,7 +234,6 @@ void main() {
         .first);
 
     _expectInside(card.rect, name, 'the meal name');
-    _expectInside(card.rect, meta, 'the added-by line');
     _expectInside(card.rect, button, 'the download button');
     // The 52px overflow: the row now fits its card.
     _expectInside(card.rect, badgeRow, 'the badge/time/bookmark row');

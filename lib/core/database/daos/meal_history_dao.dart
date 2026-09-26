@@ -94,7 +94,8 @@ class MealHistoryDao extends DatabaseAccessor<AppDatabase> with _$MealHistoryDao
 
   /// Fetch the latest single cooked meal entry
   Future<MealHistoryData?> getLatestCookedMeal({DateTime? beforeDate}) {
-    final query = select(mealHistory);
+    final query = select(mealHistory)
+      ..where((t) => t.entryType.equalsValue(MealEntryType.cooked));
     if (beforeDate != null) {
       query.where((t) => t.cookedAt.isSmallerOrEqualValue(beforeDate));
     }
