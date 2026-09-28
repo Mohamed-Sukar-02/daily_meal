@@ -59,6 +59,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
   Widget build(BuildContext context) {
     watchNavReentry();
     final recsAsync = ref.watch(todayRecommendationsProvider);
+    final budgetOnly = ref.watch(budgetOnlyProvider);
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -71,7 +72,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
             Expanded(
               child: recsAsync.when(
                 data: (result) => result.recommendations.isEmpty
-                    ? _buildEmptyState(context)
+                    // An empty list under the budget filter is the filter's
+                    // doing, not an empty vault: the copy and the way out are
+                    // different, so the two states never get mixed up.
+                    ? (budgetOnly
+                          ? _buildNoBudgetMealsState(context, ref)
+                          : _buildEmptyState(context))
                     : _buildRecommendationsView(context, ref, result),
                 loading: () => const Center(
                   child: CircularProgressIndicator.adaptive(),
@@ -98,6 +104,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
     final meals = result.recommendations;
     final canSpin = meals.length >= 2;
     final strings = AppStrings.of(context);
+    final capacity = ref.watch(vaultCapacityProvider);
 
     return Stack(
       clipBehavior: Clip.none,
@@ -115,6 +122,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
             controller: _listController,
             padding: EdgeInsets.fromLTRB(16, 2, 16, canSpin ? 110 : 28),
             children: [
+              _buildBudgetFilterRow(context, ref),
+              const SizedBox(height: 12),
+              if (capacity != null && capacity.isTooSmall) ...[
+                _buildVaultCapacityBanner(context, capacity, brightness),
+                const SizedBox(height: 12),
+              ],
               if (result.relaxationLevel > 0) ...[
                 _buildRelaxationBanner(context, result, brightness),
                 const SizedBox(height: 12),
@@ -136,9 +149,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
                   padding: const EdgeInsets.all(10),
                   // Downscale big cloud photos while decoding: 3 cards at once.
                   photoCacheWidth: 1080,
-                  footer: QuickActions(
-                    onCookedToday: () =>
-                        _handleCookedToday(context, ref, meals[i]),
+                  footer: Row(
+                    children: [
+                      QuickActions(
+                        onCookedToday: () =>
+                            _handleCookedToday(context, ref, meals[i]),
+                      ),
+                      const Spacer(),
+                      _buildRerollButton(context, ref, i),
+                    ],
                   ),
                   onToggleFavorite: () {
                     ref
@@ -300,6 +319,217 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
     );
   }
 
+  /// "Budget only" (اقتصادية فقط) — the one quick filter the recommendation
+  /// rail offers. It re-ranks the day against a narrower pool, so it belongs
+  /// above the cards rather than beside the "cook / takeout" actions below.
+  Widget _buildBudgetFilterRow(BuildContext context, WidgetRef ref) {
+    final selected = ref.watch(budgetOnlyProvider);
+    final brightness = Theme.of(context).brightness;
+    final strings = AppStrings.of(context);
+    final style = AppPalette.chipGreen(brightness);
+    final foreground = selected ? Colors.white : style.foreground;
+
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: Tooltip(
+        message: strings.filterBudgetOnlyTooltip,
+        child: Material(
+          key: const ValueKey('btn_budget_only'),
+          color: selected ? AppPalette.brandGreen : style.background,
+          borderRadius: BorderRadius.circular(20),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () => ref.read(budgetOnlyProvider.notifier).toggle(),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AppIcon(AppGlyph.wallet, color: foreground, size: 16),
+                  const SizedBox(width: 7),
+                  Text(
+                    strings.filterBudgetOnly,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: selected
+                          ? Colors.white
+                          : AppPalette.textPrimary(brightness)
+                              .withValues(alpha: 0.75),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Vault health indicator: the vault cannot cover its own cooldown, so
+  /// repeats are a math problem rather than an engine bug. Points at the fix
+  /// (more meals) instead of apologising every time a card is re-served.
+  Widget _buildVaultCapacityBanner(
+    BuildContext context,
+    VaultCapacity capacity,
+    Brightness brightness,
+  ) {
+    final style = AppPalette.chipRose(brightness);
+    final strings = AppStrings.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: style.background,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: style.foreground.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppIcon(AppGlyph.alert, color: style.foreground, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  strings.vaultTooSmallForCooldown,
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.5,
+                    fontWeight: FontWeight.w700,
+                    color: style.foreground,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  strings.vaultCapacityDetail(
+                    capacity.mealCount,
+                    capacity.cooldownDays,
+                  ),
+                  style: TextStyle(
+                    fontSize: 11,
+                    height: 1.45,
+                    fontWeight: FontWeight.w600,
+                    color: AppPalette.textSecondary(brightness),
+                  ),
+                ),
+                // The way out sits under the copy instead of beside it: a
+                // tappable line of text next to an Expanded paragraph is a
+                // greedy non-flex child, and at a large text scale it took the
+                // whole row and left the warning itself 0px wide.
+                const SizedBox(height: 6),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () => context.go('/vault'),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 2, vertical: 2),
+                      child: Text(
+                        strings.addMoreMeals,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: style.foreground,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Single-card reroll: swaps this card only, the other two stay put.
+  Widget _buildRerollButton(BuildContext context, WidgetRef ref, int index) {
+    final brightness = Theme.of(context).brightness;
+    final strings = AppStrings.of(context);
+
+    return Tooltip(
+      message: strings.rerollMeal,
+      child: IconButton(
+        key: ValueKey('btn_reroll_$index'),
+        onPressed: () => _handleReroll(context, ref, index),
+        icon: AppIcon(
+          AppGlyph.swap,
+          color: AppPalette.textSecondary(brightness),
+          size: 20,
+        ),
+        color: AppPalette.textSecondary(brightness),
+        iconSize: 20,
+        visualDensity: VisualDensity.compact,
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Empty states
+  // ---------------------------------------------------------------------------
+
+  /// The budget filter excluded every meal in the vault. Same shape as the
+  /// empty-vault state, but the way out is to drop the filter, not to add a
+  /// meal the user already owns.
+  Widget _buildNoBudgetMealsState(BuildContext context, WidgetRef ref) {
+    final brightness = Theme.of(context).brightness;
+    final strings = AppStrings.of(context);
+
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppIcon(
+              AppGlyph.wallet,
+              size: 56,
+              color: AppPalette.textSecondary(brightness),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              strings.budgetFilterEmptyTitle,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppPalette.textPrimary(brightness),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              strings.budgetFilterEmptyDesc,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: AppPalette.textSecondary(brightness),
+              ),
+            ),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: () => ref.read(budgetOnlyProvider.notifier).disable(),
+              icon: const AppIcon(
+                AppGlyph.swap,
+                color: Colors.white,
+                size: 18,
+              ),
+              label: Text(strings.showAllMealsAgain),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildEmptyState(BuildContext context) {
     final brightness = Theme.of(context).brightness;
     final strings = AppStrings.of(context);
@@ -428,6 +658,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
         },
       );
     }
+  }
+
+  Future<void> _handleReroll(BuildContext context, WidgetRef ref, int index) async {
+    final notifier = ref.read(todayRecommendationsProvider.notifier);
+    final replaced = await notifier.rerollSingle(index);
+    if (replaced != null || !context.mounted) return;
+
+    // Nothing could take the slot — say so instead of leaving the tap looking
+    // like a dead button.
+    AppToast.showInfo(
+      context,
+      AppStrings.of(context).rerollNoAlternative,
+    );
   }
 
   Widget _buildFloatingActionBtn({

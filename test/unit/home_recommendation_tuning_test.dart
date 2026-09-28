@@ -1,0 +1,294 @@
+import 'package:daily_meal/core/database/app_database.dart';
+import 'package:daily_meal/core/database/database_providers.dart';
+import 'package:daily_meal/features/home/providers/recommendation_provider.dart';
+import 'package:drift/drift.dart' show Value;
+import 'package:drift/native.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+const _proteins = [
+  ProteinType.chicken,
+  ProteinType.beef,
+  ProteinType.fish,
+];
+
+/// The three knobs the cases below care about, per meal.
+class _Spec {
+  _Spec(this.id, {this.budget = false, ProteinType? protein})
+      : protein = protein ?? _proteins[id % _proteins.length];
+
+  final int id;
+  final bool budget;
+  final ProteinType protein;
+}
+
+class _Harness {
+  _Harness._(this.db, this.container);
+
+  final AppDatabase db;
+  final ProviderContainer container;
+
+  Future<void> settle() => Future.delayed(const Duration(milliseconds: 150));
+
+  List<Meal> get shown =>
+      container.read(todayRecommendationsProvider).requireValue.recommendations;
+
+  List<int> get ids => shown.map((m) => m.id).toList();
+
+  Future<Meal?> reroll(int index) async {
+    final replaced =
+        await container.read(todayRecommendationsProvider.notifier).rerollSingle(index);
+    await settle();
+    return replaced;
+  }
+
+  void toggleBudget() => container.read(budgetOnlyProvider.notifier).toggle();
+
+  Future<void> dispose() async {
+    container.dispose();
+    await db.close();
+  }
+}
+
+Future<_Harness> _start(
+  List<_Spec> meals, {
+  int cooldownDays = 14,
+  int chickenCooldownDays = 2,
+  int beefCooldownDays = 2,
+  int fishCooldownDays = 4,
+}) async {
+  final db = AppDatabase(NativeDatabase.memory());
+  await db.appSettingsDao.ensureSettings();
+  await db.appSettingsDao.updateSettings(AppSettingsCompanion(
+    cooldownDays: Value(cooldownDays),
+    chickenCooldownDays: Value(chickenCooldownDays),
+    beefCooldownDays: Value(beefCooldownDays),
+    fishCooldownDays: Value(fishCooldownDays),
+  ));
+  await db.mealsDao.deleteAllMeals();
+  for (final spec in meals) {
+    await db.mealsDao.insertMeal(MealsCompanion(
+      id: Value(spec.id),
+      name: Value('Meal ${spec.id}'),
+      proteinType: Value(spec.protein),
+      carbsType: const Value(CarbsType.rice),
+      category: const Value(MealCategory.egyptianTraditional),
+      prepTime: const Value(30),
+      isBudgetFriendly: Value(spec.budget),
+    ));
+  }
+
+  final container = ProviderContainer(
+    overrides: [appDatabaseProvider.overrideWithValue(db)],
+  );
+  final harness = _Harness._(db, container);
+  container.listen(todayRecommendationsProvider, (_, _) {});
+  await harness.settle();
+  return harness;
+}
+
+/// Eleven meals, ids 11..21 — comfortably above the three cards, so a reroll
+/// always has somewhere to go unless a case says otherwise.
+List<_Spec> _vault({bool everyThirdIsBudget = false}) => [
+      for (var id = 11; id <= 21; id++)
+        _Spec(id, budget: everyThirdIsBudget && id % 3 == 0),
+    ];
+
+void main() {
+  group('budget-only filter', () {
+    test('serves nothing but budget-friendly meals while it is on', () async {
+      final harness = await _start(_vault(everyThirdIsBudget: true));
+      addTearDown(harness.dispose);
+
+      expect(harness.ids, hasLength(3));
+      harness.toggleBudget();
+      await harness.settle();
+
+      expect(harness.shown, isNotEmpty);
+      for (final meal in harness.shown) {
+        expect(meal.isBudgetFriendly, isTrue,
+            reason: 'meal ${meal.id} is not budget friendly but was served');
+      }
+    });
+
+    test('flipping the toggle re-ranks instead of pinning the old cards',
+        () async {
+      final harness = await _start(_vault(everyThirdIsBudget: true));
+      addTearDown(harness.dispose);
+
+      final before = harness.ids.toSet();
+      harness.toggleBudget();
+      await harness.settle();
+      final during = harness.ids.toSet();
+
+      expect(
+        before.intersection(during),
+        isEmpty,
+        reason: 'the unfiltered cards are not budget picks, so the filter must '
+            'clear them off the day instead of keeping them pinned',
+      );
+
+      harness.toggleBudget();
+      await harness.settle();
+      expect(harness.ids.toSet(), before,
+          reason: 'turning the filter back off restores the day it had ranked');
+    });
+
+    test('a pool with no budget meal at all serves an empty list', () async {
+      final harness = await _start(_vault());
+      addTearDown(harness.dispose);
+
+      harness.toggleBudget();
+      await harness.settle();
+
+      expect(harness.container.read(todayRecommendationsProvider).requireValue
+          .recommendations, isEmpty);
+    });
+  });
+
+  group('single card reroll', () {
+    test('replaces one slot and leaves the other two alone', () async {
+      final harness = await _start(_vault());
+      addTearDown(harness.dispose);
+
+      final before = harness.ids;
+      final replacement = await harness.reroll(1);
+
+      expect(replacement, isNotNull);
+      final after = harness.ids;
+      expect(after, hasLength(3));
+      expect(after[0], before[0], reason: 'the first card stays put');
+      expect(after[2], before[2], reason: 'the third card stays put');
+      expect(after[1], replacement!.id);
+      expect(after.toSet(), hasLength(3),
+          reason: 'the new card never duplicates one of the staying cards');
+    });
+
+    test('says so when the vault has nothing else to offer', () async {
+      // Exactly the three cards on screen: every candidate is already shown,
+      // so a "new" meal could only be a re-serve.
+      final harness = await _start([_Spec(11), _Spec(12), _Spec(13)]);
+      addTearDown(harness.dispose);
+
+      expect(harness.ids, hasLength(3));
+      expect(await harness.reroll(0), isNull);
+      expect(harness.ids, hasLength(3));
+    });
+
+    test('keeps the filter on: a reroll cannot smuggle in a non-budget meal',
+        () async {
+      final harness = await _start([
+        ..._vault(everyThirdIsBudget: true),
+        _Spec(22, budget: true),
+        _Spec(23, budget: true),
+      ]);
+      addTearDown(harness.dispose);
+
+      harness.toggleBudget();
+      await harness.settle();
+      final shown = harness.ids;
+      final replacement = await harness.reroll(shown.length - 1);
+
+      expect(replacement, isNotNull);
+      expect(replacement!.isBudgetFriendly, isTrue);
+    });
+
+    test('repeated taps keep dealing new meals instead of one answer',
+        () async {
+      final harness = await _start(_vault());
+      addTearDown(harness.dispose);
+
+      final seen = <int>{};
+      for (var i = 0; i < 4; i++) {
+        final replacement = await harness.reroll(0);
+        if (replacement != null) seen.add(replacement.id);
+      }
+
+      expect(seen.length, greaterThan(1),
+          reason: 'each tap has to move on, not re-serve the same replacement');
+    });
+
+    test('a rerolled card survives an unrelated write', () async {
+      final harness = await _start(_vault());
+      addTearDown(harness.dispose);
+
+      final replacement = await harness.reroll(0);
+      expect(replacement, isNotNull);
+      final afterReroll = harness.ids;
+
+      // The heart button is the write the eligibility key is blind to: the
+      // cards must be replayed in the rerolled order, not re-ranked back.
+      await harness.db.mealsDao.toggleFavorite(afterReroll.last, false);
+      await harness.settle();
+
+      expect(harness.ids, afterReroll);
+    });
+
+    test('does not duplicate a staying card\'s protein', () async {
+      // Two meals per protein: the day always shows one of each, so exactly
+      // one alternative of the third card's own protein is left in the vault.
+      final harness = await _start([
+        _Spec(11, protein: ProteinType.chicken),
+        _Spec(12, protein: ProteinType.beef),
+        _Spec(13, protein: ProteinType.fish),
+        _Spec(14, protein: ProteinType.chicken),
+        _Spec(15, protein: ProteinType.beef),
+        _Spec(16, protein: ProteinType.fish),
+      ]);
+      addTearDown(harness.dispose);
+
+      final before = harness.shown;
+      expect(before.map((m) => m.proteinType).toSet(), hasLength(3),
+          reason: 'the day itself starts one-protein-per-card');
+
+      final replacement = await harness.reroll(2);
+
+      expect(replacement, isNotNull);
+      expect(harness.shown.map((m) => m.proteinType).toSet(), hasLength(3),
+          reason: 'a single reroll must not quietly make two cards the same '
+              'protein while an alternative existed');
+      expect(replacement!.id, isNot(before[2].id));
+    });
+  });
+
+  group('vault capacity vs cooldown', () {
+    test('a vault smaller than the cooldown window is flagged', () async {
+      final harness = await _start([
+        _Spec(11),
+        _Spec(12),
+        _Spec(13),
+        _Spec(14),
+      ], cooldownDays: 14);
+      addTearDown(harness.dispose);
+
+      final capacity = harness.container.read(vaultCapacityProvider);
+      expect(capacity, isNotNull);
+      expect(capacity!.isTooSmall, isTrue);
+      expect(capacity.mealCount, 4);
+      expect(capacity.cooldownDays, 14);
+      expect(capacity.shortfall, 10);
+    });
+
+    test('a vault that covers its window stays quiet', () async {
+      final harness = await _start(_vault(), cooldownDays: 10);
+      addTearDown(harness.dispose);
+
+      expect(harness.container.read(vaultCapacityProvider)!.isTooSmall, isFalse);
+    });
+
+    test('a protein rule stricter than the global one drives the warning',
+        () async {
+      final harness = await _start(
+        [_Spec(11, protein: ProteinType.chicken, budget: true)],
+        cooldownDays: 3,
+        chickenCooldownDays: 21,
+      );
+      addTearDown(harness.dispose);
+
+      final capacity = harness.container.read(vaultCapacityProvider);
+      expect(capacity!.cooldownDays, 21,
+          reason: 'the chicken window is the one that will re-serve this meal');
+      expect(capacity.isTooSmall, isTrue);
+    });
+  });
+}

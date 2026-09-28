@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:drift/drift.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../app_database.dart';
@@ -203,7 +205,48 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
         }
       } catch (_) {}
     }
-    return (delete(meals)..where((t) => t.id.equals(id))).go();
+    final deleted = await (delete(meals)..where((t) => t.id.equals(id))).go();
+    // Only once the row is really gone: while it exists the photo is a
+    // referenced file, and deleting the bytes first would leave a meal whose
+    // hero is a broken frame.
+    if (deleted > 0) {
+      await _deletePhotoFile(meal);
+    }
+    return deleted;
+  }
+
+  /// Frees the disk space of a deleted meal by removing its photo file.
+  ///
+  /// `Meals.photoPath` carries three kinds of values (see `MealImageSource`),
+  /// and only a device file belongs to us: an `http(s)` URL lives on somebody
+  /// else's server, and an `assets/…` path is a photo bundled with the app —
+  /// deleting either would destroy something this row never owned.
+  ///
+  /// Cloud photos are content-addressed (`img_<hash>`), so two vault entries
+  /// downloaded from the same URL share one file. The row is deleted before
+  /// this runs, so the surviving query asks exactly the right question: is
+  /// another meal still looking at this file?
+  ///
+  /// Best-effort by design. A missing or unreadable file is not worth a crash,
+  /// and anything left behind is what the startup orphan sweep collects.
+  Future<void> _deletePhotoFile(Meal? meal) async {
+    final path = meal?.photoPath?.trim() ?? '';
+    if (path.isEmpty) return;
+    final lower = path.toLowerCase();
+    if (lower.startsWith('http://') ||
+        lower.startsWith('https://') ||
+        lower.startsWith('assets/') ||
+        lower.startsWith('asset:')) {
+      return;
+    }
+    try {
+      final stillReferenced = await (select(meals)
+            ..where((t) => t.photoPath.equals(path))
+            ..limit(1))
+          .getSingleOrNull();
+      if (stillReferenced != null) return;
+      await File(path).delete();
+    } catch (_) {}
   }
 
   Future<int> deleteAllMeals() {

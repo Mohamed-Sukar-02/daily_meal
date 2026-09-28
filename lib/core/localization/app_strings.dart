@@ -226,6 +226,33 @@ class AppStrings {
   String get leftoverPrefix => isEn ? '(Leftovers)' : '(بقايا امبارح)';
   String get leftoverOnly => isEn ? 'Leftovers' : 'بقايا امبارح';
 
+  // Budget-only filter (home recommendation rail)
+  String get filterBudgetOnly => isEn ? 'Budget only' : 'اقتصادية فقط';
+  String get filterBudgetOnlyTooltip => isEn
+      ? 'Suggest only budget-friendly meals'
+      : 'اقترح الأكلات الاقتصادية بس';
+  String get budgetFilterEmptyTitle =>
+      isEn ? 'No budget-friendly meals' : 'مفيش أكلات اقتصادية';
+  String get budgetFilterEmptyDesc => isEn
+      ? 'None of the meals in your vault is tagged as budget friendly.'
+      : 'ولا أكلة في خزانتك متصنفة كأكلة اقتصادية.';
+  String get showAllMealsAgain => isEn ? 'Show all meals' : 'اعرض كل الأكلات';
+
+  // Single card reroll
+  String get rerollMeal => isEn ? 'Change this meal' : 'غيّر الأكلة دي';
+  String get rerollNoAlternative => isEn
+      ? 'No other meal can take this slot today'
+      : 'مفيش أكلة تانية تقدر تاخد المكان ده النهاردة';
+
+  // Vault capacity vs cooldown
+  String get vaultTooSmallForCooldown => isEn
+      ? 'Your vault is too small for the current cooldown. Add more meals to prevent repetition.'
+      : 'خزانتك أصغر من فترة الاستبعاد الحالية. أضف أكلات أكتر عشان الأكلات ما تتكررش.';
+  String vaultCapacityDetail(int meals, int days) => isEn
+      ? '${mealsCount(meals)} in the vault, and a meal stays out of the way for ${daysText(days)}.'
+      : '${mealsCount(meals)} في الخزانة، والأكلة بتتستبعد ${daysText(days)}.';
+  String get addMoreMeals => isEn ? 'Add more meals' : 'أضف أكلات أكتر';
+
   String get mainDish => isEn ? 'Main Dish' : 'الطبق الرئيسي';
   String get sideDish1 => isEn ? 'Side Dish 1' : 'طبق جانبي ١';
   String get sideDish2 => isEn ? 'Side Dish 2' : 'طبق جانبي ٢';

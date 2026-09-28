@@ -37,6 +37,47 @@ final currentTimeProvider = StreamProvider<DateTime>((ref) {
 
 final refreshSeedProvider = StateProvider<int>((ref) => 0);
 
+/// "Budget only" (اقتصادية فقط): today's suggestions may only come from meals
+/// flagged budget friendly.
+///
+/// Deliberately session state, not a row in `AppSettings`: it is a viewing
+/// toggle for the current screen, and the home branch stays alive in the shell,
+/// so the user keeps the mode they picked until they switch it off.
+final budgetOnlyProvider = NotifierProvider<BudgetOnlyNotifier, bool>(
+  BudgetOnlyNotifier.new,
+);
+
+class BudgetOnlyNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void toggle() => state = !state;
+
+  void disable() {
+    if (state) state = false;
+  }
+}
+
+/// Fallback row used for the frames in which the settings stream has not
+/// emitted yet. Matches the columns' defaults, so the very first suggestion
+/// pass ranks against the same windows a fresh install actually has.
+AppSettingsData _fallbackSettings() => AppSettingsData(
+      id: 1,
+      cooldownDays: 14,
+      chickenCooldownDays: 2,
+      beefCooldownDays: 2,
+      fishCooldownDays: 4,
+      meatlessCooldownDays: 0,
+      notificationHour: 12,
+      notificationMinute: 0,
+      notificationsEnabled: false,
+      themeMode: AppThemeModePreference.system,
+      language: AppLanguagePreference.ar,
+      isFirstRun: true,
+      recommendationSource: RecommendationSource.vault_only,
+      autoFridayFeastFilter: false,
+    );
+
 /// Fingerprint of everything that is allowed to change *which* meals get
 /// suggested. Deliberately blind to a meal's own cosmetic fields: the drift
 /// stream emits on every write, and treating a heart tap as a re-rank trigger
@@ -52,18 +93,21 @@ final refreshSeedProvider = StateProvider<int>((ref) => 0);
 ///    `calculateMealScore`, i.e. enough to move a meal across the 5-point
 ///    interchangeable score bands. Ids alone missed them, so a meal
 ///    that just became ineligible (or a new Friday feast) kept its pinned slot;
+///  * [budgetOnly] — while the toggle is on, `isBudgetFriendly` is no longer a
+///    score nudge but the definition of the pool, so flipping it must re-rank;
 ///  * the history signature — see below, the row count was not enough.
 ///
-/// Left out on purpose: `isFavorite` (+5) and `isBudgetFriendly` (+2) are pure
-/// score nudges and the heart button is exactly the tap that must never move a
-/// card; `name`, `photoPath`, `shortName`, `prepTime`, `category`,
-/// `updatedAt` and the history `notes`/`entryType` snapshot are never read by
-/// the engine. None of them make a meal ineligible, and the pin-replay below
-/// still rebuilds the cards from the fresh rows, so those edits show up without
-/// reshuffling anything.
+/// Left out on purpose: `isFavorite` (+5) and — with the budget toggle off —
+/// `isBudgetFriendly` (+2) are pure score nudges and the heart button is
+/// exactly the tap that must never move a card; `name`, `photoPath`,
+/// `shortName`, `prepTime`, `category`, `updatedAt` and the history
+/// `notes`/`entryType` snapshot are never read by the engine. None of them make
+/// a meal ineligible, and the pin-replay below still rebuilds the cards from
+/// the fresh rows, so those edits show up without reshuffling anything.
 String _eligibilityKey({
   required int dayEpoch,
   required int refreshSeed,
+  required bool budgetOnly,
   required List<Meal> meals,
   required List<MealHistoryData> history,
   required AppSettingsData settings,
@@ -99,6 +143,7 @@ String _eligibilityKey({
   return [
     dayEpoch,
     refreshSeed,
+    budgetOnly ? 'budget' : 'all',
     mealSignature,
     historySignature,
     settings.cooldownDays,
@@ -120,6 +165,11 @@ class TodayRecommendationsNotifier
   List<int>? _pinnedIds;
   RecommendationResult<Meal>? _pinnedResult;
   int _lastRefreshSeed = 0;
+
+  /// Bumped by every single-card reroll and folded into the engine's shuffle
+  /// seed, so a second tap on the same card draws a different lottery instead
+  /// of handing back the meal the previous tap just served.
+  int _rerollCount = 0;
 
   @override
   AsyncValue<RecommendationResult<Meal>> build() {
@@ -151,28 +201,23 @@ class TodayRecommendationsNotifier
 
     final meals = mealsAsync.valueOrNull ?? const <Meal>[];
     final history = historyAsync.valueOrNull ?? const [];
-    final AppSettingsData fallbackSettings = AppSettingsData(
-      id: 1,
-      cooldownDays: 14,
-      chickenCooldownDays: 2,
-      beefCooldownDays: 2,
-      fishCooldownDays: 4,
-      meatlessCooldownDays: 0,
-      notificationHour: 12,
-      notificationMinute: 0,
-      notificationsEnabled: false,
-      themeMode: AppThemeModePreference.system,
-      language: AppLanguagePreference.ar,
-      isFirstRun: true,
-      recommendationSource: RecommendationSource.vault_only,
-      autoFridayFeastFilter: false,
-    );
-    final settings = settingsAsync.valueOrNull ?? fallbackSettings;
+    final settings = settingsAsync.valueOrNull ?? _fallbackSettings();
+    final budgetOnly = ref.watch(budgetOnlyProvider);
+
+    // The budget toggle narrows the *pool*, not just the ranking: the key, the
+    // pin replay and the engine all read this same list, so no stage can ever
+    // serve a meal the filter excludes. It also means a meal un-flagged while
+    // the filter is on drops out of the replay map below, which is exactly the
+    // signal to re-rank rather than to keep showing it.
+    final candidates = budgetOnly
+        ? meals.where((meal) => meal.isBudgetFriendly).toList()
+        : meals;
 
     final key = _eligibilityKey(
       dayEpoch: app_date_utils.daysSinceEpoch(now),
       refreshSeed: refreshSeed,
-      meals: meals,
+      budgetOnly: budgetOnly,
+      meals: candidates,
       history: history,
       settings: settings,
     );
@@ -182,7 +227,7 @@ class TodayRecommendationsNotifier
     if (pinned != null && pinnedIds != null && _pinnedKey == key) {
       // Same eligibility: keep today's three meals and their order, but rebuild
       // them from the fresh rows so edited fields (photo, name, heart) show up.
-      final byId = {for (final m in meals) m.id: m};
+      final byId = {for (final m in candidates) m.id: m};
       final fresh = pinnedIds.map((id) => byId[id]).whereType<Meal>().toList();
       if (fresh.length == pinnedIds.length) {
         return AsyncValue.data(RecommendationResult<Meal>(
@@ -205,7 +250,7 @@ class TodayRecommendationsNotifier
 
     try {
       final result = engine.compute<Meal>(
-        meals: meals,
+        meals: candidates,
         history: history,
         settings: settings,
         today: now,
@@ -221,7 +266,146 @@ class TodayRecommendationsNotifier
       return AsyncValue.error(err, st);
     }
   }
+
+  /// Replaces only slot [index] of the three cards on screen, leaving the other
+  /// two exactly where they are.
+  ///
+  /// The replacement comes from the same pool the day was ranked from — so the
+  /// budget toggle, the protein windows and the history cooldown all still
+  /// apply — with the two staying cards *and* the meal being replaced excluded.
+  /// That is what makes it a real replacement instead of the same card under a
+  /// new tap. When the pool has nothing left to offer, the engine can only
+  /// re-serve an excluded id, and the answer is `null` so the UI can admit it
+  /// rather than shuffling the same three dishes around.
+  ///
+  /// Returns the meal that took the slot, or `null` when nothing could.
+  Future<Meal?> rerollSingle(int index) async {
+    final current = _pinnedResult;
+    final ids = _pinnedIds;
+    if (current == null ||
+        ids == null ||
+        ids.length != current.recommendations.length ||
+        index < 0 ||
+        index >= ids.length) {
+      return null;
+    }
+
+    final meals = ref.read(allMealsProvider).valueOrNull ?? const <Meal>[];
+    final history = ref.read(mealHistoryProvider).valueOrNull ?? const [];
+    final settings =
+        ref.read(appSettingsProvider).valueOrNull ?? _fallbackSettings();
+    final now = ref.read(currentTimeProvider).valueOrNull ?? DateTime.now();
+    final budgetOnly = ref.read(budgetOnlyProvider);
+    final candidates = budgetOnly
+        ? meals.where((meal) => meal.isBudgetFriendly).toList()
+        : meals;
+    // One candidate outside the three cards is the minimum: with fewer, the
+    // only "new" meal on offer would be one of the cards already showing.
+    if (candidates.length <= ids.length) return null;
+
+    final excluded = ids.toSet();
+    final keptProteins = {
+      for (var i = 0; i < ids.length; i++)
+        if (i != index) current.recommendations[i].proteinType.name,
+    };
+
+    final RecommendationResult<Meal> probe;
+    try {
+      probe = ref.read(engineProvider).compute<Meal>(
+            meals: candidates,
+            history: history,
+            settings: settings,
+            today: now,
+            shuffleSeed: ref.read(refreshSeedProvider) + ++_rerollCount,
+            excludeIds: excluded,
+          );
+    } catch (_) {
+      return null;
+    }
+
+    final novel = probe.recommendations
+        .where((meal) => !excluded.contains(meal.id))
+        .toList();
+    if (novel.isEmpty) return null;
+
+    // Three distinct proteins is the one rule the day's selection holds, and a
+    // hand-placed slot sits outside the engine's own variety pass — so the new
+    // card stands down from a protein one of the staying cards already serves.
+    final replacement = novel.firstWhere(
+      (meal) => !keptProteins.contains(meal.proteinType.name),
+      orElse: () => novel.first,
+    );
+
+    final next = RecommendationResult<Meal>(
+      recommendations: List<Meal>.of(current.recommendations)..[index] = replacement,
+      relaxationLevel: current.relaxationLevel,
+      isEmptyVault: current.isEmptyVault,
+      computedDate: current.computedDate,
+    );
+    _pinnedIds = List<int>.of(ids)..[index] = replacement.id;
+    _pinnedResult = next;
+    // `_pinnedKey` is left alone on purpose: nothing about eligibility changed,
+    // only which eligible meal owns this slot. The next drift write therefore
+    // replays this order instead of reverting the card the user just swapped.
+    state = AsyncValue.data(next);
+    return replacement;
+  }
 }
+
+/// Vault size measured against the longest cooldown window in force — the
+/// "vault health" reading behind [vaultCapacityProvider].
+class VaultCapacity {
+  final int mealCount;
+
+  /// The window the vault is judged by: the global period, or a protein rule
+  /// that is stricter than it.
+  final int cooldownDays;
+
+  const VaultCapacity({required this.mealCount, required this.cooldownDays});
+
+  /// Days of cooldown the vault cannot cover with distinct meals.
+  int get shortfall => cooldownDays - mealCount;
+
+  /// True when the vault is too small to honour its own cooldown: at least one
+  /// meal is guaranteed to come back inside a window the user asked to keep
+  /// empty, which is exactly what the relaxation banner then apologises for.
+  bool get isTooSmall => shortfall > 0;
+}
+
+/// Can this vault actually survive its cooldown settings?
+///
+/// A meal blocks itself for [AppSettingsData.cooldownDays] (or its protein's
+/// own window) after being cooked, so one meal covers one day of that window.
+/// A vault smaller than the longest window in force therefore repeats — the
+/// engine walks its relaxation levels and serves a dish earlier than asked,
+/// and the only real fix is more meals. Warns on the headline number the user
+/// configured, matching how the cooldown is explained in the Settings screen.
+///
+/// `null` while either stream has no value yet, or with an empty vault: the
+/// empty vault already has its own screen, and a "too small" banner stacked on
+/// top of it would say nothing the CTA does not.
+final vaultCapacityProvider = Provider<VaultCapacity?>((ref) {
+  final meals = ref.watch(allMealsProvider).valueOrNull;
+  final settings = ref.watch(appSettingsProvider).valueOrNull;
+  if (meals == null || settings == null || meals.isEmpty) return null;
+
+  var longest = settings.cooldownDays;
+  for (final protein in meals.map((meal) => meal.proteinType.name).toSet()) {
+    // Same resolution order as `CooldownEngine._resolveSpecificCooldown`:
+    // the four named proteins own a window of their own, everything else
+    // (legumes, dairy) falls back to the global period.
+    final window = switch (protein) {
+      'chicken' => settings.chickenCooldownDays,
+      'beef' => settings.beefCooldownDays,
+      'fish' => settings.fishCooldownDays,
+      'none' => settings.meatlessCooldownDays,
+      _ => settings.cooldownDays,
+    };
+    if (window > longest) longest = window;
+  }
+
+  return VaultCapacity(mealCount: meals.length, cooldownDays: longest);
+});
 
 class RecommendationController extends AsyncNotifier<void> {
   @override
