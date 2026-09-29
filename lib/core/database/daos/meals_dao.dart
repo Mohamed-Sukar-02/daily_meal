@@ -84,6 +84,21 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
     return (select(meals)..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
+  /// Looks a meal up by its folded name, the same form `_withNormalizedName`
+  /// stores in `name_normalized`.
+  ///
+  /// Exact equality — not the `LIKE '%…%'` of [searchMeals] — because this
+  /// answers "is this the very same dish already in the vault?". `limit(1)`
+  /// keeps it safe on databases that still hold pre-guard duplicates, where
+  /// `getSingleOrNull()` over all matches would throw instead of answering.
+  Future<Meal?> getMealByName(String name) {
+    final normalized = normalizeArabic(name);
+    return (select(meals)
+          ..where((t) => t.nameNormalized.equals(normalized))
+          ..limit(1))
+        .getSingleOrNull();
+  }
+
   Future<List<Meal>> getStarterMeals() {
     return (select(meals)..where((t) => t.isStarterMeal.equals(true))).get();
   }

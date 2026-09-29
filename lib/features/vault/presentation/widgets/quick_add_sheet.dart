@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../../core/database/app_database.dart';
+import '../../../../core/database/database_providers.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/widgets/app_icons.dart';
@@ -538,6 +539,17 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
           AppToast.showSuccess(context, AppStrings.of(context).mealUpdated(name));
         }
       } else {
+        // Duplicate guard on the folded name — the same form search matches on,
+        // so «ملوخية» and «ملوخيه » collide here the way they do in the vault list.
+        final existing = await ref.read(mealsDaoProvider).getMealByName(name);
+        if (existing != null) {
+          if (!mounted) return;
+          // Nothing was written: re-arm the exit guard and keep the sheet open so
+          // the name can be corrected instead of the draft being thrown away.
+          setState(() => _saving = false);
+          AppToast.showError(context, 'هذه الأكلة موجودة بالفعل في خزنتك');
+          return;
+        }
         await ref.read(vaultControllerProvider.notifier).addMeal(
               name: name, category: _selectedCategory, proteinType: _selectedProtein, carbsType: _selectedCarbs,
               prepTimeMinutes: prep, photoPath: _photoPath, isFridaySpecial: _isFridaySpecial,
