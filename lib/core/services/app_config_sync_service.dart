@@ -234,7 +234,7 @@ class AppConfigSyncService {
         remoteByName.putIfAbsent(normalizeArabic(name), () => doc);
       }
 
-      final localMeals = await db.mealsDao.getStarterMeals();
+      final localMeals = await db.mealsDao.getAllMeals();
 
       final matchByLocalId = <int, RemoteStarterDoc>{};
       final claimedRemoteIds = <String>{};
@@ -268,7 +268,10 @@ class AppConfigSyncService {
         // renamed name), preserving local isFavorite, notes, cooldown, etc.
         final localPhoto = await MealImageLocalizer.instance
             .localize(r.data['imageUrl'] as String?);
-        updates.add(_StarterMealUpdate(l.id, _cloudCompanion(r, localizePhoto: localPhoto)));
+        updates.add(_StarterMealUpdate(
+            l.id,
+            _cloudCompanion(r, localizePhoto: localPhoto)
+                .copyWith(isStarterMeal: const Value(true))));
       }
 
       // Genuinely gone from the cloud starter catalog (or user-blacklisted):
@@ -276,7 +279,7 @@ class AppConfigSyncService {
       // and notes survive; only the starter flag drops.
       final deListedIds = [
         for (final l in localMeals)
-          if (!matchByLocalId.containsKey(l.id)) l.id,
+          if (l.isStarterMeal && !matchByLocalId.containsKey(l.id)) l.id,
       ];
 
       final inserts = <MealsCompanion>[];
