@@ -84,22 +84,68 @@ service cloud.firestore {
       );
     }
 
+    // Lifecycle targeting, shared by a broadcast and by its drafts. `v` is the
+    // rule version the mobile app knows how to read, and a build that cannot
+    // interpret this map stays silent about the broadcast instead of guessing —
+    // so nothing outside these three kinds or this day window may be written.
+    // `days` travels even when the kind ignores it, so the shape never varies.
+    function isValidSegment(segment) {
+      return segment is map &&
+        segment.v == 1 &&
+        segment.kind in ['all', 'new', 'returning'] &&
+        segment.days is int &&
+        segment.days >= 1 &&
+        segment.days <= 365;
+    }
+
     // Schema validator for admin broadcast notifications. Their title/body are
     // pushed into a system notification on every install, so field names,
-    // types and sizes are enforced here.
-    function isValidAdminNotification() {
+    // types and sizes are enforced here. The key list must track what
+    // `VaultAdminRepository.sendNotification` actually writes — `id`, `type`
+    // and `sentBy` are part of that payload, and `hasOnly` rejects a write for
+    // every extra key, so a stale list silently blocks every broadcast.
+    function isValidAdminNotification(notificationId) {
       let data = request.resource.data;
-      let allowedKeys = ['titleAr', 'titleEn', 'messageAr', 'messageEn',
-                         'route', 'sentAt', 'createdBy'];
+      let allowedKeys = ['id', 'type', 'titleAr', 'titleEn', 'messageAr',
+                         'messageEn', 'route', 'audience', 'segment', 'sentAt', 'sentBy', 'createdBy'];
       return (
         data.keys().hasOnly(allowedKeys) &&
+        (!('id' in data) || data.id == notificationId) &&
+        (!('type' in data) || (data.type is string && data.type.size() <= 40)) &&
+        (!('audience' in data) || (data.audience is string && data.audience in ['all', 'ar', 'en'])) &&
+        (!('segment' in data) || isValidSegment(data.segment)) &&
         (!('titleAr' in data) || (data.titleAr is string && data.titleAr.size() <= 200)) &&
         (!('titleEn' in data) || (data.titleEn is string && data.titleEn.size() <= 200)) &&
         (!('messageAr' in data) || (data.messageAr is string && data.messageAr.size() <= 1000)) &&
         (!('messageEn' in data) || (data.messageEn is string && data.messageEn.size() <= 1000)) &&
         (!('route' in data) || data.route == null || (data.route is string && data.route.size() <= 256)) &&
         (!('sentAt' in data) || data.sentAt is timestamp) &&
+        (!('sentBy' in data) || data.sentBy == null || (data.sentBy is string && data.sentBy.size() <= 254)) &&
         (!('createdBy' in data) || data.createdBy == null || (data.createdBy is string && data.createdBy.size() <= 254))
+      );
+    }
+
+    // Schema validator for admin notification drafts. Same shapes as a real
+    // broadcast, plus who saved it and when it last changed. Takes the document
+    // id because rules functions cannot see match wildcards from outside.
+    function isValidNotificationDraft(draftId) {
+      let data = request.resource.data;
+      let allowedKeys = ['id', 'type', 'titleAr', 'titleEn', 'messageAr',
+                         'messageEn', 'route', 'audience', 'segment', 'savedBy', 'createdAt', 'updatedAt'];
+      return (
+        data.keys().hasOnly(allowedKeys) &&
+        (!('type' in data) || (data.type is string && data.type.size() <= 40)) &&
+        (!('audience' in data) || (data.audience is string && data.audience in ['all', 'ar', 'en'])) &&
+        (!('segment' in data) || isValidSegment(data.segment)) &&
+        (!('id' in data) || data.id == draftId) &&
+        (!('titleAr' in data) || (data.titleAr is string && data.titleAr.size() <= 200)) &&
+        (!('titleEn' in data) || (data.titleEn is string && data.titleEn.size() <= 200)) &&
+        (!('messageAr' in data) || (data.messageAr is string && data.messageAr.size() <= 1000)) &&
+        (!('messageEn' in data) || (data.messageEn is string && data.messageEn.size() <= 1000)) &&
+        (!('route' in data) || data.route == null || (data.route is string && data.route.size() <= 256)) &&
+        (!('savedBy' in data) || (data.savedBy is string && data.savedBy == request.auth.token.email.lower())) &&
+        (!('updatedAt' in data) || data.updatedAt is timestamp) &&
+        (!('createdAt' in data) || data.createdAt is timestamp)
       );
     }
 
@@ -193,7 +239,21 @@ service cloud.firestore {
     // Admin Notifications: public read for mobile users, editing admin write
     match /admin_notifications/{notification} {
       allow read: if true;
-      allow write: if isEditingAdmin() && isValidAdminNotification();
+      allow write: if isEditingAdmin() && isValidAdminNotification(notification);
+    }
+
+    // Notification drafts: admin working copies. Never world-readable like the
+    // sent collection, or an unfinished broadcast would reach users.
+    match /admin_notification_drafts/{draftId} {
+      allow read: if isAdmin();
+      allow create, update: if isEditingAdmin() && isValidNotificationDraft(draftId);
+      allow delete: if isEditingAdmin();
+    }
+
+    // AI Providers: admins can read, editing/super admins can write.
+    match /ai_providers/{docId} {
+      allow read: if isAdmin();
+      allow write: if false; // الإضافة فقط من الـ Console أو سكريبت خارجي
     }
   }
 }
