@@ -107,12 +107,11 @@ service cloud.firestore {
     function isValidAdminNotification(notificationId) {
       let data = request.resource.data;
       let allowedKeys = ['id', 'type', 'titleAr', 'titleEn', 'messageAr',
-                         'messageEn', 'route', 'audience', 'segment', 'sentAt', 'sentBy', 'createdBy'];
+                         'messageEn', 'route', 'segment', 'sentAt', 'sentBy', 'createdBy'];
       return (
         data.keys().hasOnly(allowedKeys) &&
         (!('id' in data) || data.id == notificationId) &&
         (!('type' in data) || (data.type is string && data.type.size() <= 40)) &&
-        (!('audience' in data) || (data.audience is string && data.audience in ['all', 'ar', 'en'])) &&
         (!('segment' in data) || isValidSegment(data.segment)) &&
         (!('titleAr' in data) || (data.titleAr is string && data.titleAr.size() <= 200)) &&
         (!('titleEn' in data) || (data.titleEn is string && data.titleEn.size() <= 200)) &&
@@ -130,12 +129,14 @@ service cloud.firestore {
     // id because rules functions cannot see match wildcards from outside.
     function isValidNotificationDraft(draftId) {
       let data = request.resource.data;
+      // `audience` is no longer written: an overwrite merges into a draft saved
+      // while language targeting existed, and `hasOnly` judges the merged
+      // document, so the retired key has to stay permitted until those are gone.
       let allowedKeys = ['id', 'type', 'titleAr', 'titleEn', 'messageAr',
                          'messageEn', 'route', 'audience', 'segment', 'savedBy', 'createdAt', 'updatedAt'];
       return (
         data.keys().hasOnly(allowedKeys) &&
         (!('type' in data) || (data.type is string && data.type.size() <= 40)) &&
-        (!('audience' in data) || (data.audience is string && data.audience in ['all', 'ar', 'en'])) &&
         (!('segment' in data) || isValidSegment(data.segment)) &&
         (!('id' in data) || data.id == draftId) &&
         (!('titleAr' in data) || (data.titleAr is string && data.titleAr.size() <= 200)) &&

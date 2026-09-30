@@ -59,15 +59,6 @@ class NotificationSyncService {
       for (final doc in snapshot.docs) {
         final data = doc.data();
 
-        // Audience targeting. The interface language is the only segment this
-        // app can resolve today, and anything that is not an explicit
-        // single-language tag — a document written before targeting existed, or
-        // hand-edited — is for everyone. This runs before the watermark and the
-        // per-launch cap so an announcement meant for the other language
-        // neither spends a slot nor marks itself as seen.
-        final audience = data['audience'];
-        if ((audience == 'ar' || audience == 'en') && audience != (isEn ? 'en' : 'ar')) continue;
-
         // Lifecycle targeting, with the same closed world as the inbox: a
         // broadcast this build cannot place — a `v` it has never seen, a `kind`
         // outside the three it knows — stays silent, and stays silent ahead of

@@ -58,10 +58,7 @@ class NotificationItem {
   final NotificationType type;
   final String? route;
 
-  /// Who the broadcast was addressed to: `all`, `ar` or `en`.
-  final String audience;
-
-  /// Which lifecycle slice the broadcast was addressed to.
+  /// Who the broadcast was addressed to.
   final NotificationSegment segment;
 
   const NotificationItem({
@@ -72,18 +69,12 @@ class NotificationItem {
     this.isRead = false,
     required this.type,
     this.route,
-    this.audience = 'all',
     this.segment = const NotificationSegment.all(),
   });
 
-  /// Whether this device's language is in scope. Anything unrecognised counts
-  /// as a broadcast to everyone, so a mistyped value never hides a message.
-  bool matchesLanguage({required bool isEn}) =>
-      audience == 'all' || audience == (isEn ? 'en' : 'ar');
-
-  /// Whether this device is inside the broadcast's lifecycle slice. The opposite
-  /// of [matchesLanguage] in one respect: an unrecognised rule hides the
-  /// message, because guessing an audience is the failure that matters here.
+  /// Whether this device is inside the broadcast's lifecycle slice. Unlike a
+  /// translated field, a rule this build cannot read has no safe fallback:
+  /// showing it to the wrong device is the failure that matters here.
   bool matchesDevice(DeviceProfile? profile, {DateTime? now}) =>
       segment.matchesDevice(profile, now: now);
 
@@ -95,7 +86,6 @@ class NotificationItem {
     bool? isRead,
     NotificationType? type,
     String? route,
-    String? audience,
     NotificationSegment? segment,
   }) {
     return NotificationItem(
@@ -106,7 +96,6 @@ class NotificationItem {
       isRead: isRead ?? this.isRead,
       type: type ?? this.type,
       route: route ?? this.route,
-      audience: audience ?? this.audience,
       segment: segment ?? this.segment,
     );
   }

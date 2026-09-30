@@ -56,17 +56,8 @@ class RemoteNotificationService {
       time: _time(data['sentAt']),
       type: _type(data['type']),
       route: _route(data['route']),
-      audience: _audience(data['audience']),
       segment: NotificationSegment.parse(data['segment']),
     );
-  }
-
-  /// Only the three values the admin panel can write survive; anything else —
-  /// missing, blank, a typo — is treated as a broadcast to everyone, so a
-  /// hand-edited document can never make a message vanish.
-  static String _audience(Object? value) {
-    final text = value is String ? value : '';
-    return const {'all', 'ar', 'en'}.contains(text) ? text : 'all';
   }
 
   /// Admin-authored fields are hand-typed, so anything but a String — a stray

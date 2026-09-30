@@ -37,7 +37,6 @@ final deviceProfileProvider = FutureProvider<DeviceProfile>((ref) async {
 class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
   NotificationsNotifier({
     RemoteNotificationService? service,
-    this.isEn = false,
     required Future<DeviceProfile> deviceProfile,
   })  : _service = service ?? RemoteNotificationService(),
         super(const []) {
@@ -45,10 +44,6 @@ class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
   }
 
   final RemoteNotificationService _service;
-
-  /// This device's language, used to drop broadcasts the admin panel addressed
-  /// to the other language.
-  final bool isEn;
 
   /// Null when the profile could not be read. A lifecycle-targeted broadcast
   /// then has no verdict and stays hidden; an everyone-destined one still shows.
@@ -108,9 +103,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
     if (!mounted) return;
     state = [
       for (final item in _feed)
-        if (!_dismissedIds.contains(item.id) &&
-            item.matchesLanguage(isEn: isEn) &&
-            item.matchesDevice(_profile))
+        if (!_dismissedIds.contains(item.id) && item.matchesDevice(_profile))
           item.copyWith(isRead: _readIds.contains(item.id)),
     ];
   }
@@ -145,12 +138,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
 }
 
 final notificationsProvider = StateNotifierProvider<NotificationsNotifier, List<NotificationItem>>((ref) {
-  // Watching the locale rebuilds the notifier when the language changes, so an
-  // inbox item addressed to the other language disappears right away instead of
-  // after the next cold start.
-  final locale = ref.watch(localeProvider);
   return NotificationsNotifier(
-    isEn: locale.languageCode == 'en',
     deviceProfile: ref.watch(deviceProfileProvider.future),
   );
 });

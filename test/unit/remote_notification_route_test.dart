@@ -69,34 +69,6 @@ void main() {
     });
   });
 
-  group('admin notification audience field', () {
-    test('keeps the language broadcasts the admin panel can write', () {
-      expect(map({'audience': 'ar'}).audience, 'ar');
-      expect(map({'audience': 'en'}).audience, 'en');
-      expect(map({'audience': 'all'}).audience, 'all');
-    });
-
-    test('reads missing, blank, unknown or non-string values as everyone', () {
-      for (final value in <Map<String, dynamic>>[
-        {'audience': 'anyone'},
-        {'audience': ''},
-        {},
-        {'audience': 42},
-        {'audience': null},
-      ]) {
-        expect(map(value).audience, 'all', reason: '$value');
-      }
-    });
-
-    test('hides a single-language broadcast from the other language', () {
-      expect(map({'audience': 'ar'}).matchesLanguage(isEn: false), isTrue);
-      expect(map({'audience': 'ar'}).matchesLanguage(isEn: true), isFalse);
-      expect(map({'audience': 'en'}).matchesLanguage(isEn: true), isTrue);
-      expect(map({'audience': 'en'}).matchesLanguage(isEn: false), isFalse);
-      expect(map({'audience': 'all'}).matchesLanguage(isEn: true), isTrue);
-    });
-  });
-
   group('admin notification segment field', () {
     // Read at 2026-01-05, so a device first opened on 2026-01-01 is four days
     // old and one opened a year earlier is out of every window in the app.
@@ -193,15 +165,13 @@ void main() {
       expect(showsFor({'v': 1, 'kind': 'returning', 'days': 7}, null), isFalse);
     });
 
-    test('survives copyWith and stays orthogonal to the audience field', () {
+    test('survives copyWith', () {
       final read = map({
         'segment': {'v': 1, 'kind': 'new', 'days': 7},
-        'audience': 'ar',
       }).copyWith(isRead: true);
 
       expect(read.segment.kind, 'new');
       expect(read.segment.days, 7);
-      expect(read.audience, 'ar');
       expect(read.matchesDevice(fresh, now: now), isTrue);
     });
   });
