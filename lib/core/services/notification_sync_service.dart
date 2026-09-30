@@ -47,6 +47,16 @@ class NotificationSyncService {
 
       for (final doc in snapshot.docs) {
         final data = doc.data();
+
+        // Audience targeting. The interface language is the only segment this
+        // app can resolve today, and anything that is not an explicit
+        // single-language tag — a document written before targeting existed, or
+        // hand-edited — is for everyone. This runs before the watermark and the
+        // per-launch cap so an announcement meant for the other language
+        // neither spends a slot nor marks itself as seen.
+        final audience = data['audience'];
+        if ((audience == 'ar' || audience == 'en') && audience != (isEn ? 'en' : 'ar')) continue;
+
         final sentAt = (data['sentAt'] as Timestamp?)?.toDate();
         if (sentAt == null) continue;
 

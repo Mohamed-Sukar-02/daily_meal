@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../settings/providers/settings_providers.dart';
 import '../data/remote_notification_service.dart';
 import '../domain/notification_item.dart';
 
@@ -17,13 +18,19 @@ const String _kDismissedIdsKey = 'dismissed_notification_ids';
 /// emission — so an item the user deleted stays deleted even though the
 /// collection still holds it.
 class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
-  NotificationsNotifier([RemoteNotificationService? service])
-      : _service = service ?? RemoteNotificationService(),
+  NotificationsNotifier({
+    RemoteNotificationService? service,
+    this.isEn = false,
+  })  : _service = service ?? RemoteNotificationService(),
         super(const []) {
     _start();
   }
 
   final RemoteNotificationService _service;
+
+  /// This device's language, used to drop broadcasts the admin panel addressed
+  /// to the other language.
+  final bool isEn;
   final Set<String> _readIds = <String>{};
   final Set<String> _dismissedIds = <String>{};
 
@@ -70,7 +77,8 @@ class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
     if (!mounted) return;
     state = [
       for (final item in _feed)
-        if (!_dismissedIds.contains(item.id)) item.copyWith(isRead: _readIds.contains(item.id)),
+        if (!_dismissedIds.contains(item.id) && item.matchesLanguage(isEn: isEn))
+          item.copyWith(isRead: _readIds.contains(item.id)),
     ];
   }
 
@@ -104,7 +112,11 @@ class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
 }
 
 final notificationsProvider = StateNotifierProvider<NotificationsNotifier, List<NotificationItem>>((ref) {
-  return NotificationsNotifier();
+  // Watching the locale rebuilds the notifier when the language changes, so an
+  // inbox item addressed to the other language disappears right away instead of
+  // after the next cold start.
+  final locale = ref.watch(localeProvider);
+  return NotificationsNotifier(isEn: locale.languageCode == 'en');
 });
 
 final unreadNotificationsProvider = Provider<bool>((ref) {

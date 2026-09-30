@@ -67,4 +67,32 @@ void main() {
       expect(item.route, '/settings');
     });
   });
+
+  group('admin notification audience field', () {
+    test('keeps the language broadcasts the admin panel can write', () {
+      expect(map({'audience': 'ar'}).audience, 'ar');
+      expect(map({'audience': 'en'}).audience, 'en');
+      expect(map({'audience': 'all'}).audience, 'all');
+    });
+
+    test('reads missing, blank, unknown or non-string values as everyone', () {
+      for (final value in <Map<String, dynamic>>[
+        {'audience': 'anyone'},
+        {'audience': ''},
+        {},
+        {'audience': 42},
+        {'audience': null},
+      ]) {
+        expect(map(value).audience, 'all', reason: '$value');
+      }
+    });
+
+    test('hides a single-language broadcast from the other language', () {
+      expect(map({'audience': 'ar'}).matchesLanguage(isEn: false), isTrue);
+      expect(map({'audience': 'ar'}).matchesLanguage(isEn: true), isFalse);
+      expect(map({'audience': 'en'}).matchesLanguage(isEn: true), isTrue);
+      expect(map({'audience': 'en'}).matchesLanguage(isEn: false), isFalse);
+      expect(map({'audience': 'all'}).matchesLanguage(isEn: true), isTrue);
+    });
+  });
 }

@@ -9,6 +9,9 @@ class NotificationItem {
   final NotificationType type;
   final String? route;
 
+  /// Who the broadcast was addressed to: `all`, `ar` or `en`.
+  final String audience;
+
   const NotificationItem({
     required this.id,
     required this.title,
@@ -17,7 +20,13 @@ class NotificationItem {
     this.isRead = false,
     required this.type,
     this.route,
+    this.audience = 'all',
   });
+
+  /// Whether this device's language is in scope. Anything unrecognised counts
+  /// as a broadcast to everyone, so a mistyped value never hides a message.
+  bool matchesLanguage({required bool isEn}) =>
+      audience == 'all' || audience == (isEn ? 'en' : 'ar');
 
   NotificationItem copyWith({
     String? id,
@@ -27,6 +36,7 @@ class NotificationItem {
     bool? isRead,
     NotificationType? type,
     String? route,
+    String? audience,
   }) {
     return NotificationItem(
       id: id ?? this.id,
@@ -36,6 +46,7 @@ class NotificationItem {
       isRead: isRead ?? this.isRead,
       type: type ?? this.type,
       route: route ?? this.route,
+      audience: audience ?? this.audience,
     );
   }
 

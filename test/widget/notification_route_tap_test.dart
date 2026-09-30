@@ -45,7 +45,9 @@ void main() {
     db = await pumpApp(
       tester,
       overrides: [
-        notificationsProvider.overrideWith((ref) => NotificationsNotifier(_FakeFeed([item]))),
+        notificationsProvider.overrideWith(
+          (ref) => NotificationsNotifier(service: _FakeFeed([item])),
+        ),
       ],
     );
     // `GoRouter.of` only resolves from inside the router's own subtree.
