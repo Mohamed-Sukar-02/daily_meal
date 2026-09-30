@@ -1,4 +1,53 @@
+import '../../../core/services/device_profile.dart';
+
 enum NotificationType { meal, reminder, update }
+
+/// Which lifecycle slice a broadcast was addressed to, as the admin panel
+/// writes it: `segment: { v: 1, kind: 'all' | 'new' | 'returning', days: int }`.
+class NotificationSegment {
+  const NotificationSegment({
+    required this.version,
+    required this.kind,
+    required this.days,
+  });
+
+  /// The shape every document that carries no segment gets.
+  const NotificationSegment.all() : this(version: _supportedVersion, kind: 'all', days: 0);
+
+  /// Highest segment layout this build knows how to evaluate.
+  static const int _supportedVersion = 1;
+
+  final int version;
+  final String kind;
+  final int days;
+
+  /// Lenient by design: a missing field, or one that is not a map, means "for
+  /// everyone" — the state every document written before segmentation existed
+  /// was in. A map is carried through exactly as written, with values of the
+  /// wrong type landing on the fail-closed side (`version` 0, blank `kind`,
+  /// `days` 0) so [matchesDevice] can still judge them.
+  static NotificationSegment parse(Object? raw) {
+    if (raw is! Map) return const NotificationSegment.all();
+    return NotificationSegment(
+      version: raw['v'] is int ? raw['v'] as int : 0,
+      kind: raw['kind'] is String ? raw['kind'] as String : '',
+      days: raw['days'] is int ? raw['days'] as int : 0,
+    );
+  }
+
+  /// The closed-world order the wire contract specifies: everyone-destined
+  /// first, then anything this build cannot interpret, then the device's own
+  /// lifecycle. A rule that cannot be read stays silent rather than leak to the
+  /// wrong audience — including [profile] being unreadable, which costs a
+  /// lifecycle broadcast its verdict but never an everyone-destined one.
+  bool matchesDevice(DeviceProfile? profile, {DateTime? now}) {
+    if (kind == 'all') return true;
+    if (version < 1 || version > _supportedVersion) return false;
+    if (kind != 'new' && kind != 'returning') return false;
+    if (profile == null || days < 1) return false;
+    return (kind == 'new') == profile.isNewWithin(days, now: now);
+  }
+}
 
 class NotificationItem {
   final String id;
@@ -12,6 +61,9 @@ class NotificationItem {
   /// Who the broadcast was addressed to: `all`, `ar` or `en`.
   final String audience;
 
+  /// Which lifecycle slice the broadcast was addressed to.
+  final NotificationSegment segment;
+
   const NotificationItem({
     required this.id,
     required this.title,
@@ -21,12 +73,19 @@ class NotificationItem {
     required this.type,
     this.route,
     this.audience = 'all',
+    this.segment = const NotificationSegment.all(),
   });
 
   /// Whether this device's language is in scope. Anything unrecognised counts
   /// as a broadcast to everyone, so a mistyped value never hides a message.
   bool matchesLanguage({required bool isEn}) =>
       audience == 'all' || audience == (isEn ? 'en' : 'ar');
+
+  /// Whether this device is inside the broadcast's lifecycle slice. The opposite
+  /// of [matchesLanguage] in one respect: an unrecognised rule hides the
+  /// message, because guessing an audience is the failure that matters here.
+  bool matchesDevice(DeviceProfile? profile, {DateTime? now}) =>
+      segment.matchesDevice(profile, now: now);
 
   NotificationItem copyWith({
     String? id,
@@ -37,6 +96,7 @@ class NotificationItem {
     NotificationType? type,
     String? route,
     String? audience,
+    NotificationSegment? segment,
   }) {
     return NotificationItem(
       id: id ?? this.id,
@@ -47,6 +107,7 @@ class NotificationItem {
       type: type ?? this.type,
       route: route ?? this.route,
       audience: audience ?? this.audience,
+      segment: segment ?? this.segment,
     );
   }
 

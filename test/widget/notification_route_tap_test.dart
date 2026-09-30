@@ -1,5 +1,6 @@
 import 'package:daily_meal/core/database/app_database.dart';
 import 'package:daily_meal/core/router/app_router.dart';
+import 'package:daily_meal/core/services/device_profile.dart';
 import 'package:daily_meal/features/home/presentation/home_screen.dart';
 import 'package:daily_meal/features/meals/presentation/meal_screen.dart';
 import 'package:daily_meal/features/notifications/data/remote_notification_service.dart';
@@ -34,6 +35,11 @@ NotificationItem _item(String route) => NotificationItem(
       route: route,
     );
 
+/// None of the cards below carry a `segment`, so no profile changes what is
+/// published — but the notifier wants one before it publishes anything.
+Future<DeviceProfile> _deviceProfile() =>
+    Future.value(DeviceProfile(firstOpenedAt: DateTime(2020), hasCooked: false));
+
 void main() {
   late AppDatabase db;
 
@@ -46,7 +52,10 @@ void main() {
       tester,
       overrides: [
         notificationsProvider.overrideWith(
-          (ref) => NotificationsNotifier(service: _FakeFeed([item])),
+          (ref) => NotificationsNotifier(
+            service: _FakeFeed([item]),
+            deviceProfile: _deviceProfile(),
+          ),
         ),
       ],
     );

@@ -4,12 +4,29 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/database/database_providers.dart';
+import '../../../core/services/device_profile.dart';
 import '../../settings/providers/settings_providers.dart';
 import '../data/remote_notification_service.dart';
 import '../domain/notification_item.dart';
 
 const String _kReadIdsKey = 'read_notification_ids';
 const String _kDismissedIdsKey = 'dismissed_notification_ids';
+
+/// The lifecycle facts every `segment`-targeted broadcast is judged against.
+///
+/// `existingInstall` is read from data that already outlives the first-open
+/// date this service writes: onboarding finished (`is_first_run` is set false
+/// there and deliberately never reset) or a meal already logged. Either way the
+/// device is older than the field, so it must not be counted as new.
+final deviceProfileProvider = FutureProvider<DeviceProfile>((ref) async {
+  final settings = await ref.watch(appSettingsProvider.future);
+  final hasCooked = await ref.watch(mealHistoryDaoProvider).hasAnyHistory();
+  return DeviceProfile.load(
+    existingInstall: !settings.isFirstRun || hasCooked,
+    hasCooked: hasCooked,
+  );
+});
 
 /// The admin broadcast feed, with this device's read/dismissed state applied.
 ///
@@ -21,9 +38,10 @@ class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
   NotificationsNotifier({
     RemoteNotificationService? service,
     this.isEn = false,
+    required Future<DeviceProfile> deviceProfile,
   })  : _service = service ?? RemoteNotificationService(),
         super(const []) {
-    _start();
+    _start(deviceProfile);
   }
 
   final RemoteNotificationService _service;
@@ -31,6 +49,11 @@ class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
   /// This device's language, used to drop broadcasts the admin panel addressed
   /// to the other language.
   final bool isEn;
+
+  /// Null when the profile could not be read. A lifecycle-targeted broadcast
+  /// then has no verdict and stays hidden; an everyone-destined one still shows.
+  DeviceProfile? _profile;
+
   final Set<String> _readIds = <String>{};
   final Set<String> _dismissedIds = <String>{};
 
@@ -38,8 +61,16 @@ class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
   List<NotificationItem> _feed = const [];
   StreamSubscription<List<NotificationItem>>? _subscription;
 
-  Future<void> _start() async {
+  Future<void> _start(Future<DeviceProfile> deviceProfile) async {
     await _load();
+    // The feed is only opened once the profile has settled one way or the
+    // other: an inbox that renders nothing while it loads is acceptable, one
+    // that renders a broadcast meant for a different device is not.
+    try {
+      _profile = await deviceProfile;
+    } catch (e) {
+      debugPrint('NotificationsNotifier: device profile unavailable: $e');
+    }
     if (!mounted) return;
 
     _subscription = _service.getNotificationsStream().listen(
@@ -77,7 +108,9 @@ class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
     if (!mounted) return;
     state = [
       for (final item in _feed)
-        if (!_dismissedIds.contains(item.id) && item.matchesLanguage(isEn: isEn))
+        if (!_dismissedIds.contains(item.id) &&
+            item.matchesLanguage(isEn: isEn) &&
+            item.matchesDevice(_profile))
           item.copyWith(isRead: _readIds.contains(item.id)),
     ];
   }
@@ -116,7 +149,10 @@ final notificationsProvider = StateNotifierProvider<NotificationsNotifier, List<
   // inbox item addressed to the other language disappears right away instead of
   // after the next cold start.
   final locale = ref.watch(localeProvider);
-  return NotificationsNotifier(isEn: locale.languageCode == 'en');
+  return NotificationsNotifier(
+    isEn: locale.languageCode == 'en',
+    deviceProfile: ref.watch(deviceProfileProvider.future),
+  );
 });
 
 final unreadNotificationsProvider = Provider<bool>((ref) {

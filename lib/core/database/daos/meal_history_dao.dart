@@ -57,6 +57,15 @@ class MealHistoryDao extends DatabaseAccessor<AppDatabase> with _$MealHistoryDao
         .watchSingleOrNull();
   }
 
+  /// Whether the log holds anything at all.
+  ///
+  /// Separate from [getAllHistory] because the callers ask a yes/no question,
+  /// and materialising every entry to answer it is the expensive way round.
+  Future<bool> hasAnyHistory() async {
+    final one = await (select(mealHistory)..limit(1)).getSingleOrNull();
+    return one != null;
+  }
+
   /// Snapshot of all history entries
   Future<List<MealHistoryData>> getAllHistory() {
     return (select(mealHistory)

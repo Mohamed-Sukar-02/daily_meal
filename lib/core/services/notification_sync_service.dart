@@ -4,17 +4,28 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../features/notifications/domain/notification_item.dart';
 import '../localization/app_strings.dart';
 import '../navigation/notification_route.dart';
 import 'cloud_policy.dart';
+import 'device_profile.dart';
 import 'notification_service.dart';
 
 class NotificationSyncService {
   static const String _kLastCheckKey = 'last_admin_notification_check_time';
 
-  static Future<void> checkAndNotify({bool isEn = false, bool notificationsEnabled = true}) async {
-    if (!notificationsEnabled) return;
+  static Future<void> checkAndNotify({
+    bool isEn = false,
+    bool notificationsEnabled = true,
+    required Future<DeviceProfile> deviceProfile,
+  }) async {
     try {
+      // Read before the gates: the first-open date has to be stamped on the very
+      // first launch, not on the first one that happens to find notifications
+      // switched on.
+      final profile = await deviceProfile;
+      if (!notificationsEnabled) return;
+
       final prefs = await SharedPreferences.getInstance();
 
       // Respect the "Cloud on Wi-Fi only" policy — this Firestore read fires at
@@ -56,6 +67,12 @@ class NotificationSyncService {
         // neither spends a slot nor marks itself as seen.
         final audience = data['audience'];
         if ((audience == 'ar' || audience == 'en') && audience != (isEn ? 'en' : 'ar')) continue;
+
+        // Lifecycle targeting, with the same closed world as the inbox: a
+        // broadcast this build cannot place — a `v` it has never seen, a `kind`
+        // outside the three it knows — stays silent, and stays silent ahead of
+        // the watermark and the per-launch cap so it spends neither.
+        if (!NotificationSegment.parse(data['segment']).matchesDevice(profile)) continue;
 
         final sentAt = (data['sentAt'] as Timestamp?)?.toDate();
         if (sentAt == null) continue;

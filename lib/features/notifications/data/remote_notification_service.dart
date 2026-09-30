@@ -57,6 +57,7 @@ class RemoteNotificationService {
       type: _type(data['type']),
       route: _route(data['route']),
       audience: _audience(data['audience']),
+      segment: NotificationSegment.parse(data['segment']),
     );
   }
 

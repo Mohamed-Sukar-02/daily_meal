@@ -13,6 +13,7 @@ import 'core/providers/network_provider.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/settings/providers/settings_providers.dart';
+import 'features/notifications/providers/notifications_provider.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/notification_sync_service.dart';
 import 'core/services/avatar_service.dart';
@@ -109,6 +110,10 @@ class _DailyMealAppState extends ConsumerState<DailyMealApp> {
         NotificationSyncService.checkAndNotify(
           isEn: locale.languageCode == 'en',
           notificationsEnabled: settings.notificationsEnabled,
+          // The profile the inbox judges lifecycle targeting against, handed
+          // over as a future so a failed read stays inside the sync service's
+          // own error path instead of escaping the launch.
+          deviceProfile: ref.read(deviceProfileProvider.future),
         );
       });
 
