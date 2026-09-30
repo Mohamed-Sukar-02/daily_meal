@@ -272,9 +272,10 @@ class AppDatabase extends _$AppDatabase {
         if (!mealsColNames.contains('is_friday_special')) {
           await customStatement('ALTER TABLE meals ADD COLUMN is_friday_special INTEGER NOT NULL DEFAULT 0');
         }
-        if (!mealsColNames.contains('is_budget_friendly')) {
-          await customStatement('ALTER TABLE meals ADD COLUMN is_budget_friendly INTEGER NOT NULL DEFAULT 0');
-        }
+        // meals.is_budget_friendly is deliberately NOT re-added: the feature is
+        // gone and the Drift declaration no longer names it, so the dead column
+        // simply stays defaulted on old installs. Dropping it for real would
+        // need a table rebuild (its CHECK constraint blocks ALTER .. DROP).
         if (!mealsColNames.contains('is_favorite')) {
           await customStatement('ALTER TABLE meals ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0');
         }

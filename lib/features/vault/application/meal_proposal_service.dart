@@ -578,7 +578,7 @@ class MealProposalPayload {
   ///
   /// Key-set discipline (rules use `hasOnly`):
   ///   name, proteinType, carbsType, category, prepTimeMinutes,
-  ///   isFridaySpecial, isBudgetFriendly, isStarterMeal(false),
+  ///   isFridaySpecial, isStarterMeal(false),
   ///   createdAt(ISO-8601 string), proposedBy(uid), status('pending'),
   ///   + imageUrl / notes only when meaningful.
   /// `shortName` and `id` are deliberately never sent.
@@ -602,7 +602,6 @@ class MealProposalPayload {
       'category': MealCloudVocabulary.categoryToCloud(meal.category),
       'prepTimeMinutes': clampPrepTime(meal.prepTime),
       'isFridaySpecial': meal.isFridaySpecial,
-      'isBudgetFriendly': meal.isBudgetFriendly,
       // Rules: when present it MUST be false — only admins may flag starters.
       'isStarterMeal': false,
       if (url.isNotEmpty && url.length <= maxImageUrlLength) 'imageUrl': url,

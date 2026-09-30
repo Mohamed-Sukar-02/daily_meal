@@ -94,7 +94,6 @@ Meal _meal({
   MealCategory category = MealCategory.egyptianTraditional,
   int prepTime = 45,
   bool isFridaySpecial = false,
-  bool isBudgetFriendly = true,
   bool isFavorite = false,
   DateTime? createdAt,
   DateTime? updatedAt,
@@ -113,7 +112,6 @@ Meal _meal({
     category: category,
     prepTime: prepTime,
     isFridaySpecial: isFridaySpecial,
-    isBudgetFriendly: isBudgetFriendly,
     isFavorite: isFavorite,
     isStarterMeal: false,
     createdAt: createdAt ?? now,
@@ -453,7 +451,6 @@ void main() {
           carbsType: 'rice',
           category: 'tabeekh',
           prepTimeMinutes: prepTimeMinutes,
-          isBudgetFriendly: true,
           createdAt: DateTime(2026, 9, 20, 12),
         );
 

@@ -46,11 +46,10 @@ const _maximal = QuickMealView(
   carbsType: CarbsType.grains,
   category: MealCategory.egyptianTraditional,
   prepTimeMinutes: 1,
-  isBudgetFriendly: true,
   isFridaySpecial: true,
 );
 
-/// A vault row with every flag on, so the quick card draws all three honour
+/// A vault row with every flag on, so the quick card draws all its honour
 /// pills and a filled heart at once.
 Meal _cardMeal({required String name}) {
   final now = DateTime(2026, 9, 24, 12);
@@ -64,7 +63,6 @@ Meal _cardMeal({required String name}) {
     category: MealCategory.egyptianTraditional,
     prepTime: 1,
     isFridaySpecial: true,
-    isBudgetFriendly: true,
     isFavorite: true,
     isStarterMeal: false,
     createdAt: now,
@@ -108,7 +106,6 @@ void main() {
           carbsType: CarbsType.grains,
           category: MealCategory.egyptianTraditional,
           prepTimeMinutes: 120,
-          isBudgetFriendly: true,
           isFridaySpecial: true,
         ),
         Locale('en'),
@@ -164,7 +161,6 @@ void main() {
     expect(find.byKey(const ValueKey('btn_cooked_today')), findsOneWidget);
     // Every honour the meal carries reads as its own pill.
     expect(find.text(strings.fridaySpecial), findsOneWidget);
-    expect(find.text(strings.budgetFriendly), findsOneWidget);
     expect(find.text(strings.favorite), findsOneWidget);
     // Loved meal, so the floating heart is the filled glyph (one for the
     // toggle, one inside the loved pill).

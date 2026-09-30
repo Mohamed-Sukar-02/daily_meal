@@ -25,7 +25,6 @@ Meal _sampleMeal({
   String? notes = 'تتقلى الثوم كويس قبل الإضافة',
   bool favorite = true,
   bool friday = false,
-  bool budget = true,
 }) {
   final now = DateTime(2026, 9, 22, 12);
   return Meal(
@@ -38,7 +37,6 @@ Meal _sampleMeal({
     category: MealCategory.egyptianTraditional,
     prepTime: 45,
     isFridaySpecial: friday,
-    isBudgetFriendly: budget,
     isFavorite: favorite,
     isStarterMeal: false,
     createdAt: now,
@@ -60,7 +58,6 @@ Meal _favMeal(int id, String name) {
     category: MealCategory.ovenBaked,
     prepTime: 30,
     isFridaySpecial: false,
-    isBudgetFriendly: false,
     isFavorite: true,
     isStarterMeal: false,
     createdAt: now,
@@ -242,7 +239,7 @@ void main() {
       (tester) async {
     await _pumpMealScreen(
       tester,
-      meals: [_sampleMeal(friday: true, budget: true), _favMeal(8, 'كشري')],
+      meals: [_sampleMeal(friday: true), _favMeal(8, 'كشري')],
     );
 
     final nameFinder = find.byKey(const Key('meal_screen_short_name'));
@@ -254,24 +251,29 @@ void main() {
 
     final strings = const AppStrings(Locale('ar'));
     expect(find.byTooltip(strings.fridaySpecial), findsNothing);
-    expect(find.byTooltip(strings.budgetFriendly), findsNothing);
 
-    // More Favorites keeps drawing a wallet tag, so banning the status glyphs
-    // from the header is a real geometric cut and not an empty tree.
+    // The status glyphs are gone from this screen (More Favorites used to paint
+    // a wallet on every tile), so the app bar can only leak one by being
+    // rebuilt wrong. The pot glyph the empty hero draws stands below the
+    // header line, which keeps this a real geometric cut, not an empty tree.
     final statusGlyph = find.byWidgetPredicate(
       (widget) =>
           widget is AppIcon &&
-          (widget.glyph == AppGlyph.flame || widget.glyph == AppGlyph.wallet),
+          (widget.glyph == AppGlyph.flame || widget.glyph == AppGlyph.star),
     );
-    expect(statusGlyph, findsWidgets);
+    expect(statusGlyph, findsNothing);
 
     final backButton = find.byKey(const Key('meal_screen_back_button'));
+    final bodyGlyph = find.byWidgetPredicate(
+      (widget) => widget is AppIcon && widget.glyph == AppGlyph.pot,
+    );
+    expect(bodyGlyph, findsWidgets);
     final headerBottom = tester.getRect(backButton).bottom;
-    for (var i = 0; i < statusGlyph.evaluate().length; i++) {
+    for (var i = 0; i < bodyGlyph.evaluate().length; i++) {
       expect(
-        tester.getCenter(statusGlyph.at(i)).dy,
+        tester.getCenter(bodyGlyph.at(i)).dy,
         greaterThan(headerBottom),
-        reason: 'status glyph $i leaked into the app bar',
+        reason: 'body glyph $i leaked into the app bar',
       );
     }
 
@@ -309,7 +311,6 @@ void main() {
           shortName: 'Molokhia',
           notes: 'Fry the garlic well',
           friday: false,
-          budget: true,
         ),
         _favMeal(8, 'Koshary'),
       ],
@@ -336,19 +337,24 @@ void main() {
 
     final strings = const AppStrings(Locale('en'));
     expect(find.byTooltip(strings.fridaySpecial), findsNothing);
-    expect(find.byTooltip(strings.budgetFriendly), findsNothing);
     final headerBottom = tester.getRect(backButton).bottom;
     final statusGlyph = find.byWidgetPredicate(
       (widget) =>
           widget is AppIcon &&
-          (widget.glyph == AppGlyph.flame || widget.glyph == AppGlyph.wallet),
+          (widget.glyph == AppGlyph.flame || widget.glyph == AppGlyph.star),
     );
-    expect(statusGlyph, findsWidgets);
-    for (var i = 0; i < statusGlyph.evaluate().length; i++) {
+    expect(statusGlyph, findsNothing);
+    // Same geometric cut as the Arabic case: the only glyph this screen draws
+    // sits in the body, never in the app bar.
+    final bodyGlyph = find.byWidgetPredicate(
+      (widget) => widget is AppIcon && widget.glyph == AppGlyph.pot,
+    );
+    expect(bodyGlyph, findsWidgets);
+    for (var i = 0; i < bodyGlyph.evaluate().length; i++) {
       expect(
-        tester.getCenter(statusGlyph.at(i)).dy,
+        tester.getCenter(bodyGlyph.at(i)).dy,
         greaterThan(headerBottom),
-        reason: 'status glyph $i leaked into the app bar',
+        reason: 'body glyph $i leaked into the app bar',
       );
     }
 

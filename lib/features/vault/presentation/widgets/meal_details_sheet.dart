@@ -36,7 +36,6 @@ class _MealDetailsInfo {
   final CarbsType carbsType;
   final MealCategory? category;
   final int? prepTimeMinutes;
-  final bool isBudgetFriendly;
   final bool isFridaySpecial;
   final DateTime? cookedAt;
 
@@ -47,7 +46,6 @@ class _MealDetailsInfo {
     required this.carbsType,
     this.category,
     this.prepTimeMinutes,
-    this.isBudgetFriendly = false,
     this.isFridaySpecial = false,
     this.cookedAt,
   });
@@ -144,7 +142,6 @@ class MealDetailsSheet extends ConsumerWidget {
         proteinType: _mapProtein(c.proteinType),
         carbsType: _mapCarbs(c.carbsType),
         prepTimeMinutes: c.prepTimeMinutes,
-        isBudgetFriendly: c.isBudgetFriendly,
         isFridaySpecial: c.isFridaySpecial,
       );
     }
@@ -160,7 +157,6 @@ class MealDetailsSheet extends ConsumerWidget {
         carbsType: m.carbsType,
         category: m.category,
         prepTimeMinutes: m.prepTime,
-        isBudgetFriendly: m.isBudgetFriendly,
         isFridaySpecial: m.isFridaySpecial,
         cookedAt: historyEntry?.cookedAt,
       );
@@ -270,7 +266,6 @@ class MealDetailsSheet extends ConsumerWidget {
               carbsType: info.carbsType,
               category: info.category,
               prepTimeMinutes: info.prepTimeMinutes,
-              isBudgetFriendly: info.isBudgetFriendly,
               isFridaySpecial: info.isFridaySpecial,
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
               nameTrailing: switch (detailsContext) {

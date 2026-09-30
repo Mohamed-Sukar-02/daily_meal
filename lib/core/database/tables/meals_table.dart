@@ -40,7 +40,6 @@ class Meals extends Table {
   TextColumn get category => textEnum<MealCategory>()();
   IntColumn get prepTime => integer()(); // in minutes
   BoolColumn get isFridaySpecial => boolean().withDefault(const Constant(false))();
-  BoolColumn get isBudgetFriendly => boolean().withDefault(const Constant(false))();
   BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
   BoolColumn get isStarterMeal => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();

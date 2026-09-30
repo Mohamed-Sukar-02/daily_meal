@@ -26,7 +26,6 @@ Meal makeMeal(int id, {bool isFavorite = false}) => Meal(
       isStarterMeal: false,
       prepTime: 30,
       isFridaySpecial: false,
-      isBudgetFriendly: false,
       isFavorite: isFavorite,
       createdAt: DateTime(2025, 1, 1),
       updatedAt: DateTime(2025, 1, 1),
@@ -589,7 +588,7 @@ void main() {
       await harness.dispose();
     });
 
-    test('renaming a meal, its photo or its budget flag never moves a card', () async {
+    test('renaming a meal, its photo or its notes never moves a card', () async {
       final harness = await _startProvider(meals: _cycle(4));
       final before = harness.ids;
       final bumped = before.first;
@@ -599,7 +598,7 @@ void main() {
         const MealsCompanion(
           name: Value('مكرونة بشاميل باللحمة المفرومة'),
           photoPath: Value('/tmp/renamed.jpg'),
-          isBudgetFriendly: Value(true),
+          notes: Value('ملاحظة كتبها المستخدم'),
         ),
       );
       await harness.settle();
@@ -612,7 +611,7 @@ void main() {
       final shown = harness.result.recommendations.firstWhere((m) => m.id == bumped);
       expect(shown.name, 'مكرونة بشاميل باللحمة المفرومة');
       expect(shown.photoPath, '/tmp/renamed.jpg');
-      expect(shown.isBudgetFriendly, isTrue);
+      expect(shown.notes, 'ملاحظة كتبها المستخدم');
 
       await harness.dispose();
     });

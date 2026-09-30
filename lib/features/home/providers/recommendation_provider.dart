@@ -37,27 +37,6 @@ final currentTimeProvider = StreamProvider<DateTime>((ref) {
 
 final refreshSeedProvider = StateProvider<int>((ref) => 0);
 
-/// "Budget only" (اقتصادية فقط): today's suggestions may only come from meals
-/// flagged budget friendly.
-///
-/// Deliberately session state, not a row in `AppSettings`: it is a viewing
-/// toggle for the current screen, and the home branch stays alive in the shell,
-/// so the user keeps the mode they picked until they switch it off.
-final budgetOnlyProvider = NotifierProvider<BudgetOnlyNotifier, bool>(
-  BudgetOnlyNotifier.new,
-);
-
-class BudgetOnlyNotifier extends Notifier<bool> {
-  @override
-  bool build() => false;
-
-  void toggle() => state = !state;
-
-  void disable() {
-    if (state) state = false;
-  }
-}
-
 /// Fallback row used for the frames in which the settings stream has not
 /// emitted yet. Matches the columns' defaults, so the very first suggestion
 /// pass ranks against the same windows a fresh install actually has.
@@ -93,13 +72,10 @@ AppSettingsData _fallbackSettings() => AppSettingsData(
 ///    `calculateMealScore`, i.e. enough to move a meal across the 5-point
 ///    interchangeable score bands. Ids alone missed them, so a meal
 ///    that just became ineligible (or a new Friday feast) kept its pinned slot;
-///  * [budgetOnly] — while the toggle is on, `isBudgetFriendly` is no longer a
-///    score nudge but the definition of the pool, so flipping it must re-rank;
 ///  * the history signature — see below, the row count was not enough.
 ///
-/// Left out on purpose: `isFavorite` (+5) and — with the budget toggle off —
-/// `isBudgetFriendly` (+2) are pure score nudges and the heart button is
-/// exactly the tap that must never move a card; `name`, `photoPath`,
+/// Left out on purpose: `isFavorite` (+5) is a pure score nudge and the heart
+/// button is exactly the tap that must never move a card; `name`, `photoPath`,
 /// `shortName`, `prepTime`, `category`, `updatedAt` and the history
 /// `notes`/`entryType` snapshot are never read by the engine. None of them make
 /// a meal ineligible, and the pin-replay below still rebuilds the cards from
@@ -107,7 +83,6 @@ AppSettingsData _fallbackSettings() => AppSettingsData(
 String _eligibilityKey({
   required int dayEpoch,
   required int refreshSeed,
-  required bool budgetOnly,
   required List<Meal> meals,
   required List<MealHistoryData> history,
   required AppSettingsData settings,
@@ -143,7 +118,6 @@ String _eligibilityKey({
   return [
     dayEpoch,
     refreshSeed,
-    budgetOnly ? 'budget' : 'all',
     mealSignature,
     historySignature,
     settings.cooldownDays,
@@ -202,22 +176,11 @@ class TodayRecommendationsNotifier
     final meals = mealsAsync.valueOrNull ?? const <Meal>[];
     final history = historyAsync.valueOrNull ?? const [];
     final settings = settingsAsync.valueOrNull ?? _fallbackSettings();
-    final budgetOnly = ref.watch(budgetOnlyProvider);
-
-    // The budget toggle narrows the *pool*, not just the ranking: the key, the
-    // pin replay and the engine all read this same list, so no stage can ever
-    // serve a meal the filter excludes. It also means a meal un-flagged while
-    // the filter is on drops out of the replay map below, which is exactly the
-    // signal to re-rank rather than to keep showing it.
-    final candidates = budgetOnly
-        ? meals.where((meal) => meal.isBudgetFriendly).toList()
-        : meals;
 
     final key = _eligibilityKey(
       dayEpoch: app_date_utils.daysSinceEpoch(now),
       refreshSeed: refreshSeed,
-      budgetOnly: budgetOnly,
-      meals: candidates,
+      meals: meals,
       history: history,
       settings: settings,
     );
@@ -227,7 +190,7 @@ class TodayRecommendationsNotifier
     if (pinned != null && pinnedIds != null && _pinnedKey == key) {
       // Same eligibility: keep today's three meals and their order, but rebuild
       // them from the fresh rows so edited fields (photo, name, heart) show up.
-      final byId = {for (final m in candidates) m.id: m};
+      final byId = {for (final m in meals) m.id: m};
       final fresh = pinnedIds.map((id) => byId[id]).whereType<Meal>().toList();
       if (fresh.length == pinnedIds.length) {
         return AsyncValue.data(RecommendationResult<Meal>(
@@ -250,7 +213,7 @@ class TodayRecommendationsNotifier
 
     try {
       final result = engine.compute<Meal>(
-        meals: candidates,
+        meals: meals,
         history: history,
         settings: settings,
         today: now,
@@ -271,8 +234,8 @@ class TodayRecommendationsNotifier
   /// two exactly where they are.
   ///
   /// The replacement comes from the same pool the day was ranked from — so the
-  /// budget toggle, the protein windows and the history cooldown all still
-  /// apply — with the two staying cards *and* the meal being replaced excluded.
+  /// protein windows and the history cooldown still apply — with the two
+  /// staying cards *and* the meal being replaced excluded.
   /// That is what makes it a real replacement instead of the same card under a
   /// new tap. When the pool has nothing left to offer, the engine can only
   /// re-serve an excluded id, and the answer is `null` so the UI can admit it
@@ -295,13 +258,9 @@ class TodayRecommendationsNotifier
     final settings =
         ref.read(appSettingsProvider).valueOrNull ?? _fallbackSettings();
     final now = ref.read(currentTimeProvider).valueOrNull ?? DateTime.now();
-    final budgetOnly = ref.read(budgetOnlyProvider);
-    final candidates = budgetOnly
-        ? meals.where((meal) => meal.isBudgetFriendly).toList()
-        : meals;
     // One candidate outside the three cards is the minimum: with fewer, the
     // only "new" meal on offer would be one of the cards already showing.
-    if (candidates.length <= ids.length) return null;
+    if (meals.length <= ids.length) return null;
 
     final excluded = ids.toSet();
     final keptProteins = {
@@ -312,7 +271,7 @@ class TodayRecommendationsNotifier
     final RecommendationResult<Meal> probe;
     try {
       probe = ref.read(engineProvider).compute<Meal>(
-            meals: candidates,
+            meals: meals,
             history: history,
             settings: settings,
             today: now,

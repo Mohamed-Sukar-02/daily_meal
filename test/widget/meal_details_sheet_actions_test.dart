@@ -29,7 +29,6 @@ Meal _vaultMeal() {
     category: MealCategory.egyptianTraditional,
     prepTime: 60,
     isFridaySpecial: true,
-    isBudgetFriendly: false,
     isFavorite: true,
     isStarterMeal: false,
     createdAt: now,

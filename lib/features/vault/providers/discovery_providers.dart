@@ -96,7 +96,6 @@ class DiscoveryNotifier extends StateNotifier<AsyncValue<void>> {
       category: drift.Value(cloudCategory(cloudMeal.category)),
       prepTime: drift.Value(cloudMeal.prepTimeMinutes),
       isFridaySpecial: drift.Value(cloudMeal.isFridaySpecial),
-      isBudgetFriendly: drift.Value(cloudMeal.isBudgetFriendly),
       cloudId: drift.Value(cloudMeal.id),
       notes: drift.Value(cloudMeal.notes),
     );

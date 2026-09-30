@@ -61,7 +61,6 @@ void main() {
           isStarterMeal: false,
           prepTime: 30,
           isFridaySpecial: false,
-          isBudgetFriendly: false,
           isFavorite: false,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),

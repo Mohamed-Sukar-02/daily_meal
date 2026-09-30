@@ -29,7 +29,7 @@ enum MealViewShape { detail, quick }
 
 /// Lightweight, reusable meal view — the single visual vocabulary for a
 /// meal's hero photo, name and meta strip (protein, carbs, prep time,
-/// category, budget, Friday special).
+/// category, Friday special).
 ///
 /// It is the *entry point view* for meals across the app:
 ///  * The home recommendation list embeds it as [MealViewShape.quick], which
@@ -55,7 +55,6 @@ class QuickMealView extends StatelessWidget {
   final CarbsType carbsType;
   final MealCategory? category;
   final int? prepTimeMinutes;
-  final bool isBudgetFriendly;
   final bool isFridaySpecial;
 
   /// Loved state. [MealViewShape.quick] reads it for the glyph of its floating
@@ -102,7 +101,6 @@ class QuickMealView extends StatelessWidget {
     required this.carbsType,
     this.category,
     this.prepTimeMinutes,
-    this.isBudgetFriendly = false,
     this.isFridaySpecial = false,
     this.isFavorite = false,
     this.shape = MealViewShape.detail,
@@ -136,7 +134,6 @@ class QuickMealView extends StatelessWidget {
       carbsType: meal.carbsType,
       category: meal.category,
       prepTimeMinutes: meal.prepTime,
-      isBudgetFriendly: meal.isBudgetFriendly,
       isFridaySpecial: meal.isFridaySpecial,
       isFavorite: meal.isFavorite,
       shape: shape,
@@ -291,14 +288,14 @@ class QuickMealView extends StatelessWidget {
                       AppGlyph.oven,
                       category!.label(strings),
                     ),
-                  // Dummy to ensure only the badges Wrap below has exactly
-                  // three children — the shape the card was approved with.
+                  // Dummy to ensure only the badges Wrap below is the card's
+                  // badge row — the shape the card was approved with.
                   const SizedBox.shrink(),
                 ],
               ),
               const SizedBox(height: 8),
-              // Badges (Friday / Budget / Favorite) — separate Wrap with the
-              // exact spacing the card was approved with (8 / 6) and 3 children.
+              // Badges (Friday / Favorite) — separate Wrap with the
+              // exact spacing the card was approved with (8 / 6).
               if (_quickBadges(context, strings, brightness).isNotEmpty)
                 Wrap(
                   spacing: 8,
@@ -364,14 +361,6 @@ class QuickMealView extends StatelessWidget {
           strings.fridaySpecial,
           fontSize: 11,
         ),
-      if (isBudgetFriendly)
-        _quickChip(
-          context,
-          AppPalette.chipGreen(brightness),
-          AppGlyph.wallet,
-          strings.budgetFriendly,
-          fontSize: 11,
-        ),
       if (isFavorite)
         _quickChip(
           context,
@@ -431,9 +420,9 @@ class QuickMealView extends StatelessWidget {
   // Hero
   // ---------------------------------------------------------------------------
 
-  /// Rounded photo with the meal's "honours" (Friday special / budget) floating
-  /// as colour-coded capsules in the leading top corner, so the photo itself
-  /// stays clean while the two flags that sell the meal read first.
+  /// Rounded photo with the meal's "honours" (Friday special) floating as a
+  /// colour-coded capsule in the leading top corner, so the photo itself stays
+  /// clean while the flag that sells the meal reads first.
   Widget _buildHero(Brightness brightness, AppStrings strings) {
     final badges = <Widget>[
       if (isFridaySpecial)
@@ -441,12 +430,6 @@ class QuickMealView extends StatelessWidget {
           style: AppPalette.chipGold(brightness),
           glyph: AppGlyph.flame,
           label: strings.fridaySpecial,
-        ),
-      if (isBudgetFriendly)
-        _HonourBadge(
-          style: AppPalette.chipGreen(brightness),
-          glyph: AppGlyph.wallet,
-          label: strings.budgetFriendly,
         ),
     ];
 

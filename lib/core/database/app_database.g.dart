@@ -109,21 +109,6 @@ class $MealsTable extends Meals with TableInfo<$MealsTable, Meal> {
     ),
     defaultValue: const Constant(false),
   );
-  static const VerificationMeta _isBudgetFriendlyMeta = const VerificationMeta(
-    'isBudgetFriendly',
-  );
-  @override
-  late final GeneratedColumn<bool> isBudgetFriendly = GeneratedColumn<bool>(
-    'is_budget_friendly',
-    aliasedName,
-    false,
-    type: DriftSqlType.bool,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("is_budget_friendly" IN (0, 1))',
-    ),
-    defaultValue: const Constant(false),
-  );
   static const VerificationMeta _isFavoriteMeta = const VerificationMeta(
     'isFavorite',
   );
@@ -230,7 +215,6 @@ class $MealsTable extends Meals with TableInfo<$MealsTable, Meal> {
     category,
     prepTime,
     isFridaySpecial,
-    isBudgetFriendly,
     isFavorite,
     isStarterMeal,
     createdAt,
@@ -292,15 +276,6 @@ class $MealsTable extends Meals with TableInfo<$MealsTable, Meal> {
         isFridaySpecial.isAcceptableOrUnknown(
           data['is_friday_special']!,
           _isFridaySpecialMeta,
-        ),
-      );
-    }
-    if (data.containsKey('is_budget_friendly')) {
-      context.handle(
-        _isBudgetFriendlyMeta,
-        isBudgetFriendly.isAcceptableOrUnknown(
-          data['is_budget_friendly']!,
-          _isBudgetFriendlyMeta,
         ),
       );
     }
@@ -409,10 +384,6 @@ class $MealsTable extends Meals with TableInfo<$MealsTable, Meal> {
         DriftSqlType.bool,
         data['${effectivePrefix}is_friday_special'],
       )!,
-      isBudgetFriendly: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}is_budget_friendly'],
-      )!,
       isFavorite: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_favorite'],
@@ -471,7 +442,6 @@ class Meal extends DataClass implements Insertable<Meal> {
   final MealCategory category;
   final int prepTime;
   final bool isFridaySpecial;
-  final bool isBudgetFriendly;
   final bool isFavorite;
   final bool isStarterMeal;
   final DateTime createdAt;
@@ -490,7 +460,6 @@ class Meal extends DataClass implements Insertable<Meal> {
     required this.category,
     required this.prepTime,
     required this.isFridaySpecial,
-    required this.isBudgetFriendly,
     required this.isFavorite,
     required this.isStarterMeal,
     required this.createdAt,
@@ -528,7 +497,6 @@ class Meal extends DataClass implements Insertable<Meal> {
     }
     map['prep_time'] = Variable<int>(prepTime);
     map['is_friday_special'] = Variable<bool>(isFridaySpecial);
-    map['is_budget_friendly'] = Variable<bool>(isBudgetFriendly);
     map['is_favorite'] = Variable<bool>(isFavorite);
     map['is_starter_meal'] = Variable<bool>(isStarterMeal);
     map['created_at'] = Variable<DateTime>(createdAt);
@@ -563,7 +531,6 @@ class Meal extends DataClass implements Insertable<Meal> {
       category: Value(category),
       prepTime: Value(prepTime),
       isFridaySpecial: Value(isFridaySpecial),
-      isBudgetFriendly: Value(isBudgetFriendly),
       isFavorite: Value(isFavorite),
       isStarterMeal: Value(isStarterMeal),
       createdAt: Value(createdAt),
@@ -604,7 +571,6 @@ class Meal extends DataClass implements Insertable<Meal> {
       ),
       prepTime: serializer.fromJson<int>(json['prepTime']),
       isFridaySpecial: serializer.fromJson<bool>(json['isFridaySpecial']),
-      isBudgetFriendly: serializer.fromJson<bool>(json['isBudgetFriendly']),
       isFavorite: serializer.fromJson<bool>(json['isFavorite']),
       isStarterMeal: serializer.fromJson<bool>(json['isStarterMeal']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -634,7 +600,6 @@ class Meal extends DataClass implements Insertable<Meal> {
       ),
       'prepTime': serializer.toJson<int>(prepTime),
       'isFridaySpecial': serializer.toJson<bool>(isFridaySpecial),
-      'isBudgetFriendly': serializer.toJson<bool>(isBudgetFriendly),
       'isFavorite': serializer.toJson<bool>(isFavorite),
       'isStarterMeal': serializer.toJson<bool>(isStarterMeal),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -656,7 +621,6 @@ class Meal extends DataClass implements Insertable<Meal> {
     MealCategory? category,
     int? prepTime,
     bool? isFridaySpecial,
-    bool? isBudgetFriendly,
     bool? isFavorite,
     bool? isStarterMeal,
     DateTime? createdAt,
@@ -677,7 +641,6 @@ class Meal extends DataClass implements Insertable<Meal> {
     category: category ?? this.category,
     prepTime: prepTime ?? this.prepTime,
     isFridaySpecial: isFridaySpecial ?? this.isFridaySpecial,
-    isBudgetFriendly: isBudgetFriendly ?? this.isBudgetFriendly,
     isFavorite: isFavorite ?? this.isFavorite,
     isStarterMeal: isStarterMeal ?? this.isStarterMeal,
     createdAt: createdAt ?? this.createdAt,
@@ -706,9 +669,6 @@ class Meal extends DataClass implements Insertable<Meal> {
       isFridaySpecial: data.isFridaySpecial.present
           ? data.isFridaySpecial.value
           : this.isFridaySpecial,
-      isBudgetFriendly: data.isBudgetFriendly.present
-          ? data.isBudgetFriendly.value
-          : this.isBudgetFriendly,
       isFavorite: data.isFavorite.present
           ? data.isFavorite.value
           : this.isFavorite,
@@ -738,7 +698,6 @@ class Meal extends DataClass implements Insertable<Meal> {
           ..write('category: $category, ')
           ..write('prepTime: $prepTime, ')
           ..write('isFridaySpecial: $isFridaySpecial, ')
-          ..write('isBudgetFriendly: $isBudgetFriendly, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('isStarterMeal: $isStarterMeal, ')
           ..write('createdAt: $createdAt, ')
@@ -762,7 +721,6 @@ class Meal extends DataClass implements Insertable<Meal> {
     category,
     prepTime,
     isFridaySpecial,
-    isBudgetFriendly,
     isFavorite,
     isStarterMeal,
     createdAt,
@@ -785,7 +743,6 @@ class Meal extends DataClass implements Insertable<Meal> {
           other.category == this.category &&
           other.prepTime == this.prepTime &&
           other.isFridaySpecial == this.isFridaySpecial &&
-          other.isBudgetFriendly == this.isBudgetFriendly &&
           other.isFavorite == this.isFavorite &&
           other.isStarterMeal == this.isStarterMeal &&
           other.createdAt == this.createdAt &&
@@ -806,7 +763,6 @@ class MealsCompanion extends UpdateCompanion<Meal> {
   final Value<MealCategory> category;
   final Value<int> prepTime;
   final Value<bool> isFridaySpecial;
-  final Value<bool> isBudgetFriendly;
   final Value<bool> isFavorite;
   final Value<bool> isStarterMeal;
   final Value<DateTime> createdAt;
@@ -825,7 +781,6 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     this.category = const Value.absent(),
     this.prepTime = const Value.absent(),
     this.isFridaySpecial = const Value.absent(),
-    this.isBudgetFriendly = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.isStarterMeal = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -845,7 +800,6 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     required MealCategory category,
     required int prepTime,
     this.isFridaySpecial = const Value.absent(),
-    this.isBudgetFriendly = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.isStarterMeal = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -869,7 +823,6 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     Expression<String>? category,
     Expression<int>? prepTime,
     Expression<bool>? isFridaySpecial,
-    Expression<bool>? isBudgetFriendly,
     Expression<bool>? isFavorite,
     Expression<bool>? isStarterMeal,
     Expression<DateTime>? createdAt,
@@ -889,7 +842,6 @@ class MealsCompanion extends UpdateCompanion<Meal> {
       if (category != null) 'category': category,
       if (prepTime != null) 'prep_time': prepTime,
       if (isFridaySpecial != null) 'is_friday_special': isFridaySpecial,
-      if (isBudgetFriendly != null) 'is_budget_friendly': isBudgetFriendly,
       if (isFavorite != null) 'is_favorite': isFavorite,
       if (isStarterMeal != null) 'is_starter_meal': isStarterMeal,
       if (createdAt != null) 'created_at': createdAt,
@@ -912,7 +864,6 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     Value<MealCategory>? category,
     Value<int>? prepTime,
     Value<bool>? isFridaySpecial,
-    Value<bool>? isBudgetFriendly,
     Value<bool>? isFavorite,
     Value<bool>? isStarterMeal,
     Value<DateTime>? createdAt,
@@ -932,7 +883,6 @@ class MealsCompanion extends UpdateCompanion<Meal> {
       category: category ?? this.category,
       prepTime: prepTime ?? this.prepTime,
       isFridaySpecial: isFridaySpecial ?? this.isFridaySpecial,
-      isBudgetFriendly: isBudgetFriendly ?? this.isBudgetFriendly,
       isFavorite: isFavorite ?? this.isFavorite,
       isStarterMeal: isStarterMeal ?? this.isStarterMeal,
       createdAt: createdAt ?? this.createdAt,
@@ -980,9 +930,6 @@ class MealsCompanion extends UpdateCompanion<Meal> {
     if (isFridaySpecial.present) {
       map['is_friday_special'] = Variable<bool>(isFridaySpecial.value);
     }
-    if (isBudgetFriendly.present) {
-      map['is_budget_friendly'] = Variable<bool>(isBudgetFriendly.value);
-    }
     if (isFavorite.present) {
       map['is_favorite'] = Variable<bool>(isFavorite.value);
     }
@@ -1022,7 +969,6 @@ class MealsCompanion extends UpdateCompanion<Meal> {
           ..write('category: $category, ')
           ..write('prepTime: $prepTime, ')
           ..write('isFridaySpecial: $isFridaySpecial, ')
-          ..write('isBudgetFriendly: $isBudgetFriendly, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('isStarterMeal: $isStarterMeal, ')
           ..write('createdAt: $createdAt, ')
@@ -2723,7 +2669,6 @@ typedef $$MealsTableCreateCompanionBuilder =
       required MealCategory category,
       required int prepTime,
       Value<bool> isFridaySpecial,
-      Value<bool> isBudgetFriendly,
       Value<bool> isFavorite,
       Value<bool> isStarterMeal,
       Value<DateTime> createdAt,
@@ -2744,7 +2689,6 @@ typedef $$MealsTableUpdateCompanionBuilder =
       Value<MealCategory> category,
       Value<int> prepTime,
       Value<bool> isFridaySpecial,
-      Value<bool> isBudgetFriendly,
       Value<bool> isFavorite,
       Value<bool> isStarterMeal,
       Value<DateTime> createdAt,
@@ -2831,11 +2775,6 @@ class $$MealsTableFilterComposer extends Composer<_$AppDatabase, $MealsTable> {
 
   ColumnFilters<bool> get isFridaySpecial => $composableBuilder(
     column: $table.isFridaySpecial,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<bool> get isBudgetFriendly => $composableBuilder(
-    column: $table.isBudgetFriendly,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2959,11 +2898,6 @@ class $$MealsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<bool> get isBudgetFriendly => $composableBuilder(
-    column: $table.isBudgetFriendly,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<bool> get isFavorite => $composableBuilder(
     column: $table.isFavorite,
     builder: (column) => ColumnOrderings(column),
@@ -3045,11 +2979,6 @@ class $$MealsTableAnnotationComposer
 
   GeneratedColumn<bool> get isFridaySpecial => $composableBuilder(
     column: $table.isFridaySpecial,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<bool> get isBudgetFriendly => $composableBuilder(
-    column: $table.isBudgetFriendly,
     builder: (column) => column,
   );
 
@@ -3146,7 +3075,6 @@ class $$MealsTableTableManager
                 Value<MealCategory> category = const Value.absent(),
                 Value<int> prepTime = const Value.absent(),
                 Value<bool> isFridaySpecial = const Value.absent(),
-                Value<bool> isBudgetFriendly = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
                 Value<bool> isStarterMeal = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -3165,7 +3093,6 @@ class $$MealsTableTableManager
                 category: category,
                 prepTime: prepTime,
                 isFridaySpecial: isFridaySpecial,
-                isBudgetFriendly: isBudgetFriendly,
                 isFavorite: isFavorite,
                 isStarterMeal: isStarterMeal,
                 createdAt: createdAt,
@@ -3186,7 +3113,6 @@ class $$MealsTableTableManager
                 required MealCategory category,
                 required int prepTime,
                 Value<bool> isFridaySpecial = const Value.absent(),
-                Value<bool> isBudgetFriendly = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
                 Value<bool> isStarterMeal = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -3205,7 +3131,6 @@ class $$MealsTableTableManager
                 category: category,
                 prepTime: prepTime,
                 isFridaySpecial: isFridaySpecial,
-                isBudgetFriendly: isBudgetFriendly,
                 isFavorite: isFavorite,
                 isStarterMeal: isStarterMeal,
                 createdAt: createdAt,

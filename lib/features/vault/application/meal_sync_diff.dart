@@ -72,11 +72,6 @@ List<MealCloudDiff> mealCloudDiffs(
     _flag(local.isFridaySpecial, strings),
     _flag(cloud.isFridaySpecial, strings),
   );
-  compare(
-    strings.budgetFriendly,
-    _flag(local.isBudgetFriendly, strings),
-    _flag(cloud.isBudgetFriendly, strings),
-  );
   compare(strings.notesLabel, (local.notes ?? '').trim(), (cloud.notes ?? '').trim());
 
   return diffs;

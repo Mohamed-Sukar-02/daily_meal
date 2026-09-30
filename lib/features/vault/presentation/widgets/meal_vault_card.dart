@@ -118,12 +118,6 @@ class MealVaultCard extends ConsumerWidget {
                                       meal.proteinType.emoji,
                                       _proteinStyle(meal.proteinType, brightness),
                                     ),
-                                  if (meal.isBudgetFriendly)
-                                    _emojiBadge(
-                                      brightness,
-                                      '🌿',
-                                      AppPalette.chipGreen(brightness),
-                                    ),
                                   Expanded(
                                     child: FittedBox(
                                       fit: BoxFit.scaleDown,
@@ -323,12 +317,6 @@ class MealVaultListTile extends ConsumerWidget {
                             brightness,
                             meal.proteinType.emoji,
                             _listProteinStyle(meal.proteinType, brightness),
-                          ),
-                        if (meal.isBudgetFriendly)
-                          _listEmojiBadge(
-                            brightness,
-                            '🌿',
-                            AppPalette.chipGreen(brightness),
                           ),
                         Flexible(
                           child: _listTimePill(context, brightness, meal),

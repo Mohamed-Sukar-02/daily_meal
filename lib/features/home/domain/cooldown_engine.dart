@@ -240,8 +240,8 @@ class CooldownEngine {
     }
   }
 
-  /// Pure meal quality: how overdue it is, Friday fit, favourite and budget
-  /// flags. Deliberately contains no randomness — variety is decided in
+  /// Pure meal quality: how overdue it is, Friday fit and favourite flag.
+  /// Deliberately contains no randomness — variety is decided in
   /// [_rankCandidates] and [_selectDiverse], so this stays a stable
   /// "goodness" number.
   double calculateMealScore({
@@ -314,14 +314,13 @@ class CooldownEngine {
     }
 
     final sFavorite = candidate.isFavorite ? 5.0 : 0.0;
-    final sBudget = candidate.isBudgetFriendly ? 2.0 : 0.0;
 
-    return sRecency + sFriday + sFavorite + sBudget;
+    return sRecency + sFriday + sFavorite;
   }
 
   /// Score gap within which two meals count as equally worthy of a card slot.
-  /// Equal to the favourite bonus, so a favourite, a budget pick and a plain
-  /// meal cooked around the same time stay interchangeable.
+  /// Equal to the favourite bonus, so a favourite and a plain meal cooked
+  /// around the same time stay interchangeable.
   static const double _interchangeableBand = 5.0;
 
   /// Scores every candidate and returns the WHOLE pool ranked best-first:
@@ -449,7 +448,6 @@ class _MealCandidate {
   final String proteinName;
   final String carbsName;
   final bool isFridaySpecial;
-  final bool isBudgetFriendly;
   final bool isFavorite;
 
   _MealCandidate.from(this.rawMeal)
@@ -458,7 +456,6 @@ class _MealCandidate {
         proteinName = _extractEnumName((rawMeal as dynamic).proteinType),
         carbsName = _extractEnumName((rawMeal as dynamic).carbsType),
         isFridaySpecial = (rawMeal as dynamic).isFridaySpecial as bool,
-        isBudgetFriendly = (rawMeal as dynamic).isBudgetFriendly as bool,
         isFavorite = (rawMeal as dynamic).isFavorite as bool;
 
   static String _extractEnumName(dynamic val) {

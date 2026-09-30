@@ -32,7 +32,6 @@ class VaultFilterState {
   final MealCategory? category;
   final bool isFavoriteOnly;
   final bool isFridaySpecialOnly;
-  final bool isBudgetFriendlyOnly;
   final int? maxPrepTime;
 
   const VaultFilterState({
@@ -42,7 +41,6 @@ class VaultFilterState {
     this.category,
     this.isFavoriteOnly = false,
     this.isFridaySpecialOnly = false,
-    this.isBudgetFriendlyOnly = false,
     this.maxPrepTime,
   });
 
@@ -53,7 +51,6 @@ class VaultFilterState {
       category != null ||
       isFavoriteOnly ||
       isFridaySpecialOnly ||
-      isBudgetFriendlyOnly ||
       maxPrepTime != null;
 
   int get activeFilterCount {
@@ -64,7 +61,6 @@ class VaultFilterState {
     if (category != null) count++;
     if (isFavoriteOnly) count++;
     if (isFridaySpecialOnly) count++;
-    if (isBudgetFriendlyOnly) count++;
     if (maxPrepTime != null) count++;
     return count;
   }
@@ -76,7 +72,6 @@ class VaultFilterState {
     MealCategory? category,
     bool? isFavoriteOnly,
     bool? isFridaySpecialOnly,
-    bool? isBudgetFriendlyOnly,
     int? maxPrepTime,
     bool clearProtein = false,
     bool clearCarbs = false,
@@ -89,7 +84,6 @@ class VaultFilterState {
       category: clearCategory ? null : (category ?? this.category),
       isFavoriteOnly: isFavoriteOnly ?? this.isFavoriteOnly,
       isFridaySpecialOnly: isFridaySpecialOnly ?? this.isFridaySpecialOnly,
-      isBudgetFriendlyOnly: isBudgetFriendlyOnly ?? this.isBudgetFriendlyOnly,
       maxPrepTime: maxPrepTime ?? this.maxPrepTime,
     );
   }
@@ -129,10 +123,6 @@ class VaultFilterNotifier extends Notifier<VaultFilterState> {
 
   void toggleFridayFilter() {
     state = state.copyWith(isFridaySpecialOnly: !state.isFridaySpecialOnly);
-  }
-
-  void toggleBudgetFilter() {
-    state = state.copyWith(isBudgetFriendlyOnly: !state.isBudgetFriendlyOnly);
   }
 
   void toggleFavoriteFilter() {
@@ -180,9 +170,6 @@ final filteredMealsProvider = Provider<AsyncValue<List<Meal>>>((ref) {
       if (filter.isFridaySpecialOnly && !meal.isFridaySpecial) {
         return false;
       }
-      if (filter.isBudgetFriendlyOnly && !meal.isBudgetFriendly) {
-        return false;
-      }
       if (filter.maxPrepTime != null && meal.prepTime > filter.maxPrepTime!) {
         return false;
       }
@@ -204,7 +191,6 @@ class VaultController extends AsyncNotifier<void> {
     required int prepTimeMinutes,
     String? photoPath,
     bool isFridaySpecial = false,
-    bool isBudgetFriendly = false,
     bool isFavorite = false,
     String? notes,
     String? shortName,
@@ -229,7 +215,6 @@ class VaultController extends AsyncNotifier<void> {
           prepTime: Value(prepTimeMinutes),
           photoPath: photoPath != null ? Value(photoPath) : const Value.absent(),
           isFridaySpecial: Value(isFridaySpecial),
-          isBudgetFriendly: Value(isBudgetFriendly),
           isFavorite: Value(isFavorite),
           notes: notes != null && notes.trim().isNotEmpty
               ? Value(notes.trim())

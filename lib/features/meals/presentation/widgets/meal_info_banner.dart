@@ -115,8 +115,16 @@ class MealInfoBanner extends StatelessWidget {
 
   static String _tags(Meal meal, AppStrings strings) {
     final parts = <String>[strings.healthyTag];
+    // This choice rode the deleted budget flag; protein is what is left to
+    // carry it — meatless or fish reads as "متوازن", a bird or red-meat dish
+    // as "لذيذ".
+    final protein = meal.proteinType;
+    final isBalanced = protein == ProteinType.fish ||
+        protein == ProteinType.legume ||
+        protein == ProteinType.dairy ||
+        protein == ProteinType.none;
     parts.add(
-      meal.isBudgetFriendly ? strings.balancedTag : strings.deliciousTag,
+      isBalanced ? strings.balancedTag : strings.deliciousTag,
     );
     if (meal.isFridaySpecial) {
       parts.add(strings.fridaySpecial);

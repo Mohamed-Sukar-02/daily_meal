@@ -42,7 +42,6 @@ Meal _localMeal({int id = 7, String? cloudId, int prepTime = 45}) {
     category: MealCategory.egyptianTraditional,
     prepTime: prepTime,
     isFridaySpecial: false,
-    isBudgetFriendly: false,
     isFavorite: false,
     isStarterMeal: false,
     createdAt: now,

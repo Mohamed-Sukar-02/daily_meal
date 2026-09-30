@@ -91,7 +91,6 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
   late ProteinType _selectedProtein;
   late CarbsType _selectedCarbs;
   late bool _isFridaySpecial;
-  late bool _isBudgetFriendly;
   late bool _isFavorite;
   String? _photoPath;
   File? _pickedImageFile;
@@ -121,7 +120,6 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
   late ProteinType _initialProtein;
   late CarbsType _initialCarbs;
   late bool _initialFridaySpecial;
-  late bool _initialBudgetFriendly;
   late bool _initialFavorite;
   String? _initialPhotoPath;
 
@@ -142,7 +140,6 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
       _selectedProtein != _initialProtein ||
       _selectedCarbs != _initialCarbs ||
       _isFridaySpecial != _initialFridaySpecial ||
-      _isBudgetFriendly != _initialBudgetFriendly ||
       _isFavorite != _initialFavorite ||
       _photoPath != _initialPhotoPath;
 
@@ -196,7 +193,6 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     _selectedProtein = m?.proteinType ?? ProteinType.chicken;
     _selectedCarbs = m?.carbsType ?? CarbsType.rice;
     _isFridaySpecial = m?.isFridaySpecial ?? false;
-    _isBudgetFriendly = m?.isBudgetFriendly ?? false;
     _isFavorite = m?.isFavorite ?? false;
     _photoPath = m?.photoPath;
     if (_photoPath != null && _photoPath!.isNotEmpty) {
@@ -214,7 +210,6 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     _initialProtein = _selectedProtein;
     _initialCarbs = _selectedCarbs;
     _initialFridaySpecial = _isFridaySpecial;
-    _initialBudgetFriendly = _isBudgetFriendly;
     _initialFavorite = _isFavorite;
     _initialPhotoPath = _photoPath;
     // Professional: handle Android activity destruction via retrieveLostData [8][10]
@@ -528,7 +523,6 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
               notes: Value(notes.isEmpty ? null : notes),
               shortName: Value(shortName.isEmpty ? null : shortName),
               isFridaySpecial: _isFridaySpecial,
-              isBudgetFriendly: _isBudgetFriendly,
               isFavorite: _isFavorite,
               updatedAt: DateTime.now(),
             ));
@@ -553,7 +547,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
         await ref.read(vaultControllerProvider.notifier).addMeal(
               name: name, category: _selectedCategory, proteinType: _selectedProtein, carbsType: _selectedCarbs,
               prepTimeMinutes: prep, photoPath: _photoPath, isFridaySpecial: _isFridaySpecial,
-              isBudgetFriendly: _isBudgetFriendly, isFavorite: _isFavorite,
+              isFavorite: _isFavorite,
               notes: notes.isEmpty ? null : notes,
               shortName: shortName.isEmpty ? null : shortName);
         if (mounted) {
@@ -821,10 +815,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                             }).toList(),
                           ),
                           const SizedBox(height: 14),
-                          // Meal flags: Friday special / budget / favorite.
-                          // These previously had NO visible controls (only the
-                          // Offstage test hooks below). The hooks are kept so
-                          // existing widget tests keep working.
+                          // Meal flags.
                           _labelRow(isDark, AppGlyph.star, const Color(0xFFFF9800), strings.mealFlagsLabel),
                           const SizedBox(height: 8),
                           Wrap(
@@ -838,15 +829,6 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                                 color: const Color(0xFFE7E1F9),
                                 fg: const Color(0xFF6C5CE7),
                                 onTap: () => setState(() => _isFridaySpecial = !_isFridaySpecial),
-                              ),
-                              _pill(
-                                isDark,
-                                label: strings.budgetFriendly,
-                                emoji: '💰',
-                                selected: _isBudgetFriendly,
-                                color: const Color(0xFFE8F5E9),
-                                fg: const Color(0xFF0E6B4A),
-                                onTap: () => setState(() => _isBudgetFriendly = !_isBudgetFriendly),
                               ),
                               _pill(
                                 isDark,
@@ -955,21 +937,6 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                                 if (p == null || p <= 0) return strings.fieldInvalid;
                                 return null;
                               },
-                            ),
-                          ),
-                          Offstage(
-                            child: Material(
-                              type: MaterialType.transparency,
-                              child: Column(
-                                children: [
-                                  DropdownButtonFormField<MealCategory>(key: const Key('meal_form_category_dropdown'), initialValue: _selectedCategory, items: MealCategory.values.map((c) => DropdownMenuItem(value: c, child: Text(c.label(strings)))).toList(), onChanged: (v) { if (v != null) setState(() => _selectedCategory = v);}),
-                                  DropdownButtonFormField<ProteinType>(key: const Key('meal_form_protein_dropdown'), initialValue: _selectedProtein, items: ProteinType.values.map((p) => DropdownMenuItem(value: p, child: Text(p.label(strings)))).toList(), onChanged: (v) { if (v != null) setState(() => _selectedProtein = v);}),
-                                  DropdownButtonFormField<CarbsType>(key: const Key('meal_form_carbs_dropdown'), initialValue: _selectedCarbs, items: CarbsType.values.map((c) => DropdownMenuItem(value: c, child: Text(c.label(strings)))).toList(), onChanged: (v) { if (v != null) setState(() => _selectedCarbs = v);}),
-                                  SwitchListTile(key: const Key('meal_form_friday_checkbox'), value: _isFridaySpecial, onChanged: (v) => setState(() => _isFridaySpecial = v), title: const Text('')),
-                                  SwitchListTile(key: const Key('meal_form_budget_checkbox'), value: _isBudgetFriendly, onChanged: (v) => setState(() => _isBudgetFriendly = v), title: const Text('')),
-                                  SwitchListTile(key: const Key('meal_form_favorite_checkbox'), value: _isFavorite, onChanged: (v) => setState(() => _isFavorite = v), title: const Text('')),
-                                ],
-                              ),
                             ),
                           ),
                           const SizedBox(height: 22),

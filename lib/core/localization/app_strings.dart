@@ -226,18 +226,6 @@ class AppStrings {
   String get leftoverPrefix => isEn ? '(Leftovers)' : '(بقايا امبارح)';
   String get leftoverOnly => isEn ? 'Leftovers' : 'بقايا امبارح';
 
-  // Budget-only filter (home recommendation rail)
-  String get filterBudgetOnly => isEn ? 'Budget only' : 'اقتصادية فقط';
-  String get filterBudgetOnlyTooltip => isEn
-      ? 'Suggest only budget-friendly meals'
-      : 'اقترح الأكلات الاقتصادية بس';
-  String get budgetFilterEmptyTitle =>
-      isEn ? 'No budget-friendly meals' : 'مفيش أكلات اقتصادية';
-  String get budgetFilterEmptyDesc => isEn
-      ? 'None of the meals in your vault is tagged as budget friendly.'
-      : 'ولا أكلة في خزانتك متصنفة كأكلة اقتصادية.';
-  String get showAllMealsAgain => isEn ? 'Show all meals' : 'اعرض كل الأكلات';
-
   // Single card reroll
   String get rerollMeal => isEn ? 'Change this meal' : 'غيّر الأكلة دي';
   String get rerollNoAlternative => isEn
@@ -258,7 +246,6 @@ class AppStrings {
   String get sideDish2 => isEn ? 'Side Dish 2' : 'طبق جانبي ٢';
 
   String get fridaySpecial => isEn ? 'Friday special' : 'أكلة جمعة';
-  String get budgetFriendly => isEn ? 'Budget friendly' : 'اقتصادي';
   String get favorite => isEn ? 'Favorite' : 'مفضلة';
   String get mealFlagsLabel => isEn ? 'Meal options' : 'خيارات الوجبة';
 

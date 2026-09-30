@@ -14,7 +14,7 @@ import 'meal_screen_palette.dart';
 /// Outer chrome locked to the mockup (title + 2-col rounded cards with
 /// circular thumb). Inner card content is intentionally light — the user
 /// still has design tweaks pending for this block; we map price→nothing and
-/// leaf-tag→protein/budget label so it stays useful without inventing UI.
+/// leaf-tag→protein label so it stays useful without inventing UI.
 class MoreFavoritesGrid extends ConsumerWidget {
   final int currentMealId;
 
@@ -92,11 +92,9 @@ class _FavoriteTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tag = meal.isBudgetFriendly
-        ? strings.budgetFriendly
-        : meal.proteinType != ProteinType.none
-            ? meal.proteinType.label(strings)
-            : strings.healthyTag;
+    final tag = meal.proteinType != ProteinType.none
+        ? meal.proteinType.label(strings)
+        : strings.healthyTag;
 
     return Material(
       color: Colors.transparent,
@@ -179,27 +177,15 @@ class _FavoriteTile extends StatelessWidget {
                         ),
                       ),
                     const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        AppIcon(
-                          AppGlyph.wallet,
-                          color: MealScreenPalette.tag(brightness),
-                          size: 12,
-                        ),
-                        const SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
-                            tag,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
-                              color: MealScreenPalette.tag(brightness),
-                            ),
-                          ),
-                        ),
-                      ],
+                    Text(
+                      tag,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: MealScreenPalette.tag(brightness),
+                      ),
                     ),
                   ],
                 ),

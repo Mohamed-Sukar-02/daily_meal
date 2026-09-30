@@ -342,7 +342,6 @@ class AppConfigSyncService {
       category: Value(_mapCategory(rData['category'] as String? ?? 'popular')),
       prepTime: Value(prepTime <= 0 ? 30 : prepTime),
       isFridaySpecial: Value(rData['isFridaySpecial'] as bool? ?? false),
-      isBudgetFriendly: Value(rData['isBudgetFriendly'] as bool? ?? false),
     );
   }
 

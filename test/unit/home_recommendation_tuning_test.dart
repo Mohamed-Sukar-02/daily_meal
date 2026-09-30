@@ -12,13 +12,12 @@ const _proteins = [
   ProteinType.fish,
 ];
 
-/// The three knobs the cases below care about, per meal.
+/// The two knobs the cases below care about, per meal.
 class _Spec {
-  _Spec(this.id, {this.budget = false, ProteinType? protein})
+  _Spec(this.id, {ProteinType? protein})
       : protein = protein ?? _proteins[id % _proteins.length];
 
   final int id;
-  final bool budget;
   final ProteinType protein;
 }
 
@@ -41,8 +40,6 @@ class _Harness {
     await settle();
     return replaced;
   }
-
-  void toggleBudget() => container.read(budgetOnlyProvider.notifier).toggle();
 
   Future<void> dispose() async {
     container.dispose();
@@ -74,7 +71,6 @@ Future<_Harness> _start(
       carbsType: const Value(CarbsType.rice),
       category: const Value(MealCategory.egyptianTraditional),
       prepTime: const Value(30),
-      isBudgetFriendly: Value(spec.budget),
     ));
   }
 
@@ -89,63 +85,11 @@ Future<_Harness> _start(
 
 /// Eleven meals, ids 11..21 — comfortably above the three cards, so a reroll
 /// always has somewhere to go unless a case says otherwise.
-List<_Spec> _vault({bool everyThirdIsBudget = false}) => [
-      for (var id = 11; id <= 21; id++)
-        _Spec(id, budget: everyThirdIsBudget && id % 3 == 0),
+List<_Spec> _vault() => [
+      for (var id = 11; id <= 21; id++) _Spec(id),
     ];
 
 void main() {
-  group('budget-only filter', () {
-    test('serves nothing but budget-friendly meals while it is on', () async {
-      final harness = await _start(_vault(everyThirdIsBudget: true));
-      addTearDown(harness.dispose);
-
-      expect(harness.ids, hasLength(3));
-      harness.toggleBudget();
-      await harness.settle();
-
-      expect(harness.shown, isNotEmpty);
-      for (final meal in harness.shown) {
-        expect(meal.isBudgetFriendly, isTrue,
-            reason: 'meal ${meal.id} is not budget friendly but was served');
-      }
-    });
-
-    test('flipping the toggle re-ranks instead of pinning the old cards',
-        () async {
-      final harness = await _start(_vault(everyThirdIsBudget: true));
-      addTearDown(harness.dispose);
-
-      final before = harness.ids.toSet();
-      harness.toggleBudget();
-      await harness.settle();
-      final during = harness.ids.toSet();
-
-      expect(
-        before.intersection(during),
-        isEmpty,
-        reason: 'the unfiltered cards are not budget picks, so the filter must '
-            'clear them off the day instead of keeping them pinned',
-      );
-
-      harness.toggleBudget();
-      await harness.settle();
-      expect(harness.ids.toSet(), before,
-          reason: 'turning the filter back off restores the day it had ranked');
-    });
-
-    test('a pool with no budget meal at all serves an empty list', () async {
-      final harness = await _start(_vault());
-      addTearDown(harness.dispose);
-
-      harness.toggleBudget();
-      await harness.settle();
-
-      expect(harness.container.read(todayRecommendationsProvider).requireValue
-          .recommendations, isEmpty);
-    });
-  });
-
   group('single card reroll', () {
     test('replaces one slot and leaves the other two alone', () async {
       final harness = await _start(_vault());
@@ -173,24 +117,6 @@ void main() {
       expect(harness.ids, hasLength(3));
       expect(await harness.reroll(0), isNull);
       expect(harness.ids, hasLength(3));
-    });
-
-    test('keeps the filter on: a reroll cannot smuggle in a non-budget meal',
-        () async {
-      final harness = await _start([
-        ..._vault(everyThirdIsBudget: true),
-        _Spec(22, budget: true),
-        _Spec(23, budget: true),
-      ]);
-      addTearDown(harness.dispose);
-
-      harness.toggleBudget();
-      await harness.settle();
-      final shown = harness.ids;
-      final replacement = await harness.reroll(shown.length - 1);
-
-      expect(replacement, isNotNull);
-      expect(replacement!.isBudgetFriendly, isTrue);
     });
 
     test('repeated taps keep dealing new meals instead of one answer',
@@ -279,7 +205,7 @@ void main() {
     test('a protein rule stricter than the global one drives the warning',
         () async {
       final harness = await _start(
-        [_Spec(11, protein: ProteinType.chicken, budget: true)],
+        [_Spec(11, protein: ProteinType.chicken)],
         cooldownDays: 3,
         chickenCooldownDays: 21,
       );

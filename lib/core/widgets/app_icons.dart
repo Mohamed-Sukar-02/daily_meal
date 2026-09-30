@@ -30,7 +30,6 @@ enum AppGlyph {
   spark,
   person,
   star,
-  wallet,
   plus,
   alert,
   grid,
@@ -315,16 +314,6 @@ class _GlyphPainter extends CustomPainter {
           }
         }
         canvas.drawPath(star..close(), fill);
-
-      case AppGlyph.wallet:
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(
-              const Rect.fromLTRB(3.6, 6.2, 20.4, 18.6),
-              const Radius.circular(3.2)),
-          stroke,
-        );
-        canvas.drawLine(const Offset(3.6, 10.2), const Offset(20.4, 10.2), stroke);
-        canvas.drawCircle(const Offset(16.4, 14.4), 1.4, fill);
 
       case AppGlyph.plus:
         canvas.drawLine(const Offset(12, 5.4), const Offset(12, 18.6), stroke);

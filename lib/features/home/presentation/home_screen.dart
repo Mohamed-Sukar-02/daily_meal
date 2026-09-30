@@ -59,7 +59,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
   Widget build(BuildContext context) {
     watchNavReentry();
     final recsAsync = ref.watch(todayRecommendationsProvider);
-    final budgetOnly = ref.watch(budgetOnlyProvider);
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -72,12 +71,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
             Expanded(
               child: recsAsync.when(
                 data: (result) => result.recommendations.isEmpty
-                    // An empty list under the budget filter is the filter's
-                    // doing, not an empty vault: the copy and the way out are
-                    // different, so the two states never get mixed up.
-                    ? (budgetOnly
-                          ? _buildNoBudgetMealsState(context, ref)
-                          : _buildEmptyState(context))
+                    ? _buildEmptyState(context)
                     : _buildRecommendationsView(context, ref, result),
                 loading: () => const Center(
                   child: CircularProgressIndicator.adaptive(),
@@ -122,7 +116,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
             controller: _listController,
             padding: EdgeInsets.fromLTRB(16, 2, 16, canSpin ? 110 : 28),
             children: [
-              _buildBudgetFilterRow(context, ref),
               const SizedBox(height: 12),
               if (capacity != null && capacity.isTooSmall) ...[
                 _buildVaultCapacityBanner(context, capacity, brightness),
@@ -319,54 +312,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
     );
   }
 
-  /// "Budget only" (اقتصادية فقط) — the one quick filter the recommendation
-  /// rail offers. It re-ranks the day against a narrower pool, so it belongs
-  /// above the cards rather than beside the "cook / takeout" actions below.
-  Widget _buildBudgetFilterRow(BuildContext context, WidgetRef ref) {
-    final selected = ref.watch(budgetOnlyProvider);
-    final brightness = Theme.of(context).brightness;
-    final strings = AppStrings.of(context);
-    final style = AppPalette.chipGreen(brightness);
-    final foreground = selected ? Colors.white : style.foreground;
-
-    return Align(
-      alignment: AlignmentDirectional.centerStart,
-      child: Tooltip(
-        message: strings.filterBudgetOnlyTooltip,
-        child: Material(
-          key: const ValueKey('btn_budget_only'),
-          color: selected ? AppPalette.brandGreen : style.background,
-          borderRadius: BorderRadius.circular(20),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(20),
-            onTap: () => ref.read(budgetOnlyProvider.notifier).toggle(),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  AppIcon(AppGlyph.wallet, color: foreground, size: 16),
-                  const SizedBox(width: 7),
-                  Text(
-                    strings.filterBudgetOnly,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: selected
-                          ? Colors.white
-                          : AppPalette.textPrimary(brightness)
-                              .withValues(alpha: 0.75),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   /// Vault health indicator: the vault cannot cover its own cooldown, so
   /// repeats are a math problem rather than an engine bug. Points at the fix
   /// (more meals) instead of apologising every time a card is re-served.
@@ -476,59 +421,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
   // ---------------------------------------------------------------------------
   // Empty states
   // ---------------------------------------------------------------------------
-
-  /// The budget filter excluded every meal in the vault. Same shape as the
-  /// empty-vault state, but the way out is to drop the filter, not to add a
-  /// meal the user already owns.
-  Widget _buildNoBudgetMealsState(BuildContext context, WidgetRef ref) {
-    final brightness = Theme.of(context).brightness;
-    final strings = AppStrings.of(context);
-
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AppIcon(
-              AppGlyph.wallet,
-              size: 56,
-              color: AppPalette.textSecondary(brightness),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              strings.budgetFilterEmptyTitle,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: AppPalette.textPrimary(brightness),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              strings.budgetFilterEmptyDesc,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                color: AppPalette.textSecondary(brightness),
-              ),
-            ),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              onPressed: () => ref.read(budgetOnlyProvider.notifier).disable(),
-              icon: const AppIcon(
-                AppGlyph.swap,
-                color: Colors.white,
-                size: 18,
-              ),
-              label: Text(strings.showAllMealsAgain),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildEmptyState(BuildContext context) {
     final brightness = Theme.of(context).brightness;

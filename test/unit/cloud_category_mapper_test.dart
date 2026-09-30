@@ -58,7 +58,6 @@ void main() {
         category: entry.value,
         prepTime: 30,
         isFridaySpecial: false,
-        isBudgetFriendly: false,
         isFavorite: false,
         isStarterMeal: true,
         createdAt: now,

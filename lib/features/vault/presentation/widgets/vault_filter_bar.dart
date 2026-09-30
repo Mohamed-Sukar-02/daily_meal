@@ -9,7 +9,7 @@ import '../../providers/vault_providers.dart';
 
 /// Horizontal filter chips for the vault grid, styled after the mockups:
 /// green "All" pill, the loved heart, pastel protein chips with emoji badges,
-/// Quick-30m and the remaining tag filters (friday / budget) + carbs.
+/// Quick-30m and the remaining tag filter (friday) + carbs.
 class VaultFilterBar extends ConsumerWidget {
   final bool quickOnly;
   final ValueChanged<bool> onQuickChanged;
@@ -103,18 +103,6 @@ class VaultFilterBar extends ConsumerWidget {
             },
           ),
           const SizedBox(width: 8),
-          _Chip(
-            brightness: brightness,
-            selected: filter.isBudgetFriendlyOnly,
-            style: AppPalette.chipGreen(brightness),
-            emoji: null,
-            glyph: AppGlyph.wallet,
-            label: strings.budgetFriendly,
-            onTap: () {
-              notifier.toggleBudgetFilter();
-              onFilterApplied?.call();
-            },
-          ),
           for (final c in CarbsType.values) ...[
             const SizedBox(width: 8),
             _Chip(

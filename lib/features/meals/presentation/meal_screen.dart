@@ -273,7 +273,6 @@ Meal _mealFromCloudMeal(CloudMeal cloud) {
     category: cloudCategory(cloud.category),
     prepTime: cloud.prepTimeMinutes,
     isFridaySpecial: cloud.isFridaySpecial,
-    isBudgetFriendly: cloud.isBudgetFriendly,
     isFavorite: false,
     isStarterMeal: cloud.isStarterMeal,
     createdAt: cloud.createdAt,
