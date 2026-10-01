@@ -7,6 +7,7 @@ import '../../vault/providers/vault_providers.dart';
 import '../../history/providers/history_providers.dart';
 import '../../settings/providers/settings_providers.dart';
 import '../domain/cooldown_engine.dart';
+import 'planned_meal_provider.dart';
 
 final engineProvider = Provider<CooldownEngine>((ref) {
   return const CooldownEngine();
@@ -382,6 +383,8 @@ class RecommendationController extends AsyncNotifier<void> {
           notes: notes,
         );
       });
+      // The day is answered now; a plan claiming otherwise must go with it.
+      await retireTodayPlan(ref);
       state = const AsyncValue.data(null);
       return id;
     } catch (err, st) {
@@ -405,6 +408,8 @@ class RecommendationController extends AsyncNotifier<void> {
           notes: notes,
         );
       });
+      // The day is answered now; a plan claiming otherwise must go with it.
+      await retireTodayPlan(ref);
       state = const AsyncValue.data(null);
       return id;
     } catch (err, st) {
@@ -439,6 +444,8 @@ class RecommendationController extends AsyncNotifier<void> {
           notes: notes,
         );
       });
+      // The day is answered now; a plan claiming otherwise must go with it.
+      await retireTodayPlan(ref);
       state = const AsyncValue.data(null);
       return id;
     } catch (err, st) {
@@ -458,6 +465,8 @@ class RecommendationController extends AsyncNotifier<void> {
           notes: notes,
         );
       });
+      // The day is answered now; a plan claiming otherwise must go with it.
+      await retireTodayPlan(ref);
       state = const AsyncValue.data(null);
       return id;
     } catch (err, st) {
@@ -477,6 +486,8 @@ class RecommendationController extends AsyncNotifier<void> {
           notes: notes,
         );
       });
+      // The day is answered now; a plan claiming otherwise must go with it.
+      await retireTodayPlan(ref);
       state = const AsyncValue.data(null);
       return id;
     } catch (err, st) {

@@ -259,6 +259,33 @@ class AppStrings {
       ? 'No other meal can take this slot today'
       : 'مفيش أكلة تانية تقدر تاخد المكان ده النهاردة';
 
+  // Today's plan — the state between "not yet" and "it is in the log". Tapping a
+  // card chooses a dish; only the CTA claims it was cooked. See
+  // `PlannedMeal` for why this lives in prefs.
+  String todayPlanTitle(String mealName) => isEn
+      ? 'Today: $mealName'
+      : 'النهاردة: $mealName';
+
+  /// What the banner is *not*, and what it still buys: the reminder stops
+  /// nagging a day that has an answer.
+  String get todayPlanNote => isEn
+      ? 'Chosen, not cooked — nothing lands in the log, and today’s reminder stays quiet'
+      : 'اختيار بس، مش طبخة — مفيش حاجة بتتسجل في السجل، وإشعار النهاردة هيسكت';
+
+  String todayPlanSet(String mealName) => isEn
+      ? 'Planned for today: $mealName'
+      : 'اتحددت النهاردة: $mealName';
+
+  String todayPlanCleared(String mealName) => isEn
+      ? 'Today’s plan cleared: $mealName'
+      : 'اتلغت خطة النهاردة: $mealName';
+
+  /// The planned dish was deleted from the vault: the banner retires with it
+  /// rather than naming a meal that no longer exists.
+  String get todayPlanMealMissing => isEn
+      ? 'That meal is no longer in the vault, so today has no plan'
+      : 'الأكلة دي مشت من الخزانة، فالنهاردة ملهاش خطة';
+
   // Vault capacity vs cooldown
   String get vaultTooSmallForCooldown => isEn
       ? 'Your vault is too small for the current cooldown. Add more meals to prevent repetition.'
