@@ -119,6 +119,32 @@ void main() {
       expect(harness.ids, hasLength(3));
     });
 
+    test('a reroll hands back a different meal, not the one it replaced', () async {
+      // The three visible ids are all excluded from the draw, so the tapped
+      // card cannot be its own replacement — the assertion the "no duplicates
+      // between slots" check above cannot make on its own.
+      final harness = await _start(_vault());
+      addTearDown(harness.dispose);
+
+      final before = harness.ids;
+      final replacement = await harness.reroll(1);
+
+      expect(replacement, isNotNull);
+      expect(replacement!.id, isNot(before[1]));
+      expect(before, isNot(contains(replacement.id)));
+    });
+
+    test('an out-of-range slot is refused, not clamped', () async {
+      final harness = await _start(_vault());
+      addTearDown(harness.dispose);
+
+      final before = harness.ids;
+
+      expect(await harness.reroll(3), isNull);
+      expect(await harness.reroll(-1), isNull);
+      expect(harness.ids, before, reason: 'a bad index must not disturb the day');
+    });
+
     test('repeated taps keep dealing new meals instead of one answer',
         () async {
       final harness = await _start(_vault());
