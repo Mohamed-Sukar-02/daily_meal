@@ -351,13 +351,13 @@ final vaultCapacityProvider = Provider<VaultCapacity?>((ref) {
   var longest = settings.cooldownDays;
   for (final protein in meals.map((meal) => meal.proteinType.name).toSet()) {
     // Same resolution order as `CooldownEngine._resolveSpecificCooldown`:
-    // the four named proteins own a window of their own, everything else
-    // (legumes, dairy) falls back to the global period.
+    // chicken, beef, fish, and meatless (none, legume, dairy) own a window
+    // of their own; unknown proteins fall back to the global period.
     final window = switch (protein) {
       'chicken' => settings.chickenCooldownDays,
       'beef' => settings.beefCooldownDays,
       'fish' => settings.fishCooldownDays,
-      'none' => settings.meatlessCooldownDays,
+      'none' || 'legume' || 'dairy' => settings.meatlessCooldownDays,
       _ => settings.cooldownDays,
     };
     if (window > longest) longest = window;

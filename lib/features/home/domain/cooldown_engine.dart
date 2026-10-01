@@ -147,12 +147,7 @@ class CooldownEngine {
       }
     }
 
-    final fallbackRaw = adaptedMeals.take(targetCount).map((c) => c.rawMeal as T).toList();
-    return RecommendationResult<T>(
-      recommendations: fallbackRaw,
-      relaxationLevel: 5,
-      computedDate: normalizedToday,
-    );
+    throw StateError('Unreachable: relaxation level 5 is exhaustive');
   }
 
   List<_MealCandidate> _filterCandidates({
@@ -211,6 +206,12 @@ class CooldownEngine {
         break;
       case 'fish':
         specific = fishCooldownDays;
+        break;
+      case 'legume':
+        specific = meatlessCooldownDays;
+        break;
+      case 'dairy':
+        specific = meatlessCooldownDays;
         break;
       case 'none':
         specific = meatlessCooldownDays;
@@ -409,8 +410,8 @@ class CooldownEngine {
 
   /// Greedy diversity pick over an already-ranked [pool]: the first card
   /// takes the best meal, every later card takes the best meal whose protein
-  /// the earlier cards don't already have (falling back to carbs variety once
-  /// two cards exist, then to plain rank order). [preselected] seeds the
+  /// the earlier cards don't already have (falling back to carbs variety when
+  /// no new protein is available, then to plain rank order). [preselected] seeds the
   /// selection when backfilling with repeats after a refresh, so variety is
   /// judged against the cards already chosen.
   List<_MealCandidate> _selectDiverse(
@@ -429,7 +430,7 @@ class CooldownEngine {
 
       final proteins = selected.map((m) => m.proteinName).toSet();
       var index = remaining.indexWhere((m) => !proteins.contains(m.proteinName));
-      if (index == -1 && selected.length >= 2) {
+      if (index == -1) {
         final carbs = selected.map((m) => m.carbsName).toSet();
         index = remaining.indexWhere((m) => !carbs.contains(m.carbsName));
       }
