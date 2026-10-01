@@ -89,6 +89,10 @@ class _DailyMealAppState extends ConsumerState<DailyMealApp> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final db = ref.read(appDatabaseProvider);
+      // Clean up and heal any duplicate meals on startup
+      db.mealsDao.deduplicateMeals().catchError((e) {
+        debugPrint('Startup deduplication error: $e');
+      });
       // One-shot startup cleanup (plain async call, not a provider side effect).
       OrphanImageSweeper.sweepAtStartup(db);
       // Older installs hold cloud photo URLs in the vault; download the bytes

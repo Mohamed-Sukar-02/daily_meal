@@ -142,15 +142,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
                   padding: const EdgeInsets.all(10),
                   // Downscale big cloud photos while decoding: 3 cards at once.
                   photoCacheWidth: 1080,
-                  footer: Row(
-                    children: [
-                      QuickActions(
-                        onCookedToday: () =>
-                            _handleCookedToday(context, ref, meals[i]),
-                      ),
-                      const Spacer(),
-                      _buildRerollButton(context, ref, i),
-                    ],
+                  footer: QuickActions(
+                    onCookedToday: () =>
+                        _handleCookedToday(context, ref, meals[i]),
                   ),
                   onToggleFavorite: () {
                     ref
@@ -394,29 +388,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
     );
   }
 
-  /// Single-card reroll: swaps this card only, the other two stay put.
-  Widget _buildRerollButton(BuildContext context, WidgetRef ref, int index) {
-    final brightness = Theme.of(context).brightness;
-    final strings = AppStrings.of(context);
-
-    return Tooltip(
-      message: strings.rerollMeal,
-      child: IconButton(
-        key: ValueKey('btn_reroll_$index'),
-        onPressed: () => _handleReroll(context, ref, index),
-        icon: AppIcon(
-          AppGlyph.swap,
-          color: AppPalette.textSecondary(brightness),
-          size: 20,
-        ),
-        color: AppPalette.textSecondary(brightness),
-        iconSize: 20,
-        visualDensity: VisualDensity.compact,
-        padding: EdgeInsets.zero,
-        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-      ),
-    );
-  }
 
   // ---------------------------------------------------------------------------
   // Empty states
@@ -552,18 +523,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
     }
   }
 
-  Future<void> _handleReroll(BuildContext context, WidgetRef ref, int index) async {
-    final notifier = ref.read(todayRecommendationsProvider.notifier);
-    final replaced = await notifier.rerollSingle(index);
-    if (replaced != null || !context.mounted) return;
 
-    // Nothing could take the slot — say so instead of leaving the tap looking
-    // like a dead button.
-    AppToast.showInfo(
-      context,
-      AppStrings.of(context).rerollNoAlternative,
-    );
-  }
 
   Widget _buildFloatingActionBtn({
     required BuildContext context,

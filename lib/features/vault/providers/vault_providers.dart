@@ -206,6 +206,12 @@ class VaultController extends AsyncNotifier<void> {
     state = const AsyncValue.loading();
     try {
       final dao = ref.read(mealsDaoProvider);
+      
+      final existingByName = await dao.getMealByName(cleanName);
+      if (existingByName != null) {
+        throw ArgumentError('A meal with this name already exists in your vault.');
+      }
+      
       final id = await dao.insertMeal(
         MealsCompanion(
           name: Value(cleanName),
@@ -236,6 +242,14 @@ class VaultController extends AsyncNotifier<void> {
     state = const AsyncValue.loading();
     try {
       final dao = ref.read(mealsDaoProvider);
+      
+      if (companion.name.present && companion.name.value.trim().isNotEmpty) {
+        final existingByName = await dao.getMealByName(companion.name.value.trim());
+        if (existingByName != null) {
+          throw ArgumentError('A meal with this name already exists in your vault.');
+        }
+      }
+      
       final id = await dao.insertMeal(companion);
       state = const AsyncValue.data(null);
       return id;
@@ -249,6 +263,15 @@ class VaultController extends AsyncNotifier<void> {
     state = const AsyncValue.loading();
     try {
       final dao = ref.read(mealsDaoProvider);
+      
+      final cleanName = meal.name.trim();
+      if (cleanName.isNotEmpty) {
+        final existingByName = await dao.getMealByName(cleanName);
+        if (existingByName != null && existingByName.id != meal.id) {
+          throw ArgumentError('A meal with this name already exists in your vault.');
+        }
+      }
+      
       final success = await dao.updateMeal(meal);
       state = const AsyncValue.data(null);
       return success;

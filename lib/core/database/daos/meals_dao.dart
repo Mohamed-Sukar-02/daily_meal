@@ -82,17 +82,17 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
     return (select(meals)..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
-  /// Looks a meal up by its folded name, the same form `_withNormalizedName`
-  /// stores in `name_normalized`.
-  ///
-  /// Exact equality — not the `LIKE '%…%'` of [searchMeals] — because this
-  /// answers "is this the very same dish already in the vault?". `limit(1)`
-  /// keeps it safe on databases that still hold pre-guard duplicates, where
-  /// `getSingleOrNull()` over all matches would throw instead of answering.
   Future<Meal?> getMealByName(String name) {
     final normalized = normalizeArabic(name);
     return (select(meals)
           ..where((t) => t.nameNormalized.equals(normalized))
+          ..limit(1))
+        .getSingleOrNull();
+  }
+
+  Future<Meal?> getMealByCloudId(String cloudId) {
+    return (select(meals)
+          ..where((t) => t.cloudId.equals(cloudId))
           ..limit(1))
         .getSingleOrNull();
   }
@@ -159,16 +159,68 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
         }
       } catch (_) {}
     }
+
+    // Upsert / deduplication guard:
+    // 1. Check if a meal already exists by cloudId
+    Meal? existing;
+    if (meal.cloudId.present && meal.cloudId.value != null && meal.cloudId.value!.isNotEmpty) {
+      existing = await getMealByCloudId(meal.cloudId.value!);
+    }
+    // 2. Check if a meal already exists by normalized name
+    if (existing == null && meal.name.present) {
+      existing = await getMealByName(meal.name.value);
+    }
+
+    if (existing != null) {
+      var updateCompanion = meal;
+      // Preserve existing photo if the update doesn't provide one
+      if (existing.photoPath != null &&
+          (!meal.photoPath.present || meal.photoPath.value == null)) {
+        updateCompanion = updateCompanion.copyWith(
+          photoPath: Value(existing.photoPath),
+        );
+      }
+      // Preserve favorite status if already favorited
+      if (existing.isFavorite &&
+          (!meal.isFavorite.present || !meal.isFavorite.value)) {
+        updateCompanion = updateCompanion.copyWith(
+          isFavorite: const Value(true),
+        );
+      }
+      // Preserve existing cloudId if the new companion doesn't have one
+      if (existing.cloudId != null &&
+          (!meal.cloudId.present || meal.cloudId.value == null)) {
+        updateCompanion = updateCompanion.copyWith(
+          cloudId: Value(existing.cloudId),
+        );
+      }
+      // Preserve customCooldownDays if already set
+      if (existing.customCooldownDays != null &&
+          (!meal.customCooldownDays.present || meal.customCooldownDays.value == null)) {
+        updateCompanion = updateCompanion.copyWith(
+          customCooldownDays: Value(existing.customCooldownDays),
+        );
+      }
+      // Preserve notes if already set
+      if (existing.notes != null && existing.notes!.isNotEmpty &&
+          (!meal.notes.present || meal.notes.value == null)) {
+        updateCompanion = updateCompanion.copyWith(
+          notes: Value(existing.notes),
+        );
+      }
+
+      await updateMealCompanion(existing.id, updateCompanion, touchUpdatedAt: false);
+      return existing.id;
+    }
     
     final normalizedCompanion = _withNormalizedName(meal);
     return into(meals).insert(normalizedCompanion);
   }
 
-  Future<void> insertMealsBatch(List<MealsCompanion> mealCompanions) {
-    final normalized = mealCompanions.map(_withNormalizedName).toList();
-    return batch((b) {
-      b.insertAll(meals, normalized);
-    });
+  Future<void> insertMealsBatch(List<MealsCompanion> mealCompanions) async {
+    for (final companion in mealCompanions) {
+      await insertMeal(companion);
+    }
   }
 
   Future<bool> updateMeal(Meal meal) {
@@ -258,6 +310,98 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
       if (stillReferenced != null) return;
       await File(path).delete();
     } catch (_) {}
+  }
+
+  Future<void> deduplicateMeals() async {
+    final allMeals = await getAllMeals();
+    final nameToMeals = <String, List<Meal>>{};
+    
+    for (final m in allMeals) {
+      final norm = m.nameNormalized ?? normalizeArabic(m.name);
+      nameToMeals.putIfAbsent(norm, () => []).add(m);
+    }
+    
+    for (final entry in nameToMeals.entries) {
+      final duplicates = entry.value;
+      if (duplicates.length <= 1) continue;
+      
+      duplicates.sort((a, b) {
+        if ((a.cloudId != null) != (b.cloudId != null)) {
+          return a.cloudId != null ? -1 : 1;
+        }
+        if (a.isStarterMeal != b.isStarterMeal) {
+          return a.isStarterMeal ? -1 : 1;
+        }
+        if (a.isFavorite != b.isFavorite) {
+          return a.isFavorite ? -1 : 1;
+        }
+        return b.id.compareTo(a.id);
+      });
+      
+      final survivor = duplicates.first;
+      final victims = duplicates.skip(1).toList();
+      
+      await transaction(() async {
+        final anyFavorite = duplicates.any((d) => d.isFavorite);
+        if (anyFavorite && !survivor.isFavorite) {
+          await (update(meals)..where((t) => t.id.equals(survivor.id))).write(
+            const MealsCompanion(isFavorite: Value(true)),
+          );
+        }
+        if (survivor.photoPath == null || survivor.photoPath!.isEmpty) {
+          final victimWithPhoto = victims.firstWhere(
+            (v) => v.photoPath != null && v.photoPath!.isNotEmpty,
+            orElse: () => survivor,
+          );
+          if (victimWithPhoto != survivor) {
+            await (update(meals)..where((t) => t.id.equals(survivor.id))).write(
+              MealsCompanion(photoPath: Value(victimWithPhoto.photoPath)),
+            );
+          }
+        }
+        for (final victim in victims) {
+          await customStatement('UPDATE meal_history SET meal_id = ? WHERE meal_id = ?', [survivor.id, victim.id]);
+          await (delete(meals)..where((t) => t.id.equals(victim.id))).go();
+          await _deletePhotoFile(victim);
+        }
+      });
+    }
+
+    // Secondary pass: deduplicate by cloudId if two rows share the same non-null cloudId
+    final cloudIdToMeals = <String, List<Meal>>{};
+    final currentMeals = await getAllMeals();
+    for (final m in currentMeals) {
+      if (m.cloudId != null && m.cloudId!.isNotEmpty) {
+        cloudIdToMeals.putIfAbsent(m.cloudId!, () => []).add(m);
+      }
+    }
+    for (final entry in cloudIdToMeals.entries) {
+      final duplicates = entry.value;
+      if (duplicates.length <= 1) continue;
+
+      duplicates.sort((a, b) {
+        if (a.isStarterMeal != b.isStarterMeal) return a.isStarterMeal ? -1 : 1;
+        if (a.isFavorite != b.isFavorite) return a.isFavorite ? -1 : 1;
+        return b.id.compareTo(a.id);
+      });
+
+      final survivor = duplicates.first;
+      final victims = duplicates.skip(1).toList();
+
+      await transaction(() async {
+        final anyFavorite = duplicates.any((d) => d.isFavorite);
+        if (anyFavorite && !survivor.isFavorite) {
+          await (update(meals)..where((t) => t.id.equals(survivor.id))).write(
+            const MealsCompanion(isFavorite: Value(true)),
+          );
+        }
+        for (final victim in victims) {
+          await customStatement('UPDATE meal_history SET meal_id = ? WHERE meal_id = ?', [survivor.id, victim.id]);
+          await (delete(meals)..where((t) => t.id.equals(victim.id))).go();
+          await _deletePhotoFile(victim);
+        }
+      });
+    }
   }
 
   Future<int> deleteAllMeals() {

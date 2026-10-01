@@ -37,8 +37,20 @@ class DiscoveryNotifier extends StateNotifier<AsyncValue<void>> {
   Future<int?> downloadMeal(CloudMeal cloudMeal) async {
     state = const AsyncValue.loading();
     try {
+      final existingByCloudId = await _mealsDao.getMealByCloudId(cloudMeal.id);
+      final existingByName = await _mealsDao.getMealByName(cloudMeal.name);
+      
+      final targetMeal = existingByCloudId ?? existingByName;
       final companion = await _createCompanion(cloudMeal);
-      final id = await _mealsDao.insertMeal(companion);
+
+      int id;
+      if (targetMeal != null) {
+        await _mealsDao.updateMealCompanion(targetMeal.id, companion);
+        id = targetMeal.id;
+      } else {
+        id = await _mealsDao.insertMeal(companion);
+      }
+      
       state = const AsyncValue.data(null);
       return id;
     } catch (e, st) {

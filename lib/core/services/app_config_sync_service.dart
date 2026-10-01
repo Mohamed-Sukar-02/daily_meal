@@ -205,6 +205,8 @@ class AppConfigSyncService {
 
   Future<void> _syncStarterMeals(AppDatabase db, {bool isManual = false}) async {
     try {
+      await db.mealsDao.deduplicateMeals();
+      
       final prefs = await SharedPreferences.getInstance();
       final blacklistedIds = prefs.getStringList('deleted_starter_meals') ?? [];
 
@@ -249,9 +251,11 @@ class AppConfigSyncService {
         }
       }
 
-      // Pass 2: legacy name fallback, only for meals without a cloudId.
+      // Pass 2: legacy name fallback, and catch same-named meals from public vault
+      // This prevents creating duplicates when a user manually downloaded a public meal
+      // that later became a starter meal with a different cloudId.
       for (final l in localMeals) {
-        if (l.cloudId != null || matchByLocalId.containsKey(l.id)) continue;
+        if (matchByLocalId.containsKey(l.id)) continue;
         final r = remoteByName[normalizeArabic(l.name.trim())];
         if (r != null && claimedRemoteIds.add(r.id)) {
           matchByLocalId[l.id] = r;
@@ -281,6 +285,10 @@ class AppConfigSyncService {
         for (final l in localMeals)
           if (l.isStarterMeal && !matchByLocalId.containsKey(l.id)) l.id,
       ];
+      
+      final localNames = <String>{
+        for (final l in localMeals) normalizeArabic(l.name.trim())
+      };
 
       final inserts = <MealsCompanion>[];
       for (final doc in docs) {
@@ -288,6 +296,11 @@ class AppConfigSyncService {
         if (blacklistedIds.contains(doc.id)) continue; // Respect user deletions
         final name = (doc.data['name'] as String? ?? '').trim();
         if (name.isEmpty) continue;
+        
+        final normalizedName = normalizeArabic(name);
+        if (localNames.contains(normalizedName)) continue;
+        localNames.add(normalizedName);
+        
         final localPhoto = await MealImageLocalizer.instance
             .localize(doc.data['imageUrl'] as String?);
         final companion = _cloudCompanion(doc, localizePhoto: localPhoto);
