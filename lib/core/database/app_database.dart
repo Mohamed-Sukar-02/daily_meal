@@ -50,7 +50,7 @@ class AppDatabase extends _$AppDatabase {
           chickenCooldownDays: Value(2),
           beefCooldownDays: Value(2),
           fishCooldownDays: Value(4),
-          meatlessCooldownDays: Value(0),
+          meatlessCooldownDays: Value(3),
           notificationHour: Value(12),
           notificationMinute: Value(0),
           notificationsEnabled: Value(false),

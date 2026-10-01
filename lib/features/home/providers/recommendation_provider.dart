@@ -46,7 +46,7 @@ AppSettingsData _fallbackSettings() => AppSettingsData(
       chickenCooldownDays: 2,
       beefCooldownDays: 2,
       fishCooldownDays: 4,
-      meatlessCooldownDays: 0,
+      meatlessCooldownDays: 3,
       notificationHour: 12,
       notificationMinute: 0,
       notificationsEnabled: false,

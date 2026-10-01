@@ -65,7 +65,7 @@ void main() {
       expect(defaults.chickenCooldownDays, 2);
       expect(defaults.beefCooldownDays, 2);
       expect(defaults.fishCooldownDays, 4);
-      expect(defaults.meatlessCooldownDays, 0);
+      expect(defaults.meatlessCooldownDays, 3);
       expect(defaults.notificationHour, 12);
       expect(defaults.notificationMinute, 0);
       expect(defaults.minAppVersion, isNull);
@@ -106,7 +106,7 @@ void main() {
       final parsed = SystemDefaults.fromMap(map);
       expect(parsed.cooldownDays, 14);
       expect(parsed.chickenCooldownDays, 2);
-      expect(parsed.meatlessCooldownDays, 0);
+      expect(parsed.meatlessCooldownDays, 3);
     });
   });
 
@@ -115,7 +115,7 @@ void main() {
       final defaults = await AppConfigSyncService.instance.getCachedDefaults();
       expect(defaults.cooldownDays, 14);
       expect(defaults.chickenCooldownDays, 2);
-      expect(defaults.meatlessCooldownDays, 0);
+      expect(defaults.meatlessCooldownDays, 3);
     });
 
     test('syncWithFirebase returns cached defaults safely during test/offline', () async {

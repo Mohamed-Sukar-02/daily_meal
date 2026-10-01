@@ -18,7 +18,7 @@ class AppSettingsDao extends DatabaseAccessor<AppDatabase> with _$AppSettingsDao
     chickenCooldownDays: const Value(2),
     beefCooldownDays: const Value(2),
     fishCooldownDays: const Value(4),
-    meatlessCooldownDays: const Value(0),
+    meatlessCooldownDays: const Value(3),
     notificationHour: const Value(12),
     notificationMinute: const Value(0),
     notificationsEnabled: const Value(false),

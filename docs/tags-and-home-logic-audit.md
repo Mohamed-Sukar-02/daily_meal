@@ -14,6 +14,15 @@ checked.
 > SDK and no network to fetch one — so the verification behind each change is the tests it
 > added, which still have to be run once on a machine that can run them.
 >
+> **Decision recorded here at the owner's request (2026-10-02):** `meatlessCooldownDays`
+> defaults to **3**, not 0, for new installs (`app_database.dart` `onCreate`,
+> `AppSettingsDao.defaultSettings`, the column default, `_fallbackSettings`, and
+> `SystemDefaults` — including the two `?? 0` fallbacks, because a remote config that
+> omits the key must not undo the local default), and the Settings row is **always
+> drawn**, never hidden at 0. Existing databases are left alone: the `from < 8`
+> migration still writes 0, because a window nobody ever saw is not permission to
+> start excluding dishes. 0 remains a legal, visible value = "no exclusion".
+>
 > Two findings from the first draft are **now landed upstream**: `e8820c9` routes `legume`
 > and `dairy` into `meatlessCooldownDays` (the behavioural axis is wider than the old
 > `none`-only rule) and loosens the carb-diversity gate. §2.3 and §4.1 are updated for
