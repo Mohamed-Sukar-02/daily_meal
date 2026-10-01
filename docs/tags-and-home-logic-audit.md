@@ -5,6 +5,15 @@ options") and the home page's "3 suggestions → tap one" flow. Everything below
 off `origin/main` at `b53d09d`; file:line references are given so each claim can be
 checked.
 
+> **P0 is landed** on `arena/01a0f883-daily-meal` — `617b483` (i18n + leftovers),
+> `d6b7074` (sync diff), `0c9e87a` (determinism), `12ef7ed` (reachability),
+> `1a490fe` + `3d1446f` (dead code, test placement). §2.4, §3.3, §3.4 and §3.5
+> describe the pre-fix state and are annotated where the fix changed the reading;
+> §5's P0 list carries the commit for each item. One caveat: nothing here has been
+> through `flutter analyze` / `flutter test` — the sandbox it was written in has no Dart
+> SDK and no network to fetch one — so the verification behind each change is the tests it
+> added, which still have to be run once on a machine that can run them.
+>
 > Two findings from the first draft are **now landed upstream**: `e8820c9` routes `legume`
 > and `dairy` into `meatlessCooldownDays` (the behavioural axis is wider than the old
 > `none`-only rule) and loosens the carb-diversity gate. §2.3 and §4.1 are updated for
@@ -228,6 +237,12 @@ cooldown boundary, even a relaxation level change.
 Fix: derive the per-meal value from a hash of `(mealId, dayEpoch, shuffleSeed)` instead of
 a stream draw — then the pool can change freely and every untouched card keeps its number.
 
+*Landed* (`0c9e87a`): `_lotteryFor` is that hash, and
+`test/unit/recommendation_lottery_stability_test.dart` cooks the top card across 25 seeds
+and asserts the two cards nobody touched keep their order. The mixing is 32-bit with the
+multiplies split into 16-bit halves, because a web build computes on a 53-bit double and
+`&` there is signed: the day's cards must not depend on the platform that compiled the app.
+
 ### 3.4 "Change this meal" is unreachable
 
 `rerollSingle` (`recommendation_provider.dart:245-315`) replaces one card and keeps the
@@ -239,6 +254,10 @@ directly, so five green tests cover a feature the app cannot reach. That is prec
 control the "three options" screen is missing: today the only escape from a card you do
 not want is `RefreshIndicator` → confirm → re-deal all three (and, per §3.3, re-roll the
 lottery too).
+
+*Landed* (`12ef7ed`): `QuickActions` takes an optional `onReroll`; Home renders a flat
+secondary chip beside the CTA wherever `canSpin` holds, keyed `btn_reroll_<mealId>`, and
+`rerollNoAlternative` is what the user hears when the pool has nothing left to offer.
 
 ### 3.5 Other confirmed defects in this flow
 
@@ -375,26 +394,30 @@ stay as-is; "سجل" performs today's `markCookedToday`. One flag, one banner, n
 **P0 — no schema change, no product decision. All six items are in scope, in this order**
 (one commit each, `flutter analyze` + `flutter test` green between them):
 
-1. **i18n** — `AppStrings.cookThis` and `defaultUserName` get their Arabic branch
-   (`app_strings.dart:197`, `:687`).
-2. **Leftovers** — bound the lookup to the previous days *and* exclude today
+1. **i18n** *(landed `617b483`)* — `AppStrings.cookThis` and `defaultUserName` got their
+   Arabic branch, plus `app_strings_localization_test.dart`, which reads the table itself so
+   a third getter cannot slip in the same way.
+2. **Leftovers** *(landed `617b483`)* — bound the lookup to the previous days *and* exclude today
    (`meal_history_dao.dart:103-115`); store the *kind* of entry instead of display text
    (the `logTakeoutMeal` pattern), decorate at render time, and normalise the legacy rows
    that already hold `'(بقايا امبارح) …'` inside `mealName` (`home_screen.dart:631-648`,
    `AppStrings.historyEntryDisplayName`).
-3. **Sync diff** — compare mapped-to-mapped so `dairy`/`none`/`potato`/`grains` stop
+3. **Sync diff** *(landed `d6b7074`)* — compare mapped-to-mapped so `dairy`/`none`/`potato`/`grains` stop
    producing a phantom diff and a permanent proposal affordance
    (`meal_sync_diff.dart:44-62`); stop "update from cloud" overwriting a local axis the
    cloud cannot express; and extend `cloud_category_mapper_test.dart` with the protein and
    carbs legs — it pins `chicken`/`rice`, so the two lossy axes are the two it never covers.
-4. **Determinism** — replace the sequential lottery with a per-meal hash of
+4. **Determinism** *(landed `0c9e87a`)* — replace the sequential lottery with a per-meal hash of
    `(id, day, seed)` (`cooldown_engine.dart:361-371`), plus a test that cooking one card
    cannot re-order the others.
-5. **Reachability** — wire `rerollSingle` to a real "غيّر الأكلة دي" control on the home
+5. **Reachability** *(landed `12ef7ed`)* — wire `rerollSingle` to a real "غيّر الأكلة دي" control on the home
    card (`quick_actions.dart`, `home_screen.dart:145`). Implemented, tested, unreachable.
-6. **Dead code** — `watchFilterByTag`/`filterByTag` (`meals_dao.dart:54,121`),
-   `latestCookedMealProvider` + `watchLatestCookedMeal`, `undoHistoryEntry`
-   (`recommendation_provider.dart:510`), `leftoverOnly`. Kept deliberately:
+6. **Dead code** *(landed `1a490fe`)* — `watchFilterByTag`/`filterByTag` **and the private
+   `_buildFilteredQuery` behind them** (the vault filters the watched list in Dart, so the
+   SQL-side copy was a second definition of "what counts as fish"),
+   `latestCookedMealProvider` + `watchLatestCookedMeal`, `undoHistoryEntry`, `leftoverOnly`.
+   `toggleCategory` + `VaultFilterState.category` were **kept**: they are P2's missing chip
+   row waiting for a caller, not a duplicate. Kept deliberately:
    `markSkipped`/`logSkippedMeal` and `HistoryController.deleteHistoryEntry` — P1 gives
    them their callers.
 
@@ -428,11 +451,12 @@ a product decision, not a refactor.
 | `isStarterMeal` | `meals_table.dart:44` | not editable, provenance in the tag set |
 | `MealEntryType.skipped` | `meal_history_table.dart:11` | written by nothing |
 | `markSkipped` | `recommendation_provider.dart:469` | no caller |
-| `rerollSingle` + 2 strings + 5 tests | `recommendation_provider.dart:245` | no caller |
+| `rerollSingle` + 2 strings + 5 tests | `recommendation_provider.dart:245` | was unreachable → `12ef7ed` |
 | `toggleCategory` / `VaultFilterState.category` | `vault_providers.dart:29,116` | settable by no UI |
-| `watchFilterByTag` / `filterByTag` | `meals_dao.dart:54,121` | no callers |
-| `latestCookedMealProvider` | `history_providers.dart:16` | no consumers |
-| `undoHistoryEntry` | `recommendation_provider.dart:510` | no callers |
+| `watchFilterByTag` / `filterByTag` / `_buildFilteredQuery` | `meals_dao.dart` | deleted → `1a490fe` |
+| `latestCookedMealProvider` | `history_providers.dart:16` | deleted → `617b483` |
+| `undoHistoryEntry` | `recommendation_provider.dart:510` | deleted → `1a490fe` |
 | `HistoryController.deleteHistoryEntry` | `history_providers.dart:65` | no UI → no per-entry undo |
 | `ISSUES.md` (referenced in `quick_add_sheet.dart:44`) | — | file does not exist in the repo |
+| `veggies`/`veggieShort` as the meatless Settings label | `app_strings.dart` | still wording-specific → P2 |
 | `healthyTag` / `balancedTag` / `deliciousTag` | `meal_info_banner.dart:116-133` | `'صحي'` is prepended to **every** meal unconditionally, and balanced/delicious is re-derived from `proteinType` — three labels the user never set, two of them a protein restatement |
