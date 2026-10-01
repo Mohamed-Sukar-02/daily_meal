@@ -319,6 +319,52 @@ class CooldownEngine {
     return sRecency + sFriday + sFavorite;
   }
 
+  /// A meal's seeded draw for one day: the same number for as long as none of
+  /// the three inputs changes, a fresh shuffle for the whole day when any of
+  /// them does.
+  ///
+  /// MurmurHash3's 32-bit finalizer, done in halves on purpose:
+  ///  * `dart:math`'s `Random` is a *stream* — using it here is what made the
+  ///    pool's composition part of a meal's value, the bug this replaces;
+  ///  * 32-bit arithmetic keeps the VM and the web build in agreement, which a
+  ///    "today's three cards" rule absolutely has to be.
+  static double _lotteryFor({
+    required int id,
+    required int dayEpoch,
+    required int seed,
+  }) {
+    var h = _u32(0x9e3779b9);
+    h = _u32(h ^ _mul32(_u32(dayEpoch), 0x85ebca6b));
+    h = _u32(h ^ _mul32(_u32(id), 0xc2b2ae35));
+    h = _u32(h ^ _mul32(_u32(seed), 0x27d4eb2f));
+    h = _u32(h ^ (h >>> 16));
+    h = _mul32(h, 0x85ebca6b);
+    h = _u32(h ^ (h >>> 13));
+    h = _mul32(h, 0xc2b2ae35);
+    h = _u32(h ^ (h >>> 16));
+    // 24 bits of the avalanche: enough to order a few thousand vault rows
+    // without collisions in practice, and exact in a double on every platform.
+    return (h >>> 8) / 0x1000000;
+  }
+
+  /// `&` is a *signed* int32 operation on the web, so every step is normalised
+  /// back to an unsigned 32-bit value; without `>>> 0` the VM and dart2js would
+  /// disagree on the high bit — i.e. on which meal wins a slot.
+  static const int _mask32 = 0xFFFFFFFF;
+
+  static int _u32(int x) => (x & _mask32) >>> 0;
+
+  /// The low 32 bits of `a * b`, from four 16-bit partials. A web build computes
+  /// on a 53-bit double, so a raw 32×32 product would round before it could be
+  /// masked; the partial sum here never exceeds 2^33.
+  static int _mul32(int a, int b) {
+    final al = a & 0xFFFF;
+    final ah = (a >> 16) & 0xFFFF;
+    final bl = b & 0xFFFF;
+    final bh = (b >> 16) & 0xFFFF;
+    return _u32(al * bl + _u32((al * bh + ah * bl) & 0xFFFF) * 0x10000);
+  }
+
   /// Score gap within which two meals count as equally worthy of a card slot.
   /// Equal to the favourite bonus, so a favourite and a plain meal cooked
   /// around the same time stay interchangeable.
@@ -357,17 +403,23 @@ class CooldownEngine {
       );
     }).toList();
 
-    // One seeded draw per meal, taken in ascending id order — NOT in list
-    // order. The DAO sorts by name, so drawing in list order meant renaming
-    // a dish silently dealt every other meal a new lottery value. Drawing by
-    // id pins each meal's value to the seed: re-seeding with the same day +
-    // shuffleSeed replays the same values, so browsing never moves the cards
-    // — only a refresh does. Within a band the draw decides; across bands
-    // quality still rules.
-    final draw = Random(app_date_utils.daysSinceEpoch(today) + shuffleSeed * 7919);
-    final ordered = [...candidates]..sort((a, b) => a.id.compareTo(b.id));
+    // One seeded value per meal, hashed from (id, day, seed) alone. It used to be
+    // a `Random` stream advanced in ascending id order, which pinned a meal's
+    // value to *how many smaller ids happened to be in the pool*: the DAO sorts
+    // by name, so a rename was harmless, but logging today's lunch removed a
+    // candidate and shifted every draw after it — re-dealing the two cards the
+    // user was not touching, and again on every add, delete or relaxation-level
+    // change. A hash has no stream to shift: the pool can churn and each meal
+    // keeps its number for the day. Within a band the value decides; across
+    // bands quality still rules.
+    final dayEpoch = app_date_utils.daysSinceEpoch(today);
     final lottery = <int, double>{
-      for (final candidate in ordered) candidate.id: draw.nextDouble(),
+      for (final candidate in candidates)
+        candidate.id: _lotteryFor(
+          id: candidate.id,
+          dayEpoch: dayEpoch,
+          seed: shuffleSeed,
+        ),
     };
 
     scored.sort((a, b) {
