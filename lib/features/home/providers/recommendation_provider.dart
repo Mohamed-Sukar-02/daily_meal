@@ -507,9 +507,6 @@ class RecommendationController extends AsyncNotifier<void> {
     }
   }
 
-  Future<void> undoHistoryEntry(int historyEntryId) =>
-      undoLastCookingLog(historyEntryId);
-
   /// Toggles a meal's favourite flag (heart button on the home cards).
   ///
   /// The caller fires this without awaiting (the heart animates instantly and

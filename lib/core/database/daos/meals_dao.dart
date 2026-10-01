@@ -51,24 +51,6 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
         .watch();
   }
 
-  Stream<List<Meal>> watchFilterByTag({
-    ProteinType? proteinType,
-    CarbsType? carbsType,
-    MealCategory? category,
-    bool? isFridaySpecial,
-    bool? isFavorite,
-    int? maxPrepTimeMinutes,
-  }) {
-    return _buildFilteredQuery(
-      proteinType: proteinType,
-      carbsType: carbsType,
-      category: category,
-      isFridaySpecial: isFridaySpecial,
-      isFavorite: isFavorite,
-      maxPrepTimeMinutes: maxPrepTimeMinutes,
-    ).watch();
-  }
-
   Future<List<Meal>> getAllMeals() {
     return (select(meals)
           ..orderBy([
@@ -116,24 +98,6 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
             (t) => OrderingTerm.desc(t.id),
           ]))
         .get();
-  }
-
-  Future<List<Meal>> filterByTag({
-    ProteinType? proteinType,
-    CarbsType? carbsType,
-    MealCategory? category,
-    bool? isFridaySpecial,
-    bool? isFavorite,
-    int? maxPrepTimeMinutes,
-  }) {
-    return _buildFilteredQuery(
-      proteinType: proteinType,
-      carbsType: carbsType,
-      category: category,
-      isFridaySpecial: isFridaySpecial,
-      isFavorite: isFavorite,
-      maxPrepTimeMinutes: maxPrepTimeMinutes,
-    ).get();
   }
 
   Future<int> insertMeal(MealsCompanion meal) async {
@@ -424,53 +388,5 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
         updatedAt: Value(DateTime.now()),
       ),
     );
-  }
-
-  SimpleSelectStatement<$MealsTable, Meal> _buildFilteredQuery({
-    String? query,
-    ProteinType? proteinType,
-    CarbsType? carbsType,
-    MealCategory? category,
-    bool? isFridaySpecial,
-    bool? isFavorite,
-    int? maxPrepTimeMinutes,
-  }) {
-    final statement = select(meals);
-    statement.where((t) {
-      final predicates = <Expression<bool>>[];
-      if (query != null && query.trim().isNotEmpty) {
-        final normalized = normalizeArabic(query.trim());
-        final escaped = escapeLikePattern(normalized);
-        final pattern = '%$escaped%';
-        predicates.add(coalesce<String>([t.nameNormalized, t.name]).like(pattern, escapeChar: '\\'));
-      }
-      if (proteinType != null) {
-        predicates.add(t.proteinType.equalsValue(proteinType));
-      }
-      if (carbsType != null) {
-        predicates.add(t.carbsType.equalsValue(carbsType));
-      }
-      if (category != null) {
-        predicates.add(t.category.equalsValue(category));
-      }
-      if (isFridaySpecial != null) {
-        predicates.add(t.isFridaySpecial.equals(isFridaySpecial));
-      }
-      if (isFavorite != null) {
-        predicates.add(t.isFavorite.equals(isFavorite));
-      }
-      if (maxPrepTimeMinutes != null) {
-        predicates.add(t.prepTime.isSmallerOrEqualValue(maxPrepTimeMinutes));
-      }
-
-      if (predicates.isEmpty) return const Constant(true);
-      return Expression.and(predicates);
-    });
-
-    statement.orderBy([
-      (t) => OrderingTerm.asc(t.name),
-      (t) => OrderingTerm.desc(t.id),
-    ]);
-    return statement;
   }
 }
