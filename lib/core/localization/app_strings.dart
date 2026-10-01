@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../database/meal_log_keys.dart';
+
 /// Single source of truth for every user-facing string in the app.
 ///
 /// Rules enforced across the codebase:
@@ -194,7 +196,13 @@ class AppStrings {
       ? 'Logged skipped meal.'
       : 'تم تسجيل تفويت وجبة الغداء.';
   String get notCookingToday => isEn ? 'Not cooking today?' : 'مش هتطبخ النهاردة؟';
-  String get cookThis => 'Cook This';
+
+  /// The home card's primary action. It had no Arabic branch, so the one button
+  /// that commits the day rendered in English on an otherwise Arabic screen
+  /// (the audit's i18n sweep found exactly three display getters without an
+  /// `isEn` branch: this, `defaultUserName`, and the `EN`/`AR` switch labels —
+  /// the last pair being the only ones where a fixed string is correct).
+  String get cookThis => isEn ? 'Cook This' : 'اطبخها النهاردة';
   String get eatYesterdayLeftovers => isEn ? 'Eat yesterday\'s leftovers' : 'هاكل بواقي امبارح';
   String get orderTakeout => isEn ? 'Order takeout' : 'هطلب من برا';
   String get confirmRefreshTitle => isEn ? 'Change suggestions' : 'تغيير الاقتراحات';
@@ -223,8 +231,16 @@ class AppStrings {
   String get leftoverSuccessGeneral => isEn
       ? 'Done, but there is no record of yesterday\'s meal.'
       : 'تم ولكن لا يوجد سجل بأكلة أمس.';
-  String get leftoverPrefix => isEn ? '(Leftovers)' : '(بقايا امبارح)';
-  String get leftoverOnly => isEn ? 'Leftovers' : 'بقايا امبارح';
+  /// The label a leftovers log row is drawn with, built from the *stored* name
+  /// of whatever is being reheated.
+  ///
+  /// This wording used to be produced at write time and saved into
+  /// `MealHistory.mealName` — display copy inside a snapshot column, which is
+  /// why a row kept its old language after a locale switch. It is composed here
+  /// now, from the entry kind plus the plain meal name (`MealLogKeys`).
+  String leftoverEntryName(String mealName) => isEn
+      ? 'Leftovers of $mealName'
+      : 'بواقي $mealName';
 
   // Single card reroll
   String get rerollMeal => isEn ? 'Change this meal' : 'غيّر الأكلة دي';
@@ -684,7 +700,7 @@ class AppStrings {
   String get emailField => isEn ? 'Email' : 'البريد الإلكتروني';
   String get chooseAvatar => isEn ? 'Choose Avatar' : 'اختر الصورة الرمزية';
   String get profileSaved => isEn ? 'Profile saved' : 'تم حفظ الملف الشخصي';
-  String get defaultUserName => 'User name';
+  String get defaultUserName => isEn ? 'User name' : 'اسم المستخدم';
   String get defaultUserEmail => 'user@example.com';
   String get genderField => isEn ? 'Gender' : 'النوع';
   String get genderMale => isEn ? 'Male' : 'ذكر';
@@ -942,27 +958,38 @@ class AppStrings {
 
   /// Localized display name for a history entry's stored `mealName`.
   ///
-  /// Takeout/skipped rows persist a language-neutral key (`'takeout'` /
-  /// `'skipped'`), so the raw DB string is not user-facing copy. This resolves
-  /// those keys — and legacy rows that stored Arabic directly — to the current
-  /// locale. Genuine cooked/leftover meal names pass through unchanged.
+  /// Takeout/skipped rows persist a language-neutral key (`MealLogKeys`), so the
+  /// raw DB string is not user-facing copy. This resolves those keys — and legacy
+  /// rows that stored Arabic directly — to the current locale. Genuine cooked
+  /// names pass through unchanged; leftover names are decorated, because the
+  /// entry kind is the only thing separating reheated "كشري" from cooked "كشري"
+  /// and the History row draws no badge for it.
   String historyEntryDisplayName({
     required String mealName,
     required String entryType,
   }) {
     final lowerType = entryType.toLowerCase();
     final lowerName = mealName.trim().toLowerCase();
-    if (lowerType == 'takeout' ||
-        lowerName == 'takeout' ||
+    if (lowerType == MealLogKeys.takeout ||
+        lowerName == MealLogKeys.takeout ||
         lowerName == 'خارج البيت' ||
         lowerName == 'أكل من بره' ||
         lowerName == 'تيك أواي') {
       return isEn ? 'Takeout' : 'أكل من بره';
     }
-    if (lowerType == 'skipped' ||
-        lowerName == 'skipped' ||
+    if (lowerType == MealLogKeys.skipped ||
+        lowerName == MealLogKeys.skipped ||
         lowerName == 'تفويت الوجبة') {
       return isEn ? 'Skipped Meal' : 'تفويت الوجبة';
+    }
+    if (lowerType == MealLogKeys.leftover) {
+      // Rows written before the label moved out of the data still carry it, so
+      // strip it first — otherwise the row reads "بواقي (بقايا امبارح) كشري".
+      final source = MealLogKeys.stripLegacyLeftoverLabel(mealName);
+      if (source.isEmpty || source.toLowerCase() == MealLogKeys.leftover) {
+        return leftover;
+      }
+      return leftoverEntryName(source);
     }
     return mealName;
   }

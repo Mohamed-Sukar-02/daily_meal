@@ -13,11 +13,6 @@ final mealHistoryWithMealProvider = StreamProvider<List<MealHistoryWithMeal>>((r
   return dao.watchHistoryWithMeal();
 });
 
-final latestCookedMealProvider = StreamProvider<MealHistoryData?>((ref) {
-  final dao = ref.watch(mealHistoryDaoProvider);
-  return dao.watchLatestCookedMeal();
-});
-
 class HistoryController extends AsyncNotifier<void> {
   @override
   FutureOr<void> build() {}

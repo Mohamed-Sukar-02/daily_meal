@@ -1,5 +1,7 @@
 import 'package:drift/drift.dart';
+import '../../utils/app_date_utils.dart' as app_date_utils;
 import '../app_database.dart';
+import '../meal_log_keys.dart';
 
 part 'meal_history_dao.g.dart';
 
@@ -46,17 +48,6 @@ class MealHistoryDao extends DatabaseAccessor<AppDatabase> with _$MealHistoryDao
     });
   }
 
-  /// Reactive stream for latest cooked meal
-  Stream<MealHistoryData?> watchLatestCookedMeal() {
-    return (select(mealHistory)
-          ..orderBy([
-            (t) => OrderingTerm.desc(t.cookedAt),
-            (t) => OrderingTerm.desc(t.id),
-          ])
-          ..limit(1))
-        .watchSingleOrNull();
-  }
-
   /// Whether the log holds anything at all.
   ///
   /// Separate from [getAllHistory] because the callers ask a yes/no question,
@@ -101,20 +92,35 @@ class MealHistoryDao extends DatabaseAccessor<AppDatabase> with _$MealHistoryDao
       ])).get();
   }
 
-  /// Fetch the latest single cooked meal entry
-  Future<MealHistoryData?> getLatestCookedMeal({DateTime? beforeDate}) {
-    final query = select(mealHistory)
-      ..where((t) => t.entryType.equalsValue(MealEntryType.cooked));
-    if (beforeDate != null) {
-      query.where((t) => t.cookedAt.isSmallerOrEqualValue(beforeDate));
-    }
-    query
-      ..orderBy([
-        (t) => OrderingTerm.desc(t.cookedAt),
-        (t) => OrderingTerm.desc(t.id),
-      ])
-      ..limit(1);
-    return query.getSingleOrNull();
+  /// The most recent cooked meal that can honestly be called *leftovers*.
+  ///
+  /// Two bounds, and both are the point of the method:
+  ///  * [withinDays] — a reheat claim is about the recent past. The query this
+  ///    replaces asked for the latest cooked row with no window at all, so a
+  ///    meal cooked three weeks ago was offered as "yesterday's leftovers", and
+  ///    logging it today blocked that meal again for a whole new cooldown window.
+  ///  * strictly before [referenceDate]'s own local day — lunch cooked this
+  ///    morning is not tonight's leftovers.
+  ///
+  /// Leftovers are deliberately NOT screened against the cooldown windows: the
+  /// whole idea of the entry is eating something the log already holds.
+  Future<MealHistoryData?> getRecentLeftoverSource({
+    int withinDays = 1,
+    DateTime? referenceDate,
+  }) {
+    final ref = referenceDate ?? DateTime.now();
+    final today = app_date_utils.toLocalDay(ref);
+    final cutoff = today.subtract(Duration(days: withinDays));
+    return (select(mealHistory)
+          ..where((t) => t.entryType.equalsValue(MealEntryType.cooked))
+          ..where((t) => t.cookedAt.isBiggerOrEqualValue(cutoff))
+          ..where((t) => t.cookedAt.isSmallerValue(today))
+          ..orderBy([
+            (t) => OrderingTerm.desc(t.cookedAt),
+            (t) => OrderingTerm.desc(t.id),
+          ])
+          ..limit(1))
+        .getSingleOrNull();
   }
 
   /// Log a cooked meal with full snapshot fields
@@ -172,7 +178,7 @@ class MealHistoryDao extends DatabaseAccessor<AppDatabase> with _$MealHistoryDao
     return logMeal(
       // Language-neutral key, not display copy — resolved via
       // AppStrings.historyEntryDisplayName so switching language localizes it.
-      mealName: 'takeout',
+      mealName: MealLogKeys.takeout,
       proteinType: ProteinType.none,
       carbsType: CarbsType.none,
       cookedAt: cookedAt ?? DateTime.now(),
@@ -183,7 +189,7 @@ class MealHistoryDao extends DatabaseAccessor<AppDatabase> with _$MealHistoryDao
 
   Future<int> logSkippedMeal({DateTime? cookedAt, String? notes}) {
     return logMeal(
-      mealName: 'skipped',
+      mealName: MealLogKeys.skipped,
       proteinType: ProteinType.none,
       carbsType: CarbsType.none,
       cookedAt: cookedAt ?? DateTime.now(),

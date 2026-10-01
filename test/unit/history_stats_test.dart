@@ -100,11 +100,93 @@ void main() {
       expect(ar.historyEntryDisplayName(mealName: 'أكل من بره', entryType: 'cooked'), 'أكل من بره');
     });
 
-    test('genuine meal names pass through unchanged', () {
+    test('genuine cooked names pass through unchanged', () {
       expect(en.historyEntryDisplayName(mealName: 'Molokhia', entryType: 'cooked'), 'Molokhia');
       expect(ar.historyEntryDisplayName(mealName: 'ملوخية بالفراخ', entryType: 'cooked'), 'ملوخية بالفراخ');
       // Pass-through returns the raw stored value, not a trimmed one.
-      expect(en.historyEntryDisplayName(mealName: '  Baked Kibda  ', entryType: 'leftover'), '  Baked Kibda  ');
+      expect(en.historyEntryDisplayName(mealName: '  Baked Kibda  ', entryType: 'cooked'), '  Baked Kibda  ');
+    });
+
+    // A leftovers row stores the *plain* name of the dish being reheated plus the
+    // `leftover` kind; the label is composed at render time, so it follows the
+    // language the user reads in rather than the language they tapped in.
+    test('leftover rows are decorated from the stored kind', () {
+      expect(en.historyEntryDisplayName(mealName: 'كشري', entryType: 'leftover'), 'Leftovers of كشري');
+      expect(ar.historyEntryDisplayName(mealName: 'كشري', entryType: 'leftover'), 'بواقي كشري');
+    });
+
+    test('legacy leftover rows with a baked-in label are normalised, not doubled', () {
+      expect(ar.historyEntryDisplayName(mealName: '(بقايا امبارح) كشري', entryType: 'leftover'), 'بواقي كشري');
+      expect(en.historyEntryDisplayName(mealName: '(Leftovers) Molokhia', entryType: 'leftover'), 'Leftovers of Molokhia');
+      expect(ar.historyEntryDisplayName(mealName: 'بقايا امبارح', entryType: 'leftover'), 'بواقي أكل');
+    });
+
+    test('a leftovers row with no source dish reads as plain leftovers', () {
+      expect(ar.historyEntryDisplayName(mealName: 'leftover', entryType: 'leftover'), 'بواقي أكل');
+      expect(en.historyEntryDisplayName(mealName: 'leftover', entryType: 'leftover'), 'Leftover');
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // The reheat button used to ask for "the latest cooked row, whenever that was".
+  // ---------------------------------------------------------------------------
+  group('MealHistoryDao.getRecentLeftoverSource', () {
+    late AppDatabase db;
+    setUp(() => db = AppDatabase(NativeDatabase.memory()));
+    tearDown(() async => db.close());
+
+    Future<void> logCooked(String name, DateTime at) => db.mealHistoryDao.logMeal(
+          mealName: name,
+          proteinType: ProteinType.chicken,
+          carbsType: CarbsType.rice,
+          cookedAt: at,
+        );
+
+    // The reference day is a Friday in Oct 2026; the day math is calendar-based,
+    // so only the local-day boundaries below should matter.
+    final reference = DateTime(2026, 10, 2, 20, 0);
+
+    test('a meal cooked weeks ago is not offered as leftovers', () async {
+      await logCooked('Molokhia from last month', DateTime(2026, 9, 5, 14));
+      final source = await db.mealHistoryDao
+          .getRecentLeftoverSource(withinDays: 2, referenceDate: reference);
+      expect(source, isNull);
+    });
+
+    test('the most recent eligible day wins inside the window', () async {
+      await logCooked('Two days ago', DateTime(2026, 9, 30, 13));
+      await logCooked('Yesterday lunch', DateTime(2026, 10, 1, 13));
+      final source = await db.mealHistoryDao
+          .getRecentLeftoverSource(withinDays: 2, referenceDate: reference);
+      expect(source?.mealName, 'Yesterday lunch');
+    });
+
+    test('what was cooked today is never returned as leftovers', () async {
+      await logCooked('Today breakfast', DateTime(2026, 10, 2, 8));
+      await logCooked('Yesterday lunch', DateTime(2026, 10, 1, 13));
+      final source = await db.mealHistoryDao
+          .getRecentLeftoverSource(withinDays: 2, referenceDate: reference);
+      expect(source?.mealName, 'Yesterday lunch');
+    });
+
+    test('a row logged at exactly midnight of today is still not leftovers', () async {
+      await logCooked('Today at midnight', DateTime(2026, 10, 2, 0, 0));
+      final source = await db.mealHistoryDao
+          .getRecentLeftoverSource(withinDays: 2, referenceDate: reference);
+      expect(source, isNull);
+    });
+
+    test('only cooked rows qualify — a leftovers log is not reheated again', () async {
+      await db.mealHistoryDao.logMeal(
+        mealName: 'Old reheat',
+        proteinType: ProteinType.chicken,
+        carbsType: CarbsType.rice,
+        cookedAt: DateTime(2026, 10, 1, 13),
+        entryType: MealEntryType.leftover,
+      );
+      final source = await db.mealHistoryDao
+          .getRecentLeftoverSource(withinDays: 2, referenceDate: reference);
+      expect(source, isNull);
     });
   });
 

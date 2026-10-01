@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../core/database/meal_log_keys.dart';
 import '../../../core/database/database_providers.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/navigation/nav_lifecycle.dart';
@@ -622,27 +623,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
     );
   }
 
+  /// Log tonight's reheat of a meal the log already holds.
+  ///
+  /// The window is two days, and today is excluded: this button claims
+  /// "بواقي امبارح", and the lookup it replaced asked for the latest cooked row
+  /// with no bound at all — so a dish cooked three weeks ago was reheated as if
+  /// it were yesterday's, and the fresh row blocked it again for a whole new
+  /// cooldown window. A meal logged this morning was also offered back tonight.
+  ///
+  /// The row stores the *plain* meal name and `entryType: leftover`. The "leftovers"
+  /// wording is applied when the row is drawn
+  /// (`AppStrings.historyEntryDisplayName`), the same way `takeout` persists a key
+  /// rather than a sentence: display copy in a snapshot column cannot follow the
+  /// user's language.
   Future<void> _handleEatYesterdayLeftover(BuildContext context, WidgetRef ref) async {
     final controller = ref.read(recommendationControllerProvider.notifier);
     final historyDao = ref.read(mealHistoryDaoProvider);
     final strings = AppStrings.of(context);
-    final latestMeal = await historyDao.getLatestCookedMeal();
+    final source = await historyDao.getRecentLeftoverSource(withinDays: 2);
     if (!context.mounted) return;
 
-    int historyEntryId;
-    String message;
+    final int historyEntryId;
+    final String message;
 
-    if (latestMeal != null) {
+    if (source != null) {
       historyEntryId = await controller.markLeftoverEntry(
-        mealId: latestMeal.mealId,
-        mealName: '${strings.leftoverPrefix} ${latestMeal.mealName}',
-        proteinType: latestMeal.proteinType,
-        carbsType: latestMeal.carbsType,
+        mealId: source.mealId,
+        mealName: source.mealName,
+        proteinType: source.proteinType,
+        carbsType: source.carbsType,
       );
-      message = strings.leftoverSuccess(latestMeal.mealName);
+      message = strings.leftoverSuccess(source.mealName);
     } else {
       historyEntryId = await controller.markLeftoverEntry(
-        mealName: strings.leftoverOnly,
+        mealName: MealLogKeys.leftover,
       );
       message = strings.leftoverSuccessGeneral;
     }
