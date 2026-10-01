@@ -4,6 +4,7 @@ import 'package:daily_meal/core/database/app_database.dart';
 import 'package:daily_meal/core/database/database_providers.dart';
 import 'package:daily_meal/core/localization/app_strings.dart';
 import 'package:daily_meal/core/services/notification_service.dart';
+import 'package:daily_meal/features/home/providers/planned_meal_provider.dart';
 import 'package:daily_meal/features/settings/providers/settings_providers.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,11 +21,13 @@ class _ScheduledReminder {
     required this.hour,
     required this.minute,
     required this.strings,
+    required this.skipRestOfToday,
   });
 
   final int hour;
   final int minute;
   final AppStrings strings;
+  final bool skipRestOfToday;
 }
 
 class _FakeNotificationService implements NotificationService {
@@ -46,12 +49,18 @@ class _FakeNotificationService implements NotificationService {
     required int hour,
     required int minute,
     AppStrings strings = const AppStrings(Locale('ar')),
+    bool skipRestOfToday = false,
   }) async {
     if (failNextSchedule) {
       throw _ScheduleFailure();
     }
     scheduled.add(
-      _ScheduledReminder(hour: hour, minute: minute, strings: strings),
+      _ScheduledReminder(
+        hour: hour,
+        minute: minute,
+        strings: strings,
+        skipRestOfToday: skipRestOfToday,
+      ),
     );
   }
 
@@ -195,6 +204,95 @@ void main() {
       expect(settings.notificationsEnabled, isFalse);
       expect(notifications.cancelCalls, 1);
       expect(notifications.scheduled, isEmpty);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // The reminder's one job is to ask "what are you cooking today?", so a day
+  // that already has an answer must not be asked again. The flag under test is
+  // how that is expressed: the OS holds a single repeating slot and nothing runs
+  // at delivery time, so the only lever is which day the slot starts firing on.
+  // ---------------------------------------------------------------------------
+
+  group('an answered day is not nagged', () {
+    test('nothing decided today leaves the reminder armed for today', () async {
+      await db.appSettingsDao.toggleNotifications(true);
+
+      await controller().rescheduleDailyReminder();
+
+      expect(notifications.scheduled, hasLength(1));
+      expect(notifications.scheduled.single.skipRestOfToday, isFalse);
+    });
+
+    test('the switch being off keeps the caller in charge of silence', () async {
+      await db.mealHistoryDao.logTakeoutMeal();
+
+      await controller().rescheduleDailyReminder();
+
+      expect(
+        notifications.scheduled,
+        isEmpty,
+        reason: 'a disabled reminder must not be armed by the day-answered check, '
+            'which runs after the switch — not instead of it',
+      );
+      expect(notifications.cancelCalls, 0);
+    });
+
+    test('a log row for today silences the rest of the day', () async {
+      await db.appSettingsDao.toggleNotifications(true);
+
+      // A takeout row answers the question as much as a cooked one does: the
+      // day was decided, the decision was "not cooking".
+      await db.mealHistoryDao.logTakeoutMeal();
+      await controller().rescheduleDailyReminder();
+
+      expect(notifications.scheduled.last.skipRestOfToday, isTrue);
+    });
+
+    test('a plan counts as an answer; a plan pointing at a deleted dish does not',
+        () async {
+      await db.appSettingsDao.toggleNotifications(true);
+      final meal = (await db.mealsDao.getAllMeals()).first;
+
+      await PlannedMeal.plan(meal.id);
+      await controller().rescheduleDailyReminder();
+      expect(notifications.scheduled.last.skipRestOfToday, isTrue,
+          reason: 'picking a dish is the decision the reminder exists to prompt');
+
+      await db.mealsDao.deleteMeal(meal.id);
+      await controller().rescheduleDailyReminder();
+      expect(
+        notifications.scheduled.last.skipRestOfToday,
+        isFalse,
+        reason: 'a dangling id is not an answer — and Home hides the banner for '
+            'the same reason, so the two readers must agree',
+      );
+    });
+
+    test('a row from yesterday is not an answer for today', () async {
+      await db.appSettingsDao.toggleNotifications(true);
+
+      await db.mealHistoryDao.logTakeoutMeal(
+        cookedAt: DateTime.now().subtract(const Duration(days: 1, hours: 2)),
+      );
+      await controller().rescheduleDailyReminder();
+
+      expect(notifications.scheduled.last.skipRestOfToday, isFalse);
+    });
+
+    test('withdrawing the answer brings the question back', () async {
+      await db.appSettingsDao.toggleNotifications(true);
+      final meal = (await db.mealsDao.getAllMeals()).first;
+      final historyId = await db.mealHistoryDao.logCookedMeal(meal);
+
+      await controller().rescheduleDailyReminder();
+      expect(notifications.scheduled.last.skipRestOfToday, isTrue);
+
+      // The per-row delete in History: the day is open again, so today's alarm
+      // is re-armed if its minute has not passed yet.
+      await db.mealHistoryDao.deleteHistoryEntry(historyId);
+      await controller().rescheduleDailyReminder();
+      expect(notifications.scheduled.last.skipRestOfToday, isFalse);
     });
   });
 }

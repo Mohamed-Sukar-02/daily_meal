@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/database/app_database.dart';
 import '../../../core/utils/app_date_utils.dart' as app_date_utils;
 import 'recommendation_provider.dart';
 
@@ -91,6 +92,33 @@ final plannedMealIdProvider = FutureProvider<int?>((ref) {
   ref.watch(currentTimeProvider);
   return PlannedMeal.current();
 });
+
+/// Whether today still has a question to ask — which is the whole condition
+/// behind suppressing the daily reminder.
+///
+/// Two answers count. A log row says the day was settled (in either direction:
+/// cooked, or "not cooking — takeout"). A *plan* counts too, and that is the
+/// deliberate product call behind this feature: the reminder exists to make the
+/// user pick, and once they have picked, repeating the question for the rest of
+/// the day is noise even though nothing has been cooked yet.
+///
+/// A plan pointing at a deleted meal does not count: it is not an answer, it is
+/// a leftover pointer, and Home hides the banner for it. Checking the row exists
+/// is cheaper than it looks (`getMealById` is a primary-key lookup) and it keeps
+/// the two readers of the plan agreeing on what a stale one is worth.
+Future<bool> isTodayAlreadyAnswered(AppDatabase db) async {
+  try {
+    if (await db.mealHistoryDao.hasAnyEntryToday()) return true;
+    final plannedId = await PlannedMeal.current();
+    if (plannedId == null) return false;
+    return await db.mealsDao.getMealById(plannedId) != null;
+  } catch (_) {
+    // Fail towards the reminder, not away from it: a nag that should have been
+    // quiet is a nuisance, a silence that should have been a nag loses the one
+    // nudge this feature exists to provide.
+    return false;
+  }
+}
 
 /// Retire today's plan because the day has been answered by a real log row.
 ///

@@ -14,6 +14,7 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/settings/providers/settings_providers.dart';
 import 'features/notifications/providers/notifications_provider.dart';
+import 'features/home/providers/planned_meal_provider.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/notification_sync_service.dart';
 import 'core/services/avatar_service.dart';
@@ -100,14 +101,20 @@ class _DailyMealAppState extends ConsumerState<DailyMealApp> {
       MealImageLocalizer.instance.backfillVaultImages(db);
       AppConfigSyncService.instance.init(db: db);
       final locale = ref.read(localeProvider);
-      db.appSettingsDao.getSettings().then((settings) {
+      db.appSettingsDao.getSettings().then((settings) async {
         if (!mounted) return;
         // Re-arm the daily alarm on launch when the user has it enabled.
         if (settings.notificationsEnabled) {
+          // The launch is also where a quiet day is re-checked: the reminder is a
+          // repeating OS slot, so a day that was answered yesterday must not
+          // reappear today just because the app was opened. `isTodayAlreadyAnswered`
+          // asks about *today*, which is why a cold start still arms the nag when
+          // the new day has no answer yet.
           NotificationService.instance.scheduleDailyNotification(
             hour: settings.notificationHour,
             minute: settings.notificationMinute,
             strings: AppStrings(locale),
+            skipRestOfToday: await isTodayAlreadyAnswered(db),
           );
         }
         // Admin announcements only surface while notifications are enabled.

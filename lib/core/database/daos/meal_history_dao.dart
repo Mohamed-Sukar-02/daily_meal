@@ -57,6 +57,26 @@ class MealHistoryDao extends DatabaseAccessor<AppDatabase> with _$MealHistoryDao
     return one != null;
   }
 
+  /// Whether the log holds anything at all for [referenceDate]'s own local day.
+  ///
+  /// Any entry kind counts — cooked, leftover, takeout, skip. The question asked
+  /// of it is not "did this dish get made" but "has today been answered", and
+  /// "not cooking, ordering in" answers it as much as a cooked row does.
+  ///
+  /// Day-granular bounds for the same reason the cooldown windows are: the row's
+  /// timestamp is stored as a local `DateTime`, and everything the app compares
+  /// against is normalised through `toLocalDay`.
+  Future<bool> hasAnyEntryToday({DateTime? referenceDate}) async {
+    final day = app_date_utils.toLocalDay(referenceDate ?? DateTime.now());
+    final one = await (select(mealHistory)
+          ..where((t) => t.cookedAt.isBiggerOrEqualValue(day))
+          ..where(
+              (t) => t.cookedAt.isSmallerValue(day.add(const Duration(days: 1))))
+          ..limit(1))
+        .getSingleOrNull();
+    return one != null;
+  }
+
   /// Snapshot of all history entries
   Future<List<MealHistoryData>> getAllHistory() {
     return (select(mealHistory)

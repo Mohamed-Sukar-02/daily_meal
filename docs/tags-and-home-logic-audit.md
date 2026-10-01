@@ -22,6 +22,12 @@ checked.
 > drawn**, never hidden at 0. Existing databases are left alone: the `from < 8`
 > migration still writes 0, because a window nobody ever saw is not permission to
 > start excluding dishes. 0 remains a legal, visible value = "no exclusion".
+> Precision on the "undiscoverable" wording, which was overstated at first: the row
+> is hidden on the Settings *page*, but `CooldownDetailsSheet` (behind “Edit”) lists all
+> four proteins with a switch, so the rule was reachable by a user who went looking —
+> and that sheet already offered `defaultDays: 3` when veggie was switched on, which is
+> where the number above comes from. What the gate cost was the everyday path; what the
+> new default fixes is the case where nobody goes looking.
 >
 > Two findings from the first draft are **now landed upstream**: `e8820c9` routes `legume`
 > and `dairy` into `meatlessCooldownDays` (the behavioural axis is wider than the old
@@ -430,12 +436,19 @@ stay as-is; "سجل" performs today's `markCookedToday`. One flag, one banner, n
    `markSkipped`/`logSkippedMeal` and `HistoryController.deleteHistoryEntry` — P1 gives
    them their callers.
 
-**P1 — decide vs eat, no migration (the change this audit exists for).** Tapping a card
-sets `plannedMealId` (prefs) and Home shows the decided state with its own un-plan control;
-`Cook This` moves inside the details sheet, asks once, and is the only thing that writes
-history; History gains a per-entry delete (the controller method already exists,
-`history_providers.dart:65`); "مش هتطبخ النهاردة" wires the dead `skipped` type; the daily
-alarm skips a day that is already decided. See `docs/p1-p2-plan.md` for files and tests.
+**P1 — decide vs eat, no migration (the change this audit exists for).** *Landed as the
+shrunken version the owner chose: three items, nothing else — `a071b0a` (plan + banner),
+`842676d` (per-row delete), and the reminder suppression in the follow-up commit.*
+Tapping a card sets a plan in prefs, Home shows it with a `تراجع` control, and a logged day
+retires it; History can delete one row with the undo in the toast; the daily alarm starts
+from tomorrow on a day that is already answered (a plan or any log row — `skipRestOfToday`
+on `scheduleDailyNotification`, because a scheduled OS notification has no delivery-time
+hook to filter in).
+
+**Not taken from the original plan, on purpose:** no confirmation dialog on the CTA (the
+undo snackbar already covers a wrong tap), no new table, no migration, and "مش هتطبخ
+النهاردة" was left un-wired — `markSkipped` still has no button, which is a product gap
+rather than a defect in this change.
 
 **P2 — tag model (approved subset, schema-free).** Rename the meatless rows generically;
 make `customCooldownDays` real (read first in `_resolveSpecificCooldown`, folded into the

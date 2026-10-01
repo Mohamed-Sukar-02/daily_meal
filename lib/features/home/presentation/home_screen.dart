@@ -10,7 +10,9 @@ import '../../../core/navigation/nav_lifecycle.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/app_icons.dart';
 import '../../../core/widgets/app_toast.dart';
+import '../../history/providers/history_providers.dart';
 import '../../meals/presentation/quick_meal_view.dart';
+import '../../settings/providers/settings_providers.dart';
 import '../../vault/presentation/widgets/delete_meal_dialog.dart';
 import '../../vault/presentation/widgets/meal_details_sheet.dart';
 import '../../vault/presentation/widgets/quick_add_sheet.dart';
@@ -61,6 +63,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
   @override
   Widget build(BuildContext context) {
     watchNavReentry();
+    // The daily reminder asks one question — what are you cooking today? — so a
+    // day that already has an answer should not be asked again, and an answer
+    // withdrawn (an undo, the per-row delete in History) should put the question
+    // back. Every one of those is a history write or a plan flip, so the two
+    // watches below are the only place that has to know about it: no log call,
+    // the History screen, or the plan's own handlers need to remember to re-arm.
+    //
+    // Home is a tab that stays alive inside the shell, which is also the limit of
+    // this: a decision changed while Home has never been built is picked up by the
+    // same check on the next launch (see `main.dart`).
+    ref.listen(mealHistoryProvider, (_, _) => _resyncDailyReminder());
+    ref.listen(plannedMealIdProvider, (_, _) => _resyncDailyReminder());
+
     final recsAsync = ref.watch(todayRecommendationsProvider);
 
     return Scaffold(
@@ -690,6 +705,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
           ? strings.rerollNoAlternative
           : strings.rerollReplaced(replacement.name),
     );
+  }
+
+  void _resyncDailyReminder() {
+    // Not awaited on purpose: `rescheduleDailyReminder` handles its own failures,
+    // and the OS call behind it must not delay the toast that confirms the tap.
+    ref.read(settingsControllerProvider.notifier).rescheduleDailyReminder();
   }
 
   Future<void> _handleCookedToday(BuildContext context, WidgetRef ref, Meal meal) async {

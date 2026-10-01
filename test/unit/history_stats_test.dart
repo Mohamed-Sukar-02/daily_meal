@@ -345,4 +345,49 @@ void main() {
       expect(back.notes, 'بالسرسمة');
     });
   });
+
+  // Bounds for the "has today been answered?" test the reminder relies on. The
+  // day edges are the whole risk: a window that leaks into yesterday silences a
+  // morning reminder that was earned, and one that leaks into tomorrow answers a
+  // day that has not happened.
+
+  group('MealHistoryDao.hasAnyEntryToday', () {
+    late AppDatabase db;
+    setUp(() => db = AppDatabase(NativeDatabase.memory()));
+    tearDown(() async => db.close());
+
+    final today = DateTime(2026, 10, 2, 22, 5);
+
+    test('an empty log answers nothing', () async {
+      expect(await db.mealHistoryDao.hasAnyEntryToday(referenceDate: today), isFalse);
+    });
+
+    test('a row one minute before midnight is not today', () async {
+      await db.mealHistoryDao.logSkippedMeal(cookedAt: DateTime(2026, 10, 1, 23, 59));
+
+      expect(await db.mealHistoryDao.hasAnyEntryToday(referenceDate: today), isFalse);
+    });
+
+    test('a row dated tomorrow does not answer today either', () async {
+      await db.mealHistoryDao.logTakeoutMeal(cookedAt: DateTime(2026, 10, 3, 0, 1));
+
+      expect(
+        await db.mealHistoryDao.hasAnyEntryToday(referenceDate: today),
+        isFalse,
+        reason: 'a future row must not swallow the reminder for a day nobody has '
+            'lived yet',
+      );
+    });
+
+    test('midnight itself belongs to its own day, and takeout counts', () async {
+      await db.mealHistoryDao.logSkippedMeal(cookedAt: DateTime(2026, 10, 2, 0, 0));
+
+      expect(
+        await db.mealHistoryDao.hasAnyEntryToday(referenceDate: today),
+        isTrue,
+        reason: 'a skip is an answer: the question was "what are you cooking '
+            'today", and "nothing" settles it',
+      );
+    });
+  });
 }

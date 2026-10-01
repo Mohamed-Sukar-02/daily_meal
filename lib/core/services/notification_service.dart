@@ -88,18 +88,35 @@ class NotificationService {
   /// channel labels shown in Android OS settings match the app UI. Channels are
   /// created once by the OS, so the first language after install is what
   /// survives in the settings screen until the channel is recreated.
+  /// [skipRestOfToday] is how an already-answered day goes quiet.
+  ///
+  /// The OS holds exactly one repeating slot for this reminder (id 0,
+  /// `matchDateTimeComponents.time`), and a scheduled notification cannot be
+  /// filtered as it is delivered — the app is not running at that moment, and
+  /// `flutter_local_notifications` offers no delivery-time hook for this kind of
+  /// notification. So "not today" cannot be a filter; it has to be the day the
+  /// slot first fires on. Re-arming with tomorrow as the floor keeps the daily
+  /// rhythm intact: the reminder is back the next day by itself, without the app
+  /// being opened again, and un-answering the day re-arms it for today if the
+  /// configured minute has not passed.
   Future<void> scheduleDailyNotification({
     required int hour,
     required int minute,
     AppStrings strings = const AppStrings(Locale('ar')),
+    bool skipRestOfToday = false,
   }) async {
     if (kIsWeb) return;
     await cancelNotification();
 
     final now = tz.TZDateTime.now(tz.local);
-    tz.TZDateTime scheduledDate = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
-    
-    if (scheduledDate.isBefore(now)) {
+    // The floor the first occurrence is measured from: today, or the day after
+    // when today has already been answered.
+    final floor =
+        skipRestOfToday ? now.add(const Duration(days: 1)) : now;
+    tz.TZDateTime scheduledDate =
+        tz.TZDateTime(tz.local, floor.year, floor.month, floor.day, hour, minute);
+
+    if (scheduledDate.isBefore(floor)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
 

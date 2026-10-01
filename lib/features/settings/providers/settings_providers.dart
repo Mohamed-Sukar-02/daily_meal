@@ -6,6 +6,12 @@ import '../../../core/database/database_providers.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/services/avatar_service.dart';
 import '../../../core/services/notification_service.dart';
+// The reminder's "is there anything left to ask today?" test lives with the plan
+// it consults. The import cycle this creates (home -> settings -> home) is a
+// cycle between *files*, not between providers: `plannedMealIdProvider` reads
+// prefs and the day ticker, never the settings controller, so nothing resolves
+// through the other half of the loop.
+import '../../home/providers/planned_meal_provider.dart';
 
 /// Identifies a per-protein cooldown rule.
 ///
@@ -200,6 +206,46 @@ class SettingsController extends AsyncNotifier<void> {
     }
   }
 
+  /// (Re-)arms the OS reminder so it matches both the settings *and* the day.
+  ///
+  /// One place owns this because the two inputs come apart: the settings decide
+  /// whether a reminder exists at all and at what minute, while the day decides
+  /// whether anything is left to ask (see [isTodayAlreadyAnswered]). Re-arming
+  /// for a language change at 18:00 must not hand the user back the 12:00 nag
+  /// they answered at lunch, and a caller that only knows about the switch cannot
+  /// get that right on its own.
+  ///
+  /// Returns without touching the OS slot while the switch is off — the callers
+  /// own the cancel path (and the rollback when scheduling fails), so silence
+  /// stays their decision rather than a side effect of this one.
+  Future<void> _armDailyReminder(AppSettingsData settings) async {
+    if (!settings.notificationsEnabled) return;
+    await ref.read(notificationServiceProvider).scheduleDailyNotification(
+          hour: settings.notificationHour,
+          minute: settings.notificationMinute,
+          strings: _stringsFor(settings),
+          skipRestOfToday: await isTodayAlreadyAnswered(
+            ref.read(appDatabaseProvider),
+          ),
+        );
+  }
+
+  /// Re-arm the reminder after the day's answer changed — a plan set or cleared,
+  /// a log written, a row deleted in History. Quiet while the day is settled, and
+  /// back for the rest of it as soon as the answer is withdrawn.
+  ///
+  /// Swallows its own failures, unlike the settings paths above: this is called
+  /// from the moment a meal gets logged, and a reminder that could not be
+  /// re-armed must not turn into an error in the middle of a success.
+  Future<void> rescheduleDailyReminder() async {
+    try {
+      final settings = await ref.read(appSettingsDaoProvider).getSettings();
+      await _armDailyReminder(settings);
+    } catch (err) {
+      debugPrint('Daily reminder re-arm skipped: $err');
+    }
+  }
+
   /// Updates application theme mode (System / Light / Dark).
   Future<void> updateThemeMode(AppThemeModePreference mode) async {
     state = const AsyncValue.loading();
@@ -223,13 +269,7 @@ class SettingsController extends AsyncNotifier<void> {
       // The scheduled OS reminder carries frozen title/body strings, so it
       // must be re-armed with the new language or it keeps firing the old copy.
       final settings = await dao.watchSettings().first;
-      if (settings.notificationsEnabled) {
-        await ref.read(notificationServiceProvider).scheduleDailyNotification(
-          hour: settings.notificationHour,
-          minute: settings.notificationMinute,
-          strings: _stringsFor(settings),
-        );
-      }
+      await _armDailyReminder(settings);
 
       state = const AsyncValue.data(null);
     } catch (err, st) {
@@ -246,14 +286,8 @@ class SettingsController extends AsyncNotifier<void> {
       await dao.updateNotificationTime(hour, minute);
       
       final settings = await dao.watchSettings().first;
-      if (settings.notificationsEnabled) {
-        await ref.read(notificationServiceProvider).scheduleDailyNotification(
-          hour: hour,
-          minute: minute,
-          strings: _stringsFor(settings),
-        );
-      }
-      
+      await _armDailyReminder(settings);
+
       state = const AsyncValue.data(null);
     } catch (err, st) {
       state = AsyncValue.error(err, st);
@@ -279,11 +313,7 @@ class SettingsController extends AsyncNotifier<void> {
         await dao.toggleNotifications(true);
         final settings = await dao.watchSettings().first;
         try {
-          await ref.read(notificationServiceProvider).scheduleDailyNotification(
-            hour: settings.notificationHour,
-            minute: settings.notificationMinute,
-            strings: _stringsFor(settings),
-          );
+          await _armDailyReminder(settings);
         } catch (_) {
           // Scheduling failed — roll the persisted flag back to OFF so the
           // switch does not claim a reminder that will never fire.
