@@ -994,4 +994,20 @@ class AppStrings {
     if (days == 1) return isEn ? 'Yesterday' : 'أمس';
     return isEn ? 'd ago' : 'منذ  أيام';
   }
+
+  // ===========================================================================
+  // Welcome Back (Backup Restored)
+  // ===========================================================================
+  String get welcomeBackTitle => isEn
+      ? 'Welcome Back!'
+      : 'أهلاً بيك من تاني!';
+  String get welcomeBackMessage => isEn
+      ? 'We detected that you had this app installed before on this device. Your previous data (meals, history, and settings) has been restored. Would you like to continue where you left off?'
+      : 'اكتشفنا إنك كنت منزّل التطبيق ده قبل كده على الجهاز ده. بياناتك القديمة (الأكلات، التاريخ، والإعدادات) رجعت تلقائياً. تحب تكمّل من حيث ما وقفت؟';
+  String get welcomeBackContinue => isEn
+      ? 'Continue with my data'
+      : 'كمّل على بياناتي';
+  String get welcomeBackStartFresh => isEn
+      ? 'Start fresh'
+      : 'ابدأ من الأول';
 }

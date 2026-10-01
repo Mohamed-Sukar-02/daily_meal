@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Auto Backup rules for Android < 12 (API < 31).
+     Backs up the SQLite database and SharedPreferences so a reinstall on the
+     same Google account silently restores the user's meals, history, and
+     settings without any login. -->
+<full-backup-content>
+    <include domain="file" path="." />
+    <include domain="sharedpref" path="." />
+    <!-- Exclude transient WAL/journal files — drift recreates them on open. -->
+    <exclude domain="file" path="daily_meal_db.sqlite-journal" />
+    <exclude domain="file" path="daily_meal_db.sqlite-wal" />
+    <exclude domain="file" path="daily_meal_db.sqlite-shm" />
+</full-backup-content>

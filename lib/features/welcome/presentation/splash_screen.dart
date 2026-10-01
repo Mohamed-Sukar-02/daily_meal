@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/localization/app_strings.dart';
+import '../../../core/database/database_providers.dart';
+import '../../../core/services/backup_detection_service.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../settings/providers/settings_providers.dart';
 
@@ -73,27 +76,87 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     // Wait for the first frame to render before checking to avoid go_router state issues
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final startedAt = DateTime.now();
-      final destination = await _resolveDestination();
+
+      final isFirstRun = await _readIsFirstRun();
+      final isRestored = await BackupDetectionService.isRestoredInstall();
 
       final elapsed = DateTime.now().difference(startedAt);
       if (elapsed < _minDisplay) {
         await Future.delayed(_minDisplay - elapsed);
       }
       if (!mounted) return;
-      context.go(destination);
+
+      // Case 1: Brand new user → onboarding
+      if (isFirstRun) {
+        context.go('/welcome');
+        return;
+      }
+
+      // Case 2: Reinstall with data restored from backup → ask
+      if (isRestored) {
+        final continueWithData = await _showWelcomeBackDialog();
+        if (!mounted) return;
+        if (continueWithData) {
+          context.go('/');
+        } else {
+          // User chose "Start fresh" → reset and go to onboarding
+          final dao = ref.read(appSettingsDaoProvider);
+          await dao.updateFirstRun(true);
+          await ref.read(settingsControllerProvider.notifier).resetToDefaults();
+          if (!mounted) return;
+          context.go('/welcome');
+        }
+        return;
+      }
+
+      // Case 3: Normal returning user → home
+      context.go('/');
     });
   }
 
-  Future<String> _resolveDestination() async {
+  Future<bool> _readIsFirstRun() async {
     try {
       final existing = ref.read(appSettingsProvider).valueOrNull;
-      if (existing != null) return existing.isFirstRun ? '/welcome' : '/';
-
-      final settings = await ref.read(appSettingsProvider.stream).first;
-      return settings.isFirstRun ? '/welcome' : '/';
+      if (existing != null) return existing.isFirstRun;
+      final settings = await ref.read(appSettingsProvider.future);
+      return settings.isFirstRun;
     } catch (_) {
-      return '/'; // Fallback to home if something fails
+      return false;
     }
+  }
+
+  /// Modal dialog shown when a backup-restored install is detected.
+  /// Returns `true` to continue with restored data, `false` to start fresh.
+  Future<bool> _showWelcomeBackDialog() async {
+    final strings = AppStrings.of(context);
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          strings.welcomeBackTitle,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          strings.welcomeBackMessage,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 15, height: 1.5),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(strings.welcomeBackStartFresh),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(strings.welcomeBackContinue),
+          ),
+        ],
+      ),
+    );
+    return result ?? true; // default to continuing if dismissed
   }
 
   @override
