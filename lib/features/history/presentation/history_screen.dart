@@ -553,11 +553,13 @@ class _DeleteEntryAction extends StatelessWidget {
         size: 18,
         color: AppPalette.textSecondary(brightness),
       ),
+      // Sized down through the style rather than a visualDensity: 32x32 with no
+      // padding is the row affordance this is, and the tap target stays legal
+      // because the shrink-wrap keeps the ink inside the icon's own box.
       style: IconButton.styleFrom(
         minimumSize: const Size(32, 32),
         padding: EdgeInsets.zero,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        visualDensity: VisualDensity.compact,
       ),
     );
   }
