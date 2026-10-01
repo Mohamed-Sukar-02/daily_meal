@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
 import '../../../core/database/app_database.dart';
 import '../../../core/services/meal_image_localizer.dart';
+import '../data/cloud_vocabulary.dart';
 import '../data/models/cloud_meal.dart';
 import '../data/discovery_repository.dart';
 import '../../../core/database/database_providers.dart';
@@ -41,7 +42,9 @@ class DiscoveryNotifier extends StateNotifier<AsyncValue<void>> {
       final existingByName = await _mealsDao.getMealByName(cloudMeal.name);
       
       final targetMeal = existingByCloudId ?? existingByName;
-      final companion = await _createCompanion(cloudMeal);
+      // When the vault already holds this meal the companion is an UPDATE, and
+      // an update may not copy a fold over a value the cloud cannot name.
+      final companion = await _createCompanion(cloudMeal, existing: targetMeal);
 
       int id;
       if (targetMeal != null) {
@@ -62,7 +65,9 @@ class DiscoveryNotifier extends StateNotifier<AsyncValue<void>> {
   Future<bool> updateMeal(int localId, CloudMeal cloudMeal) async {
     state = const AsyncValue.loading();
     try {
-      final companion = await _createCompanion(cloudMeal);
+      final existing = await _mealsDao.getMealById(localId);
+      final companion =
+          await _createCompanion(cloudMeal, existing: existing);
       await _mealsDao.updateMealCompanion(localId, companion);
       state = const AsyncValue.data(null);
       return true;
@@ -94,7 +99,20 @@ class DiscoveryNotifier extends StateNotifier<AsyncValue<void>> {
     }
   }
 
-  Future<MealsCompanion> _createCompanion(CloudMeal cloudMeal) async {
+  /// Builds the local row for a cloud meal.
+  ///
+  /// [existing] is the row being overwritten, when there is one. It matters for
+  /// exactly two fields: `proteinType` and `carbsType` are narrower in the cloud
+  /// (`firestore.rules` allows five protein tokens and four carbs tokens), so
+  /// `dairy` and `potato` are stored as `other`/`none`. Writing that fold back
+  /// over a local row would turn a tag the user set into "no protein" / "no
+  /// carbs" — and for protein that is not cosmetic, `none` is what selects the
+  /// meatless cooldown window. New inserts always carry the full value: the
+  /// columns are NOT NULL.
+  Future<MealsCompanion> _createCompanion(
+    CloudMeal cloudMeal, {
+    Meal? existing,
+  }) async {
     // Store the photo FILE, not the bare URL, so the vault renders offline.
     // On failure the URL is kept (works online) and the startup backfill in
     // MealImageLocalizer retries on a later launch.
@@ -103,8 +121,16 @@ class DiscoveryNotifier extends StateNotifier<AsyncValue<void>> {
       name: drift.Value(cloudMeal.name),
       photoPath: drift.Value(localPhoto),
       shortName: drift.Value(cloudMeal.shortName),
-      proteinType: drift.Value(cloudProteinType(cloudMeal.proteinType)),
-      carbsType: drift.Value(cloudCarbsType(cloudMeal.carbsType)),
+      proteinType: existing != null &&
+              MealCloudVocabulary.proteinFoldWouldDowngrade(
+                  existing.proteinType, cloudMeal.proteinType)
+          ? const drift.Value.absent()
+          : drift.Value(cloudProteinType(cloudMeal.proteinType)),
+      carbsType: existing != null &&
+              MealCloudVocabulary.carbsFoldWouldDowngrade(
+                  existing.carbsType, cloudMeal.carbsType)
+          ? const drift.Value.absent()
+          : drift.Value(cloudCarbsType(cloudMeal.carbsType)),
       category: drift.Value(cloudCategory(cloudMeal.category)),
       prepTime: drift.Value(cloudMeal.prepTimeMinutes),
       isFridaySpecial: drift.Value(cloudMeal.isFridaySpecial),
@@ -114,38 +140,16 @@ class DiscoveryNotifier extends StateNotifier<AsyncValue<void>> {
   }
 }
 
-// The cloud vocabulary is its own string set; these are the only place it is
-// translated into local enums (download and sync-diff must agree).
-ProteinType cloudProteinType(String p) {
-  switch (p) {
-    case 'chicken': return ProteinType.chicken;
-    case 'beef': return ProteinType.beef;
-    case 'fish': return ProteinType.fish;
-    case 'meatless': return ProteinType.legume;
-    default: return ProteinType.none;
-  }
-}
+// The three mappings themselves moved to `MealCloudVocabulary`
+// (`../data/cloud_vocabulary.dart`), which now owns the upload direction too —
+// the pair used to be maintained separately and they had already drifted once.
+// These aliases stay because the meal screen and the sync diff read a cloud row
+// through them; they hold no table of their own.
+ProteinType cloudProteinType(String p) => MealCloudVocabulary.proteinFromCloud(p);
 
-CarbsType cloudCarbsType(String c) {
-  switch (c) {
-    case 'rice': return CarbsType.rice;
-    case 'pasta': return CarbsType.pasta;
-    case 'bread': return CarbsType.bread;
-    default: return CarbsType.none;
-  }
-}
+CarbsType cloudCarbsType(String c) => MealCloudVocabulary.carbsFromCloud(c);
 
-MealCategory cloudCategory(String c) {
-  switch (c) {
-    case 'tabeekh': return MealCategory.egyptianTraditional;
-    case 'casserole': return MealCategory.ovenBaked;
-    case 'dry_sandwich': return MealCategory.fastFood;
-    case 'seafood': return MealCategory.seafood;
-    case 'soup_stew': return MealCategory.soupStew;
-    case 'vegetarian': return MealCategory.vegetarian;
-    default: return MealCategory.egyptianTraditional;
-  }
-}
+MealCategory cloudCategory(String c) => MealCloudVocabulary.categoryFromCloud(c);
 
 final discoveryControllerProvider = StateNotifierProvider<DiscoveryNotifier, AsyncValue<void>>((ref) {
   final dao = ref.watch(mealsDaoProvider);

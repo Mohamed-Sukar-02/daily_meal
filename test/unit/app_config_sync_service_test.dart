@@ -155,6 +155,67 @@ void main() {
       expect(history.mealId, meal.id, reason: 'history must not be orphaned (SET NULL)');
     });
 
+    test('a starter update never flattens a tag the cloud cannot name', () async {
+      // `dairy` and `potato` have no tokens of their own: the staging payload
+      // writes them as `other`/`none`. The sync used to write that fold back
+      // over the local row — unattended, with `touchUpdatedAt: false` — which
+      // retagged the dish and moved protein `none` into the meatless cooldown
+      // window. Plain fields must still follow the catalog.
+      final now = DateTime(2026, 9, 20, 12);
+      final id = await db.mealsDao.insertMeal(MealsCompanion.insert(
+        name: 'Shakshuka bel Gibna',
+        proteinType: ProteinType.dairy,
+        carbsType: CarbsType.potato,
+        category: MealCategory.egyptianTraditional,
+        prepTime: 15,
+        createdAt: Value(now),
+        updatedAt: Value(now),
+        isStarterMeal: const Value(true),
+        cloudId: const Value('doc-7'),
+      ));
+
+      service.remoteStarterDocsFetcher = () async => [
+            _doc('doc-7', 'Shakshuka bel Gibna', {
+              'proteinType': 'other',
+              'carbsType': 'none',
+              'prepTimeMinutes': 20,
+            }),
+          ];
+
+      await service.syncStarterMealsForTest(db, isManual: false);
+
+      final after = await db.mealsDao.getMealById(id);
+      expect(after?.prepTime, 20, reason: 'expressible fields still sync');
+      expect(
+        after?.proteinType,
+        ProteinType.dairy,
+        reason: '"other" is a fold, not a claim that this dish has no protein',
+      );
+      expect(after?.carbsType, CarbsType.potato);
+    });
+
+    test('a starter update still applies a protein the cloud does name', () async {
+      final now = DateTime(2026, 9, 20, 12);
+      final id = await db.mealsDao.insertMeal(MealsCompanion.insert(
+        name: 'Sayadieh',
+        proteinType: ProteinType.chicken,
+        carbsType: CarbsType.rice,
+        category: MealCategory.egyptianTraditional,
+        prepTime: 40,
+        createdAt: Value(now),
+        updatedAt: Value(now),
+        isStarterMeal: const Value(true),
+        cloudId: const Value('doc-8'),
+      ));
+
+      service.remoteStarterDocsFetcher = () async => [
+            _doc('doc-8', 'Sayadieh', {'proteinType': 'fish'}),
+          ];
+
+      await service.syncStarterMealsForTest(db, isManual: false);
+      expect((await db.mealsDao.getMealById(id))?.proteinType, ProteinType.fish);
+    });
+
     test('empty cloud response does not wipe or de-list local starter meals', () async {
       // AppDatabase seeds ~20 starter meals on first open; count a baseline
       // instead of hard-coding it.

@@ -14,6 +14,7 @@ import '../../../core/database/app_database.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/providers/network_provider.dart';
 import '../../../core/widgets/app_toast.dart';
+import '../data/cloud_vocabulary.dart';
 import '../data/models/cloud_meal.dart';
 import '../providers/discovery_providers.dart';
 import 'meal_sync_diff.dart';
@@ -437,74 +438,11 @@ enum LocalPhotoIssue {
   tooLarge,
 }
 
-/// Pure local→cloud vocabulary bridges. The cloud schema (see `CloudMeal` and
-/// the Firestore rules) is narrower than the local Drift enums, so every value
-/// must map into the allowed set:
-///   protein: chicken | beef | fish | meatless | other
-///   carbs:   rice | pasta | bread | none
-///   category: tabeekh | casserole | dry_sandwich | popular | seafood |
-///             soup_stew | vegetarian
-class MealCloudVocabulary {
-  const MealCloudVocabulary._();
-
-  /// Reverse of `DiscoveryNotifier._mapProtein` wherever a round-trip exists:
-  /// chicken/beef/fish are identities and legume ↔ meatless. `dairy` and
-  /// `none` have no cloud counterpart and fold into `other` (which downloads
-  /// back as `none`, matching the discovery default branch).
-  static String proteinToCloud(ProteinType protein) {
-    switch (protein) {
-      case ProteinType.chicken:
-        return 'chicken';
-      case ProteinType.beef:
-        return 'beef';
-      case ProteinType.fish:
-        return 'fish';
-      case ProteinType.legume:
-        return 'meatless';
-      case ProteinType.dairy:
-      case ProteinType.none:
-        return 'other';
-    }
-  }
-
-  /// The cloud knows only rice/pasta/bread; potato & grains fold into `none`
-  /// (the honest fallback — claiming bread/rice would mislabel the meal).
-  static String carbsToCloud(CarbsType carbs) {
-    switch (carbs) {
-      case CarbsType.rice:
-        return 'rice';
-      case CarbsType.pasta:
-        return 'pasta';
-      case CarbsType.bread:
-        return 'bread';
-      case CarbsType.potato:
-      case CarbsType.grains:
-      case CarbsType.none:
-        return 'none';
-    }
-  }
-
-  /// Reverse of `DiscoveryNotifier._mapCategory`: every local category now has
-  /// its own cloud token, so uploads land back on the enum they started from.
-  /// `popular` stays cloud-only — admins use it as a catch-all and it downloads
-  /// as `egyptianTraditional`; the client never writes it.
-  static String categoryToCloud(MealCategory category) {
-    switch (category) {
-      case MealCategory.egyptianTraditional:
-        return 'tabeekh';
-      case MealCategory.ovenBaked:
-        return 'casserole';
-      case MealCategory.fastFood:
-        return 'dry_sandwich';
-      case MealCategory.seafood:
-        return 'seafood';
-      case MealCategory.soupStew:
-        return 'soup_stew';
-      case MealCategory.vegetarian:
-        return 'vegetarian';
-    }
-  }
-}
+// The local→cloud tag mapping lives in `../data/cloud_vocabulary.dart` now, with
+// the reverse direction it used to be duplicated into `discovery_providers.dart`.
+// One owner, because the two halves had already drifted once (see
+// `test/unit/cloud_category_mapper_test.dart`) and a diff that disagrees with the
+// payload builder is what keeps a meal permanently "out of sync".
 
 /// Pure builder + validator helpers for the staging payload.
 /// Every constant here mirrors `firestore.rules::isValidStagingMeal`.

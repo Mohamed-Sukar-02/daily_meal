@@ -1,5 +1,6 @@
 import '../../../core/database/app_database.dart';
 import '../../../core/localization/app_strings.dart';
+import '../data/cloud_vocabulary.dart';
 import '../data/models/cloud_meal.dart';
 import '../providers/discovery_providers.dart';
 
@@ -41,26 +42,56 @@ List<MealCloudDiff> mealCloudDiffs(
     }
   }
 
+  /// A tag axis counts as changed only when the cloud token actually differs from
+  /// the local value's token *and* the two read differently. Comparing the labels
+  /// alone was the bug: the cloud folds `dairy` and `none` into `other`, and
+  /// `potato`/`grains` into `none`, so every meal carrying one of those values
+  /// disagreed with its own cloud copy forever — the sync mark stayed orange, and
+  /// "update from cloud" answered by overwriting a tag nobody had touched.
+  /// `isProposableAgainstCloud` is built on this list, so the same fold also kept
+  /// re-offering those meals for staging and spending the daily quota.
+  void compareTag(
+    String field, {
+    required bool agreesInCloud,
+    required String localValue,
+    required String cloudValue,
+  }) {
+    if (agreesInCloud || localValue == cloudValue) return;
+    diffs.add(
+      MealCloudDiff(
+        field: field,
+        localValue: localValue,
+        cloudValue: cloudValue,
+      ),
+    );
+  }
+
   compare(strings.mealNameLabel, local.name.trim(), cloud.name.trim());
   compare(
     strings.shortNameLabel,
     (local.shortName ?? '').trim(),
     (cloud.shortName ?? '').trim(),
   );
-  compare(
+  compareTag(
     strings.proteinTypeLabel,
-    local.proteinType.label(strings),
-    cloudProteinType(cloud.proteinType).label(strings),
+    agreesInCloud: MealCloudVocabulary.sameCloudProtein(
+        local.proteinType, cloud.proteinType),
+    localValue: local.proteinType.label(strings),
+    cloudValue: cloudProteinType(cloud.proteinType).label(strings),
   );
-  compare(
+  compareTag(
     strings.carbsTypeLabel,
-    local.carbsType.label(strings),
-    cloudCarbsType(cloud.carbsType).label(strings),
+    agreesInCloud:
+        MealCloudVocabulary.sameCloudCarbs(local.carbsType, cloud.carbsType),
+    localValue: local.carbsType.label(strings),
+    cloudValue: cloudCarbsType(cloud.carbsType).label(strings),
   );
-  compare(
+  compareTag(
     strings.categoryShortLabel,
-    local.category.label(strings),
-    cloudCategory(cloud.category).label(strings),
+    agreesInCloud: MealCloudVocabulary.sameCloudCategory(
+        local.category, cloud.category),
+    localValue: local.category.label(strings),
+    cloudValue: cloudCategory(cloud.category).label(strings),
   );
   compare(
     strings.timeLabel,

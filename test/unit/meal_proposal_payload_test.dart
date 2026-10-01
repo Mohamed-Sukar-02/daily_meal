@@ -11,6 +11,7 @@ import 'package:daily_meal/core/database/app_database.dart';
 import 'package:daily_meal/core/localization/app_strings.dart';
 import 'package:daily_meal/core/providers/network_provider.dart';
 import 'package:daily_meal/features/vault/application/meal_proposal_service.dart';
+import 'package:daily_meal/features/vault/data/cloud_vocabulary.dart';
 import 'package:daily_meal/features/vault/data/models/cloud_meal.dart';
 
 // ---------------------------------------------------------------------------

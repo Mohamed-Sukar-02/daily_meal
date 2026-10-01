@@ -6,6 +6,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../database/app_database.dart';
+import '../../features/vault/data/cloud_vocabulary.dart';
 import '../utils/arabic_normalizer.dart';
 import 'cloud_policy.dart';
 import 'meal_image_localizer.dart';
@@ -274,7 +275,7 @@ class AppConfigSyncService {
             .localize(r.data['imageUrl'] as String?);
         updates.add(_StarterMealUpdate(
             l.id,
-            _cloudCompanion(r, localizePhoto: localPhoto)
+            _cloudCompanion(r, localizePhoto: localPhoto, existing: l)
                 .copyWith(isStarterMeal: const Value(true))));
       }
 
@@ -337,10 +338,27 @@ class AppConfigSyncService {
     }
   }
 
-  MealsCompanion _cloudCompanion(RemoteStarterDoc doc, {String? localizePhoto}) {
+  /// Builds the local row for a starter document.
+  ///
+  /// [existing] is the row this companion will overwrite, when there is one. It
+  /// exists for one reason: the cloud vocabulary is narrower than the local tags
+  /// (`protein: other` stands in for `dairy` *and* `none`, `carbs: none` for
+  /// `potato` and `grains`), and this sync runs unattended with
+  /// `touchUpdatedAt: false`. Copying a fold over a real value would therefore
+  /// silently retag a user's dish — for protein that also swaps which cooldown
+  /// window governs it — with no edit of record and no way to notice. When the
+  /// cloud cannot say anything the local row does not already satisfy, the axis
+  /// is left out of the update instead.
+  MealsCompanion _cloudCompanion(
+    RemoteStarterDoc doc, {
+    String? localizePhoto,
+    Meal? existing,
+  }) {
     final rData = doc.data;
     final name = (rData['name'] as String? ?? '').trim();
     final prepTime = (rData['prepTimeMinutes'] as num?)?.toInt() ?? 30;
+    final proteinToken = rData['proteinType'] as String? ?? 'other';
+    final carbsToken = rData['carbsType'] as String? ?? 'none';
     return MealsCompanion(
       name: Value(name),
       cloudId: Value(doc.id),
@@ -350,8 +368,16 @@ class AppConfigSyncService {
       photoPath:
           localizePhoto != null ? Value(localizePhoto) : const Value.absent(),
       shortName: Value(rData['shortName'] as String?),
-      proteinType: Value(_mapProtein(rData['proteinType'] as String? ?? 'other')),
-      carbsType: Value(_mapCarbs(rData['carbsType'] as String? ?? 'none')),
+      proteinType: existing != null &&
+              MealCloudVocabulary.proteinFoldWouldDowngrade(
+                  existing.proteinType, proteinToken)
+          ? const Value.absent()
+          : Value(_mapProtein(proteinToken)),
+      carbsType: existing != null &&
+              MealCloudVocabulary.carbsFoldWouldDowngrade(
+                  existing.carbsType, carbsToken)
+          ? const Value.absent()
+          : Value(_mapCarbs(carbsToken)),
       category: Value(_mapCategory(rData['category'] as String? ?? 'popular')),
       prepTime: Value(prepTime <= 0 ? 30 : prepTime),
       isFridaySpecial: Value(rData['isFridaySpecial'] as bool? ?? false),
@@ -363,36 +389,14 @@ class AppConfigSyncService {
     await _syncStarterMeals(db, isManual: true);
   }
 
-  ProteinType _mapProtein(String p) {
-    switch (p) {
-      case 'chicken': return ProteinType.chicken;
-      case 'beef': return ProteinType.beef;
-      case 'fish': return ProteinType.fish;
-      case 'meatless': return ProteinType.legume;
-      default: return ProteinType.none;
-    }
-  }
+  // The three cloud→local mappings are one table now, shared with discovery and
+  // the staging payload (`MealCloudVocabulary`); `cloud_category_mapper_test.dart`
+  // exists because this service used to keep its own copy and drift.
+  ProteinType _mapProtein(String p) => MealCloudVocabulary.proteinFromCloud(p);
 
-  CarbsType _mapCarbs(String c) {
-    switch (c) {
-      case 'rice': return CarbsType.rice;
-      case 'pasta': return CarbsType.pasta;
-      case 'bread': return CarbsType.bread;
-      default: return CarbsType.none;
-    }
-  }
+  CarbsType _mapCarbs(String c) => MealCloudVocabulary.carbsFromCloud(c);
 
-  MealCategory _mapCategory(String c) {
-    switch (c) {
-      case 'tabeekh': return MealCategory.egyptianTraditional;
-      case 'casserole': return MealCategory.ovenBaked;
-      case 'dry_sandwich': return MealCategory.fastFood;
-      case 'seafood': return MealCategory.seafood;
-      case 'soup_stew': return MealCategory.soupStew;
-      case 'vegetarian': return MealCategory.vegetarian;
-      default: return MealCategory.egyptianTraditional;
-    }
-  }
+  MealCategory _mapCategory(String c) => MealCloudVocabulary.categoryFromCloud(c);
 
   Future<void> _cacheDefaults(SystemDefaults defaults) async {
     try {
