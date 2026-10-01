@@ -146,6 +146,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
                   footer: QuickActions(
                     onCookedToday: () =>
                         _handleCookedToday(context, ref, meals[i]),
+                    onReroll: canSpin
+                        ? () => _handleReroll(context, ref, i)
+                        : null,
+                    rerollKey: ValueKey('btn_reroll_${meals[i].id}'),
                   ),
                   onToggleFavorite: () {
                     ref
@@ -502,6 +506,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
         candidates: meals,
         onWinnerCooked: (winner) => _handleCookedToday(context, ref, winner),
       ),
+    );
+  }
+
+  /// Swap one card for the next eligible meal, leaving the other two alone.
+  ///
+  /// The engine's own guard answers `null` when nothing else fits the slot —
+  /// then the toast says so, because the alternative is a button that was tapped
+  /// and a card that quietly refused to move.
+  Future<void> _handleReroll(
+    BuildContext context,
+    WidgetRef ref,
+    int index,
+  ) async {
+    final notifier = ref.read(todayRecommendationsProvider.notifier);
+    final strings = AppStrings.of(context);
+    final replacement = await notifier.rerollSingle(index);
+    if (!context.mounted) return;
+    AppToast.show(
+      context,
+      message: replacement == null
+          ? strings.rerollNoAlternative
+          : strings.rerollReplaced(replacement.name),
     );
   }
 
