@@ -648,6 +648,14 @@ class AppStrings {
   String get historyCleared => isEn
       ? 'The whole log was cleared'
       : 'تم مسح السجل بالكامل';
+  /// Per-row delete. The point of a row control is that the log stops being
+  /// all-or-nothing, so the wording above stays about the header button.
+  String get deleteEntry => isEn
+      ? 'Remove this entry'
+      : 'شيل السطر ده من السجل';
+  String get entryDeleted => isEn
+      ? 'The entry was removed from the log'
+      : 'السطر ده اتشال من السجل';
   String get historyEmptyTitle => isEn ? 'Cooking log is empty!' : 'سجل الطبخ فارغ!';
   String get historyEmptyDesc => isEn
       ? 'Once you log meals from the home screen they will appear here, sorted by date.'

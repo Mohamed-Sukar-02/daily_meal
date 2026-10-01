@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/database/tables/meals_table.dart';
+// The generated row types (`MealHistoryData`) live in `app_database.dart`, which
+// re-exports the tables — so it replaces the narrower table import rather than
+// sitting next to it.
+import '../../../core/database/app_database.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/navigation/nav_lifecycle.dart';
 import '../../../core/theme/app_palette.dart';
@@ -258,6 +261,12 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                               dotColor = Colors.amber.shade700;
                             }
 
+                            final deleteRow = _DeleteEntryAction(
+                              entryId: entry.id,
+                              onPressed: () =>
+                                  _handleDeleteEntry(context, ref, entry, strings),
+                            );
+
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 16),
                               child: Row(
@@ -297,13 +306,21 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text(
-                                          dateStr,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppPalette.textSecondary(brightness),
-                                          ),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                dateStr,
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w700,
+                                                  color:
+                                                      AppPalette.textSecondary(brightness),
+                                                ),
+                                              ),
+                                            ),
+                                            deleteRow,
+                                          ],
                                         ),
                                         const SizedBox(height: 8),
                                         InkWell(
@@ -488,4 +505,61 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
       ),
     );
   }
+
+  /// Remove one log row, with the way back in the toast.
+  ///
+  /// `HistoryController.deleteHistoryEntry` has existed for a long time and no
+  /// screen ever called it, which left one way to correct a wrong line: clear
+  /// the whole log — taking the month's stats, every other entry, and the streak
+  /// with it. Deleting immediately (no confirm sheet) is the same trade the home
+  /// CTA makes, and for the same reason: the cost of a wrong tap is one tap.
+  Future<void> _handleDeleteEntry(
+    BuildContext context,
+    WidgetRef ref,
+    MealHistoryData entry,
+    AppStrings strings,
+  ) async {
+    final controller = ref.read(historyControllerProvider.notifier);
+    await controller.deleteHistoryEntry(entry.id);
+    if (!context.mounted) return;
+    AppToast.showUndo(
+      context,
+      message: strings.entryDeleted,
+      actionLabel: strings.undo,
+      onUndo: () => controller.restoreHistoryEntry(entry),
+    );
+  }
 }
+
+/// The row's delete affordance: on the date line, outside the card, so it cannot
+/// be confused with opening the entry, and small enough that a timeline of thirty
+/// of them stays a timeline.
+class _DeleteEntryAction extends StatelessWidget {
+  const _DeleteEntryAction({required this.entryId, required this.onPressed});
+
+  final int entryId;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+
+    return IconButton(
+      key: ValueKey('history_delete_entry_$entryId'),
+      onPressed: onPressed,
+      tooltip: AppStrings.of(context).deleteEntry,
+      icon: Icon(
+        Icons.delete_outline_rounded,
+        size: 18,
+        color: AppPalette.textSecondary(brightness),
+      ),
+      style: IconButton.styleFrom(
+        minimumSize: const Size(32, 32),
+        padding: EdgeInsets.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        visualDensity: VisualDensity.compact,
+      ),
+    );
+  }
+}
+

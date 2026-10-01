@@ -267,4 +267,82 @@ void main() {
       expect(ar.historyEntryDisplayName(mealName: skipped.mealName, entryType: skipped.entryType.name), 'تفويت الوجبة');
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // The per-row delete the History screen now offers, and the undo beside it.
+  // The assertions are at the DAO level because that is all either half of the
+  // pair does; what they pin is that a row can leave without taking the log with
+  // it, and that the snapshot the undo re-inserts is not re-timestamped.
+  // ---------------------------------------------------------------------------
+
+  group('per-row delete and the undo that re-inserts', () {
+    late AppDatabase db;
+    setUp(() => db = AppDatabase(NativeDatabase.memory()));
+    tearDown(() async => db.close());
+
+    test('one row can be removed while the rest of the log stays', () async {
+      final kept = await db.mealHistoryDao.logTakeoutMeal();
+      final removed = await db.mealHistoryDao.logSkippedMeal();
+
+      expect(await db.mealHistoryDao.deleteHistoryEntry(removed), 1);
+      final all = await db.mealHistoryDao.getAllHistory();
+      expect(all.map((e) => e.id), [kept]);
+    });
+
+    test('deleting a row that is not there removes nothing', () async {
+      await db.mealHistoryDao.logTakeoutMeal();
+
+      expect(await db.mealHistoryDao.deleteHistoryEntry(9999), 0);
+      expect(await db.mealHistoryDao.getAllHistory(), hasLength(1));
+    });
+
+    test('the snapshot the undo re-inserts keeps the day it was cooked', () async {
+      final cookedAt = DateTime(2026, 10, 2, 21, 15);
+      final id = await db.mealHistoryDao.logMeal(
+        mealId: null,
+        mealName: 'كشري',
+        proteinType: ProteinType.legume,
+        carbsType: CarbsType.rice,
+        cookedAt: cookedAt,
+        entryType: MealEntryType.cooked,
+        notes: 'بالسرسمة',
+      );
+      final row = (await db.mealHistoryDao.getAllHistory())
+          .firstWhere((e) => e.id == id);
+
+      await db.mealHistoryDao.deleteHistoryEntry(id);
+      expect(await db.mealHistoryDao.getAllHistory(), isEmpty);
+
+      // Exactly what `HistoryController.restoreHistoryEntry` passes back in.
+      final restored = await db.mealHistoryDao.logMeal(
+        mealId: row.mealId,
+        mealName: row.mealName,
+        proteinType: row.proteinType,
+        carbsType: row.carbsType,
+        cookedAt: row.cookedAt,
+        entryType: row.entryType,
+        notes: row.notes,
+      );
+      final back = (await db.mealHistoryDao.getAllHistory()).single;
+
+      expect(restored, back.id);
+      expect(
+        back.id,
+        isNot(id),
+        reason: 'a re-inserted row is a new row — nothing reads a history id '
+            'except another delete, and the row it targeted is gone',
+      );
+      expect(
+        back.cookedAt,
+        cookedAt,
+        reason: 'the whole point of capturing the snapshot: undo must not date '
+            'the meal to the moment the toast was tapped',
+      );
+      expect(back.mealName, 'كشري');
+      expect(back.proteinType, ProteinType.legume);
+      expect(back.carbsType, CarbsType.rice);
+      expect(back.entryType, MealEntryType.cooked);
+      expect(back.notes, 'بالسرسمة');
+    });
+  });
 }

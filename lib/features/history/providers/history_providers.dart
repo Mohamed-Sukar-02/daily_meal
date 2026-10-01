@@ -70,6 +70,33 @@ class HistoryController extends AsyncNotifier<void> {
     }
   }
 
+  /// Put a deleted row back, field for field.
+  ///
+  /// Only the undo on a delete can call this, and only with the snapshot it
+  /// captured before removing the row: re-deriving the entry from the meal would
+  /// date it to now if the user has cooked since, and would lose the note. The id
+  /// is new — nothing in the app reads a history id except another delete, and
+  /// that row is gone.
+  Future<void> restoreHistoryEntry(MealHistoryData row) async {
+    state = const AsyncValue.loading();
+    try {
+      final dao = ref.read(mealHistoryDaoProvider);
+      await dao.logMeal(
+        mealId: row.mealId,
+        mealName: row.mealName,
+        proteinType: row.proteinType,
+        carbsType: row.carbsType,
+        cookedAt: row.cookedAt,
+        entryType: row.entryType,
+        notes: row.notes,
+      );
+      state = const AsyncValue.data(null);
+    } catch (err, st) {
+      state = AsyncValue.error(err, st);
+      rethrow;
+    }
+  }
+
   Future<int> clearAllHistory() async {
     state = const AsyncValue.loading();
     try {
