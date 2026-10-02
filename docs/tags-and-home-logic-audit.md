@@ -9,10 +9,11 @@ checked.
 > `d6b7074` (sync diff), `0c9e87a` (determinism), `12ef7ed` (reachability),
 > `1a490fe` + `3d1446f` (dead code, test placement). §2.4, §3.3, §3.4 and §3.5
 > describe the pre-fix state and are annotated where the fix changed the reading;
-> §5's P0 list carries the commit for each item. One caveat: nothing here has been
-> through `flutter analyze` / `flutter test` — the sandbox it was written in has no Dart
-> SDK and no network to fetch one — so the verification behind each change is the tests it
-> added, which still have to be run once on a machine that can run them.
+> §5's P0 list carries the commit for each item. Verification was run afterwards on a
+> machine with the Dart SDK: `flutter analyze` reports 0 errors and 0 warnings, and
+> `flutter test test/unit` passes 308 with one failure (`navbar_icons_test`) that also
+> fails on `main` independently of this work. The widget suite's failing set is
+> byte-identical to `main`'s, so nothing here regressed an existing test.
 >
 > **Decision recorded here at the owner's request (2026-10-02):** `meatlessCooldownDays`
 > defaults to **3**, not 0, for new installs (`app_database.dart` `onCreate`,

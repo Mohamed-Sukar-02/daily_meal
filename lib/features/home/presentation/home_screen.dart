@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +10,7 @@ import '../../../core/database/database_providers.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/navigation/nav_lifecycle.dart';
 import '../../../core/theme/app_palette.dart';
+import '../../../core/utils/app_date_utils.dart' as app_date_utils;
 import '../../../core/widgets/app_icons.dart';
 import '../../../core/widgets/app_toast.dart';
 import '../../history/providers/history_providers.dart';
@@ -107,6 +110,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
   // Recommendations
   // ---------------------------------------------------------------------------
 
+  /// Deals the card compositions across the day's recommendations.
+  ///
+  /// The pool is shuffled with a seed that carries the calendar day and the
+  /// pull-to-refresh counter, so the first card is not always the same shape —
+  /// a new day or a refresh restacks the list — while any rebuild inside one
+  /// day draws the same order, which keeps a card from changing cut just
+  /// because its meal was loved. Dealing from one shuffled pool (rather than
+  /// hashing each meal on its own) is what guarantees neighbours differ: three
+  /// independent draws can land the same way twice, and the whole point of the
+  /// variation is that they cannot.
+  List<MealCardVariant> _dealVariants(int count, int seed) {
+    final order = List<MealCardVariant>.of(MealCardVariant.values);
+    final random = math.Random(seed);
+    for (var i = order.length - 1; i > 0; i--) {
+      final j = random.nextInt(i + 1);
+      final swap = order[i];
+      order[i] = order[j];
+      order[j] = swap;
+    }
+    return List<MealCardVariant>.generate(count, (i) => order[i % order.length]);
+  }
+
   Widget _buildRecommendationsView(
     BuildContext context,
     WidgetRef ref,
@@ -129,6 +154,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
       if (matches.isNotEmpty) plannedMeal = matches.first;
     }
     final capacity = ref.watch(vaultCapacityProvider);
+
+    // Which cut each card draws. Dealt for the whole list at once rather than
+    // per meal, so no two neighbours can land on the same shape.
+    final variants = _dealVariants(
+      meals.length,
+      Object.hash(
+        app_date_utils.daysSinceEpoch(result.computedDate),
+        ref.watch(refreshSeedProvider),
+      ),
+    );
 
     return Stack(
       clipBehavior: Clip.none,
@@ -177,18 +212,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
                 QuickMealView.fromMeal(
                   meals[i],
                   shape: MealViewShape.quick,
-                  // The card's own inset — the quick hero is a wide band, so
-                  // it needs the padding inside the surface, not around it.
-                  padding: const EdgeInsets.all(10),
                   // Downscale big cloud photos while decoding: 3 cards at once.
                   photoCacheWidth: 1080,
+                  cardVariant: variants[i],
                   footer: QuickActions(
+                    stretch: true,
                     onCookedToday: () =>
                         _handleCookedToday(context, ref, meals[i]),
-                    onReroll: canSpin
-                        ? () => _handleReroll(context, ref, i)
-                        : null,
-                    rerollKey: ValueKey('btn_reroll_${meals[i].id}'),
                   ),
                   onToggleFavorite: () {
                     ref
@@ -685,27 +715,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
     );
   }
 
-  /// Swap one card for the next eligible meal, leaving the other two alone.
-  ///
-  /// The engine's own guard answers `null` when nothing else fits the slot —
-  /// then the toast says so, because the alternative is a button that was tapped
-  /// and a card that quietly refused to move.
-  Future<void> _handleReroll(
-    BuildContext context,
-    WidgetRef ref,
-    int index,
-  ) async {
-    final notifier = ref.read(todayRecommendationsProvider.notifier);
-    final strings = AppStrings.of(context);
-    final replacement = await notifier.rerollSingle(index);
-    if (!context.mounted) return;
-    AppToast.show(
-      context,
-      message: replacement == null
-          ? strings.rerollNoAlternative
-          : strings.rerollReplaced(replacement.name),
-    );
-  }
 
   void _resyncDailyReminder() {
     // Not awaited on purpose: `rescheduleDailyReminder` handles its own failures,

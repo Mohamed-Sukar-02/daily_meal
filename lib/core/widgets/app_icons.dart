@@ -10,8 +10,9 @@ import 'package:flutter/material.dart';
 /// dependency-free. Swapping a glyph later = editing one `case` below.
 ///
 /// The transfer marks ([AppGlyph.cloudDown], [AppGlyph.cloudUp], [AppGlyph.swap])
-/// are the exception: they ship as PNGs in `assets/icons/` and are tinted through
-/// [AppIcon] like any vector, so call sites stay unaware of the difference.
+/// are the exception: they ship as PNGs in `assets/icons/` and are tinted
+/// through [AppIcon] like any vector, so call sites stay unaware of the
+/// difference.
 enum AppGlyph {
   home,
   vault,
@@ -51,6 +52,9 @@ enum AppGlyph {
   externalLink,
   bell,
   shield,
+  leaf,
+  sprig,
+  arrowUpRight,
 }
 
 class AppIcon extends StatelessWidget {
@@ -532,6 +536,52 @@ class _GlyphPainter extends CustomPainter {
             ..lineTo(15.2, 9.2),
           stroke,
         );
+
+      // The two decorative marks the home card scatters on its panel. They are
+      // only ever painted at a low alpha behind text, so they read as
+      // ornament rather than as information.
+      case AppGlyph.leaf:
+        canvas.drawPath(
+          Path()
+            ..moveTo(19.2, 4.4)
+            ..cubicTo(9.4, 5.2, 4.2, 10.0, 4.8, 19.6)
+            ..cubicTo(14.4, 19.0, 19.6, 14.0, 19.2, 4.4)
+            ..close(),
+          stroke,
+        );
+        canvas.drawLine(const Offset(17.0, 6.6), const Offset(7.0, 17.6), stroke);
+
+      case AppGlyph.sprig:
+        canvas.drawLine(const Offset(12, 20.4), const Offset(12, 5.0), stroke);
+        canvas.drawPath(
+          Path()
+            ..moveTo(12, 15.6)
+            ..quadraticBezierTo(8.6, 15.2, 7.2, 12.6),
+          stroke,
+        );
+        canvas.drawPath(
+          Path()
+            ..moveTo(12, 15.6)
+            ..quadraticBezierTo(15.4, 15.2, 16.8, 12.6),
+          stroke,
+        );
+        canvas.drawPath(
+          Path()
+            ..moveTo(12, 10.6)
+            ..quadraticBezierTo(9.4, 10.2, 8.4, 8.0),
+          stroke,
+        );
+        canvas.drawPath(
+          Path()
+            ..moveTo(12, 10.6)
+            ..quadraticBezierTo(14.6, 10.2, 15.6, 8.0),
+          stroke,
+        );
+
+      case AppGlyph.arrowUpRight:
+        canvas.drawLine(const Offset(6.6, 17.4), const Offset(17.2, 6.8), stroke);
+        canvas.drawLine(const Offset(10.6, 6.8), const Offset(17.2, 6.8), stroke);
+        canvas.drawLine(const Offset(17.2, 6.8), const Offset(17.2, 13.4), stroke);
     }
 
     canvas.restore();

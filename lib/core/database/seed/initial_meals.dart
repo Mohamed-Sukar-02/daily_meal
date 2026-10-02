@@ -5,6 +5,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
   // 1
   const MealsCompanion(
     id: Value(1),
+    cloudId: Value('seed_1'),
     name: Value('كشري مصري أصلي بالصلصة والدقة'),
     proteinType: Value(ProteinType.legume),
     carbsType: Value(CarbsType.rice),
@@ -17,6 +18,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
   // 2
   const MealsCompanion(
     id: Value(2),
+    cloudId: Value('seed_2'),
     name: Value('ملوخية خضراء بالفراخ المحمرة وأرز بالشعرية'),
     proteinType: Value(ProteinType.chicken),
     carbsType: Value(CarbsType.rice),
@@ -29,6 +31,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
   // 3
   const MealsCompanion(
     id: Value(3),
+    cloudId: Value('seed_3'),
     name: Value('صينية بطاطس باللحمة في الفرن وأرز مصري'),
     proteinType: Value(ProteinType.beef),
     carbsType: Value(CarbsType.potato),
@@ -41,6 +44,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
   // 4
   const MealsCompanion(
     id: Value(4),
+    cloudId: Value('seed_4'),
     name: Value('سمك بلطي مشوي بالردة ورز صيادية وسلطة بلدي'),
     proteinType: Value(ProteinType.fish),
     carbsType: Value(CarbsType.rice),
@@ -53,6 +57,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
   // 5
   const MealsCompanion(
     id: Value(5),
+    cloudId: Value('seed_5'),
     name: Value('حواوشي بلدي مقرمش في الفرن ومخلل'),
     proteinType: Value(ProteinType.beef),
     carbsType: Value(CarbsType.bread),
@@ -65,6 +70,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
   // 6
   const MealsCompanion(
     id: Value(6),
+    cloudId: Value('seed_6'),
     name: Value('صينية مكرونة بالبشاميل واللحمة المفرومة'),
     proteinType: Value(ProteinType.beef),
     carbsType: Value(CarbsType.pasta),
@@ -77,6 +83,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
   // 7
   const MealsCompanion(
     id: Value(7),
+    cloudId: Value('seed_7'),
     name: Value('طاجن بامية باللحمة الضاني وأرز أبيض'),
     proteinType: Value(ProteinType.beef),
     carbsType: Value(CarbsType.rice),
@@ -89,6 +96,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
   // 8
   const MealsCompanion(
     id: Value(8),
+    cloudId: Value('seed_8'),
     name: Value('كبدة إسكندراني بالثوم والفلفل الحامي وعيش بلدي'),
     proteinType: Value(ProteinType.beef),
     carbsType: Value(CarbsType.bread),
@@ -101,6 +109,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
   // 9
   const MealsCompanion(
     id: Value(9),
+    cloudId: Value('seed_9'),
     name: Value('صينية فراخ مشوية بالبصل والبطاطس'),
     proteinType: Value(ProteinType.chicken),
     carbsType: Value(CarbsType.potato),
@@ -113,6 +122,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
   // 10
   const MealsCompanion(
     id: Value(10),
+    cloudId: Value('seed_10'),
     name: Value('مسقعة باللحمة المفرومة والبشاميل وعيش'),
     proteinType: Value(ProteinType.beef),
     carbsType: Value(CarbsType.bread),
@@ -131,6 +141,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
   // 11
   const MealsCompanion(
     id: Value(11),
+    cloudId: Value('seed_11'),
     name: Value('شيش طاووق متبل مع أرز بسمتي بالخلطة'),
     proteinType: Value(ProteinType.chicken),
     carbsType: Value(CarbsType.rice),
@@ -143,6 +154,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
   // 12
   const MealsCompanion(
     id: Value(12),
+    cloudId: Value('seed_12'),
     name: Value('كفتة حاتي مشوية مع سلطة طحينة وعيش سخن'),
     proteinType: Value(ProteinType.beef),
     carbsType: Value(CarbsType.bread),
@@ -155,6 +167,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
   // 13
   const MealsCompanion(
     id: Value(13),
+    cloudId: Value('seed_13'),
     name: Value('سمك فيليه مقلي مع سلطة طحينة وأرز أحمر'),
     proteinType: Value(ProteinType.fish),
     carbsType: Value(CarbsType.rice),
@@ -167,6 +180,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
   // 14
   const MealsCompanion(
     id: Value(14),
+    cloudId: Value('seed_14'),
     name: Value('شوربة عدس أصفر بالشعرية والليمون وعيش محمص'),
     proteinType: Value(ProteinType.legume),
     carbsType: Value(CarbsType.bread),
@@ -179,6 +193,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
   // 15
   const MealsCompanion(
     id: Value(15),
+    cloudId: Value('seed_15'),
     name: Value('بانيه دجاج ذهبي مقرمش مع مكرونة بالصلصة'),
     proteinType: Value(ProteinType.chicken),
     carbsType: Value(CarbsType.pasta),
@@ -191,6 +206,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
   // 16
   const MealsCompanion(
     id: Value(16),
+    cloudId: Value('seed_16'),
     name: Value('طاجن مكرونة بالسجق البلدي زي المحلات'),
     proteinType: Value(ProteinType.beef),
     carbsType: Value(CarbsType.pasta),
@@ -206,6 +222,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
   // 17
   const MealsCompanion(
     id: Value(17),
+    cloudId: Value('seed_17'),
     name: Value('فتة مصرية بالخل والثوم وموزة لحمة مسلوقة'),
     proteinType: Value(ProteinType.beef),
     carbsType: Value(CarbsType.rice),
@@ -218,6 +235,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
   // 18
   const MealsCompanion(
     id: Value(18),
+    cloudId: Value('seed_18'),
     name: Value('فول مدمس بالزيت الحار وطعمية سخنة وبتنجان مخلل'),
     proteinType: Value(ProteinType.legume),
     carbsType: Value(CarbsType.bread),
@@ -230,6 +248,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
   // 19
   const MealsCompanion(
     id: Value(19),
+    cloudId: Value('seed_19'),
     name: Value('شكشوكة بالبيض والطماطم والجبنة الرومي وعيش'),
     proteinType: Value(ProteinType.dairy),
     carbsType: Value(CarbsType.bread),
@@ -242,6 +261,7 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
   // 20
   const MealsCompanion(
     id: Value(20),
+    cloudId: Value('seed_20'),
     name: Value('طاجن جمبري وسبيط بالصوص الأحمر وأرز صيادية'),
     proteinType: Value(ProteinType.fish),
     carbsType: Value(CarbsType.rice),

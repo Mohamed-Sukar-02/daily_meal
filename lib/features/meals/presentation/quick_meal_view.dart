@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_palette.dart';
+import '../../../core/utils/dominant_colour.dart';
 import '../../../core/widgets/app_icons.dart';
 import '../../../core/widgets/meal_image.dart';
 
@@ -26,6 +27,69 @@ String formatPrepTime(int minutes, AppStrings strings) =>
 ///    pills for protein / time / category, an honour wrap and a footer action.
 ///    This is what the home recommendation list shows.
 enum MealViewShape { detail, quick }
+
+/// The compositions the home recommendation list deals out across its cards.
+///
+/// Every variant carries exactly the same information — the photo, the protein,
+/// the name, the time, the category, the honour flags, the love toggle and the
+/// cook action — and differs only in how the tile is cut.
+/// That is the whole point: three identical cards in one list read as one card
+/// repeated three times, so which side the photo takes, how far the tinted
+/// panel leans over it and which corner the controls sit in all move between
+/// neighbours. [MealCardVariant] values are chosen by the caller (see
+/// `home_screen.dart`), never by the meal, so the view stays pure presentation.
+enum MealCardVariant {
+  /// The mockup's first card: the photo bites a bay into the panel and the
+  /// heart sits low on the photo.
+  photoWide(
+    panelShare: 0.50,
+    seamBulge: -30,
+    panelAtStart: false,
+    controlsAtTop: false,
+  ),
+
+  /// The mockup's second card: a narrow photo and the panel leaning well over
+  /// it, the heart high.
+  panelWide(
+    panelShare: 0.58,
+    seamBulge: 32,
+    panelAtStart: true,
+    controlsAtTop: true,
+  ),
+
+  /// The mockup's third card: a balanced split with a shallow seam.
+  photoWideSoft(
+    panelShare: 0.52,
+    seamBulge: 16,
+    panelAtStart: false,
+    controlsAtTop: true,
+  );
+
+  const MealCardVariant({
+    required this.panelShare,
+    required this.seamBulge,
+    required this.panelAtStart,
+    required this.controlsAtTop,
+  });
+
+  /// How much of the tile's width the panel claims where the seam meets the
+  /// top and bottom edges. The photo keeps the rest and bleeds under the panel.
+  final double panelShare;
+
+  /// How far the seam bows at mid-height, in logical pixels. Positive leans the
+  /// panel into the photo, negative lets the photo cut a bay into the panel —
+  /// the two shapes the approved cards alternate between.
+  final double seamBulge;
+
+  /// Which reading edge the panel is anchored to. `start` means the panel
+  /// sits on the right in Arabic and on the left in English, so the alternation
+  /// mirrors with the text instead of fighting it.
+  final bool panelAtStart;
+
+  /// The love toggle floats on the photo's far edge; which of its two corners
+  /// it takes is the variant's doing.
+  final bool controlsAtTop;
+}
 
 /// Lightweight, reusable meal view — the single visual vocabulary for a
 /// meal's hero photo, name and meta strip (protein, carbs, prep time,
@@ -93,6 +157,10 @@ class QuickMealView extends StatelessWidget {
   /// widgets: the caller hands in whatever action its context asks for.
   final Widget? footer;
 
+  /// Which cut of the tile the [MealViewShape.quick] card draws. Ignored by
+  /// [MealViewShape.detail], which has one shape of its own.
+  final MealCardVariant cardVariant;
+
   const QuickMealView({
     super.key,
     required this.name,
@@ -111,6 +179,7 @@ class QuickMealView extends StatelessWidget {
     this.onTap,
     this.onToggleFavorite,
     this.footer,
+    this.cardVariant = MealCardVariant.photoWide,
   });
 
   /// Normalises a local vault [Meal] into the view.
@@ -125,6 +194,7 @@ class QuickMealView extends StatelessWidget {
     VoidCallback? onTap,
     VoidCallback? onToggleFavorite,
     Widget? footer,
+    MealCardVariant cardVariant = MealCardVariant.photoWide,
   }) {
     return QuickMealView(
       key: key,
@@ -144,6 +214,7 @@ class QuickMealView extends StatelessWidget {
       onTap: onTap,
       onToggleFavorite: onToggleFavorite,
       footer: footer,
+      cardVariant: cardVariant,
     );
   }
 
@@ -154,20 +225,28 @@ class QuickMealView extends StatelessWidget {
   // --- Metrics of the quick card, measured from the home mockups -----------
   // They are design constants rather than parameters: every caller of the
   // quick shape has to reproduce the approved card exactly, so there is
-  // nothing for a surface to choose here.
+  // nothing for a surface to choose here. What does vary per card is the cut,
+  // and that lives in [MealCardVariant].
 
-  /// Hero photo aspect ratio measured from the mockups (≈852×215).
-  static const double _quickHeroAspectRatio = 3.96;
-  static const double _quickHeroRadius = 14;
-  static const double _quickCardRadius = 20;
-  static const BorderRadius _quickHeroBorderRadius =
-      BorderRadius.all(Radius.circular(_quickHeroRadius));
+  static const double _quickCardRadius = 26;
   static const BorderRadius _quickCardBorderRadius =
       BorderRadius.all(Radius.circular(_quickCardRadius));
-  /// The heart floats on the physical right of the hero in both directions,
-  /// exactly where the mockups pin it — hence `right`, not `end`.
-  static const double _quickHeartInset = 10;
-  static const double _quickHeartSize = 40;
+
+  /// Fixed tile height. The card used to be a wide, short photo band with the
+  /// text stacked under it, which made three recommendations taller than the
+  /// screen; cutting the tile sideways buys the list its third card back.
+  static const double _quickTileHeight = 192;
+
+  /// Inset of the panel's text from the tile's start, top and bottom edges.
+  static const double _quickPad = 16;
+
+  /// Clearance kept between the text block and the seam, so a name never sits
+  /// on the edge the photo breaks through.
+  static const double _quickSeamGap = 14;
+
+  static const double _quickControlInset = 12;
+  static const double _quickControlSize = 40;
+  static const double _quickMetaSize = 12.5;
 
   @override
   Widget build(BuildContext context) {
@@ -214,20 +293,28 @@ class QuickMealView extends StatelessWidget {
   // Quick card — the home recommendation surface (MealViewShape.quick)
   // ---------------------------------------------------------------------------
 
-  /// The elevated card the home list shows: a card surface that owns the tap,
-  /// an inset wide hero with the love toggle floating on it, the name, the
-  /// protein / time / category pills, the honour wrap and the footer action.
+  /// The tile the home list shows: the meal's photo bleeding to every edge of
+  /// the card, a panel tinted by the dish curved over one side of it carrying
+  /// the words, and the two controls floating on the photo's far corners.
   ///
-  /// Rebuilt 1:1 from the approved mockups — the metrics live in the
-  /// `_quick*` constants above, not in parameters, so the card cannot drift
-  /// per caller.
+  /// Which side is which, how far the panel leans across the seam and which
+  /// corner each control takes all come from [cardVariant], so three
+  /// recommendations in one list never draw the same card three times.
   Widget _buildQuickCard(
     BuildContext context,
     Brightness brightness,
     AppStrings strings,
   ) {
+    final variant = cardVariant;
+    final direction = Directionality.of(context);
+    final panelOnLeft = variant.panelAtStart
+        ? direction == TextDirection.ltr
+        : direction == TextDirection.rtl;
+    final ink = AppPalette.panelInk(brightness);
+
     return Container(
       key: const Key('quick_meal_view'),
+      height: _quickTileHeight,
       decoration: BoxDecoration(
         color: AppPalette.card(brightness),
         borderRadius: _quickCardBorderRadius,
@@ -242,158 +329,211 @@ class QuickMealView extends StatelessWidget {
         ],
       ),
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: padding,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildQuickHero(brightness),
-              const SizedBox(height: 12),
-              // Title — Flexible to handle 1.6x/2.0x scaling on 320px
-              Text(
-                name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 20,
-                  height: 1.3,
-                  fontWeight: FontWeight.w800,
-                  color: AppPalette.textPrimary(brightness),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final w = constraints.maxWidth;
+          // The seam meets the tile's top and bottom edges at [seamX] and bows
+          // to [seamX + lean] at mid-height — which is where the words live, so
+          // the panel's usable width is the bowed one, not the edge one.
+          final seamX =
+              panelOnLeft ? w * variant.panelShare : w * (1 - variant.panelShare);
+          final lean = panelOnLeft ? variant.seamBulge : -variant.seamBulge;
+          final topX = seamX - lean * 1.5;
+          final bottomX = seamX + lean * 1.5;
+          final minSeam = topX < bottomX ? topX : bottomX;
+          final maxSeam = topX > bottomX ? topX : bottomX;
+          final panelMid = panelOnLeft ? minSeam : w - maxSeam;
+          final textWidth =
+              (panelMid - _quickPad - _quickSeamGap).clamp(0.0, w);
+          // The photo is centred in the strip the panel leaves it, not in the
+          // whole tile. Boxed to the full tile it would sit behind the panel's
+          // own half, and a dish that fills the frame ends up with its edge
+          // under the words.
+          //
+          // The box has to reach as far as the seam's *least* coverage, which
+          // is the top and bottom edges when the panel bows outward at mid
+          // height and the other way round when it bites in. Stopping at the
+          // bow instead leaves the card's own background showing in the corners
+          // the panel has moved away from.
+          final seamEdge = panelOnLeft ? minSeam : maxSeam;
+          final photoBox = Rect.fromLTRB(
+            panelOnLeft ? seamEdge : 0,
+            0,
+            panelOnLeft ? w : seamEdge,
+            _quickTileHeight,
+          );
+          // Which edge the words hug follows the edge the panel is anchored to:
+          // the mockup's first card prints against the left, its second against
+          // the right. Leaving that to the ambient direction alone would pull
+          // every card's text to the seam instead.
+          final atStart = variant.panelAtStart;
+
+          return InkWell(
+            onTap: onTap,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Positioned.fromRect(
+                  rect: photoBox,
+                  child: MealImage(
+                    photoPath: photoPath,
+                    // Downscale big cloud photos while decoding: 3 cards at once.
+                    cacheWidth: photoCacheWidth,
+                    fallback: _QuickHeroPlaceholder(brightness: brightness),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              // Main chips (protein / time / category) — own Wrap
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _quickChip(
-                    context,
-                    AppPalette.chipRose(brightness),
-                    AppGlyph.steak,
-                    proteinType.label(strings),
+                Positioned.fill(
+                  child: _PanelSurface(
+                    photoPath: photoPath,
+                    tone: _panelTone(proteinType),
+                    brightness: brightness,
+                    variant: variant,
+                    panelOnLeft: panelOnLeft,
                   ),
-                  _quickChip(
-                    context,
-                    AppPalette.chipGold(brightness),
-                    AppGlyph.clock,
-                    formatPrepTime(prepTimeMinutes ?? 0, strings),
-                  ),
-                  if (category != null)
-                    _quickChip(
-                      context,
-                      AppPalette.chipViolet(brightness),
-                      AppGlyph.oven,
-                      category!.label(strings),
+                ),
+                PositionedDirectional(
+                  top: _quickPad,
+                  bottom: _quickPad,
+                  start: atStart ? _quickPad : null,
+                  end: atStart ? null : _quickPad,
+                  width: textWidth,
+                  // The tile has a fixed height, so at a large system font the
+                  // text block is scaled down as a unit instead of overflowing
+                  // the photo it sits beside.
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: atStart
+                        ? AlignmentDirectional.centerStart
+                        : AlignmentDirectional.centerEnd,
+                    child: SizedBox(
+                      width: textWidth,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: atStart
+                            ? CrossAxisAlignment.start
+                            : CrossAxisAlignment.end,
+                        children: [
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            alignment: atStart
+                                ? WrapAlignment.start
+                                : WrapAlignment.end,
+                            children: [
+                              if (proteinType != ProteinType.none)
+                                _quickPill(
+                                  brightness,
+                                  _proteinStyle(proteinType, brightness),
+                                  proteinType.emoji,
+                                  proteinType.label(strings),
+                                  cap: textWidth,
+                                ),
+                              if (isFridaySpecial)
+                                _quickPill(
+                                  brightness,
+                                  AppPalette.chipGold(brightness),
+                                  '🔥',
+                                  strings.fridaySpecial,
+                                  cap: textWidth,
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign:
+                                atStart ? TextAlign.start : TextAlign.end,
+                            style: TextStyle(
+                              fontSize: 22,
+                              height: 1.25,
+                              fontWeight: FontWeight.w800,
+                              color: ink,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: atStart
+                                ? CrossAxisAlignment.start
+                                : CrossAxisAlignment.end,
+                            children: [
+                              _quickMeta(
+                                AppPalette.chipGold(brightness).foreground,
+                                AppGlyph.clock,
+                                formatPrepTime(prepTimeMinutes ?? 0, strings),
+                                cap: textWidth,
+                              ),
+                              if (category != null) ...[
+                                const SizedBox(height: 6),
+                                _quickMeta(
+                                  AppPalette.panelInkSoft(brightness),
+                                  AppGlyph.oven,
+                                  category!.label(strings),
+                                  cap: textWidth,
+                                ),
+                              ],
+                            ],
+                          ),
+                          if (footer != null) ...[
+                            const SizedBox(height: 14),
+                            SizedBox(width: textWidth, child: footer!),
+                          ],
+                        ],
+                      ),
                     ),
-                  // Dummy to ensure only the badges Wrap below is the card's
-                  // badge row — the shape the card was approved with.
-                  const SizedBox.shrink(),
-                ],
-              ),
-              const SizedBox(height: 8),
-              // Badges (Friday / Favorite) — separate Wrap with the
-              // exact spacing the card was approved with (8 / 6).
-              if (_quickBadges(context, strings, brightness).isNotEmpty)
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: _quickBadges(context, strings, brightness),
+                  ),
                 ),
-              if (_quickBadges(context, strings, brightness).isNotEmpty)
-                const SizedBox(height: 8),
-              // Actions
-              if (footer != null)
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: footer!,
-                ),
-            ],
-          ),
-        ),
+                // The heart floats on the photo's outer edge, where no word can
+                // sit under it.
+                if (onToggleFavorite != null)
+                  PositionedDirectional(
+                    top: variant.controlsAtTop ? _quickControlInset : null,
+                    bottom: variant.controlsAtTop ? null : _quickControlInset,
+                    start: atStart ? null : _quickControlInset,
+                    end: atStart ? _quickControlInset : null,
+                    child: _QuickLoveButton(
+                      key: const Key('quick_love_button'),
+                      size: _quickControlSize,
+                      isFavorite: isFavorite,
+                      onToggle: onToggleFavorite,
+                      brightness: brightness,
+                    ),
+                  ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildQuickHero(Brightness brightness) {
-    return Stack(
-      children: [
-        AspectRatio(
-          aspectRatio: _quickHeroAspectRatio,
-          child: ClipRRect(
-            borderRadius: _quickHeroBorderRadius,
-            child: MealImage(
-              photoPath: photoPath,
-              // Downscale big cloud photos while decoding: 3 cards at once.
-              cacheWidth: photoCacheWidth,
-              fallback: _QuickHeroPlaceholder(brightness: brightness),
-            ),
-          ),
-        ),
-        if (onToggleFavorite != null)
-          Positioned(
-            top: _quickHeartInset,
-            right: _quickHeartInset,
-            child: _QuickLoveButton(
-              size: _quickHeartSize,
-              isFavorite: isFavorite,
-              onToggle: onToggleFavorite,
-              brightness: brightness,
-            ),
-          ),
-      ],
-    );
-  }
-
-  List<Widget> _quickBadges(
-    BuildContext context,
-    AppStrings strings,
+  /// Filled mark on the panel: the dish's protein, and the Friday honour when
+  /// the meal carries one.
+  ///
+  /// The surface is the panel's own ink thinned rather than a chip colour, so
+  /// the mark reads on every hue the panel can take; only its text keeps the
+  /// chip's accent.
+  Widget _quickPill(
     Brightness brightness,
-  ) {
-    final badges = <Widget>[
-      if (isFridaySpecial)
-        _quickChip(
-          context,
-          AppPalette.chipGold(brightness),
-          AppGlyph.star,
-          strings.fridaySpecial,
-          fontSize: 11,
-        ),
-      if (isFavorite)
-        _quickChip(
-          context,
-          AppPalette.chipRose(brightness),
-          AppGlyph.heartFill,
-          strings.favorite,
-          fontSize: 11,
-        ),
-    ];
-    return badges;
-  }
-
-  /// Colour pill of the quick card: glyph + label on a tinted surface, capped
-  /// so a long Arabic enum label can never push the row open.
-  Widget _quickChip(
-    BuildContext context,
     ChipStyle style,
-    AppGlyph glyph,
+    String emoji,
     String label, {
-    double fontSize = 12,
+    required double cap,
   }) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 140),
+      constraints: BoxConstraints(maxWidth: cap),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: style.background,
-          borderRadius: BorderRadius.circular(10),
+          color: Colors.white.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(999),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            AppIcon(glyph, color: style.foreground, size: 15),
+            Text(emoji, style: const TextStyle(fontSize: 13)),
             const SizedBox(width: 6),
             Flexible(
               child: FittedBox(
@@ -402,11 +542,11 @@ class QuickMealView extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        fontSize: fontSize,
-                        fontWeight: FontWeight.w700,
-                        color: style.foreground,
-                      ),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: style.foreground,
+                  ),
                 ),
               ),
             ),
@@ -414,6 +554,67 @@ class QuickMealView extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Unfilled fact on the panel — time, category. Same glyph-plus-label shape
+  /// as the pill with the surface dropped, so the two rows cannot be mistaken
+  /// for each other.
+  Widget _quickMeta(
+    Color color,
+    AppGlyph glyph,
+    String label, {
+    required double cap,
+  }) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: cap),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppIcon(glyph, color: color, size: 15),
+          const SizedBox(width: 5),
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: _quickMetaSize,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The panel's hue when there is no photo to read one from.
+  ///
+  /// A card with a picture takes its colour from that picture (see
+  /// [_PanelSurface]); a card without one still has to look like it was chosen
+  /// rather than left empty, so it borrows the hue the dish's protein is known
+  /// for — beef claret, molokhia green, koshary brown. Deliberately its own map
+  /// next to [_proteinStyle]: that one picks an accent for a cell of the spec
+  /// strip, while this picks the surface the dish is served on.
+  static PanelTone _panelTone(ProteinType p) {
+    switch (p) {
+      case ProteinType.beef:
+        return PanelTone.claret;
+      case ProteinType.chicken:
+        return PanelTone.forest;
+      case ProteinType.fish:
+        return PanelTone.teal;
+      case ProteinType.legume:
+        return PanelTone.umber;
+      case ProteinType.dairy:
+        return PanelTone.amber;
+      case ProteinType.none:
+        return PanelTone.slate;
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -578,6 +779,192 @@ class QuickMealView extends StatelessWidget {
 // Pieces
 // ---------------------------------------------------------------------------
 
+/// The tinted panel of a quick card.
+///
+/// Its hue comes from the meal's own photograph — that is what makes a list of
+/// recommendations read as three dishes rather than three copies of one card,
+/// and why the cut of the tile is not the only thing that moves between
+/// neighbours. Only the hue is asked of the photo; [AppPalette] puts it into the
+/// app's lightness envelope so the name printed on the panel stays readable no
+/// matter what the picture turns out to be.
+///
+/// A meal with no photo, or one whose colour cannot be found, keeps [tone] —
+/// the hue picked for its protein.
+class _PanelSurface extends StatefulWidget {
+  final String? photoPath;
+  final PanelTone tone;
+  final Brightness brightness;
+  final MealCardVariant variant;
+  final bool panelOnLeft;
+
+  const _PanelSurface({
+    required this.photoPath,
+    required this.tone,
+    required this.brightness,
+    required this.variant,
+    required this.panelOnLeft,
+  });
+
+  @override
+  State<_PanelSurface> createState() => _PanelSurfaceState();
+}
+
+class _PanelSurfaceState extends State<_PanelSurface> {
+  Color? _seed;
+
+  /// The photo [_seed] was read from, so a late answer about a dish the card no
+  /// longer shows cannot land on top of the one it replaced.
+  String? _seededFor;
+
+  @override
+  void initState() {
+    super.initState();
+    _read(widget.photoPath);
+  }
+
+  @override
+  void didUpdateWidget(covariant _PanelSurface oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // A reroll swaps the meal behind this same element, and the previous dish's
+    // colour must not be allowed to stay on the new one.
+    if (oldWidget.photoPath != widget.photoPath) _read(widget.photoPath);
+  }
+
+  void _read(String? path) {
+    final value = path?.trim() ?? '';
+    if (value.isEmpty) {
+      if (_seededFor != null) {
+        setState(() {
+          _seed = null;
+          _seededFor = null;
+        });
+      }
+      return;
+    }
+    _seededFor = value;
+    DominantColour.of(value).then((colour) {
+      if (!mounted || _seededFor != value) return;
+      setState(() => _seed = colour);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final seed = _seed;
+    return ClipPath(
+      clipper: _SeamClipper(
+        panelShare: widget.variant.panelShare,
+        seamBulge: widget.variant.seamBulge,
+        panelOnLeft: widget.panelOnLeft,
+      ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: seed == null
+              ? AppPalette.panelGradient(widget.tone, widget.brightness)
+              : AppPalette.panelGradientFromSeed(seed, widget.brightness),
+        ),
+        child: _PanelOrnaments(
+          variant: widget.variant,
+          brightness: widget.brightness,
+        ),
+      ),
+    );
+  }
+}
+
+/// The shape of a quick card's panel: a rectangle on its own reading edge with
+/// the opposite edge bowed into the photo.
+///
+/// The bow is drawn in physical coordinates because `CustomClipper` has no
+/// notion of reading direction, so the caller resolves which side the panel
+/// landed on and [panelOnLeft] mirrors the curve to match. [seamBulge] keeps
+/// its meaning either way: positive always leans into the photo.
+class _SeamClipper extends CustomClipper<Path> {
+  final double panelShare;
+  final double seamBulge;
+  final bool panelOnLeft;
+
+  const _SeamClipper({
+    required this.panelShare,
+    required this.seamBulge,
+    required this.panelOnLeft,
+  });
+
+  @override
+  Path getClip(Size size) {
+    final anchor = panelOnLeft ? 0.0 : size.width;
+    final seamX = panelOnLeft
+        ? size.width * panelShare
+        : size.width * (1 - panelShare);
+    final lean = panelOnLeft ? seamBulge : -seamBulge;
+    
+    final topX = seamX - lean * 1.5;
+    final bottomX = seamX + lean * 1.5;
+    
+    return Path()
+      ..moveTo(anchor, 0)
+      ..lineTo(topX, 0)
+      ..cubicTo(
+        topX,
+        size.height * 0.3,
+        bottomX,
+        size.height * 0.7,
+        bottomX,
+        size.height,
+      )
+      ..lineTo(anchor, size.height)
+      ..close();
+  }
+
+  @override
+  bool shouldReclip(covariant _SeamClipper oldClipper) =>
+      oldClipper.panelShare != panelShare ||
+      oldClipper.seamBulge != seamBulge ||
+      oldClipper.panelOnLeft != panelOnLeft;
+}
+
+/// Faint botanical marks on the panel of a quick card.
+///
+/// They sit inside the same clip as the panel, so the seam cuts through
+/// whichever one reaches it — the finish the mockups draw. Positions are
+/// directional, so the scatter mirrors with the panel instead of drifting onto
+/// the photo.
+class _PanelOrnaments extends StatelessWidget {
+  final MealCardVariant variant;
+  final Brightness brightness;
+
+  const _PanelOrnaments({
+    required this.variant,
+    required this.brightness,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colour = AppPalette.panelOrnament(brightness);
+    // -1 puts a mark toward the panel's own reading edge, +1 toward the seam.
+    final side = variant.panelAtStart ? -1.0 : 1.0;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        _mark(AppGlyph.leaf, side * 0.82, -0.66, 30, 0.6, colour),
+        _mark(AppGlyph.sprig, side * 0.12, 0.78, 22, -0.45, colour),
+        _mark(AppGlyph.leaf, side * 0.52, 0.34, 17, 2.3, colour),
+      ],
+    );
+  }
+
+  Widget _mark(AppGlyph glyph, double x, double y, double size, double angle,
+      Color colour) {
+    return Align(
+      alignment: AlignmentDirectional(x, y),
+      child: Transform.rotate(
+        angle: angle,
+        child: AppIcon(glyph, color: colour, size: size),
+      ),
+    );
+  }
+}
+
 /// Empty-photo stand-in: a soft brand-tinted surface with a ringed pot, so the
 /// hero keeps its shape instead of collapsing into a grey rectangle.
 class _HeroPlaceholder extends StatelessWidget {
@@ -666,6 +1053,7 @@ class _QuickLoveButton extends StatefulWidget {
   final double size;
 
   const _QuickLoveButton({
+    super.key,
     required this.isFavorite,
     required this.onToggle,
     required this.brightness,

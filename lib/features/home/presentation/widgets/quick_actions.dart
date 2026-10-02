@@ -3,50 +3,31 @@ import 'package:flutter/material.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/widgets/app_icons.dart';
-import 'chef_hat_painter.dart';
 
-/// Card actions: a gradient "Cook This" pill (green in dark mode, coral in
-/// light mode) and, where a card may be swapped, a small secondary "change"
-/// chip beside it.
+/// The card's action: the gradient "Cook This" pill (green in dark mode, coral
+/// in light mode), labelled and closed by the arrow the approved card draws at
+/// its reading end.
+///
+/// A per-card "change this meal" control used to live beside it. Replacing one
+/// of the day's three cards turned out not to be a thing worth a button: the
+/// same result is one pull-to-refresh away, and the pull is the gesture the
+/// list already teaches. What is left here can therefore take the full width
+/// of the card's panel.
 class QuickActions extends StatelessWidget {
   final VoidCallback onCookedToday;
 
-  /// Replaces just this card with the next eligible meal, leaving the others
-  /// alone.
-  ///
-  /// Without it the day's three cards are a closed list. `rerollSingle` and the
-  /// engine's per-slot refill already exist — no screen could reach them — so
-  /// the only way to get rid of one card was a full refresh, which throws the
-  /// other two away with it. Callers pass this only where a swap is meaningful
-  /// (more than one card on screen); the pill on its own then renders exactly
-  /// as before.
-  final VoidCallback? onReroll;
-
-  /// Test/debug handle for the chip, usually keyed by the meal it sits under.
-  final Key? rerollKey;
+  /// Fill the width offered rather than hugging the label. The card's panel is
+  /// the pill's only constraint now, so a stretched pill cannot overflow it.
+  final bool stretch;
 
   const QuickActions({
     super.key,
     required this.onCookedToday,
-    this.onReroll,
-    this.rerollKey,
+    this.stretch = false,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final pill = _buildCookPill(context);
-    final onReroll = this.onReroll;
-    if (onReroll == null) return pill;
-    return Wrap(
-      spacing: 10,
-      runSpacing: 8,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        pill,
-        _RerollChip(onTap: onReroll, key: rerollKey),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => _buildCookPill(context);
 
   Widget _buildCookPill(BuildContext context) {
     final brightness = Theme.of(context).brightness;
@@ -76,19 +57,14 @@ class QuickActions extends StatelessWidget {
           onTap: onCookedToday,
           child: Container(
             height: 46,
-            constraints: const BoxConstraints(minWidth: 96, maxWidth: 220),
+            constraints: stretch
+                ? const BoxConstraints(minWidth: 96)
+                : const BoxConstraints(minWidth: 96, maxWidth: 220),
             padding: const EdgeInsets.symmetric(horizontal: 14),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisSize: stretch ? MainAxisSize.max : MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const CustomPaint(
-                  size: Size(20, 20),
-                  painter: ChefHatPainter(
-                    stroke: Colors.white,
-                    heart: Colors.white,
-                  ),
-                ),
-                const SizedBox(width: 8),
                 Flexible(
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
@@ -104,59 +80,13 @@ class QuickActions extends StatelessWidget {
                     ),
                   ),
                 ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The secondary control: same shape and height as the CTA so the row stays
-/// aligned, deliberately flat so the eye reads it as "not the cook button".
-class _RerollChip extends StatelessWidget {
-  const _RerollChip({super.key, required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final brightness = Theme.of(context).brightness;
-    final strings = AppStrings.of(context);
-    // The app's existing secondary surface (the same pair the segmented tabs
-    // use), never the chip palette: a rose/gold/violet chip here would read as
-    // another badge on the meal, not as a control.
-    final background = AppPalette.tabContainer(brightness);
-    final foreground = AppPalette.textSecondary(brightness);
-
-    return Tooltip(
-      message: strings.rerollMeal,
-      child: Material(
-        color: background,
-        borderRadius: BorderRadius.circular(23),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(23),
-          onTap: onTap,
-          child: Container(
-            height: 46,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(23),
-              border: Border.all(color: AppPalette.outline(brightness)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AppIcon(AppGlyph.swap, color: foreground, size: 18),
-                const SizedBox(width: 6),
-                Text(
-                  strings.rerollShort,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: foreground,
-                  ),
+                // The approved card prints the arrow at the reading end of the
+                // pill, so it sits after the label and mirrors with it.
+                const SizedBox(width: 8),
+                const AppIcon(
+                  AppGlyph.arrowUpRight,
+                  color: Colors.white,
+                  size: 16,
                 ),
               ],
             ),
@@ -166,3 +96,4 @@ class _RerollChip extends StatelessWidget {
     );
   }
 }
+

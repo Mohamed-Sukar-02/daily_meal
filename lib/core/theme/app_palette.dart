@@ -118,6 +118,71 @@ class AppPalette {
       : const ChipStyle(background: Color(0xFFDCF2E7), foreground: Color(0xFF0E6B4A));
 
   // ---------------------------------------------------------------------------
+  // Home recommendation card panels
+  // ---------------------------------------------------------------------------
+
+  /// The panel hue a meal with no photograph gets, by protein.
+  ///
+  /// Rendered through [panelGradientFromSeed] like any photo-derived colour, so
+  /// the empty case and the photographed one share one lightness envelope and
+  /// one saturation clamp instead of maintaining two sets of stops.
+  static LinearGradient panelGradient(PanelTone tone, Brightness b) =>
+      panelGradientFromSeed(_toneSeed[tone]!, b);
+
+  static const Map<PanelTone, Color> _toneSeed = {
+    PanelTone.claret: Color(0xFF8C2A38),
+    PanelTone.forest: Color(0xFF1F7A4D),
+    PanelTone.teal: Color(0xFF1E6E8C),
+    PanelTone.umber: Color(0xFF8A5A28),
+    PanelTone.amber: Color(0xFFB08420),
+    PanelTone.slate: Color(0xFF4A5768),
+  };
+
+  /// The panel a photograph's own dominant colour produces.
+  ///
+  /// Only the hue is taken from the picture. The lightness envelope stays the
+  /// app's — deep in dark mode, barely tinted in light mode — because a panel
+  /// that followed the photo's lightness could land mid-grey and swallow the
+  /// dish name printed on it, and because white text needs the deep end of it.
+  ///
+  /// The dark stops sit as high as they do for a reason: at 10% lightness an
+  /// olive hue and a claret one are both simply brown, and the whole point of
+  /// reading the colour off the photo is lost. 19% is the floor at which the
+  /// hue still survives while white text still clears 10:1.
+  static LinearGradient panelGradientFromSeed(Color seed, Brightness b) {
+    final hue = HSLColor.fromColor(seed);
+    Color stop(double lightness, double floor, double ceiling) => hue
+        .withSaturation(hue.saturation.clamp(floor, ceiling).toDouble())
+        .withLightness(lightness)
+        .toColor();
+
+    return LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: b == Brightness.dark
+          ? [stop(0.19, 0.34, 0.62), stop(0.12, 0.30, 0.56)]
+          : [stop(0.955, 0.30, 0.62), stop(0.915, 0.26, 0.56)],
+    );
+  }
+
+  /// Text drawn on a panel. The panel is deep in dark mode and pale in light
+  /// mode, so one ink pair serves every hue the photo can hand over.
+  static Color panelInk(Brightness b) =>
+      b == Brightness.dark ? Colors.white : lightTextPrimary;
+
+  static Color panelInkSoft(Brightness b) =>
+      b == Brightness.dark ? const Color(0xB3FFFFFF) : lightTextSecondary;
+
+  /// The pill the protein sits in: the panel's own ink, thinned, so it reads
+  /// as a raised mark on any hue instead of a second chip colour fighting it.
+  static Color panelPill(Brightness b) =>
+      panelInk(b).withValues(alpha: b == Brightness.dark ? 0.13 : 0.08);
+
+  /// Faint botanical marks scattered on the panel.
+  static Color panelOrnament(Brightness b) =>
+      panelInk(b).withValues(alpha: b == Brightness.dark ? 0.10 : 0.07);
+
+  // ---------------------------------------------------------------------------
   // Spin-the-wheel rainbow
   // ---------------------------------------------------------------------------
   static const List<Color> wheelRainbow = [
@@ -138,3 +203,7 @@ class ChipStyle {
 
   const ChipStyle({required this.background, required this.foreground});
 }
+
+/// Hue family of a home recommendation card's tinted panel. See
+/// [AppPalette.panelGradient].
+enum PanelTone { claret, forest, teal, umber, amber, slate }

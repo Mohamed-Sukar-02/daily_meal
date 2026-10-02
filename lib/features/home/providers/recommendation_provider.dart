@@ -148,11 +148,6 @@ class TodayRecommendationsNotifier
   RecommendationResult<Meal>? _pinnedResult;
   int _lastRefreshSeed = 0;
 
-  /// Bumped by every single-card reroll and folded into the engine's shuffle
-  /// seed, so a second tap on the same card draws a different lottery instead
-  /// of handing back the meal the previous tap just served.
-  int _rerollCount = 0;
-
   @override
   AsyncValue<RecommendationResult<Meal>> build() {
     final mealsAsync = ref.watch(allMealsProvider);
@@ -238,85 +233,6 @@ class TodayRecommendationsNotifier
     }
   }
 
-  /// Replaces only slot [index] of the three cards on screen, leaving the other
-  /// two exactly where they are.
-  ///
-  /// The replacement comes from the same pool the day was ranked from — so the
-  /// protein windows and the history cooldown still apply — with the two
-  /// staying cards *and* the meal being replaced excluded.
-  /// That is what makes it a real replacement instead of the same card under a
-  /// new tap. When the pool has nothing left to offer, the engine can only
-  /// re-serve an excluded id, and the answer is `null` so the UI can admit it
-  /// rather than shuffling the same three dishes around.
-  ///
-  /// Returns the meal that took the slot, or `null` when nothing could.
-  Future<Meal?> rerollSingle(int index) async {
-    final current = _pinnedResult;
-    final ids = _pinnedIds;
-    if (current == null ||
-        ids == null ||
-        ids.length != current.recommendations.length ||
-        index < 0 ||
-        index >= ids.length) {
-      return null;
-    }
-
-    final meals = ref.read(allMealsProvider).valueOrNull ?? const <Meal>[];
-    final history = ref.read(mealHistoryProvider).valueOrNull ?? const [];
-    final settings =
-        ref.read(appSettingsProvider).valueOrNull ?? _fallbackSettings();
-    final now = ref.read(currentTimeProvider).valueOrNull ?? DateTime.now();
-    // One candidate outside the three cards is the minimum: with fewer, the
-    // only "new" meal on offer would be one of the cards already showing.
-    if (meals.length <= ids.length) return null;
-
-    final excluded = ids.toSet();
-    final keptProteins = {
-      for (var i = 0; i < ids.length; i++)
-        if (i != index) current.recommendations[i].proteinType.name,
-    };
-
-    final RecommendationResult<Meal> probe;
-    try {
-      probe = ref.read(engineProvider).compute<Meal>(
-            meals: meals,
-            history: history,
-            settings: settings,
-            today: now,
-            shuffleSeed: ref.read(refreshSeedProvider) + ++_rerollCount,
-            excludeIds: excluded,
-          );
-    } catch (_) {
-      return null;
-    }
-
-    final novel = probe.recommendations
-        .where((meal) => !excluded.contains(meal.id))
-        .toList();
-    if (novel.isEmpty) return null;
-
-    // Three distinct proteins is the one rule the day's selection holds, and a
-    // hand-placed slot sits outside the engine's own variety pass — so the new
-    // card stands down from a protein one of the staying cards already serves.
-    final replacement = novel.firstWhere(
-      (meal) => !keptProteins.contains(meal.proteinType.name),
-      orElse: () => novel.first,
-    );
-
-    final next = RecommendationResult<Meal>(
-      recommendations: List<Meal>.of(current.recommendations)..[index] = replacement,
-      relaxationLevel: current.relaxationLevel,
-      isEmptyVault: current.isEmptyVault,
-      computedDate: current.computedDate,
-    );
-    _pinnedIds = List<int>.of(ids)..[index] = replacement.id;
-    _pinnedResult = next;
-    // `_pinnedKey` is left alone on purpose: nothing about eligibility changed,
-    // only which eligible meal owns this slot. The next drift write therefore
-    // replays this order instead of reverting the card the user just swapped.
-    state = AsyncValue.data(next);
-    return replacement;
-  }
 }
 
 /// Vault size measured against the longest cooldown window in force — the

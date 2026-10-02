@@ -242,23 +242,6 @@ class AppStrings {
       ? 'Leftovers of $mealName'
       : 'بواقي $mealName';
 
-  // Single card reroll
-  String get rerollMeal => isEn ? 'Change this meal' : 'غيّر الأكلة دي';
-
-  /// The card's own reroll control. [rerollMeal] is the tooltip; a pill beside
-  /// the main CTA cannot carry a whole sentence.
-  String get rerollShort => isEn ? 'Change' : 'غيّر';
-
-  /// Said out loud after a swap, because the card that just moved is the one
-  /// thing the user cannot see for themselves while the list rebuilds.
-  String rerollReplaced(String mealName) => isEn
-      ? '“$mealName” took that card'
-      : '«$mealName» خدت المكان ده';
-
-  String get rerollNoAlternative => isEn
-      ? 'No other meal can take this slot today'
-      : 'مفيش أكلة تانية تقدر تاخد المكان ده النهاردة';
-
   // Today's plan — the state between "not yet" and "it is in the log". Tapping a
   // card chooses a dish; only the CTA claims it was cooked. See
   // `PlannedMeal` for why this lives in prefs.

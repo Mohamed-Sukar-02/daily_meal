@@ -404,23 +404,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                   onChanged: (d) => controller.updateFishCooldownDays(d),
                 ),
               ],
-              // Always drawn, unlike the three above it. Its value used to
-              // default to 0, which is what hid it — so the row a user has to
-              // touch to turn the no-meat window on only appeared once that
-              // window was already on.
-              _divider(brightness),
-              _stepperRow(
-                context,
-                ref,
-                brightness,
-                strings,
-                key: const Key('cooldown_stepper_meatless'),
-                emoji: '🌿',
-                style: AppPalette.chipGreen(brightness),
-                name: strings.meatlessLabel,
-                days: settings.meatlessCooldownDays,
-                onChanged: (d) => controller.updateMeatlessCooldownDays(d),
-              ),
+              if (settings.meatlessCooldownDays > 0) ...[
+                _divider(brightness),
+                _stepperRow(
+                  context,
+                  ref,
+                  brightness,
+                  strings,
+                  key: const Key('cooldown_stepper_meatless'),
+                  emoji: '🌿',
+                  style: AppPalette.chipGreen(brightness),
+                  name: strings.meatlessLabel,
+                  days: settings.meatlessCooldownDays,
+                  onChanged: (d) => controller.updateMeatlessCooldownDays(d),
+                ),
+              ],
             ],
           ),
         )

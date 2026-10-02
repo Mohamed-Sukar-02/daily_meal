@@ -18,11 +18,21 @@ import 'package:daily_meal/features/meals/presentation/quick_meal_view.dart';
 //
 // The second group pins the other half of the same promise: the home
 // recommendation card is *this* widget in MealViewShape.quick (the old separate
-// MealCard is gone), so the card shape has to hold the same narrow phone with
-// its pills, its honour wrap, its love toggle and its footer action wired in.
+// MealCard is gone), so the tile shape has to hold the same narrow phone with
+// its photo bleed, its tinted panel, its love toggle and its swap control.
 // ---------------------------------------------------------------------------
 
-Widget _phone(Widget child, Locale locale) {
+/// Finds the app's own glyph widget. `find.byIcon` is typed to `IconData`, so
+/// [AppIcon] — which carries an `AppGlyph` — has to be matched structurally.
+Finder _glyph(AppGlyph glyph) => find.byWidgetPredicate(
+      (w) => w is AppIcon && w.glyph == glyph,
+    );
+
+Widget _phone(
+  Widget child,
+  Locale locale, {
+  TextScaler textScaler = TextScaler.noScaling,
+}) {
   return ProviderScope(
     child: MaterialApp(
       locale: locale,
@@ -32,8 +42,14 @@ Widget _phone(Widget child, Locale locale) {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: Scaffold(
-        body: SizedBox(width: 360, child: SingleChildScrollView(child: child)),
+      home: MediaQuery(
+        data: MediaQueryData(textScaler: textScaler),
+        child: Scaffold(
+          body: SizedBox(
+            width: 360,
+            child: SingleChildScrollView(child: child),
+          ),
+        ),
       ),
     ),
   );
@@ -49,8 +65,9 @@ const _maximal = QuickMealView(
   isFridaySpecial: true,
 );
 
-/// A vault row with every flag on, so the quick card draws all its honour
-/// pills and a filled heart at once.
+/// A vault row with every flag on, so the quick card draws all its honour marks
+/// and a filled heart at once. `photoPath` is null, which is also the only way
+/// to exercise the empty-photo stand-in.
 Meal _cardMeal({required String name}) {
   final now = DateTime(2026, 9, 24, 12);
   return Meal(
@@ -75,13 +92,14 @@ Widget _quickCard({
   required String name,
   required VoidCallback onCookedToday,
   required VoidCallback onToggleFavorite,
+  MealCardVariant variant = MealCardVariant.photoWide,
 }) {
   return QuickMealView.fromMeal(
     _cardMeal(name: name),
     shape: MealViewShape.quick,
-    padding: const EdgeInsets.all(10),
+    cardVariant: variant,
     photoCacheWidth: 1080,
-    footer: QuickActions(onCookedToday: onCookedToday),
+    footer: QuickActions(onCookedToday: onCookedToday, stretch: true),
     onToggleFavorite: onToggleFavorite,
   );
 }
@@ -155,21 +173,14 @@ void main() {
     await tester.pump();
 
     expect(tester.takeException(), isNull);
-    // Card surface, empty-photo stand-in and the footer action all render.
+    // Photo bleed, empty-photo stand-in and both actions all render.
     expect(find.byKey(const Key('quick_meal_view')), findsOneWidget);
     expect(find.byKey(const Key('meal_photo_placeholder')), findsOneWidget);
     expect(find.byKey(const ValueKey('btn_cooked_today')), findsOneWidget);
-    // Every honour the meal carries reads as its own pill.
+    // The protein reads as a pill and the Friday honour as a second one; the
+    // loved state is the filled heart itself, not a third pill.
     expect(find.text(strings.fridaySpecial), findsOneWidget);
-    expect(find.text(strings.favorite), findsOneWidget);
-    // Loved meal, so the floating heart is the filled glyph (one for the
-    // toggle, one inside the loved pill).
-    expect(
-      find.byWidgetPredicate(
-        (w) => w is AppIcon && w.glyph == AppGlyph.heartFill,
-      ),
-      findsNWidgets(2),
-    );
+    expect(_glyph(AppGlyph.heartFill), findsOneWidget);
   });
 
   testWidgets('the quick shape wires love and cook to its own callbacks',
@@ -192,20 +203,15 @@ void main() {
     await tester.pump();
     expect(cooked, 1);
 
-    // The heart floats 10px inside the hero's top-right corner, and the hero
-    // sits 10px inside the card — so its centre is 40px in from each edge.
-    final card = tester.getRect(find.byKey(const Key('quick_meal_view')));
-    await tester.tapAt(Offset(card.right - 40, card.top + 40));
+    // The heart floats on a corner the variant chooses, so the tap finds it by
+    // key — the offset arithmetic this test used to do was only ever correct
+    // for the one corner the old stacked card could draw.
+    await tester.tap(find.byKey(const Key('quick_love_button')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(loved, 1);
     // The toggle pops to the outline glyph while the write is in flight.
-    expect(
-      find.byWidgetPredicate(
-        (w) => w is AppIcon && w.glyph == AppGlyph.heartOutline,
-      ),
-      findsOneWidget,
-    );
+    expect(_glyph(AppGlyph.heartOutline), findsOneWidget);
   });
 
   testWidgets('the quick shape survives a narrow LTR phone', (tester) async {
@@ -217,6 +223,57 @@ void main() {
           onToggleFavorite: () {},
         ),
         const Locale('en'),
+      ),
+    );
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+  });
+
+  // -------------------------------------------------------------------------
+  // The card is dealt one of three cuts. Every cut has to hold the same
+  // information in the same fixed-height tile — that height is what buys the
+  // list back its third card, so a variant that overflows is worse than a
+  // variant that looks plain.
+  // -------------------------------------------------------------------------
+
+  for (final variant in MealCardVariant.values) {
+    testWidgets('the $variant cut draws the whole card without overflowing',
+        (tester) async {
+      await tester.pumpWidget(
+        _phone(
+          _quickCard(
+            name: 'مكرونة بشاميل باللحمة المفرومة بالفرن',
+            onCookedToday: () {},
+            onToggleFavorite: () {},
+            variant: variant,
+          ),
+          const Locale('ar'),
+        ),
+      );
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const Key('quick_love_button')), findsOneWidget);
+      expect(
+        tester.getSize(find.byKey(const Key('quick_meal_view'))).height,
+        192,
+        reason: '$variant changed the tile height',
+      );
+    });
+  }
+
+  testWidgets('the quick card survives a large system font', (tester) async {
+    await tester.pumpWidget(
+      _phone(
+        _quickCard(
+          name: 'مكرونة بشاميل باللحمة المفرومة',
+          onCookedToday: () {},
+          onToggleFavorite: () {},
+          variant: MealCardVariant.panelWide,
+        ),
+        const Locale('ar'),
+        textScaler: const TextScaler.linear(2.0),
       ),
     );
     await tester.pump();
