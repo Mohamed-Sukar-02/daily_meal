@@ -4,10 +4,10 @@
      same Google account silently restores the user's meals, history, and
      settings without any login. -->
 <full-backup-content>
-    <include domain="file" path="." />
+    <include domain="root" path="app_flutter" />
     <include domain="sharedpref" path="." />
     <!-- Exclude transient WAL/journal files — drift recreates them on open. -->
-    <exclude domain="file" path="daily_meal_db.sqlite-journal" />
-    <exclude domain="file" path="daily_meal_db.sqlite-wal" />
-    <exclude domain="file" path="daily_meal_db.sqlite-shm" />
+    <exclude domain="root" path="app_flutter/daily_meal_db.sqlite-journal" />
+    <exclude domain="root" path="app_flutter/daily_meal_db.sqlite-wal" />
+    <exclude domain="root" path="app_flutter/daily_meal_db.sqlite-shm" />
 </full-backup-content>
