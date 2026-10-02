@@ -29,6 +29,13 @@ checked.
 > where the number above comes from. What the gate cost was the everyday path; what the
 > new default fixes is the case where nobody goes looking.
 >
+> **P1 and the P2 subset are landed on the same branch** — `a071b0a` (plan + banner),
+> `842676d` (per-row delete), `b548cbd` (reminder suppression), and the tag work described
+> in §5's P2 list. `842676d`'s message also records one deliberate asymmetry the review
+> asked about: undoing a history row re-inserts it, so the restored row carries a **new
+> `id`** with the same `mealId`, `cookedAt` and snapshot — nothing reads a history id
+> except another delete, and the row that delete targeted is the one being undone.
+>
 > Two findings from the first draft are **now landed upstream**: `e8820c9` routes `legume`
 > and `dairy` into `meatlessCooldownDays` (the behavioural axis is wider than the old
 > `none`-only rule) and loosens the carb-diversity gate. §2.3 and §4.1 are updated for
@@ -450,13 +457,33 @@ undo snackbar already covers a wrong tap), no new table, no migration, and "مش
 النهاردة" was left un-wired — `markSkipped` still has no button, which is a product gap
 rather than a defect in this change.
 
-**P2 — tag model (approved subset, schema-free).** Rename the meatless rows generically;
-make `customCooldownDays` real (read first in `_resolveSpecificCooldown`, folded into the
-eligibility key so a change re-ranks, editable in the "meal options" row); give `category`
-the consumer it is missing — a filter chip in the vault; and fix the seed rows whose
-category contradicts the dish (مسقعة and طاجن مكرونة بالسجق are oven trays). Nothing is
-deleted and no column is added, so: no migration, no rules deploy. `occasions`/`style` —
-the axes that *do* need one — wait for P1.
+**P2 — tag model (approved subset, schema-free).** *Landed:* the
+`3` default and the always-drawn Settings row (`0ab23c6`), one generic label for the
+no-meat cut in all three of its places — Settings, the cooldown sheet, the monthly stat
+card — instead of "Veggies"/«خضار», which was a lie about eggs and cheese; `customCooldownDays` read first in `_resolveSpecificCooldown`,
+carried by `_MealCandidate`, followed by `calculateMealScore` through the same call, and
+folded into the day's eligibility fingerprint (`recommendation_provider.dart:_eligibilityKey`);
+an editor for it in the meal sheet, next to the "meal options" row; `category` chips in the
+vault filter bar, which is what `toggleCategory` and `filteredMealsProvider`'s existing
+`filter.category` clause had been waiting for; and the two seed rows whose category
+contradicted the dish (مسقعة and طاجن مكرونة بالسجق are oven trays).
+
+Limits of that landing, all three of them scope rather than oversight:
+ * the override is editable **only on an existing meal** — the create flow has no row to
+   attach an exception to, and a brand-new dish has no history to be protected from;
+ * `CooldownEngine.compute`'s *fake-settings* fallback still reads `meatlessCooldownDays ?? 0`
+   while every real default is now `3`. Only the `else` branch at `cooldown_engine.dart:101`
+   is affected — i.e. callers that hand the engine an object which is not an
+   `AppSettingsData`, which is what the upstream engine tests do — so changing it would
+   move those tests' baseline, and they are the owner's file, not ours;
+ * `MealsDao.insertMeal`'s "preserve `customCooldownDays` if already set" clause still treats
+   an explicit `Value(null)` as "no opinion", so a *cloud/upsert* write cannot clear an
+   override. The sheet's own path (`Meal.copyWith` → `updateMeal` → `replace`) does not go
+   through it and clears normally, which is why the editor works; the clause stays as a known
+   wart for whoever adds a remote write.
+
+Nothing was deleted and no column added, so: no migration, no rules deploy. `occasions`/`style`
+— the axes that *do* need one — wait for P3.
 
 **P3 — day slots** (lunch/dinner), only if the product wants two decisions per day. That
 is a data-model change touching history, cooldown semantics (a meal cooked for lunch is
@@ -469,16 +496,16 @@ a product decision, not a refactor.
 
 | Thing | Location | State |
 |---|---|---|
-| `customCooldownDays` | `meals_table.dart:48` | column + upsert preservation, no read, no UI |
+| `customCooldownDays` | `meals_table.dart:48` | read first by the engine, in the day's key, editable on an existing meal → P2 |
 | `isStarterMeal` | `meals_table.dart:44` | not editable, provenance in the tag set |
 | `MealEntryType.skipped` | `meal_history_table.dart:11` | written by nothing |
 | `markSkipped` | `recommendation_provider.dart:469` | no caller |
 | `rerollSingle` + 2 strings + 5 tests | `recommendation_provider.dart:245` | was unreachable → `12ef7ed` |
-| `toggleCategory` / `VaultFilterState.category` | `vault_providers.dart:29,116` | settable by no UI |
+| `toggleCategory` / `VaultFilterState.category` | `vault_providers.dart:29,116` | now has its chips, in `vault_filter_bar.dart` → P2 |
 | `watchFilterByTag` / `filterByTag` / `_buildFilteredQuery` | `meals_dao.dart` | deleted → `1a490fe` |
 | `latestCookedMealProvider` | `history_providers.dart:16` | deleted → `617b483` |
 | `undoHistoryEntry` | `recommendation_provider.dart:510` | deleted → `1a490fe` |
 | `HistoryController.deleteHistoryEntry` | `history_providers.dart:65` | no UI → no per-entry undo |
 | `ISSUES.md` (referenced in `quick_add_sheet.dart:44`) | — | file does not exist in the repo |
-| `veggies`/`veggieShort` as the meatless Settings label | `app_strings.dart` | still wording-specific → P2 |
+| `veggies`/`veggieShort` as the meatless Settings label | `app_strings.dart` | one `meatlessLabel` in all three places, the specific getters deleted |
 | `healthyTag` / `balancedTag` / `deliciousTag` | `meal_info_banner.dart:116-133` | `'صحي'` is prepended to **every** meal unconditionally, and balanced/delicious is re-derived from `proteinType` — three labels the user never set, two of them a protein restatement |
