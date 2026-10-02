@@ -71,7 +71,7 @@ class MealHistoryDao extends DatabaseAccessor<AppDatabase> with _$MealHistoryDao
     final one = await (select(mealHistory)
           ..where((t) => t.cookedAt.isBiggerOrEqualValue(day))
           ..where(
-              (t) => t.cookedAt.isSmallerValue(day.add(const Duration(days: 1))))
+              (t) => t.cookedAt.isSmallerThanValue(day.add(const Duration(days: 1))))
           ..limit(1))
         .getSingleOrNull();
     return one != null;
@@ -134,7 +134,7 @@ class MealHistoryDao extends DatabaseAccessor<AppDatabase> with _$MealHistoryDao
     return (select(mealHistory)
           ..where((t) => t.entryType.equalsValue(MealEntryType.cooked))
           ..where((t) => t.cookedAt.isBiggerOrEqualValue(cutoff))
-          ..where((t) => t.cookedAt.isSmallerValue(today))
+          ..where((t) => t.cookedAt.isSmallerThanValue(today))
           ..orderBy([
             (t) => OrderingTerm.desc(t.cookedAt),
             (t) => OrderingTerm.desc(t.id),
