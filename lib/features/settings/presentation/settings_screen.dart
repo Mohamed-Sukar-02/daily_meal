@@ -406,8 +406,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
               ],
               // Always drawn, unlike the three above it. Its value used to
               // default to 0, which is what hid it — so the row a user has to
-              // touch to turn veggie cooldown on only appeared once veggie
-              // cooldown was already on.
+              // touch to turn the no-meat window on only appeared once that
+              // window was already on.
               _divider(brightness),
               _stepperRow(
                 context,
@@ -417,7 +417,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                 key: const Key('cooldown_stepper_meatless'),
                 emoji: '🌿',
                 style: AppPalette.chipGreen(brightness),
-                name: strings.veggies,
+                name: strings.meatlessLabel,
                 days: settings.meatlessCooldownDays,
                 onChanged: (d) => controller.updateMeatlessCooldownDays(d),
               ),

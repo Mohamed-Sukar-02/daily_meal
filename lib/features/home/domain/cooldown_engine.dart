@@ -164,6 +164,7 @@ class CooldownEngine {
     return meals.where((meal) {
       final int specificCooldown = _resolveSpecificCooldown(
         proteinName: meal.proteinName,
+        customCooldownDays: meal.customCooldownDays,
         cooldownDays: cooldownDays,
         chickenCooldownDays: chickenCooldownDays,
         beefCooldownDays: beefCooldownDays,
@@ -188,6 +189,8 @@ class CooldownEngine {
     }).toList();
   }
 
+  /// The window that applies to one meal, in the order the app trusts it:
+  /// the meal's own override, then the protein window, then the general one.
   int _resolveSpecificCooldown({
     required String proteinName,
     required int cooldownDays,
@@ -195,7 +198,15 @@ class CooldownEngine {
     required int beefCooldownDays,
     required int fishCooldownDays,
     required int meatlessCooldownDays,
+    int? customCooldownDays,
   }) {
+    // Read before the switch and before the general window on purpose: this
+    // number was written about THIS meal, so nothing derived from its protein
+    // can outrank it. `0` is a real answer ("always eligible") and does not
+    // fall through, for the same reason `ProteinType.none` does not.
+    final int? mealOverride = customCooldownDays;
+    if (mealOverride != null) return mealOverride;
+
     int specific;
     switch (proteinName) {
       case 'chicken':
@@ -291,6 +302,7 @@ class CooldownEngine {
 
     final int specificCooldown = _resolveSpecificCooldown(
       proteinName: candidate.proteinName,
+      customCooldownDays: candidate.customCooldownDays,
       cooldownDays: cooldownDays,
       chickenCooldownDays: chickenCooldownDays,
       beefCooldownDays: beefCooldownDays,
@@ -298,6 +310,11 @@ class CooldownEngine {
       meatlessCooldownDays: meatlessCooldownDays,
     );
 
+    // `specificCooldown` came out of the same resolver the eligibility screen
+    // uses, so a meal's own window moves its "how overdue am I" term with it:
+    // an override that lengthens the window also lowers the score, which is
+    // the point — otherwise a meal could be scored as though it were overdue
+    // while being filtered as though it were not.
     double sRecency;
     if (lastCookedDate == null) {
       sRecency = 25.0;
@@ -503,13 +520,35 @@ class _MealCandidate {
   final bool isFridaySpecial;
   final bool isFavorite;
 
+  /// This meal's own cooldown window, `null` = "follow the protein/general
+  /// windows". Read through a `dynamic` lookup inside a `try` because the
+  /// engine also receives partial meal objects (fakes, projections) that do not
+  /// declare the column at all; for those, "no override" is the honest answer
+  /// and a missing field must never throw.
+  final int? customCooldownDays;
+
   _MealCandidate.from(this.rawMeal)
       : id = (rawMeal as dynamic).id as int,
         name = (rawMeal as dynamic).name as String,
         proteinName = _extractEnumName((rawMeal as dynamic).proteinType),
         carbsName = _extractEnumName((rawMeal as dynamic).carbsType),
         isFridaySpecial = (rawMeal as dynamic).isFridaySpecial as bool,
-        isFavorite = (rawMeal as dynamic).isFavorite as bool;
+        isFavorite = (rawMeal as dynamic).isFavorite as bool,
+        customCooldownDays = _extractCustomCooldown(rawMeal);
+
+  /// Negatives are clamped at the read, not left to the callers: a stored `-1`
+  /// would survive `_calculateEffectiveCooldown` as a negative window, i.e. a
+  /// meal that can never be blocked at all — a different answer from the `0`
+  /// that means "no cooldown", and one no editor can even produce.
+  static int? _extractCustomCooldown(dynamic rawMeal) {
+    try {
+      final dynamic value = (rawMeal as dynamic).customCooldownDays;
+      if (value is! int) return null;
+      return value < 0 ? 0 : value;
+    } catch (_) {
+      return null;
+    }
+  }
 
   static String _extractEnumName(dynamic val) {
     if (val == null) return 'none';

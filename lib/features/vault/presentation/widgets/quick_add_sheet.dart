@@ -92,6 +92,12 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
   late CarbsType _selectedCarbs;
   late bool _isFridaySpecial;
   late bool _isFavorite;
+
+  /// This meal's own cooldown window (`null` = follow the windows in Settings).
+  /// Deliberately not part of the create flow: the engine reads this value
+  /// before every other cooldown rule, so it belongs to a meal that already has
+  /// a history — a brand-new dish has nothing to be protected from yet.
+  int? _cooldownDays;
   String? _photoPath;
   File? _pickedImageFile;
   bool _isPicking = false;
@@ -121,6 +127,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
   late CarbsType _initialCarbs;
   late bool _initialFridaySpecial;
   late bool _initialFavorite;
+  int? _initialCooldownDays;
   String? _initialPhotoPath;
 
   bool get isEditing => widget.mealToEdit != null;
@@ -141,7 +148,8 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
       _selectedCarbs != _initialCarbs ||
       _isFridaySpecial != _initialFridaySpecial ||
       _isFavorite != _initialFavorite ||
-      _photoPath != _initialPhotoPath;
+      _photoPath != _initialPhotoPath ||
+      _cooldownDays != _initialCooldownDays;
 
   /// A [TextEditingController] does not rebuild its owner widget, so
   /// [hasUnsavedChanges] — and therefore `canPop` — kept the value it had when
@@ -194,6 +202,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     _selectedCarbs = m?.carbsType ?? CarbsType.rice;
     _isFridaySpecial = m?.isFridaySpecial ?? false;
     _isFavorite = m?.isFavorite ?? false;
+    _cooldownDays = m?.customCooldownDays;
     _photoPath = m?.photoPath;
     if (_photoPath != null && _photoPath!.isNotEmpty) {
       final f = File(_photoPath!);
@@ -211,6 +220,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     _initialCarbs = _selectedCarbs;
     _initialFridaySpecial = _isFridaySpecial;
     _initialFavorite = _isFavorite;
+    _initialCooldownDays = _cooldownDays;
     _initialPhotoPath = _photoPath;
     // Professional: handle Android activity destruction via retrieveLostData [8][10]
     _retrieveLostData();
@@ -524,6 +534,11 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
               shortName: Value(shortName.isEmpty ? null : shortName),
               isFridaySpecial: _isFridaySpecial,
               isFavorite: _isFavorite,
+              // A `Value`, not a bare `null`: clearing the override back to "same as
+              // the rules" has to reach the row as an explicit NULL. `replace`
+              // writes null columns (the same way removing the photo does), while a
+              // companion that simply omits the field would be read as "no opinion".
+              customCooldownDays: Value(_cooldownDays),
               updatedAt: DateTime.now(),
             ));
         if (mounted) {
@@ -841,6 +856,27 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                               ),
                             ],
                           ),
+                          if (isEditing) ...[
+                            const SizedBox(height: 14),
+                            _labelRow(isDark, AppGlyph.clock, const Color(0xFF0E6B4A),
+                                strings.mealCooldownOverrideLabel),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8, runSpacing: 8,
+                              children: [
+                                for (final days in const <int?>[null, 0, 1, 2, 3, 5, 7, 14, 30])
+                                  _pill(
+                                    isDark,
+                                    label: strings.mealCooldownOverrideOption(days),
+                                    emoji: '⏳',
+                                    selected: _cooldownDays == days,
+                                    color: const Color(0xFFE8F5E9),
+                                    fg: const Color(0xFF0E6B4A),
+                                    onTap: () => setState(() => _cooldownDays = days),
+                                  ),
+                              ],
+                            ),
+                          ],
                           const SizedBox(height: 14),
                           // Time
                           Row(

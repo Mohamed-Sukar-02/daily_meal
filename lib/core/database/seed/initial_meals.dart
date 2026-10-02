@@ -116,7 +116,13 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
     name: Value('مسقعة باللحمة المفرومة والبشاميل وعيش'),
     proteinType: Value(ProteinType.beef),
     carbsType: Value(CarbsType.bread),
-    category: Value(MealCategory.egyptianTraditional),
+    // An oven tray by any definition the app uses — béchamel in a tray is the
+    // picture on the `ovenBaked` chip, and the cloud vocabulary agrees
+    // (`casserole` → `ovenBaked`, `lib/features/vault/data/cloud_vocabulary.dart`).
+    // `egyptianTraditional` means "طبيخ/شعبي": a pot on the stove, which is what
+    // its label says («أكلات شعبية وطبيخ»), so leaving this row there made the
+    // first thing a new user sees disagree with the chip the editor offers.
+    category: Value(MealCategory.ovenBaked),
     prepTime: Value(45),
     isFridaySpecial: Value(false),
     isFavorite: Value(false),
@@ -188,7 +194,10 @@ final initialEgyptianMealsSeed = <MealsCompanion>[
     name: Value('طاجن مكرونة بالسجق البلدي زي المحلات'),
     proteinType: Value(ProteinType.beef),
     carbsType: Value(CarbsType.pasta),
-    category: Value(MealCategory.fastFood),
+    // A طاجن goes in the oven. `fastFood` is the app's "سندوتشات وسريع" chip, and
+    // this dish is not that even though the chain it imitates is fast food — the
+    // tag describes how it is cooked and served at home, not where it was born.
+    category: Value(MealCategory.ovenBaked),
     prepTime: Value(30),
     isFridaySpecial: Value(false),
     isFavorite: Value(false),

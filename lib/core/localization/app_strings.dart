@@ -284,7 +284,7 @@ class AppStrings {
   /// rather than naming a meal that no longer exists.
   String get todayPlanMealMissing => isEn
       ? 'That meal is no longer in the vault, so today has no plan'
-      : 'الأكلة دي مشت من الخزانة، فالنهاردة ملهاش خطة';
+      : 'الأكلة دي اتشالت من الخزانة، فالنهاردة ملهاش خطة';
 
   // Vault capacity vs cooldown
   String get vaultTooSmallForCooldown => isEn
@@ -302,6 +302,19 @@ class AppStrings {
   String get fridaySpecial => isEn ? 'Friday special' : 'أكلة جمعة';
   String get favorite => isEn ? 'Favorite' : 'مفضلة';
   String get mealFlagsLabel => isEn ? 'Meal options' : 'خيارات الوجبة';
+
+  /// Header of the per-meal cooldown override in the meal editor. The engine
+  /// asks a meal's own window before the protein windows and before the general
+  /// one, so this is not a summary of the settings — it is the exception to them.
+  String get mealCooldownOverrideLabel => isEn ? 'Cooldown for this meal' : 'فترة الاستبعاد للأكلة دي';
+
+  /// One option of that control: `null` follows the windows in Settings, `0`
+  /// means the meal is never held back, any other number is this meal's window.
+  String mealCooldownOverrideOption(int? days) {
+    if (days == null) return isEn ? 'Same as the rules' : 'زي القواعد';
+    if (days == 0) return isEn ? 'Never held back' : 'متستبعديش';
+    return isEn ? 'Back after $days days' : 'ترجع بعد $days يوم';
+  }
 
   // Full meal screen (mockup-aligned)
   String get moreFavorites => isEn ? 'More Favorites' : 'مزيد من المفضلات';
@@ -661,7 +674,12 @@ class AppStrings {
       ? 'Once you log meals from the home screen they will appear here, sorted by date.'
       : 'عندما تسجل وجباتك من الصفحة الرئيسية ستظهر هنا مرتبة بالتواريخ.';
   String get goToHome => isEn ? 'Go to Home' : 'العودة للرئيسية';
-  String get veggieShort => isEn ? 'Veggie' : 'نباتي';
+  /// The no-meat cut, as one label shared by Settings, the cooldown sheet and the
+  /// monthly stat card. It cannot say "veggies"/«خضار»: `e8820c9` routed `legume`,
+  /// `dairy` *and* `none` into this single window, and eggs with cheese are inside
+  /// the group while being nothing of the sort. A label that names only vegetables
+  /// invites the user to "fix" the count by editing a dish's protein instead.
+  String get meatlessLabel => isEn ? 'Meatless' : 'بدون لحمة';
 
   // ===========================================================================
   // Notifications screen
@@ -763,9 +781,12 @@ class AppStrings {
   String get cooldownSheetTitle => isEn
       ? 'Smart Cooldown Engine'
       : 'محرك الكولداون الذكي';
+  /// The row below this line is `meatlessLabel`, not a vegetables row — the
+  /// subtitle has to describe what the sheet actually holds, or the last switch
+  /// reads as an opt-in for veggie dishes only.
   String get cooldownSheetSubtitle => isEn
-      ? 'Customise cooldown periods for proteins and vegetables. Zero days means disabled.'
-      : 'تخصيص فترات الاستبعاد للبروتينات والخضار. صفر أيام تعني إيقاف الاستبعاد.';
+      ? 'Customise the cooldown window per protein, and for dishes with no meat. Zero days means disabled.'
+      : 'تخصيص فترة الاستبعاد لكل بروتين، وللأكل اللي من غير لحمة. صفر أيام يعني إيقاف الاستبعاد.';
   String get cooldownEnabledHint => isEn
       ? 'Cooldown active'
       : 'الاستبعاد مفعّل';
@@ -776,7 +797,6 @@ class AppStrings {
   String get chicken => isEn ? 'Chicken' : 'فراخ';
   String get beef => isEn ? 'Beef' : 'لحمة';
   String get fish => isEn ? 'Fish' : 'سمك';
-  String get veggies => isEn ? 'Veggies' : 'خضار';
   String get legumes => isEn ? 'Legumes' : 'بقوليات';
   String get dairyEggs => isEn ? 'Eggs / Cheese' : 'بيض / أجبان';
   String get noProtein => isEn ? 'No protein' : 'بدون بروتين';

@@ -9,7 +9,11 @@ import '../../providers/vault_providers.dart';
 
 /// Horizontal filter chips for the vault grid, styled after the mockups:
 /// green "All" pill, the loved heart, pastel protein chips with emoji badges,
-/// Quick-30m and the remaining tag filter (friday) + carbs.
+/// Quick-30m and the remaining tag filters: friday, carbs and category.
+///
+/// The three tag groups are the app's own tag axes and nothing else: protein,
+/// carbs and category are exactly what `filteredMealsProvider` screens a meal
+/// against, so every chip here changes the grid and no chip is decoration.
 class VaultFilterBar extends ConsumerWidget {
   final bool quickOnly;
   final ValueChanged<bool> onQuickChanged;
@@ -114,6 +118,27 @@ class VaultFilterBar extends ConsumerWidget {
               label: c.label(strings),
               onTap: () {
                 notifier.toggleCarbs(c);
+                onFilterApplied?.call();
+              },
+            ),
+          ],
+          // Category is the third tag axis a meal carries, and until now it was
+          // the one with no way in: `toggleCategory` and `VaultFilterState.category`
+          // existed, `filteredMealsProvider` already screened on it, and no widget
+          // ever called it — so the sheet could write the tag but the vault could
+          // not be browsed by it. Same toggle semantics as the two groups above:
+          // one category at a time, tapping the selected chip clears it.
+          for (final c in MealCategory.values) ...[
+            const SizedBox(width: 8),
+            _Chip(
+              brightness: brightness,
+              selected: filter.category == c,
+              style: AppPalette.chipViolet(brightness),
+              emoji: null,
+              glyph: null,
+              label: c.label(strings),
+              onTap: () {
+                notifier.toggleCategory(c);
                 onFilterApplied?.call();
               },
             ),

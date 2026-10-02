@@ -67,18 +67,21 @@ AppSettingsData _fallbackSettings() => AppSettingsData(
 ///  * [dayEpoch] + [refreshSeed] — the seeded lottery in `_rankCandidates`;
 ///  * the five cooldown ints — `_resolveSpecificCooldown` turns a protein into
 ///    a window, which is what `_filterCandidates` screens on;
-///  * one `id:protein:carbs:friday` token per meal — `proteinType` picks the
-///    cooldown window *and* the variety rule in `_selectDiverse`, `carbsType`
-///    is that rule's second axis, and `isFridaySpecial` is a +15/-5 swing in
-///    `calculateMealScore`, i.e. enough to move a meal across the 5-point
-///    interchangeable score bands. Ids alone missed them, so a meal
-///    that just became ineligible (or a new Friday feast) kept its pinned slot;
+///  * one `id:protein:carbs:friday:cooldown` token per meal — `proteinType`
+///    picks the cooldown window *and* the variety rule in `_selectDiverse`,
+///    `carbsType` is that rule's second axis, `isFridaySpecial` is a +15/-5
+///    swing in `calculateMealScore` (i.e. enough to move a meal across the
+///    5-point interchangeable score bands), and `customCooldownDays` is the
+///    per-meal window `CooldownEngine._resolveSpecificCooldown` now asks
+///    before anything else. Ids alone missed them, so a meal that just became
+///    ineligible (or a new Friday feast) kept its pinned slot;
 ///  * the history signature — see below, the row count was not enough.
 ///
 /// Left out on purpose: `isFavorite` (+5) is a pure score nudge and the heart
 /// button is exactly the tap that must never move a card; `name`, `photoPath`,
 /// `shortName`, `prepTime`, `category`, `updatedAt` and the history
-/// `notes`/`entryType` snapshot are never read by the engine. None of them make
+/// `notes`/`entryType` snapshot are never read by the engine (`category` is a
+/// vault-filter tag, not a scheduling rule). None of them make
 /// a meal ineligible, and the pin-replay below still rebuilds the cards from
 /// the fresh rows, so those edits show up without reshuffling anything.
 String _eligibilityKey({
@@ -88,9 +91,13 @@ String _eligibilityKey({
   required List<MealHistoryData> history,
   required AppSettingsData settings,
 }) {
+  // `-` for "no override", the number itself once a meal carries one. The
+  // engine reads that value before the protein windows, so leaving it out of
+  // the token would let a meal set to "never again for 30 days" keep the card
+  // slot it had earned under the old window.
   final mealSignature = (meals
           .map((m) =>
-              '${m.id}:${m.proteinType.name}:${m.carbsType.name}:${m.isFridaySpecial ? 'F' : '-'}')
+              '${m.id}:${m.proteinType.name}:${m.carbsType.name}:${m.isFridaySpecial ? 'F' : '-'}:c${m.customCooldownDays ?? '-'}')
           .toList()
         ..sort())
       .join(',');

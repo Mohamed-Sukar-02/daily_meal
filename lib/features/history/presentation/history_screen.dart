@@ -230,7 +230,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                             const SizedBox(width: 12),
                             _buildStatCard(context, brightness, '🥩', strings.beef, beefDays, const Color(0xFFFFCDD2)),
                             const SizedBox(width: 12),
-                            _buildStatCard(context, brightness, '🌿', strings.veggieShort, meatlessDays, const Color(0xFFC8E6C9)),
+                            _buildStatCard(context, brightness, '🌿', strings.meatlessLabel, meatlessDays, const Color(0xFFC8E6C9)),
                           ],
                         ),
                       ),

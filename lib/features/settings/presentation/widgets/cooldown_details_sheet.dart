@@ -133,7 +133,7 @@ class CooldownDetailsSheet extends ConsumerWidget {
                   protein: CooldownProtein.meatless,
                   emoji: '🌿',
                   style: AppPalette.chipGreen(brightness),
-                  name: strings.veggies,
+                  name: strings.meatlessLabel,
                   days: settings.meatlessCooldownDays,
                   defaultDays: 3,
                 ),
