@@ -53,11 +53,14 @@ void main() {
 
   /// [cookedDaysAgo] maps a meal id to how many days back its newest row sits;
   /// a meal absent from it has never been cooked, the one state no window can
-  /// touch.
+  /// touch. The general window stays at 14 here because no `ProteinType` reaches
+  /// it — see the unknown-protein case for the one that does.
   RecommendationResult<Meal> run(
     List<Meal> meals,
     Map<int, int> cookedDaysAgo, {
     int chickenCooldownDays = 2,
+    int beefCooldownDays = 2,
+    int fishCooldownDays = 4,
     int meatlessCooldownDays = 0,
   }) {
     return const CooldownEngine().compute<Meal>(
@@ -66,9 +69,12 @@ void main() {
         for (final entry in cookedDaysAgo.entries)
           _Log(mealId: entry.key, cookedAt: today.subtract(Duration(days: entry.value))),
       ],
-      settings: _Settings(
-        chickenCooldownDays: chickenCooldownDays,
-        meatlessCooldownDays: meatlessCooldownDays,
+      settings: _windows(
+        14,
+        chickenCooldownDays,
+        beefCooldownDays,
+        fishCooldownDays,
+        meatlessCooldownDays,
       ),
       today: today,
     );
@@ -78,8 +84,8 @@ void main() {
     test('a long override pulls a meal out of the day', () {
       // Four chicken dishes, every one cooked five days back: the two-day
       // chicken window clears all four, so the pool is the full four and the day
-      // needs no relaxation. Meal 1 then gets a thirty-day window of its own —
-      // the only thing that changes between the two runs.
+      // needs no relaxation. One of the three cards then gets a thirty-day
+      // window of its own — the only thing that changes between the two runs.
       final plain = [for (var id = 1; id <= 4; id++) meal(id)];
       final cooked = {for (var id = 1; id <= 4; id++) id: 5};
       final baseline = run(plain, cooked);
@@ -126,7 +132,7 @@ void main() {
     test('it beats the meatless window too', () {
       // `legume`, `dairy` and `none` share one window, and that window is the
       // one Settings talks about most. An override that lost there would make
-      // the two controls disagree for every veggie dish in the vault.
+      // the two controls disagree for every dish in that group.
       final blocked = run(
         [
           meal(1, protein: ProteinType.none),
@@ -149,6 +155,43 @@ void main() {
       );
       expect(overridden.relaxationLevel, 0);
       expect(overridden.recommendations.map((m) => m.id), contains(1));
+    });
+
+    test('it beats the beef and fish windows, not only the two named above', () {
+      // Four windows, four chances to be read first. Beef and fish are the two
+      // that no other case here touches, and they are the windows a household
+      // writes an exception against most often — the roast the kids ask for out
+      // of schedule, the fish that is fine twice a week.
+      final blocked = run(
+        [
+          meal(1, protein: ProteinType.beef),
+          meal(2, protein: ProteinType.fish),
+          meal(3),
+        ],
+        {for (var id = 1; id <= 3; id++) id: 4},
+        chickenCooldownDays: 1,
+        beefCooldownDays: 6,
+        fishCooldownDays: 6,
+      );
+      expect(blocked.relaxationLevel, greaterThan(0),
+          reason: 'four days back sits inside both six-day windows, so the day '
+              'has to relax to reach three meals');
+
+      final rescued = run(
+        [
+          meal(1, protein: ProteinType.beef, customCooldownDays: 0),
+          meal(2, protein: ProteinType.fish, customCooldownDays: 3),
+          meal(3),
+        ],
+        {for (var id = 1; id <= 3; id++) id: 4},
+        chickenCooldownDays: 1,
+        beefCooldownDays: 6,
+        fishCooldownDays: 6,
+      );
+      expect(rescued.relaxationLevel, 0,
+          reason: 'one meal freed by 0 and one by a shorter window: the pool is '
+              'complete without bending any rule');
+      expect(rescued.recommendations.map((m) => m.id), containsAll([1, 2]));
     });
 
     test('a stored negative cannot mean "unblockable"', () {
@@ -183,19 +226,63 @@ void main() {
     });
   });
 
-  group('meals that do not carry the column', () {
+  group('meals and settings that are not the real rows', () {
     test('a partial row still computes', () {
       // The engine adapts whatever it is handed, and fakes or projections have
       // never been required to declare every column. A missing override is
-      // "follow the rules", never a NoSuchMethodError inside a build.
+      // "follow the rules", never a NoSuchMethodError inside a build. `settings:
+      // null` is the same lesson one layer up: every window falls back, and the
+      // day is still dealt.
       final result = const CooldownEngine().compute<dynamic>(
         meals: [for (var id = 1; id <= 4; id++) _PartialMeal(id)],
         history: const [],
-        settings: _Settings(),
+        settings: null,
         today: today,
       );
       expect(result.relaxationLevel, 0);
       expect(result.recommendations, hasLength(3));
+    });
+
+    test('an unknown protein falls to the general window, and loses to the override', () {
+      // `ProteinType` has a case for every value, so the ONLY way to reach the
+      // general window is a row the local vocabulary no longer knows — a tag an
+      // older build or a foreign import left behind. "Read the override before
+      // the general window" is the owner's wording for exactly this branch, and
+      // without a case like this it would be an untested promise.
+      final ages = const {1: 30, 2: 60, 3: 60, 4: 60};
+      List<dynamic> vault(int? customOnMeal1) => [
+            _LegacyMeal(1, customOnMeal1),
+            _LegacyMeal(2, null),
+            _LegacyMeal(3, null),
+            _LegacyMeal(4, null),
+          ];
+      List<dynamic> history() => [
+            for (final age in ages.entries)
+              _Log(mealId: age.key, cookedAt: today.subtract(Duration(days: age.value))),
+          ];
+
+      // Meal 1 cooked thirty days back inside a forty-day general window; the
+      // other three are sixty days old, so they clear it.
+      final blocked = const CooldownEngine().compute<dynamic>(
+        meals: vault(null),
+        history: history(),
+        settings: _windows(40, 2, 2, 4, 3),
+        today: today,
+      );
+      expect(blocked.relaxationLevel, 0);
+      expect(blocked.recommendations.map((m) => (m as dynamic).id), isNot(contains(1)),
+          reason: 'thirty days back is inside a forty-day window');
+
+      final rescued = const CooldownEngine().compute<dynamic>(
+        meals: vault(0),
+        history: history(),
+        settings: _windows(40, 2, 2, 4, 3),
+        today: today,
+      );
+      expect(rescued.relaxationLevel, 0);
+      expect(rescued.recommendations.map((m) => (m as dynamic).id), contains(1),
+          reason: 'the override is asked before the general window, so a 0 here '
+              'is the whole answer for this dish');
     });
   });
 
@@ -216,8 +303,8 @@ void main() {
       await harness.setCooldown(target, 30);
 
       expect(harness.ids, isNot(contains(target)),
-          reason: 'thirty days back is the rule now, and the day has to notice; '
-              'the fingerprint excludes cosmetic fields, not this one');
+          reason: 'thirty days is the rule now, and the day has to notice; the '
+              'fingerprint excludes cosmetic fields, not this one');
       expect(harness.ids, hasLength(3),
           reason: 'four dishes are still eligible, so the slot is filled honestly '
               'rather than left empty');
@@ -245,6 +332,30 @@ void main() {
   });
 }
 
+/// A settings row carrying only the five windows the engine reads, in the order
+/// it reads them: general, chicken, beef, fish, meatless. Positional on purpose
+/// — every case states all five, so a window cannot arrive at a default nobody
+/// meant. This is the real row type rather than a stand-in because `compute`
+/// switches on it: `settings is AppSettingsData` is the branch production takes,
+/// and a fake would have left that branch unexercised.
+AppSettingsData _windows(int general, int chicken, int beef, int fish, int meatless) =>
+    AppSettingsData(
+      id: 1,
+      cooldownDays: general,
+      chickenCooldownDays: chicken,
+      beefCooldownDays: beef,
+      fishCooldownDays: fish,
+      meatlessCooldownDays: meatless,
+      notificationHour: 12,
+      notificationMinute: 0,
+      notificationsEnabled: false,
+      themeMode: AppThemeModePreference.system,
+      language: AppLanguagePreference.ar,
+      isFirstRun: true,
+      recommendationSource: RecommendationSource.vault_only,
+      autoFridayFeastFilter: false,
+    );
+
 /// Real drift rows, because the fingerprint is computed from what the provider
 /// actually watches — a fake would have to remember to look like a table.
 class _Harness {
@@ -253,13 +364,24 @@ class _Harness {
   final AppDatabase db;
   final ProviderContainer container;
 
-  static Future<_Harness> start({int meals = 5, int chickenCooldownDays = 2}) async {
+  /// Five chicken dishes on a two-day chicken window and a fourteen-day general
+  /// one — the settings row is written here rather than trusted, because the case
+  /// below compares a meal's window against both of them.
+  static Future<_Harness> start() async {
+    const meals = 5;
     final db = AppDatabase(NativeDatabase.memory());
     await db.appSettingsDao.ensureSettings();
     await db.appSettingsDao.updateSettings(AppSettingsCompanion(
-      cooldownDays: const Value(14),
-      chickenCooldownDays: Value(chickenCooldownDays),
+      cooldownDays: Value(14),
+      chickenCooldownDays: Value(2),
     ));
+    // `AppDatabase.onCreate` seeds the starter vault, and those rows carry
+    // explicit ids — inserting "Meal 1" on top of seed row 1 is a UNIQUE
+    // failure, not a test failure. The tuning harness clears first for the same
+    // reason; a test that wants the seed can read it before this line.
+    await db.mealsDao.deleteAllMeals();
+    await db.mealHistoryDao.clearAllHistory();
+
     final now = DateTime.now();
     for (var id = 1; id <= meals; id++) {
       await db.mealsDao.insertMeal(MealsCompanion(
@@ -325,23 +447,9 @@ class _Harness {
   }
 }
 
-/// Settings as the engine reads them for anything that is not the real row.
-class _Settings {
-  const _Settings({
-    this.cooldownDays = 14,
-    this.chickenCooldownDays = 2,
-    this.beefCooldownDays = 2,
-    this.fishCooldownDays = 4,
-    this.meatlessCooldownDays = 0,
-  });
-
-  final int cooldownDays;
-  final int chickenCooldownDays;
-  final int beefCooldownDays;
-  final int fishCooldownDays;
-  final int meatlessCooldownDays;
-}
-
+/// A cooked row, in the shape the engine adapts history into: `_HistoryCandidate`
+/// reads `mealId`, `cookedAt`, `createdAt` and the two tag axes off whatever it is
+/// handed, so all five are here.
 class _Log {
   const _Log({required this.mealId, required this.cookedAt});
 
@@ -360,6 +468,20 @@ class _PartialMeal {
   final int id;
   String get name => 'Partial $id';
   ProteinType get proteinType => ProteinType.chicken;
+  CarbsType get carbsType => CarbsType.rice;
+  bool get isFridaySpecial => false;
+  bool get isFavorite => false;
+}
+
+/// A row whose protein is a name the local enum has no case for: what the
+/// engine's `default:` branch — the general window — is actually for.
+class _LegacyMeal {
+  _LegacyMeal(this.id, this.customCooldownDays);
+
+  final int id;
+  final int? customCooldownDays;
+  String get name => 'Legacy $id';
+  String get proteinType => 'venison';
   CarbsType get carbsType => CarbsType.rice;
   bool get isFridaySpecial => false;
   bool get isFavorite => false;
