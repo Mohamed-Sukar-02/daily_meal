@@ -1620,7 +1620,7 @@ class $AppSettingsTable extends AppSettings
     false,
     type: DriftSqlType.int,
     requiredDuringInsert: false,
-    defaultValue: const Constant(0),
+    defaultValue: const Constant(3),
   );
   static const VerificationMeta _notificationHourMeta = const VerificationMeta(
     'notificationHour',
