@@ -180,7 +180,7 @@ class AppStrings {
       : 'تنبيه التنوع الغذائي (مستوى $level): $reason';
 
   String get cookedToday => isEn ? 'Cooked Today' : 'طبختها النهاردة';
-  String get leftover => isEn ? 'Leftover' : 'بواقي أكل';
+  String get leftover => isEn ? 'Leftovers' : 'بقايا إمبارح';
   String cookedSuccess(String mealName) => isEn
       ? 'Enjoy! "$mealName" added to history.'
       : 'بالهنا والشفا! تم تسجيل "$mealName" في السجل.';
@@ -239,8 +239,8 @@ class AppStrings {
   /// why a row kept its old language after a locale switch. It is composed here
   /// now, from the entry kind plus the plain meal name (`MealLogKeys`).
   String leftoverEntryName(String mealName) => isEn
-      ? 'Leftovers of $mealName'
-      : 'بواقي $mealName';
+      ? 'Leftovers ($mealName)'
+      : 'بقايا إمبارح ($mealName)';
 
   // Today's plan — the state between "not yet" and "it is in the log". Tapping a
   // card chooses a dish; only the CTA claims it was cooked. See

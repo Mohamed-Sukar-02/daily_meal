@@ -42,8 +42,8 @@ enum MealCardVariant {
   /// The mockup's first card: the photo bites a bay into the panel and the
   /// heart sits low on the photo.
   photoWide(
-    panelShare: 0.50,
-    seamBulge: -30,
+    panelShare: 0.42,
+    seamBulge: -20,
     panelAtStart: false,
     controlsAtTop: false,
   ),
@@ -51,16 +51,16 @@ enum MealCardVariant {
   /// The mockup's second card: a narrow photo and the panel leaning well over
   /// it, the heart high.
   panelWide(
-    panelShare: 0.58,
-    seamBulge: 32,
+    panelShare: 0.46,
+    seamBulge: 24,
     panelAtStart: true,
     controlsAtTop: true,
   ),
 
   /// The mockup's third card: a balanced split with a shallow seam.
   photoWideSoft(
-    panelShare: 0.52,
-    seamBulge: 16,
+    panelShare: 0.44,
+    seamBulge: 15,
     panelAtStart: false,
     controlsAtTop: true,
   );
@@ -392,14 +392,11 @@ class QuickMealView extends StatelessWidget {
                   ),
                 ),
                 PositionedDirectional(
-                  top: _quickPad,
-                  bottom: _quickPad,
-                  start: atStart ? _quickPad : null,
-                  end: atStart ? null : _quickPad,
+                  top: 10,
+                  bottom: 10,
+                  start: atStart ? 14 : null,
+                  end: atStart ? null : 14,
                   width: textWidth,
-                  // The tile has a fixed height, so at a large system font the
-                  // text block is scaled down as a unit instead of overflowing
-                  // the photo it sits beside.
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: atStart
@@ -413,30 +410,32 @@ class QuickMealView extends StatelessWidget {
                             ? CrossAxisAlignment.start
                             : CrossAxisAlignment.end,
                         children: [
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 6,
-                            alignment: atStart
-                                ? WrapAlignment.start
-                                : WrapAlignment.end,
-                            children: [
-                              if (proteinType != ProteinType.none)
-                                _quickPill(
-                                  brightness,
-                                  _proteinStyle(proteinType, brightness),
-                                  proteinType.emoji,
-                                  proteinType.label(strings),
-                                  cap: textWidth,
-                                ),
-                              if (isFridaySpecial)
-                                _quickPill(
-                                  brightness,
-                                  AppPalette.chipGold(brightness),
-                                  '🔥',
-                                  strings.fridaySpecial,
-                                  cap: textWidth,
-                                ),
-                            ],
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            reverse: !atStart,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (proteinType != ProteinType.none)
+                                  _quickPill(
+                                    brightness,
+                                    _proteinStyle(proteinType, brightness),
+                                    proteinType.emoji,
+                                    proteinType.label(strings),
+                                    cap: textWidth,
+                                  ),
+                                if (isFridaySpecial) ...[
+                                  const SizedBox(width: 8),
+                                  _quickPill(
+                                    brightness,
+                                    AppPalette.chipGold(brightness),
+                                    '🔥',
+                                    strings.fridaySpecial,
+                                    cap: textWidth,
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
                           const SizedBox(height: 8),
                           Text(
@@ -462,7 +461,7 @@ class QuickMealView extends StatelessWidget {
                               _quickMeta(
                                 AppPalette.chipGold(brightness).foreground,
                                 AppGlyph.clock,
-                                formatPrepTime(prepTimeMinutes ?? 0, strings),
+                                '${prepTimeMinutes ?? 0} min',
                                 cap: textWidth,
                               ),
                               if (category != null) ...[
@@ -477,8 +476,8 @@ class QuickMealView extends StatelessWidget {
                             ],
                           ),
                           if (footer != null) ...[
-                            const SizedBox(height: 14),
-                            SizedBox(width: textWidth, child: footer!),
+                            const SizedBox(height: 12),
+                            SizedBox(width: 145, child: footer!),
                           ],
                         ],
                       ),

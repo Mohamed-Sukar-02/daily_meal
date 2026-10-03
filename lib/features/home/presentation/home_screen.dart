@@ -857,20 +857,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
     final controller = ref.read(recommendationControllerProvider.notifier);
     final historyDao = ref.read(mealHistoryDaoProvider);
     final strings = AppStrings.of(context);
-    final source = await historyDao.getRecentLeftoverSource(withinDays: 2);
+    final source = await historyDao.getRecentLeftoverSource(withinDays: 4);
     if (!context.mounted) return;
 
     final int historyEntryId;
     final String message;
 
     if (source != null) {
+      String loggedName = source.mealName;
+      if (source.mealId != null) {
+        final db = ref.read(appDatabaseProvider);
+        final meal = await (db.select(db.meals)..where((m) => m.id.equals(source.mealId!))).getSingleOrNull();
+        if (meal != null && meal.shortName != null && meal.shortName!.trim().isNotEmpty) {
+          loggedName = meal.shortName!.trim();
+        }
+      }
       historyEntryId = await controller.markLeftoverEntry(
         mealId: source.mealId,
-        mealName: source.mealName,
+        mealName: loggedName,
         proteinType: source.proteinType,
         carbsType: source.carbsType,
       );
-      message = strings.leftoverSuccess(source.mealName);
+      message = strings.leftoverSuccess(loggedName);
     } else {
       historyEntryId = await controller.markLeftoverEntry(
         mealName: MealLogKeys.leftover,
