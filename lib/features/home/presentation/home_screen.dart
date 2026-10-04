@@ -21,7 +21,6 @@ import '../../vault/presentation/widgets/meal_details_sheet.dart';
 import '../../vault/presentation/widgets/quick_add_sheet.dart';
 import '../../vault/providers/vault_providers.dart';
 import '../domain/cooldown_engine.dart';
-import '../providers/planned_meal_provider.dart';
 import '../providers/recommendation_provider.dart';
 import 'widgets/home_header.dart';
 import 'widgets/quick_actions.dart';
@@ -77,7 +76,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
     // this: a decision changed while Home has never been built is picked up by the
     // same check on the next launch (see `main.dart`).
     ref.listen(mealHistoryProvider, (_, _) => _resyncDailyReminder());
-    ref.listen(plannedMealIdProvider, (_, _) => _resyncDailyReminder());
 
     final recsAsync = ref.watch(todayRecommendationsProvider);
 
@@ -94,9 +92,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
                 data: (result) => result.recommendations.isEmpty
                     ? _buildEmptyState(context)
                     : _buildRecommendationsView(context, ref, result),
-                loading: () => const Center(
-                  child: CircularProgressIndicator.adaptive(),
-                ),
+                loading: () =>
+                    const Center(child: CircularProgressIndicator.adaptive()),
                 error: (err, stack) => _buildErrorState(context, ref, err),
               ),
             ),
@@ -129,7 +126,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
       order[i] = order[j];
       order[j] = swap;
     }
-    return List<MealCardVariant>.generate(count, (i) => order[i % order.length]);
+    return List<MealCardVariant>.generate(
+      count,
+      (i) => order[i % order.length],
+    );
   }
 
   Widget _buildRecommendationsView(
@@ -142,17 +142,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
     final canSpin = meals.length >= 2;
     final strings = AppStrings.of(context);
 
-    // Today's plan, resolved against the vault rather than trusted: a meal
-    // deleted after being planned must not leave a banner naming a row that no
-    // longer exists (and must not silence the reminder — see
-    // `isTodayAlreadyAnswered`, which checks the same thing).
-    final plannedId = ref.watch(plannedMealIdProvider).valueOrNull;
-    Meal? plannedMeal;
-    if (plannedId != null) {
-      final matches = (ref.watch(allMealsProvider).valueOrNull ?? const <Meal>[])
-          .where((m) => m.id == plannedId);
-      if (matches.isNotEmpty) plannedMeal = matches.first;
-    }
     final capacity = ref.watch(vaultCapacityProvider);
 
     // Which cut each card draws. Dealt for the whole list at once rather than
@@ -182,16 +171,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
             padding: EdgeInsets.fromLTRB(16, 2, 16, canSpin ? 110 : 28),
             children: [
               const SizedBox(height: 12),
-              if (plannedId != null) ...[
-                _buildTodayPlanBanner(
-                  context,
-                  ref,
-                  mealId: plannedId,
-                  meal: plannedMeal,
-                  brightness: brightness,
-                ),
-                const SizedBox(height: 12),
-              ],
               if (capacity != null && capacity.isTooSmall) ...[
                 _buildVaultCapacityBanner(context, capacity, brightness),
                 const SizedBox(height: 12),
@@ -216,7 +195,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
                   photoCacheWidth: 1080,
                   cardVariant: variants[i],
                   footer: QuickActions(
-                    stretch: true,
                     onCookedToday: () =>
                         _handleCookedToday(context, ref, meals[i]),
                   ),
@@ -225,21 +203,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
                         .read(recommendationControllerProvider.notifier)
                         .toggleFavorite(meals[i].id, meals[i].isFavorite);
                   },
-                  // A tap does two things on purpose: it opens the sheet, as it
-                  // always did, and it marks the dish as today's plan. Reading a
-                  // card was previously indistinguishable from ignoring one, and
-                  // the only way to make a choice visible was to log it as
+                  // The only way to make a choice visible was to log it as
                   // cooked — a claim the user has not made yet.
+                  // We removed the automatic _handlePlanTap here because the user
+                  // requested that tapping to read the card should NOT select it.
                   onTap: () {
-                    _handlePlanTap(context, ref, meals[i]);
                     MealDetailsSheet.show(
                       context,
                       detailsContext: MealDetailsContext.vault,
                       meal: meals[i],
                       onEdit: () =>
                           QuickAddSheet.show(context, mealToEdit: meals[i]),
-                      onDelete: () =>
-                          DeleteMealDialog.show(context, meals[i]),
+                      onDelete: () => DeleteMealDialog.show(context, meals[i]),
                     );
                   },
                 ),
@@ -266,8 +241,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
                   backgroundColor: brightness == Brightness.dark
                       ? const Color(0xFF131D18)
                       : const Color(0xFFE8F5E9),
-                  borderColor: const Color(0xFF17C97B)
-                      .withValues(alpha: brightness == Brightness.dark ? 0.35 : 0.45),
+                  borderColor: const Color(0xFF17C97B).withValues(
+                    alpha: brightness == Brightness.dark ? 0.35 : 0.45,
+                  ),
                 ),
               ),
               SizedBox(width: canSpin ? 90 : 16),
@@ -283,8 +259,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
                   backgroundColor: brightness == Brightness.dark
                       ? const Color(0xFF1A1829)
                       : const Color(0xFFF3E8FF),
-                  borderColor: const Color(0xFF9D84FF)
-                      .withValues(alpha: brightness == Brightness.dark ? 0.35 : 0.45),
+                  borderColor: const Color(0xFF9D84FF).withValues(
+                    alpha: brightness == Brightness.dark ? 0.35 : 0.45,
+                  ),
                 ),
               ),
             ],
@@ -303,134 +280,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
             ),
           ),
       ],
-    );
-  }
-
-  /// "Today is decided" line: the plan the user made, in the one place they
-  /// look for it, with the control that takes it back.
-  ///
-  /// Deliberately not a card and not a CTA: it says nothing may be cooked yet,
-  /// and it is the only Home element that is *output* of a decision rather than
-  /// an action on the recommendation list.
-  Widget _buildTodayPlanBanner(
-    BuildContext context,
-    WidgetRef ref, {
-    required int mealId,
-    required Meal? meal,
-    required Brightness brightness,
-  }) {
-    final style = AppPalette.chipGreen(brightness);
-    final strings = AppStrings.of(context);
-
-    return Container(
-      key: const ValueKey('home_today_plan_banner'),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: style.background,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: style.foreground.withValues(alpha: 0.35)),
-      ),
-      child: Row(
-        children: [
-          AppIcon(AppGlyph.bookmarkFill, color: style.foreground, size: 18),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  meal == null
-                      ? strings.todayPlanMealMissing
-                      : strings.todayPlanTitle(meal.name),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 13,
-                    height: 1.4,
-                    fontWeight: FontWeight.w800,
-                    color: style.foreground,
-                  ),
-                ),
-                if (meal != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    strings.todayPlanNote,
-                    style: TextStyle(
-                      fontSize: 11,
-                      height: 1.45,
-                      fontWeight: FontWeight.w600,
-                      color: style.foreground,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          // A plain TextButton, not a pill: this dismisses a status line, it is
-          // not a second action on the meal.
-          TextButton(
-            key: const ValueKey('home_today_plan_clear'),
-            onPressed: () => _handlePlanClear(context, ref, mealId, meal?.name),
-            child: Text(strings.undo),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Choose today's meal — or un-choose it, when the planned card is tapped
-  /// again. Writes prefs only: no history row, no cooldown, no stat.
-  Future<void> _handlePlanTap(
-    BuildContext context,
-    WidgetRef ref,
-    Meal meal,
-  ) async {
-    final strings = AppStrings.of(context);
-    final planned = ref.read(plannedMealIdProvider).valueOrNull;
-
-    if (planned == meal.id) {
-      await PlannedMeal.clearIfMatches(meal.id);
-      ref.invalidate(plannedMealIdProvider);
-      if (!context.mounted) return;
-      AppToast.show(
-        context,
-        message: strings.todayPlanCleared(meal.name),
-      );
-      return;
-    }
-
-    await PlannedMeal.plan(meal.id);
-    ref.invalidate(plannedMealIdProvider);
-    if (!context.mounted) return;
-    AppToast.showUndo(
-      context,
-      message: strings.todayPlanSet(meal.name),
-      actionLabel: strings.undo,
-      onUndo: () async {
-        // `clearIfMatches`, not `clear`: this toast can outlive the choice it
-        // undoes, and by then the user may have planned a different dish.
-        await PlannedMeal.clearIfMatches(meal.id);
-        if (mounted) ref.invalidate(plannedMealIdProvider);
-      },
-    );
-  }
-
-  Future<void> _handlePlanClear(
-    BuildContext context,
-    WidgetRef ref,
-    int mealId,
-    String? mealName,
-  ) async {
-    final strings = AppStrings.of(context);
-    await PlannedMeal.clear();
-    ref.invalidate(plannedMealIdProvider);
-    // No toast when the plan pointed at a deleted dish: the banner vanishing is
-    // the whole message.
-    if (mealName == null || !context.mounted) return;
-    AppToast.show(
-      context,
-      message: strings.todayPlanCleared(mealName),
     );
   }
 
@@ -578,7 +427,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
                     onTap: () => context.go('/vault'),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 2, vertical: 2),
+                        horizontal: 2,
+                        vertical: 2,
+                      ),
                       child: Text(
                         strings.addMoreMeals,
                         style: TextStyle(
@@ -598,7 +449,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
       ),
     );
   }
-
 
   // ---------------------------------------------------------------------------
   // Empty states
@@ -690,7 +540,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
             const SizedBox(height: 16),
             OutlinedButton.icon(
               onPressed: () => ref.invalidate(todayRecommendationsProvider),
-              icon: const AppIcon(AppGlyph.swap, size: 18, color: AppPalette.brandGreen),
+              icon: const AppIcon(
+                AppGlyph.swap,
+                size: 18,
+                color: AppPalette.brandGreen,
+              ),
               label: Text(strings.retry),
             ),
           ],
@@ -715,14 +569,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
     );
   }
 
-
   void _resyncDailyReminder() {
     // Not awaited on purpose: `rescheduleDailyReminder` handles its own failures,
     // and the OS call behind it must not delay the toast that confirms the tap.
     ref.read(settingsControllerProvider.notifier).rescheduleDailyReminder();
   }
 
-  Future<void> _handleCookedToday(BuildContext context, WidgetRef ref, Meal meal) async {
+  Future<void> _handleCookedToday(
+    BuildContext context,
+    WidgetRef ref,
+    Meal meal,
+  ) async {
     final controller = ref.read(recommendationControllerProvider.notifier);
     final strings = AppStrings.of(context);
     final message = strings.cookedShort(meal.name);
@@ -740,8 +597,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
       );
     }
   }
-
-
 
   Widget _buildFloatingActionBtn({
     required BuildContext context,
@@ -763,10 +618,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
         shadowColor: Colors.black26,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: borderColor,
-            width: 1.2,
-          ),
+          side: BorderSide(color: borderColor, width: 1.2),
         ),
       ),
       child: FittedBox(
@@ -825,7 +677,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
             onPressed: () => Navigator.of(ctx).pop(true),
             style: FilledButton.styleFrom(
               backgroundColor: AppPalette.brandGreen,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: Text(
               strings.confirmRefreshConfirm,
@@ -853,7 +707,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
   /// (`AppStrings.historyEntryDisplayName`), the same way `takeout` persists a key
   /// rather than a sentence: display copy in a snapshot column cannot follow the
   /// user's language.
-  Future<void> _handleEatYesterdayLeftover(BuildContext context, WidgetRef ref) async {
+  Future<void> _handleEatYesterdayLeftover(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     final controller = ref.read(recommendationControllerProvider.notifier);
     final historyDao = ref.read(mealHistoryDaoProvider);
     final strings = AppStrings.of(context);
@@ -867,8 +724,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with NavBranchReentry {
       String loggedName = source.mealName;
       if (source.mealId != null) {
         final db = ref.read(appDatabaseProvider);
-        final meal = await (db.select(db.meals)..where((m) => m.id.equals(source.mealId!))).getSingleOrNull();
-        if (meal != null && meal.shortName != null && meal.shortName!.trim().isNotEmpty) {
+        final meal = await (db.select(
+          db.meals,
+        )..where((m) => m.id.equals(source.mealId!))).getSingleOrNull();
+        if (meal != null &&
+            meal.shortName != null &&
+            meal.shortName!.trim().isNotEmpty) {
           loggedName = meal.shortName!.trim();
         }
       }

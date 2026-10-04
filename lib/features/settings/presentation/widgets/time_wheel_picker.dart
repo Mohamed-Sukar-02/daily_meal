@@ -70,7 +70,8 @@ class _TimeWheelPickerState extends State<TimeWheelPicker> {
     required int selectedIndex,
     required bool isScrolling,
     required bool loop,
-    required Widget Function(int index, bool isSelected, bool isScrolling) builder,
+    required Widget Function(int index, bool isSelected, bool isScrolling)
+    builder,
     required ValueChanged<int> onSelectedItemChanged,
     required ValueChanged<bool> onScrollingChanged,
     double width = 60,
@@ -99,10 +100,16 @@ class _TimeWheelPickerState extends State<TimeWheelPicker> {
           onSelectedItemChanged: onSelectedItemChanged,
           childDelegate: loop
               ? ListWheelChildLoopingListDelegate(
-                  children: List.generate(itemCount, (i) => builder(i, i == selectedIndex, isScrolling)),
+                  children: List.generate(
+                    itemCount,
+                    (i) => builder(i, i == selectedIndex, isScrolling),
+                  ),
                 )
               : ListWheelChildListDelegate(
-                  children: List.generate(itemCount, (i) => builder(i, i == selectedIndex, isScrolling)),
+                  children: List.generate(
+                    itemCount,
+                    (i) => builder(i, i == selectedIndex, isScrolling),
+                  ),
                 ),
         ),
       ),
@@ -116,13 +123,22 @@ class _TimeWheelPickerState extends State<TimeWheelPicker> {
     final strings = widget.strings ?? AppStrings.of(context);
 
     final cardBg = isDark ? const Color(0xFF1B1C1E) : Colors.white;
-    final primaryTextColor = isDark ? Colors.white : AppPalette.textPrimary(brightness);
-    final secondaryTextColor = isDark ? const Color(0xFF555558) : primaryTextColor.withValues(alpha: 0.35);
+    final primaryTextColor = isDark
+        ? Colors.white
+        : AppPalette.textPrimary(brightness);
+    final secondaryTextColor = isDark
+        ? const Color(0xFF555558)
+        : primaryTextColor.withValues(alpha: 0.35);
     final dividerColor = isDark ? const Color(0xFF333336) : Colors.black12;
     const activeBlueColor = Color(0xFF3E63DD);
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(16, 0, 16, MediaQuery.of(context).viewPadding.bottom > 0 ? 10 : 18),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        0,
+        16,
+        MediaQuery.of(context).viewPadding.bottom > 0 ? 10 : 18,
+      ),
       child: Container(
         width: double.infinity,
         decoration: BoxDecoration(
@@ -155,8 +171,10 @@ class _TimeWheelPickerState extends State<TimeWheelPicker> {
                       selectedIndex: _hour - 1,
                       isScrolling: _isHourScrolling,
                       loop: true,
-                      onSelectedItemChanged: (i) => setState(() => _hour = i + 1),
-                      onScrollingChanged: (val) => setState(() => _isHourScrolling = val),
+                      onSelectedItemChanged: (i) =>
+                          setState(() => _hour = i + 1),
+                      onScrollingChanged: (val) =>
+                          setState(() => _isHourScrolling = val),
                       width: 72,
                       builder: (i, isSelected, isScrolling) {
                         final h = i + 1;
@@ -165,10 +183,18 @@ class _TimeWheelPickerState extends State<TimeWheelPicker> {
                             '$h',
                             style: TextStyle(
                               fontSize: isSelected ? 30 : 22,
-                              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-                              color: isScrolling 
-                                  ? (isSelected ? activeBlueColor : activeBlueColor.withValues(alpha: 0.5))
-                                  : (isSelected ? primaryTextColor : secondaryTextColor),
+                              fontWeight: isSelected
+                                  ? FontWeight.w800
+                                  : FontWeight.w500,
+                              color: isScrolling
+                                  ? (isSelected
+                                        ? activeBlueColor
+                                        : activeBlueColor.withValues(
+                                            alpha: 0.5,
+                                          ))
+                                  : (isSelected
+                                        ? primaryTextColor
+                                        : secondaryTextColor),
                             ),
                           ),
                         );
@@ -196,7 +222,8 @@ class _TimeWheelPickerState extends State<TimeWheelPicker> {
                       isScrolling: _isMinuteScrolling,
                       loop: true,
                       onSelectedItemChanged: (i) => setState(() => _minute = i),
-                      onScrollingChanged: (val) => setState(() => _isMinuteScrolling = val),
+                      onScrollingChanged: (val) =>
+                          setState(() => _isMinuteScrolling = val),
                       width: 72,
                       builder: (i, isSelected, isScrolling) {
                         return Center(
@@ -204,10 +231,18 @@ class _TimeWheelPickerState extends State<TimeWheelPicker> {
                             i.toString().padLeft(2, '0'),
                             style: TextStyle(
                               fontSize: isSelected ? 30 : 22,
-                              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-                              color: isScrolling 
-                                  ? (isSelected ? activeBlueColor : activeBlueColor.withValues(alpha: 0.5))
-                                  : (isSelected ? primaryTextColor : secondaryTextColor),
+                              fontWeight: isSelected
+                                  ? FontWeight.w800
+                                  : FontWeight.w500,
+                              color: isScrolling
+                                  ? (isSelected
+                                        ? activeBlueColor
+                                        : activeBlueColor.withValues(
+                                            alpha: 0.5,
+                                          ))
+                                  : (isSelected
+                                        ? primaryTextColor
+                                        : secondaryTextColor),
                             ),
                           ),
                         );
@@ -224,7 +259,8 @@ class _TimeWheelPickerState extends State<TimeWheelPicker> {
                       isScrolling: _isPeriodScrolling,
                       loop: false, // NO LOOPING FOR AM/PM
                       onSelectedItemChanged: (i) => setState(() => _period = i),
-                      onScrollingChanged: (val) => setState(() => _isPeriodScrolling = val),
+                      onScrollingChanged: (val) =>
+                          setState(() => _isPeriodScrolling = val),
                       width: 72,
                       builder: (i, isSelected, isScrolling) {
                         final text = i == 0 ? strings.am : strings.pm;
@@ -233,10 +269,18 @@ class _TimeWheelPickerState extends State<TimeWheelPicker> {
                             text,
                             style: TextStyle(
                               fontSize: isSelected ? 22 : 16,
-                              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-                              color: isScrolling 
-                                  ? (isSelected ? activeBlueColor : activeBlueColor.withValues(alpha: 0.5))
-                                  : (isSelected ? primaryTextColor : secondaryTextColor),
+                              fontWeight: isSelected
+                                  ? FontWeight.w800
+                                  : FontWeight.w500,
+                              color: isScrolling
+                                  ? (isSelected
+                                        ? activeBlueColor
+                                        : activeBlueColor.withValues(
+                                            alpha: 0.5,
+                                          ))
+                                  : (isSelected
+                                        ? primaryTextColor
+                                        : secondaryTextColor),
                             ),
                           ),
                         );
@@ -256,7 +300,9 @@ class _TimeWheelPickerState extends State<TimeWheelPicker> {
                 children: [
                   Expanded(
                     child: InkWell(
-                      borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(28)),
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(28),
+                      ),
                       onTap: () => Navigator.pop(context),
                       child: Center(
                         child: Text(
@@ -270,14 +316,12 @@ class _TimeWheelPickerState extends State<TimeWheelPicker> {
                       ),
                     ),
                   ),
-                  Container(
-                    width: 1,
-                    height: 22,
-                    color: dividerColor,
-                  ),
+                  Container(width: 1, height: 22, color: dividerColor),
                   Expanded(
                     child: InkWell(
-                      borderRadius: const BorderRadius.only(bottomRight: Radius.circular(28)),
+                      borderRadius: const BorderRadius.only(
+                        bottomRight: Radius.circular(28),
+                      ),
                       onTap: () => Navigator.pop(context, _toTimeOfDay()),
                       child: Center(
                         child: Text(

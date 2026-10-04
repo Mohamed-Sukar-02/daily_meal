@@ -46,7 +46,9 @@ class CooldownDetailsSheet extends ConsumerWidget {
       ),
       decoration: BoxDecoration(
         color: AppPalette.card(brightness),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(_topRadius)),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(_topRadius),
+        ),
       ),
       clipBehavior: Clip.antiAlias,
       child: SafeArea(
@@ -160,7 +162,11 @@ class CooldownDetailsSheet extends ConsumerWidget {
     );
   }
 
-  Widget _header(BuildContext context, Brightness brightness, AppStrings strings) {
+  Widget _header(
+    BuildContext context,
+    Brightness brightness,
+    AppStrings strings,
+  ) {
     return Row(
       children: [
         Container(
@@ -240,8 +246,13 @@ class CooldownDetailsSheet extends ConsumerWidget {
           Container(
             width: 40,
             height: 40,
-            decoration: BoxDecoration(color: style.background, shape: BoxShape.circle),
-            child: Center(child: Text(emoji, style: const TextStyle(fontSize: 18))),
+            decoration: BoxDecoration(
+              color: style.background,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(emoji, style: const TextStyle(fontSize: 18)),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -260,7 +271,9 @@ class CooldownDetailsSheet extends ConsumerWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  enabled ? strings.daysText(days) : strings.cooldownDisabledHint,
+                  enabled
+                      ? strings.daysText(days)
+                      : strings.cooldownDisabledHint,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -301,9 +314,6 @@ class CooldownDetailsSheet extends ConsumerWidget {
     }
   }
 
-  Widget _divider(Brightness brightness) => Divider(
-        height: 1,
-        thickness: 1,
-        color: AppPalette.hairline(brightness),
-      );
+  Widget _divider(Brightness brightness) =>
+      Divider(height: 1, thickness: 1, color: AppPalette.hairline(brightness));
 }

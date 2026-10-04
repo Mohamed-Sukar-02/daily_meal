@@ -30,23 +30,34 @@ void main() {
       }
     });
 
-    test('sanitizes external schemes, script injections, and unknown paths back to Home', () {
-      expect(map({'route': 'javascript:alert(1)'}).route, '/');
-      expect(map({'route': 'https://malicious-site.com'}).route, '/');
-      expect(map({'route': '/unknown/unregistered/route'}).route, '/');
-      expect(map({'route': '/vault?tab=evil'}).route, '/');
-      expect(map({'route': '/meal/invalid_id'}).route, '/');
-      expect(map({'route': '/meal/cloud/../../../traversal'}).route, '/');
-      expect(map({'route': '   /history   '}).route, '/history');
-    });
+    test(
+      'sanitizes external schemes, script injections, and unknown paths back to Home',
+      () {
+        expect(map({'route': 'javascript:alert(1)'}).route, '/');
+        expect(map({'route': 'https://malicious-site.com'}).route, '/');
+        expect(map({'route': '/unknown/unregistered/route'}).route, '/');
+        expect(map({'route': '/vault?tab=evil'}).route, '/');
+        expect(map({'route': '/meal/invalid_id'}).route, '/');
+        expect(map({'route': '/meal/cloud/../../../traversal'}).route, '/');
+        expect(map({'route': '   /history   '}).route, '/history');
+      },
+    );
 
-    test('falls back to Home when the route is absent, blank or not a string', () {
-      expect(map({}).route, '/');
-      expect(map({'route': ''}).route, '/');
-      expect(map({'route': 42}).route, '/');
-      expect(map({'route': null}).route, '/');
-      expect(map({'route': ['/', '/vault']}).route, '/');
-    });
+    test(
+      'falls back to Home when the route is absent, blank or not a string',
+      () {
+        expect(map({}).route, '/');
+        expect(map({'route': ''}).route, '/');
+        expect(map({'route': 42}).route, '/');
+        expect(map({'route': null}).route, '/');
+        expect(
+          map({
+            'route': ['/', '/vault'],
+          }).route,
+          '/',
+        );
+      },
+    );
 
     test('leaves the other fields alone', () {
       final sentAt = DateTime(2026, 1, 2, 3, 4);
@@ -73,22 +84,38 @@ void main() {
     // Read at 2026-01-05, so a device first opened on 2026-01-01 is four days
     // old and one opened a year earlier is out of every window in the app.
     final now = DateTime(2026, 1, 5);
-    final fresh = DeviceProfile(firstOpenedAt: DateTime(2026, 1, 1), hasCooked: false);
-    final veteran = DeviceProfile(firstOpenedAt: DateTime(2025, 1, 1), hasCooked: false);
-    final cookied = DeviceProfile(firstOpenedAt: DateTime(2026, 1, 1), hasCooked: true);
+    final fresh = DeviceProfile(
+      firstOpenedAt: DateTime(2026, 1, 1),
+      hasCooked: false,
+    );
+    final veteran = DeviceProfile(
+      firstOpenedAt: DateTime(2025, 1, 1),
+      hasCooked: false,
+    );
+    final cookied = DeviceProfile(
+      firstOpenedAt: DateTime(2026, 1, 1),
+      hasCooked: true,
+    );
 
     bool showsFor(Map<String, Object?> segment, DeviceProfile? profile) =>
         map({'segment': segment}).matchesDevice(profile, now: now);
 
     test('carries the segment the admin panel wrote', () {
-      final segment = map({'segment': {'v': 1, 'kind': 'new', 'days': 7}}).segment;
+      final segment = map({
+        'segment': {'v': 1, 'kind': 'new', 'days': 7},
+      }).segment;
       expect(segment.version, 1);
       expect(segment.kind, 'new');
       expect(segment.days, 7);
     });
 
     test('reads a missing or non-map segment as a broadcast to everyone', () {
-      for (final value in <Object?>[null, 'new', 7, ['new', 7]]) {
+      for (final value in <Object?>[
+        null,
+        'new',
+        7,
+        ['new', 7],
+      ]) {
         final item = map({'segment': value});
         expect(item.segment.kind, 'all', reason: '$value');
         expect(item.matchesDevice(fresh, now: now), isTrue, reason: '$value');
@@ -121,7 +148,10 @@ void main() {
 
     test('a device that has cooked is returning from its first day', () {
       expect(showsFor({'v': 1, 'kind': 'new', 'days': 7}, cookied), isFalse);
-      expect(showsFor({'v': 1, 'kind': 'returning', 'days': 7}, cookied), isTrue);
+      expect(
+        showsFor({'v': 1, 'kind': 'returning', 'days': 7}, cookied),
+        isTrue,
+      );
     });
 
     test('new and returning together cover every device', () {
@@ -133,7 +163,9 @@ void main() {
       for (final device in devices.entries) {
         expect(
           showsFor({'v': 1, 'kind': 'new', 'days': 7}, device.value),
-          isNot(showsFor({'v': 1, 'kind': 'returning', 'days': 7}, device.value)),
+          isNot(
+            showsFor({'v': 1, 'kind': 'returning', 'days': 7}, device.value),
+          ),
           reason: device.key,
         );
       }
@@ -160,10 +192,16 @@ void main() {
       }
     });
 
-    test('hides lifecycle broadcasts when the device profile is unreadable', () {
-      expect(showsFor({'v': 1, 'kind': 'new', 'days': 7}, null), isFalse);
-      expect(showsFor({'v': 1, 'kind': 'returning', 'days': 7}, null), isFalse);
-    });
+    test(
+      'hides lifecycle broadcasts when the device profile is unreadable',
+      () {
+        expect(showsFor({'v': 1, 'kind': 'new', 'days': 7}, null), isFalse);
+        expect(
+          showsFor({'v': 1, 'kind': 'returning', 'days': 7}, null),
+          isFalse,
+        );
+      },
+    );
 
     test('survives copyWith', () {
       final read = map({

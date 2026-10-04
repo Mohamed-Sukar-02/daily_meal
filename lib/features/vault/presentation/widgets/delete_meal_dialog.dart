@@ -26,32 +26,42 @@ class DeleteMealDialog extends ConsumerWidget {
     // No forced `Directionality` here: the dialog follows the app locale set by
     // MaterialApp instead of being hard-wired to RTL.
     return AlertDialog(
-        icon: Icon(Icons.warning_amber_rounded, color: colorScheme.error, size: 40),
-        title: Text(
-          strings.deleteMealTitle,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                strings.deleteMealConfirm(meal.name),
-                style: theme.textTheme.bodyMedium,
-              ),
+      icon: Icon(
+        Icons.warning_amber_rounded,
+        color: colorScheme.error,
+        size: 40,
+      ),
+      title: Text(
+        strings.deleteMealTitle,
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              strings.deleteMealConfirm(meal.name),
+              style: theme.textTheme.bodyMedium,
+            ),
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                color: colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.5,
+                ),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: colorScheme.outlineVariant),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.shield_outlined, color: colorScheme.primary, size: 22),
+                  Icon(
+                    Icons.shield_outlined,
+                    color: colorScheme.primary,
+                    size: 22,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -65,30 +75,36 @@ class DeleteMealDialog extends ConsumerWidget {
                 ],
               ),
             ),
-            ],
-          ),
+          ],
         ),
-        actionsOverflowDirection: VerticalDirection.up,
-        actionsOverflowButtonSpacing: 8,
-        actions: [
-          TextButton(
-            key: const Key('meal_delete_cancel_button'),
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(strings.cancel),
-          ),
-          FilledButton(
-            key: const Key('meal_delete_confirm_button'),
-            style: FilledButton.styleFrom(backgroundColor: colorScheme.error),
-            onPressed: () async {
-              await ref.read(vaultControllerProvider.notifier).deleteMeal(meal.id);
-              if (context.mounted) {
-                Navigator.of(context).pop(true);
-                AppToast.show(context, message: strings.mealDeletedWithHistory(meal.name), type: AppToastType.info);
-              }
-            },
-            child: Text(strings.deleteMealTitle),
-          ),
-        ],
-      );
+      ),
+      actionsOverflowDirection: VerticalDirection.up,
+      actionsOverflowButtonSpacing: 8,
+      actions: [
+        TextButton(
+          key: const Key('meal_delete_cancel_button'),
+          onPressed: () => Navigator.of(context).pop(false),
+          child: Text(strings.cancel),
+        ),
+        FilledButton(
+          key: const Key('meal_delete_confirm_button'),
+          style: FilledButton.styleFrom(backgroundColor: colorScheme.error),
+          onPressed: () async {
+            await ref
+                .read(vaultControllerProvider.notifier)
+                .deleteMeal(meal.id);
+            if (context.mounted) {
+              Navigator.of(context).pop(true);
+              AppToast.show(
+                context,
+                message: strings.mealDeletedWithHistory(meal.name),
+                type: AppToastType.info,
+              );
+            }
+          },
+          child: Text(strings.deleteMealTitle),
+        ),
+      ],
+    );
   }
 }

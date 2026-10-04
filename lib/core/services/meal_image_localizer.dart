@@ -122,8 +122,10 @@ class MealImageLocalizer {
       return photoPath;
     }
     if (!isTrustedHost(uri)) {
-      debugPrint('[MealImageLocalizer] refused untrusted host '
-          '"${uri.host}": $url');
+      debugPrint(
+        '[MealImageLocalizer] refused untrusted host '
+        '"${uri.host}": $url',
+      );
       return photoPath;
     }
 
@@ -166,23 +168,28 @@ class MealImageLocalizer {
           .timeout(_downloadTimeout);
 
       if (response.statusCode != 200) {
-        debugPrint('[MealImageLocalizer] HTTP ${response.statusCode} '
-            'for $uri');
+        debugPrint(
+          '[MealImageLocalizer] HTTP ${response.statusCode} '
+          'for $uri',
+        );
         return false;
       }
-      final contentType =
-          response.headers['content-type']?.toLowerCase() ?? '';
+      final contentType = response.headers['content-type']?.toLowerCase() ?? '';
       if (!contentType.startsWith('image/')) {
-        debugPrint('[MealImageLocalizer] refused non-image content-type '
-            '"${response.headers['content-type']}" for $uri');
+        debugPrint(
+          '[MealImageLocalizer] refused non-image content-type '
+          '"${response.headers['content-type']}" for $uri',
+        );
         return false;
       }
       // A null / -1 contentLength ⇒ not declared; the running stream total
       // still enforces the cap byte-for-byte.
       final declared = response.contentLength;
       if (declared != null && declared > maxFileSizeBytes) {
-        debugPrint('[MealImageLocalizer] refused $declared '
-            'byte body (cap $maxFileSizeBytes) for $uri');
+        debugPrint(
+          '[MealImageLocalizer] refused $declared '
+          'byte body (cap $maxFileSizeBytes) for $uri',
+        );
         return false;
       }
 
@@ -198,8 +205,10 @@ class MealImageLocalizer {
         sink.add(chunk);
       }
       if (exceededCap) {
-        debugPrint('[MealImageLocalizer] aborted $uri after exceeding '
-            '$maxFileSizeBytes bytes mid-stream.');
+        debugPrint(
+          '[MealImageLocalizer] aborted $uri after exceeding '
+          '$maxFileSizeBytes bytes mid-stream.',
+        );
         return false;
       }
       if (bytes == 0) {
@@ -246,20 +255,27 @@ class MealImageLocalizer {
       // Honour the same "Cloud on Wi-Fi only" policy: this pass downloads up to
       // maxFileSizeBytes per photo at every cold start.
       if (!await CloudPolicy.isCloudAllowedNow()) {
-        debugPrint('[MealImageLocalizer] Wi-Fi-only policy active — backfill '
-            'skipped (${remoteMeals.length} remote photo(s) pending).');
+        debugPrint(
+          '[MealImageLocalizer] Wi-Fi-only policy active — backfill '
+          'skipped (${remoteMeals.length} remote photo(s) pending).',
+        );
         return;
       }
 
-      final reachable = await ReachabilityService.instance
-          .isInternetReachable(timeout: const Duration(seconds: 2));
+      final reachable = await ReachabilityService.instance.isInternetReachable(
+        timeout: const Duration(seconds: 2),
+      );
       if (!reachable) {
-        debugPrint('[MealImageLocalizer] offline — backfill skipped '
-            '(${remoteMeals.length} remote photo(s) pending).');
+        debugPrint(
+          '[MealImageLocalizer] offline — backfill skipped '
+          '(${remoteMeals.length} remote photo(s) pending).',
+        );
         return;
       }
 
-      debugPrint('[MealImageLocalizer] backfilling ${remoteMeals.length} remote photo(s)…');
+      debugPrint(
+        '[MealImageLocalizer] backfilling ${remoteMeals.length} remote photo(s)…',
+      );
       for (final meal in remoteMeals) {
         try {
           final localPath = await localize(meal.photoPath);
@@ -272,7 +288,9 @@ class MealImageLocalizer {
             debugPrint('[MealImageLocalizer] "${meal.name}" → local photo.');
           }
         } catch (e) {
-          debugPrint('[MealImageLocalizer] backfill failed for meal ${meal.id}: $e');
+          debugPrint(
+            '[MealImageLocalizer] backfill failed for meal ${meal.id}: $e',
+          );
         }
       }
     } catch (e) {
@@ -284,8 +302,9 @@ class MealImageLocalizer {
   /// name (content-hash key), inside the same directory the quick-add sheet
   /// uses for user-picked photos.
   Future<File> _targetFile(String url) async {
-    final docs = await (documentsDirectoryResolver ??
-        getApplicationDocumentsDirectory)();
+    final docs =
+        await (documentsDirectoryResolver ??
+            getApplicationDocumentsDirectory)();
     final hash = sha1.convert(url.codeUnits).toString();
     return File('${docs.path}/meal_images/img_$hash${_extensionOf(url)}');
   }

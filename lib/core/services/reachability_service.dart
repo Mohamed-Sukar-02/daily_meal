@@ -24,7 +24,9 @@ class ReachabilityService {
     'https://firestore.googleapis.com/',
   ];
 
-  Future<bool> isInternetReachable({Duration timeout = const Duration(seconds: 3)}) async {
+  Future<bool> isInternetReachable({
+    Duration timeout = const Duration(seconds: 3),
+  }) async {
     if (Platform.environment.containsKey('FLUTTER_TEST')) return false;
 
     final probes = <Future<bool>>[
@@ -83,10 +85,9 @@ class ReachabilityService {
   }) async {
     if (!hasInterface) return false;
     try {
-      return await isInternetReachable(timeout: timeout).timeout(
-        timeout + const Duration(seconds: 1),
-        onTimeout: () => false,
-      );
+      return await isInternetReachable(
+        timeout: timeout,
+      ).timeout(timeout + const Duration(seconds: 1), onTimeout: () => false);
     } catch (_) {
       return false;
     }

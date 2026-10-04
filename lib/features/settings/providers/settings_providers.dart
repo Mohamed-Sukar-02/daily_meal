@@ -27,8 +27,9 @@ enum CooldownProtein { chicken, beef, fish, meatless }
 /// This lives in a provider (not in the settings screen widget) because the
 /// cooldown details are now shown in a modal bottom sheet that is created and
 /// destroyed on every open — widget state would be lost between opens.
-final cooldownMemoryProvider =
-    StateProvider<Map<CooldownProtein, int>>((ref) => const {});
+final cooldownMemoryProvider = StateProvider<Map<CooldownProtein, int>>(
+  (ref) => const {},
+);
 
 /// Reactive stream watching the singleton AppSettings row.
 final appSettingsProvider = StreamProvider<AppSettingsData>((ref) {
@@ -70,16 +71,17 @@ final localeProvider = Provider<Locale>((ref) {
 /// Maps the persisted language preference onto the localisation bundle used
 /// for anything rendered outside the widget tree (e.g. scheduled notifications).
 AppStrings _stringsFor(AppSettingsData settings) => AppStrings(
-      settings.language == AppLanguagePreference.en
-          ? const Locale('en')
-          : const Locale('ar'),
-    );
+  settings.language == AppLanguagePreference.en
+      ? const Locale('en')
+      : const Locale('ar'),
+);
 
 /// Seam for the OS notification side effects so tests can swap the singleton
 /// without touching the plugin's platform channels. Production resolves to
 /// [NotificationService.instance].
-final notificationServiceProvider =
-    Provider<NotificationService>((ref) => NotificationService.instance);
+final notificationServiceProvider = Provider<NotificationService>(
+  (ref) => NotificationService.instance,
+);
 
 /// Mutation controller for application settings.
 class SettingsController extends AsyncNotifier<void> {
@@ -220,7 +222,9 @@ class SettingsController extends AsyncNotifier<void> {
   /// stays their decision rather than a side effect of this one.
   Future<void> _armDailyReminder(AppSettingsData settings) async {
     if (!settings.notificationsEnabled) return;
-    await ref.read(notificationServiceProvider).scheduleDailyNotification(
+    await ref
+        .read(notificationServiceProvider)
+        .scheduleDailyNotification(
           hour: settings.notificationHour,
           minute: settings.notificationMinute,
           strings: _stringsFor(settings),
@@ -268,7 +272,7 @@ class SettingsController extends AsyncNotifier<void> {
 
       // The scheduled OS reminder carries frozen title/body strings, so it
       // must be re-armed with the new language or it keeps firing the old copy.
-      final settings = await dao.watchSettings().first;
+      final settings = await dao.getSettings();
       await _armDailyReminder(settings);
 
       state = const AsyncValue.data(null);
@@ -284,8 +288,8 @@ class SettingsController extends AsyncNotifier<void> {
     try {
       final dao = ref.read(appSettingsDaoProvider);
       await dao.updateNotificationTime(hour, minute);
-      
-      final settings = await dao.watchSettings().first;
+
+      final settings = await dao.getSettings();
       await _armDailyReminder(settings);
 
       state = const AsyncValue.data(null);
@@ -298,11 +302,14 @@ class SettingsController extends AsyncNotifier<void> {
   /// Toggles daily notification reminder status.
   /// When enabling, requests OS permission first — stays OFF if denied.
   Future<void> toggleNotifications(bool enabled) async {
+    if (state.isLoading) return;
     state = const AsyncValue.loading();
     try {
       final dao = ref.read(appSettingsDaoProvider);
       if (enabled) {
-        final granted = await ref.read(notificationServiceProvider).requestPermissions();
+        final granted = await ref
+            .read(notificationServiceProvider)
+            .requestPermissions();
         if (!granted) {
           // Permission denied — keep switch OFF and don't schedule
           await dao.toggleNotifications(false);
@@ -311,7 +318,7 @@ class SettingsController extends AsyncNotifier<void> {
           return;
         }
         await dao.toggleNotifications(true);
-        final settings = await dao.watchSettings().first;
+        final settings = await dao.getSettings();
         try {
           await _armDailyReminder(settings);
         } catch (_) {
@@ -332,7 +339,6 @@ class SettingsController extends AsyncNotifier<void> {
     }
   }
 
-
   /// Save welcome data and mark first run as complete.
   Future<void> saveWelcomeData(
     String name,
@@ -348,7 +354,7 @@ class SettingsController extends AsyncNotifier<void> {
 
       final dao = ref.read(appSettingsDaoProvider);
       await dao.updateWelcomeData(
-        userName: name, 
+        userName: name,
         userEmail: email,
         userGender: gender,
         userAvatar: avatarPath,
@@ -377,6 +383,7 @@ class SettingsController extends AsyncNotifier<void> {
   }
 }
 
-final settingsControllerProvider = AsyncNotifierProvider<SettingsController, void>(() {
-  return SettingsController();
-});
+final settingsControllerProvider =
+    AsyncNotifierProvider<SettingsController, void>(() {
+      return SettingsController();
+    });

@@ -44,32 +44,43 @@ void main() {
     final db = await _openShell(tester, surface: _narrowPhone, textScale: 1.5);
     final strings = AppStrings(const Locale('ar'));
     final strip = _strip(tester);
-    expect(strip.height, closeTo(_navStripHeight, 0.5),
-        reason: 'the strip keeps its designed ${_navStripHeight}px height — the '
-            'fix shrinks content, never the bar');
+    expect(
+      strip.height,
+      closeTo(_navStripHeight, 0.5),
+      reason:
+          'the strip keeps its designed ${_navStripHeight}px height — the '
+          'fix shrinks content, never the bar',
+    );
 
     double? tallestIconScale;
     for (final destination in _navDestinations(strings)) {
       final item = find.byKey(ValueKey(destination.key));
       expect(item, findsOneWidget, reason: destination.label);
       expect(
-          find.descendant(
-              of: item, matching: find.text(destination.label)),
-          findsOneWidget,
-          reason: '${destination.label} is still in the tree and still reads '
-              'its own string at 1.5x text');
+        find.descendant(of: item, matching: find.text(destination.label)),
+        findsOneWidget,
+        reason:
+            '${destination.label} is still in the tree and still reads '
+            'its own string at 1.5x text',
+      );
 
       final box = tester.getRect(item);
       final icon = tester.getRect(_iconIn(item));
       final label = tester.getRect(
-          find.descendant(of: item, matching: find.text(destination.label)));
+        find.descendant(of: item, matching: find.text(destination.label)),
+      );
       final underline = tester.getRect(
-          find.descendant(of: item, matching: find.byType(Container)).first);
+        find.descendant(of: item, matching: find.byType(Container)).first,
+      );
 
-      expect(box.height, closeTo(_navStripHeight, 0.5),
-          reason: '${destination.label} keeps the whole ${_navStripHeight}px '
-              'strip as its ink splash and tap target at 1.5x text — the guard '
-              'shrinks the content inside it, never the hit area');
+      expect(
+        box.height,
+        closeTo(_navStripHeight, 0.5),
+        reason:
+            '${destination.label} keeps the whole ${_navStripHeight}px '
+            'strip as its ink splash and tap target at 1.5x text — the guard '
+            'shrinks the content inside it, never the hit area',
+      );
       _expectInsideStrip(strip, icon, '${destination.label} icon');
       _expectInsideStrip(strip, label, '${destination.label} label');
       _expectInsideStrip(strip, underline, '${destination.label} underline');
@@ -77,24 +88,42 @@ void main() {
       // Everything inside one item scales by one factor: the icon is the ruler,
       // because an icon's box never follows the text scale.
       final scale = icon.height / destination.iconSize;
-      expect(scale, inInclusiveRange(0.9, 1.0 + 1e-9),
-          reason: '${destination.label} shrinks to fit, it is never crushed');
-      expect(label.height, closeTo(_navLabelHeight15 * scale, 0.6),
-          reason: '${destination.label} must scale with its icon, as one unit');
+      expect(
+        scale,
+        inInclusiveRange(0.9, 1.0 + 1e-9),
+        reason: '${destination.label} shrinks to fit, it is never crushed',
+      );
+      expect(
+        label.height,
+        closeTo(_navLabelHeight15 * scale, 0.6),
+        reason: '${destination.label} must scale with its icon, as one unit',
+      );
       expect(underline.height, closeTo(2.5 * scale, 0.3));
-      expect(label.width, lessThanOrEqualTo(_navItemWidth + 0.5),
-          reason: 'the label still respects the item width and ellipsizes at it');
+      expect(
+        label.width,
+        lessThanOrEqualTo(_navItemWidth + 0.5),
+        reason: 'the label still respects the item width and ellipsizes at it',
+      );
       if (destination.iconSize == 27.6) tallestIconScale = scale;
-      debugPrint('nav 1.5x/360 ${destination.label}: scale ${scale.toStringAsFixed(4)} '
-          'icon ${icon.height.toStringAsFixed(2)} label ${label.height.toStringAsFixed(2)} '
-          'underline ${underline.height.toStringAsFixed(2)}');
+      debugPrint(
+        'nav 1.5x/360 ${destination.label}: scale ${scale.toStringAsFixed(4)} '
+        'icon ${icon.height.toStringAsFixed(2)} label ${label.height.toStringAsFixed(2)} '
+        'underline ${underline.height.toStringAsFixed(2)}',
+      );
     }
 
-    expect(tallestIconScale, lessThan(1.0),
-        reason: 'the 27.6px-icon items are the ones that used to overflow by '
-            '2.1px; they must be the ones that shrank');
-    expect(tester.takeException(), isNull,
-        reason: 'the nav Column must not overflow its 54px strip at 1.5x text');
+    expect(
+      tallestIconScale,
+      lessThan(1.0),
+      reason:
+          'the 27.6px-icon items are the ones that used to overflow by '
+          '2.1px; they must be the ones that shrank',
+    );
+    expect(
+      tester.takeException(),
+      isNull,
+      reason: 'the nav Column must not overflow its 54px strip at 1.5x text',
+    );
 
     await _close(tester, db);
   });
@@ -111,23 +140,38 @@ void main() {
       final box = tester.getRect(item);
       final icon = tester.getRect(_iconIn(item));
       final label = tester.getRect(
-          find.descendant(of: item, matching: find.text(destination.label)));
+        find.descendant(of: item, matching: find.text(destination.label)),
+      );
       final underline = tester.getRect(
-          find.descendant(of: item, matching: find.byType(Container)).first);
+        find.descendant(of: item, matching: find.byType(Container)).first,
+      );
 
       // The item's box is the ink splash and the tap target, and it is the strip
       // height at any text scale: the guard shrinks the content inside it, never
       // the hit area.
-      expect(box.height, closeTo(_navStripHeight, 0.5),
-          reason: '${destination.label} must keep the whole ${_navStripHeight}px '
-              'strip as its tap target');
-      expect(icon.width, closeTo(destination.iconSize, 0.5),
-          reason: '${destination.label} icon must not be scaled at 1.0x text');
+      expect(
+        box.height,
+        closeTo(_navStripHeight, 0.5),
+        reason:
+            '${destination.label} must keep the whole ${_navStripHeight}px '
+            'strip as its tap target',
+      );
+      expect(
+        icon.width,
+        closeTo(destination.iconSize, 0.5),
+        reason: '${destination.label} icon must not be scaled at 1.0x text',
+      );
       expect(icon.height, closeTo(destination.iconSize, 0.5));
-      expect(label.height, closeTo(_navLabelHeight, 0.5),
-          reason: '${destination.label} text must not be scaled at 1.0x text');
-      expect(underline.width, closeTo(22, 0.5),
-          reason: 'the underline indicator is a fixed 22x2.5 design mark');
+      expect(
+        label.height,
+        closeTo(_navLabelHeight, 0.5),
+        reason: '${destination.label} text must not be scaled at 1.0x text',
+      );
+      expect(
+        underline.width,
+        closeTo(22, 0.5),
+        reason: 'the underline indicator is a fixed 22x2.5 design mark',
+      );
       expect(underline.height, closeTo(2.5, 0.5));
       _expectInsideStrip(box, icon, '${destination.label} icon');
       _expectInsideStrip(box, label, '${destination.label} label');
@@ -148,13 +192,21 @@ void main() {
       final item = find.byKey(ValueKey(destination.key));
       final icon = tester.getRect(_iconIn(item));
       final label = tester.getRect(
-          find.descendant(of: item, matching: find.text(destination.label)));
-      expect(icon.height, closeTo(destination.iconSize, 0.5),
-          reason: 'a wide surface at 1.0x may not trigger the shrink-to-fit');
+        find.descendant(of: item, matching: find.text(destination.label)),
+      );
+      expect(
+        icon.height,
+        closeTo(destination.iconSize, 0.5),
+        reason: 'a wide surface at 1.0x may not trigger the shrink-to-fit',
+      );
       expect(label.height, closeTo(_navLabelHeight, 0.5));
-      expect(label.width, lessThan(tester.getRect(item).width - 1),
-          reason: 'the label has room on a wide surface, so it is not even '
-              'ellipsized');
+      expect(
+        label.width,
+        lessThan(tester.getRect(item).width - 1),
+        reason:
+            'the label has room on a wide surface, so it is not even '
+            'ellipsized',
+      );
       _expectInsideStrip(_strip(tester), label, '${destination.label} label');
     }
     expect(tester.takeException(), isNull);
@@ -171,19 +223,26 @@ void main() {
       final item = find.byKey(ValueKey(destination.key));
       final icon = tester.getRect(_iconIn(item));
       final label = tester.getRect(
-          find.descendant(of: item, matching: find.text(destination.label)));
+        find.descendant(of: item, matching: find.text(destination.label)),
+      );
       _expectInsideStrip(strip, icon, '${destination.label} icon');
       _expectInsideStrip(strip, label, '${destination.label} label');
       final scale = icon.height / destination.iconSize;
       expect(scale, inInclusiveRange(0.9, 1.0 + 1e-9));
       expect(label.height, closeTo(_navLabelHeight15 * scale, 0.6));
       if (destination.iconSize == 27.6) tallScale = scale;
-      debugPrint('nav 1.5x/wide ${destination.label}: scale ${scale.toStringAsFixed(4)} '
-          'label ${label.height.toStringAsFixed(2)}');
+      debugPrint(
+        'nav 1.5x/wide ${destination.label}: scale ${scale.toStringAsFixed(4)} '
+        'label ${label.height.toStringAsFixed(2)}',
+      );
     }
-    expect(tallScale, lessThan(1.0),
-        reason: 'the pressure was vertical, so the same items shrink here as on '
-            'the narrow phone: ${tallScale?.toStringAsFixed(4)}');
+    expect(
+      tallScale,
+      lessThan(1.0),
+      reason:
+          'the pressure was vertical, so the same items shrink here as on '
+          'the narrow phone: ${tallScale?.toStringAsFixed(4)}',
+    );
     expect(tester.takeException(), isNull);
     await _close(tester, db);
   });
@@ -206,10 +265,17 @@ void main() {
     final strings = AppStrings(const Locale('ar'));
 
     final row = find.byKey(_localRowKey);
-    expect(row, findsOneWidget, reason: 'the local counter row is still mounted');
+    expect(
+      row,
+      findsOneWidget,
+      reason: 'the local counter row is still mounted',
+    );
     final bar = _barAround(tester, row);
-    expect(bar.height, closeTo(_toolbarHeight, 0.5),
-        reason: 'toolbarHeight stays the pinned 85px design constant');
+    expect(
+      bar.height,
+      closeTo(_toolbarHeight, 0.5),
+      reason: 'toolbarHeight stays the pinned 85px design constant',
+    );
     final padded = _paddedBar(bar);
 
     final rowRect = tester.getRect(row);
@@ -223,83 +289,135 @@ void main() {
     _expectInsideBar(padded, rowRect, 'the counter row');
     _expectInsideBar(padded, chip, 'the meals chip');
     _expectInsideBar(padded, sync, 'the sync icon');
-    expect(title.top, closeTo(bar.top + 16, 0.5),
-        reason: 'the header still starts on its 16px top gutter');
+    expect(
+      title.top,
+      closeTo(bar.top + 16, 0.5),
+      reason: 'the header still starts on its 16px top gutter',
+    );
     // The subtitle is the line the 19px overflow used to shave away: it has to
     // stay under the counters, inside the bar, and be worth reading.
-    expect(subtitle.top, greaterThan(rowRect.bottom),
-        reason: 'the subtitle must stay the line under the counters, never '
-            'stacked over them to fit');
-    expect(subtitle.bottom, lessThanOrEqualTo(bar.bottom - 6 + 0.5),
-        reason: 'the 19px overflow: the subtitle used to hang past the bar and '
-            'its own 6px bottom gutter');
-    expect(subtitle.height, greaterThan(8),
-        reason: 'the header scales down to fit, it must not be squeezed away');
-    expect(_overlap(chip, sync), isTrue,
-        reason: 'the sync icon and the meals chip share one line at any text scale');
     expect(
-        find.descendant(of: row, matching: find.text(strings.mealsCount(3))),
-        findsOneWidget,
-        reason: 'the counter still reads the real number');
+      subtitle.top,
+      greaterThan(rowRect.bottom),
+      reason:
+          'the subtitle must stay the line under the counters, never '
+          'stacked over them to fit',
+    );
+    expect(
+      subtitle.bottom,
+      lessThanOrEqualTo(bar.bottom - 6 + 0.5),
+      reason:
+          'the 19px overflow: the subtitle used to hang past the bar and '
+          'its own 6px bottom gutter',
+    );
+    expect(
+      subtitle.height,
+      greaterThan(8),
+      reason: 'the header scales down to fit, it must not be squeezed away',
+    );
+    expect(
+      _overlap(chip, sync),
+      isTrue,
+      reason:
+          'the sync icon and the meals chip share one line at any text scale',
+    );
+    expect(
+      find.descendant(of: row, matching: find.text(strings.mealsCount(3))),
+      findsOneWidget,
+      reason: 'the counter still reads the real number',
+    );
 
     // One unit, one factor: the two lines keep the proportion they have at a
     // normal text scale, so the header shrinks as a whole instead of losing a
     // line. Measured here: title 38.41px, subtitle 21.51px, ratio 1.79 against
     // the 34.0/19.0 = 1.79 pair at 1.0x.
-    expect(title.height / subtitle.height,
-        closeTo(_vaultTitleHeight / _vaultSubtitleHeight, 0.02),
-        reason: 'title and subtitle must scale by the same factor');
-    expect(title.height, lessThan(_vaultTitleHeight * 1.5),
-        reason: 'the guard has to engage, not let the 50px line overflow');
-    expect(title.height, greaterThan(_vaultTitleHeight),
-        reason: 'shrinking must still leave the title the bigger line');
-    debugPrint('header 1.5x/360 my-vault: title ${title.height.toStringAsFixed(2)} '
-        'row ${rowRect.height.toStringAsFixed(2)} subtitle '
-        '${subtitle.height.toStringAsFixed(2)} spare under the gutter '
-        '${(bar.bottom - 6 - subtitle.bottom).toStringAsFixed(2)}');
-
-    expect(tester.takeException(), isNull,
-        reason: 'the header Column must not overflow the 85px bar at 1.5x text');
-
-    await _close(tester, db);
-  });
-
-  testWidgets('Explore header keeps both counter badges and the subtitle inside '
-      'the 85px bar at 1.5x text', (tester) async {
-    final db = await _openShell(
-      tester,
-      surface: _narrowPhone,
-      textScale: 1.5,
-      tab: _VaultTab.explore,
-      overrides: [
-        publicMealsProvider.overrideWith((ref) async => _cloudVault(1234)),
-      ],
+    expect(
+      title.height / subtitle.height,
+      closeTo(_vaultTitleHeight / _vaultSubtitleHeight, 0.02),
+      reason: 'title and subtitle must scale by the same factor',
     );
-    final strings = AppStrings(const Locale('ar'));
-
-    final row = find.byKey(_exploreRowKey);
-    expect(row, findsOneWidget, reason: 'the cloud counter row is still mounted');
-    final bar = _barAround(tester, row);
-    expect(bar.height, closeTo(_toolbarHeight, 0.5));
-    final padded = _paddedBar(bar);
-
-    _expectInsideBar(padded, tester.getRect(row), 'the two-badge cloud row');
-    _expectInsideBar(padded, tester.getRect(find.byKey(_exploreChipKey)),
-        'the cloud counter chip');
-    final subtitle = tester.getRect(_headerText(strings.vaultSubtitleExplore));
-    _expectInsideBar(padded, subtitle, 'the Explore subtitle line');
-    // 1234 cloud meals, 3 of them already in the vault -> "1231 جديدة" +
-    // "1234 أكلة". Shrinking to fit must keep both counters, never drop one.
     expect(
-        find.descendant(of: row, matching: find.text(strings.vaultNewCount(1231))),
-        findsOneWidget);
+      title.height,
+      lessThan(_vaultTitleHeight * 1.5),
+      reason: 'the guard has to engage, not let the 50px line overflow',
+    );
     expect(
-        find.descendant(of: row, matching: find.text(strings.vaultCloudCount(1234))),
-        findsOneWidget);
+      title.height,
+      greaterThan(_vaultTitleHeight),
+      reason: 'shrinking must still leave the title the bigger line',
+    );
+    debugPrint(
+      'header 1.5x/360 my-vault: title ${title.height.toStringAsFixed(2)} '
+      'row ${rowRect.height.toStringAsFixed(2)} subtitle '
+      '${subtitle.height.toStringAsFixed(2)} spare under the gutter '
+      '${(bar.bottom - 6 - subtitle.bottom).toStringAsFixed(2)}',
+    );
 
-    expect(tester.takeException(), isNull);
+    expect(
+      tester.takeException(),
+      isNull,
+      reason: 'the header Column must not overflow the 85px bar at 1.5x text',
+    );
+
     await _close(tester, db);
   });
+
+  testWidgets(
+    'Explore header keeps both counter badges and the subtitle inside '
+    'the 85px bar at 1.5x text',
+    (tester) async {
+      final db = await _openShell(
+        tester,
+        surface: _narrowPhone,
+        textScale: 1.5,
+        tab: _VaultTab.explore,
+        overrides: [
+          publicMealsProvider.overrideWith((ref) async => _cloudVault(1234)),
+        ],
+      );
+      final strings = AppStrings(const Locale('ar'));
+
+      final row = find.byKey(_exploreRowKey);
+      expect(
+        row,
+        findsOneWidget,
+        reason: 'the cloud counter row is still mounted',
+      );
+      final bar = _barAround(tester, row);
+      expect(bar.height, closeTo(_toolbarHeight, 0.5));
+      final padded = _paddedBar(bar);
+
+      _expectInsideBar(padded, tester.getRect(row), 'the two-badge cloud row');
+      _expectInsideBar(
+        padded,
+        tester.getRect(find.byKey(_exploreChipKey)),
+        'the cloud counter chip',
+      );
+      final subtitle = tester.getRect(
+        _headerText(strings.vaultSubtitleExplore),
+      );
+      _expectInsideBar(padded, subtitle, 'the Explore subtitle line');
+      // 1234 cloud meals, 3 of them already in the vault -> "1231 جديدة" +
+      // "1234 أكلة". Shrinking to fit must keep both counters, never drop one.
+      expect(
+        find.descendant(
+          of: row,
+          matching: find.text(strings.vaultNewCount(1231)),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: row,
+          matching: find.text(strings.vaultCloudCount(1234)),
+        ),
+        findsOneWidget,
+      );
+
+      expect(tester.takeException(), isNull);
+      await _close(tester, db);
+    },
+  );
 
   testWidgets('My Vault header keeps its designed geometry at 1.0x text on a '
       'narrow phone', (tester) async {
@@ -321,14 +439,26 @@ void main() {
     // 28px Cairo on height: 1.2 paints a 34.0px line, the 13px subtitle a
     // 19.0px one, both unscaled: like the nav guard, the header must be
     // untouched at a normal text scale.
-    expect(title.height, closeTo(_vaultTitleHeight, 0.5),
-        reason: 'the header title keeps its designed line at 1.0x text');
-    expect(subtitle.height, closeTo(_vaultSubtitleHeight, 0.5),
-        reason: 'the subtitle keeps its designed line at 1.0x text');
-    expect(title.top, closeTo(bar.top + 16, 0.5),
-        reason: 'the header still starts on the bar\'s 16px top gutter');
-    expect(subtitle.bottom, lessThanOrEqualTo(bar.bottom - 6 + 0.5),
-        reason: 'and ends above its 6px bottom gutter');
+    expect(
+      title.height,
+      closeTo(_vaultTitleHeight, 0.5),
+      reason: 'the header title keeps its designed line at 1.0x text',
+    );
+    expect(
+      subtitle.height,
+      closeTo(_vaultSubtitleHeight, 0.5),
+      reason: 'the subtitle keeps its designed line at 1.0x text',
+    );
+    expect(
+      title.top,
+      closeTo(bar.top + 16, 0.5),
+      reason: 'the header still starts on the bar\'s 16px top gutter',
+    );
+    expect(
+      subtitle.bottom,
+      lessThanOrEqualTo(bar.bottom - 6 + 0.5),
+      reason: 'and ends above its 6px bottom gutter',
+    );
     _expectInsideBar(padded, subtitle, 'the subtitle line');
     _expectInsideBar(padded, tester.getRect(row), 'the counter row');
 
@@ -336,8 +466,9 @@ void main() {
     await _close(tester, db);
   });
 
-  testWidgets('Both chrome strips survive a large text scale in English too',
-      (tester) async {
+  testWidgets('Both chrome strips survive a large text scale in English too', (
+    tester,
+  ) async {
     final db = await _openShell(
       tester,
       surface: _narrowPhone,
@@ -351,16 +482,21 @@ void main() {
     for (final destination in _navDestinations(strings)) {
       final item = find.byKey(ValueKey(destination.key));
       _expectInsideStrip(
-          strip,
-          tester.getRect(
-              find.descendant(of: item, matching: find.text(destination.label))),
-          '${destination.label} label (en)');
+        strip,
+        tester.getRect(
+          find.descendant(of: item, matching: find.text(destination.label)),
+        ),
+        '${destination.label} label (en)',
+      );
     }
 
     final row = find.byKey(_localRowKey);
     final subtitle = tester.getRect(_headerText(strings.vaultSubtitle));
     _expectInsideBar(
-        _paddedBar(_barAround(tester, row)), subtitle, 'the subtitle line (en)');
+      _paddedBar(_barAround(tester, row)),
+      subtitle,
+      'the subtitle line (en)',
+    );
 
     expect(tester.takeException(), isNull);
     await _close(tester, db);
@@ -416,21 +552,24 @@ class _Destination {
 /// [AppStrings] so these cases track the real strings — and the Arabic pair,
 /// which is the longer one.
 List<_Destination> _navDestinations(AppStrings strings) => <_Destination>[
-      _Destination('nav_destination_home', strings.navHome, 27.6),
-      _Destination('nav_destination_vault', strings.navVault, 23.4),
-      _Destination('nav_destination_history', strings.navHistory, 27.6),
-      _Destination('nav_destination_settings', strings.navSettings, 27.6),
-    ];
+  _Destination('nav_destination_home', strings.navHome, 27.6),
+  _Destination('nav_destination_vault', strings.navVault, 23.4),
+  _Destination('nav_destination_history', strings.navHistory, 27.6),
+  _Destination('nav_destination_settings', strings.navSettings, 27.6),
+];
 
 enum _VaultTab { myVault, explore }
 
 /// The strip the bottom nav paints into: the `Row` the four items are Expanded
 /// into, i.e. the box the 2.1px overflow hung out of.
-Rect _strip(WidgetTester tester) => tester.getRect(find
-    .ancestor(
+Rect _strip(WidgetTester tester) => tester.getRect(
+  find
+      .ancestor(
         of: find.byKey(const ValueKey('nav_destination_home')),
-        matching: find.byType(Row))
-    .first);
+        matching: find.byType(Row),
+      )
+      .first,
+);
 
 /// The nav item's icon, whichever of the three icon kinds it renders. [Icon] and
 /// [ImageIcon] lay out at their `size`, which never follows the text scale, so
@@ -439,14 +578,16 @@ Finder _iconIn(Finder item) => find
     .descendant(
       of: item,
       matching: find.byWidgetPredicate(
-          (widget) => widget is Icon || widget is ImageIcon),
+        (widget) => widget is Icon || widget is ImageIcon,
+      ),
     )
     .first;
 
 /// A header line, scoped to the bar: the vault title and the nav vault label are
 /// the same Arabic string, so an unscoped `find.text` would match both.
-Finder _headerText(String text) =>
-    find.descendant(of: find.byType(FlexibleSpaceBar), matching: find.text(text)).first;
+Finder _headerText(String text) => find
+    .descendant(of: find.byType(FlexibleSpaceBar), matching: find.text(text))
+    .first;
 
 /// Boots the shell at [surface] / [textScale], and when [tab] is given opens the
 /// Meal Vault (switching it to Explore for that tab).
@@ -474,16 +615,20 @@ Future<AppDatabase> _openShell(
   );
   await db.mealsDao.deleteAllMeals();
   for (var i = 0; i < 3; i++) {
-    await db.mealsDao.insertMeal(MealsCompanion(
-      name: drift.Value(language == AppLanguagePreference.en
-          ? 'Beshamel macaroni with minced meat $i'
-          : 'أكلة محفوظة $i'),
-      proteinType: const drift.Value(ProteinType.chicken),
-      carbsType: const drift.Value(CarbsType.rice),
-      category: const drift.Value(MealCategory.egyptianTraditional),
-      prepTime: const drift.Value(30),
-      cloudId: drift.Value('cloud_$i'),
-    ));
+    await db.mealsDao.insertMeal(
+      MealsCompanion(
+        name: drift.Value(
+          language == AppLanguagePreference.en
+              ? 'Beshamel macaroni with minced meat $i'
+              : 'أكلة محفوظة $i',
+        ),
+        proteinType: const drift.Value(ProteinType.chicken),
+        carbsType: const drift.Value(CarbsType.rice),
+        category: const drift.Value(MealCategory.egyptianTraditional),
+        prepTime: const drift.Value(30),
+        cloudId: drift.Value('cloud_$i'),
+      ),
+    );
   }
 
   await tester.pumpWidget(
@@ -505,7 +650,9 @@ Future<AppDatabase> _openShell(
 }
 
 Future<void> _switchToExplore(WidgetTester tester) async {
-  await tester.tap(find.byKey(const Key('vault_tab_explore')).hitTestable().first);
+  await tester.tap(
+    find.byKey(const Key('vault_tab_explore')).hitTestable().first,
+  );
   await tester.pumpAndSettle();
   await tester.pump(const Duration(milliseconds: 400));
   await tester.pumpAndSettle();
@@ -513,35 +660,62 @@ Future<void> _switchToExplore(WidgetTester tester) async {
 
 /// The header is clipped by `FlexibleSpaceBar`, so that is the box everything
 /// has to stay inside.
-Rect _barAround(WidgetTester tester, Finder row) => tester
-    .getRect(find.ancestor(of: row, matching: find.byType(FlexibleSpaceBar)).first);
+Rect _barAround(WidgetTester tester, Finder row) => tester.getRect(
+  find.ancestor(of: row, matching: find.byType(FlexibleSpaceBar)).first,
+);
 
 /// The header's `Padding(16, 16, 16, 6)` gutters inside the bar.
 Rect _paddedBar(Rect bar) =>
     Rect.fromLTRB(bar.left + 16, bar.top, bar.right - 16, bar.bottom);
 
 void _expectInsideBar(Rect bar, Rect rect, String what) {
-  expect(rect.top, greaterThanOrEqualTo(bar.top - 0.5),
-      reason: '$what is pushed above the app bar');
-  expect(rect.bottom, lessThanOrEqualTo(bar.bottom + 0.5),
-      reason: '$what hangs below the ${_toolbarHeight}px toolbar, so the header '
-          'clips it away');
-  expect(rect.left, greaterThanOrEqualTo(bar.left - 0.5),
-      reason: '$what starts outside the app bar on the left');
-  expect(rect.right, lessThanOrEqualTo(bar.right + 0.5),
-      reason: '$what runs past the right edge of the app bar');
+  expect(
+    rect.top,
+    greaterThanOrEqualTo(bar.top - 0.5),
+    reason: '$what is pushed above the app bar',
+  );
+  expect(
+    rect.bottom,
+    lessThanOrEqualTo(bar.bottom + 0.5),
+    reason:
+        '$what hangs below the ${_toolbarHeight}px toolbar, so the header '
+        'clips it away',
+  );
+  expect(
+    rect.left,
+    greaterThanOrEqualTo(bar.left - 0.5),
+    reason: '$what starts outside the app bar on the left',
+  );
+  expect(
+    rect.right,
+    lessThanOrEqualTo(bar.right + 0.5),
+    reason: '$what runs past the right edge of the app bar',
+  );
 }
 
 void _expectInsideStrip(Rect strip, Rect rect, String what) {
-  expect(rect.left, greaterThanOrEqualTo(strip.left - 0.5),
-      reason: '$what starts outside the strip on the left');
-  expect(rect.right, lessThanOrEqualTo(strip.right + 0.5),
-      reason: '$what runs past the right edge of the strip');
-  expect(rect.top, greaterThanOrEqualTo(strip.top - 0.5),
-      reason: '$what is pushed above the ${_navStripHeight}px strip');
-  expect(rect.bottom, lessThanOrEqualTo(strip.bottom + 0.5),
-      reason: '$what hangs below the ${_navStripHeight}px strip, so the strip '
-          'clips it away');
+  expect(
+    rect.left,
+    greaterThanOrEqualTo(strip.left - 0.5),
+    reason: '$what starts outside the strip on the left',
+  );
+  expect(
+    rect.right,
+    lessThanOrEqualTo(strip.right + 0.5),
+    reason: '$what runs past the right edge of the strip',
+  );
+  expect(
+    rect.top,
+    greaterThanOrEqualTo(strip.top - 0.5),
+    reason: '$what is pushed above the ${_navStripHeight}px strip',
+  );
+  expect(
+    rect.bottom,
+    lessThanOrEqualTo(strip.bottom + 0.5),
+    reason:
+        '$what hangs below the ${_navStripHeight}px strip, so the strip '
+        'clips it away',
+  );
 }
 
 /// True when the two rects share a line rather than sitting one under another.
@@ -556,14 +730,14 @@ Future<void> _close(WidgetTester tester, AppDatabase db) async {
 /// A cloud vault of [count] meals with long Arabic names — the worst case the
 /// header badges can be handed.
 List<CloudMeal> _cloudVault(int count) => [
-      for (var i = 0; i < count; i++)
-        CloudMeal(
-          id: 'cloud_$i',
-          name: 'مكرونة بشاميل باللحمة المفرومة بالصلصة $i',
-          proteinType: 'chicken',
-          carbsType: 'rice',
-          category: 'tabeekh',
-          prepTimeMinutes: 30,
-          createdAt: DateTime(2025, 1, 1),
-        ),
-    ];
+  for (var i = 0; i < count; i++)
+    CloudMeal(
+      id: 'cloud_$i',
+      name: 'مكرونة بشاميل باللحمة المفرومة بالصلصة $i',
+      proteinType: 'chicken',
+      carbsType: 'rice',
+      category: 'tabeekh',
+      prepTimeMinutes: 30,
+      createdAt: DateTime(2025, 1, 1),
+    ),
+];

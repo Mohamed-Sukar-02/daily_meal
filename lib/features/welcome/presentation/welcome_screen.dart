@@ -144,7 +144,9 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
     final email = _emailController.text.trim();
 
     try {
-      await ref.read(settingsControllerProvider.notifier).saveWelcomeData(
+      await ref
+          .read(settingsControllerProvider.notifier)
+          .saveWelcomeData(
             name,
             email.isNotEmpty ? email : null,
             _selectedGender,
@@ -218,8 +220,11 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
             errorBuilder: (ctx, err, st) => Container(
               color: AppPalette.darkBg,
               child: const Center(
-                child: Icon(Icons.restaurant_menu_rounded,
-                    size: 80, color: AppPalette.brandGreen),
+                child: Icon(
+                  Icons.restaurant_menu_rounded,
+                  size: 80,
+                  color: AppPalette.brandGreen,
+                ),
               ),
             ),
           ),
@@ -346,7 +351,9 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
             child: IconButton(
               key: const Key('welcome_back_button'),
               icon: Icon(
-                isRtl ? Icons.arrow_forward_ios_rounded : Icons.arrow_back_ios_new_rounded,
+                isRtl
+                    ? Icons.arrow_forward_ios_rounded
+                    : Icons.arrow_back_ios_new_rounded,
                 color: Colors.white,
                 size: 20,
               ),
@@ -403,7 +410,9 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                           decoration: InputDecoration(
                             labelText: strings.welcomeNameLabel,
                             hintText: strings.welcomeNameHint,
-                            prefixIcon: const Icon(Icons.person_outline_rounded),
+                            prefixIcon: const Icon(
+                              Icons.person_outline_rounded,
+                            ),
                             filled: true,
                             fillColor: AppPalette.tabContainer(brightness),
                             border: OutlineInputBorder(
@@ -456,7 +465,8 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                                 icon: Icons.female_rounded,
                                 selected: _selectedGender == UserGender.female,
                                 brightness: brightness,
-                                onTap: () => _onGenderSelected(UserGender.female),
+                                onTap: () =>
+                                    _onGenderSelected(UserGender.female),
                               ),
                             ),
                           ],
@@ -493,7 +503,9 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                                 final asset = avatars[index];
                                 final isSelected = _selectedAvatar == asset;
                                 return _AvatarChoiceTile(
-                                  key: Key('welcome_avatar_${asset.split('/').last}'),
+                                  key: Key(
+                                    'welcome_avatar_${asset.split('/').last}',
+                                  ),
                                   asset: asset,
                                   selected: isSelected,
                                   brightness: brightness,
@@ -612,10 +624,11 @@ class _CtaButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: (brightness == Brightness.dark
-                    ? AppPalette.brandGreen
-                    : AppPalette.brandCoral)
-                .withValues(alpha: 0.35),
+            color:
+                (brightness == Brightness.dark
+                        ? AppPalette.brandGreen
+                        : AppPalette.brandCoral)
+                    .withValues(alpha: 0.35),
             blurRadius: 14,
             offset: const Offset(0, 5),
           ),
@@ -685,9 +698,7 @@ class _GenderCard extends StatelessWidget {
         : AppPalette.brandCoral;
 
     return Material(
-      color: selected
-          ? activeColor
-          : AppPalette.tabContainer(brightness),
+      color: selected ? activeColor : AppPalette.tabContainer(brightness),
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,
@@ -780,9 +791,8 @@ class _AvatarChoiceTile extends StatelessWidget {
             asset,
             fit: BoxFit.cover,
             cacheWidth: 120,
-            errorBuilder: (context, error, stackTrace) => const Center(
-              child: Icon(Icons.person_rounded, size: 28),
-            ),
+            errorBuilder: (context, error, stackTrace) =>
+                const Center(child: Icon(Icons.person_rounded, size: 28)),
           ),
         ),
       ),

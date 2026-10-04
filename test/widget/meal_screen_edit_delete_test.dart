@@ -130,10 +130,7 @@ Future<void> _pumpScreen(
           GlobalCupertinoLocalizations.delegate,
         ],
         theme: ThemeData(useMaterial3: true),
-        home: Directionality(
-          textDirection: TextDirection.rtl,
-          child: screen(),
-        ),
+        home: Directionality(textDirection: TextDirection.rtl, child: screen()),
       ),
     ),
   );
@@ -197,7 +194,11 @@ void main() {
     // The very sheet the vault cards open — not a second edit form.
     expect(find.byKey(const Key('meal_form_save_button')), findsOneWidget);
     expect(find.text(strings.quickAddMealTitle), findsOneWidget);
-    expect(_prefilledName(tester), name, reason: 'the sheet opens on this meal');
+    expect(
+      _prefilledName(tester),
+      name,
+      reason: 'the sheet opens on this meal',
+    );
 
     await tearDownApp(tester, db);
   });
@@ -246,63 +247,67 @@ void main() {
     await tearDownApp(tester, db);
   });
 
-  testWidgets('delete confirms first, then removes the row and pops the route', (
-    tester,
-  ) async {
-    const name = 'فتة الناعم';
-    final (db, id) = await _pumpMealRoute(
-      tester,
-      name: name,
-      shortName: name,
-      withHistoryEntry: true,
-    );
-    final strings = AppStrings.of(
-      tester.element(find.byKey(const Key('meal_screen'))),
-    );
+  testWidgets(
+    'delete confirms first, then removes the row and pops the route',
+    (tester) async {
+      const name = 'فتة الناعم';
+      final (db, id) = await _pumpMealRoute(
+        tester,
+        name: name,
+        shortName: name,
+        withHistoryEntry: true,
+      );
+      final strings = AppStrings.of(
+        tester.element(find.byKey(const Key('meal_screen'))),
+      );
 
-    await _runAction(tester, const Key('meal_screen_delete_action'));
+      await _runAction(tester, const Key('meal_screen_delete_action'));
 
-    // The shared confirmation dialog, with the app-wide copy.
-    expect(find.byKey(const Key('meal_delete_confirm_button')), findsOneWidget);
-    expect(find.text(strings.deleteMealTitle), findsWidgets);
-    expect(find.text(strings.deleteMealHistorySafe), findsOneWidget);
+      // The shared confirmation dialog, with the app-wide copy.
+      expect(
+        find.byKey(const Key('meal_delete_confirm_button')),
+        findsOneWidget,
+      );
+      expect(find.text(strings.deleteMealTitle), findsWidgets);
+      expect(find.text(strings.deleteMealHistorySafe), findsOneWidget);
 
-    await tester.tap(find.byKey(const Key('meal_delete_cancel_button')));
-    await tester.pumpAndSettle();
-    expect(
-      await db.mealsDao.getMealById(id),
-      isNotNull,
-      reason: 'cancelling deletes nothing',
-    );
-    expect(find.byKey(const Key('meal_screen')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('meal_delete_cancel_button')));
+      await tester.pumpAndSettle();
+      expect(
+        await db.mealsDao.getMealById(id),
+        isNotNull,
+        reason: 'cancelling deletes nothing',
+      );
+      expect(find.byKey(const Key('meal_screen')), findsOneWidget);
 
-    await _runAction(tester, const Key('meal_screen_delete_action'));
-    await tester.tap(find.byKey(const Key('meal_delete_confirm_button')));
-    await tester.pumpAndSettle();
+      await _runAction(tester, const Key('meal_screen_delete_action'));
+      await tester.tap(find.byKey(const Key('meal_delete_confirm_button')));
+      await tester.pumpAndSettle();
 
-    expect(await db.mealsDao.getMealById(id), isNull);
-    expect(
-      find.byKey(const Key('meal_screen')),
-      findsNothing,
-      reason: 'a screen about a meal that is gone has nothing left to show',
-    );
-    expect(
-      find.byKey(const ValueKey('nav_destination_home')),
-      findsOneWidget,
-      reason: 'and it leaves the way the user came in',
-    );
+      expect(await db.mealsDao.getMealById(id), isNull);
+      expect(
+        find.byKey(const Key('meal_screen')),
+        findsNothing,
+        reason: 'a screen about a meal that is gone has nothing left to show',
+      );
+      expect(
+        find.byKey(const ValueKey('nav_destination_home')),
+        findsOneWidget,
+        reason: 'and it leaves the way the user came in',
+      );
 
-    // The promised cascade: the cooking log survives, its meal link nulled.
-    final history = await db.mealHistoryDao.getAllHistory();
-    expect(history, hasLength(1));
-    expect(history.single.mealName, name);
-    expect(history.single.mealId, isNull);
+      // The promised cascade: the cooking log survives, its meal link nulled.
+      final history = await db.mealHistoryDao.getAllHistory();
+      expect(history, hasLength(1));
+      expect(history.single.mealName, name);
+      expect(history.single.mealId, isNull);
 
-    await _runOutToasts(tester);
-    await tearDownApp(tester, db);
-  });
+      await _runOutToasts(tester);
+      await tearDownApp(tester, db);
+    },
+  );
 
-  testWidgets('the third app bar action never crowds the centred name', (
+  testWidgets('the app bar actions never crowd the centred name', (
     tester,
   ) async {
     // The narrowest realistic phone: the header group has to fit here, because
@@ -318,11 +323,23 @@ void main() {
       name: 'كشري باللبن الرايب',
       shortName: 'كشري باللبن الرايب',
     );
-    await _pumpScreen(tester, db: db, screen: () => MealScreen(mealId: id));
+    await _pumpScreen(
+      tester,
+      db: db,
+      screen: () => MealScreen(mealId: id),
+    );
 
     final screenW =
         tester.view.physicalSize.width / tester.view.devicePixelRatio;
-    final name = tester.getRect(find.byKey(const Key('meal_screen_short_name')));
+    // The painted extent is the FittedBox, not the Text: the Text sits under
+    // FittedBox's infinite main-axis constraint, so its own render box reports
+    // the unscaled width even when the name has been shrunk to fit.
+    final name = tester.getRect(
+      find.ancestor(
+        of: find.byKey(const Key('meal_screen_short_name')),
+        matching: find.byType(FittedBox),
+      ),
+    );
     expect(
       (name.center.dx - screenW / 2).abs(),
       lessThan(1.0),
@@ -332,6 +349,8 @@ void main() {
     final buttons = {
       'back': const Key('meal_screen_back_button'),
       'cloud': const Key('meal_screen_cloud_button'),
+      // No longer in the header — it floats on the hero now — but it stays in
+      // this sweep, because a chip that crept up into the bar is the same bug.
       'favorite': const Key('meal_screen_favorite_button'),
       'actions': const Key('meal_screen_actions_button'),
     };

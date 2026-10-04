@@ -9,21 +9,27 @@ import 'package:daily_meal/features/vault/data/discovery_repository.dart';
 
 void main() {
   group('DiscoveryRepository without Firebase', () {
-    test('fetchPublicMeals returns an empty list instead of throwing', () async {
-      final repo = DiscoveryRepository(null);
+    test(
+      'fetchPublicMeals returns an empty list instead of throwing',
+      () async {
+        final repo = DiscoveryRepository(null);
 
-      final meals = await repo.fetchPublicMeals();
+        final meals = await repo.fetchPublicMeals();
 
-      expect(meals, isEmpty);
-    });
+        expect(meals, isEmpty);
+      },
+    );
 
-    test('fetchPublicMeals stays empty even with pagination arguments', () async {
-      final repo = DiscoveryRepository(null);
+    test(
+      'fetchPublicMeals stays empty even with pagination arguments',
+      () async {
+        final repo = DiscoveryRepository(null);
 
-      final meals = await repo.fetchPublicMeals(limit: 10);
+        final meals = await repo.fetchPublicMeals(limit: 10);
 
-      expect(meals, isEmpty);
-    });
+        expect(meals, isEmpty);
+      },
+    );
 
     test('fetchMealById returns null instead of throwing', () async {
       final repo = DiscoveryRepository(null);
@@ -37,22 +43,29 @@ void main() {
       expect(Firebase.apps, isEmpty);
     });
 
-    test('getNotificationsStream ends quietly without emitting or throwing', () async {
-      final service = RemoteNotificationService();
-      final logged = <String>[];
-      final originalDebugPrint = debugPrint;
-      debugPrint = (String? message, {int? wrapWidth}) {
-        if (message != null) logged.add(message);
-      };
-      try {
-        final emitted = await service.getNotificationsStream().toList();
+    test(
+      'getNotificationsStream ends quietly without emitting or throwing',
+      () async {
+        final service = RemoteNotificationService();
+        final logged = <String>[];
+        final originalDebugPrint = debugPrint;
+        debugPrint = (String? message, {int? wrapWidth}) {
+          if (message != null) logged.add(message);
+        };
+        try {
+          final emitted = await service.getNotificationsStream().toList();
 
-        expect(emitted, isEmpty);
-        expect(logged, isEmpty, reason: 'offline guard must not log stream errors');
-      } finally {
-        debugPrint = originalDebugPrint;
-      }
-    });
+          expect(emitted, isEmpty);
+          expect(
+            logged,
+            isEmpty,
+            reason: 'offline guard must not log stream errors',
+          );
+        } finally {
+          debugPrint = originalDebugPrint;
+        }
+      },
+    );
   });
 
   group('firebaseAvailableProvider', () {
@@ -71,7 +84,10 @@ void main() {
 
       expect(container.read(firebaseAvailableProvider), isTrue);
 
-      final sub = container.listen(firebaseAvailableProvider, (_, next) => next);
+      final sub = container.listen(
+        firebaseAvailableProvider,
+        (_, next) => next,
+      );
       addTearDown(sub.close);
       expect(sub.read(), isTrue);
     });

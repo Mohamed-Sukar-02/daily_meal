@@ -12,11 +12,10 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
   MealsDao(super.db);
 
   Stream<List<Meal>> watchAllMeals() {
-    return (select(meals)
-          ..orderBy([
-            (t) => OrderingTerm.asc(t.name),
-            (t) => OrderingTerm.desc(t.id),
-          ]))
+    return (select(meals)..orderBy([
+          (t) => OrderingTerm.asc(t.name),
+          (t) => OrderingTerm.desc(t.id),
+        ]))
         .watch();
   }
 
@@ -43,7 +42,12 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
     final pattern = '%$escaped%';
 
     return (select(meals)
-          ..where((t) => coalesce<String>([t.nameNormalized, t.name]).like(pattern, escapeChar: '\\'))
+          ..where(
+            (t) => coalesce<String>([
+              t.nameNormalized,
+              t.name,
+            ]).like(pattern, escapeChar: '\\'),
+          )
           ..orderBy([
             (t) => OrderingTerm.asc(t.name),
             (t) => OrderingTerm.desc(t.id),
@@ -52,11 +56,10 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
   }
 
   Future<List<Meal>> getAllMeals() {
-    return (select(meals)
-          ..orderBy([
-            (t) => OrderingTerm.asc(t.name),
-            (t) => OrderingTerm.desc(t.id),
-          ]))
+    return (select(meals)..orderBy([
+          (t) => OrderingTerm.asc(t.name),
+          (t) => OrderingTerm.desc(t.id),
+        ]))
         .get();
   }
 
@@ -92,7 +95,12 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
     final pattern = '%$escaped%';
 
     return (select(meals)
-          ..where((t) => coalesce<String>([t.nameNormalized, t.name]).like(pattern, escapeChar: '\\'))
+          ..where(
+            (t) => coalesce<String>([
+              t.nameNormalized,
+              t.name,
+            ]).like(pattern, escapeChar: '\\'),
+          )
           ..orderBy([
             (t) => OrderingTerm.asc(t.name),
             (t) => OrderingTerm.desc(t.id),
@@ -111,7 +119,7 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
         throw ArgumentError('Prep time must be a positive integer');
       }
     }
-    
+
     // If inserting a meal that was previously blacklisted, remove it from blacklist
     if (meal.cloudId.present && meal.cloudId.value != null) {
       try {
@@ -127,7 +135,9 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
     // Upsert / deduplication guard:
     // 1. Check if a meal already exists by cloudId
     Meal? existing;
-    if (meal.cloudId.present && meal.cloudId.value != null && meal.cloudId.value!.isNotEmpty) {
+    if (meal.cloudId.present &&
+        meal.cloudId.value != null &&
+        meal.cloudId.value!.isNotEmpty) {
       existing = await getMealByCloudId(meal.cloudId.value!);
     }
     // 2. Check if a meal already exists by normalized name
@@ -160,23 +170,29 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
       }
       // Preserve customCooldownDays if already set
       if (existing.customCooldownDays != null &&
-          (!meal.customCooldownDays.present || meal.customCooldownDays.value == null)) {
+          (!meal.customCooldownDays.present ||
+              meal.customCooldownDays.value == null)) {
         updateCompanion = updateCompanion.copyWith(
           customCooldownDays: Value(existing.customCooldownDays),
         );
       }
       // Preserve notes if already set
-      if (existing.notes != null && existing.notes!.isNotEmpty &&
+      if (existing.notes != null &&
+          existing.notes!.isNotEmpty &&
           (!meal.notes.present || meal.notes.value == null)) {
         updateCompanion = updateCompanion.copyWith(
           notes: Value(existing.notes),
         );
       }
 
-      await updateMealCompanion(existing.id, updateCompanion, touchUpdatedAt: false);
+      await updateMealCompanion(
+        existing.id,
+        updateCompanion,
+        touchUpdatedAt: false,
+      );
       return existing.id;
     }
-    
+
     final normalizedCompanion = _withNormalizedName(meal);
     return into(meals).insert(normalizedCompanion);
   }
@@ -189,10 +205,12 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
 
   Future<bool> updateMeal(Meal meal) {
     final normalized = normalizeArabic(meal.name);
-    return update(meals).replace(meal.copyWith(
-      updatedAt: DateTime.now(),
-      nameNormalized: Value(normalized),
-    ));
+    return update(meals).replace(
+      meal.copyWith(
+        updatedAt: DateTime.now(),
+        nameNormalized: Value(normalized),
+      ),
+    );
   }
 
   /// [touchUpdatedAt]: pass `false` for background, non-user writes (e.g. starter-meal
@@ -267,10 +285,11 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
       return;
     }
     try {
-      final stillReferenced = await (select(meals)
-            ..where((t) => t.photoPath.equals(path))
-            ..limit(1))
-          .getSingleOrNull();
+      final stillReferenced =
+          await (select(meals)
+                ..where((t) => t.photoPath.equals(path))
+                ..limit(1))
+              .getSingleOrNull();
       if (stillReferenced != null) return;
       await File(path).delete();
     } catch (_) {}
@@ -279,16 +298,16 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
   Future<void> deduplicateMeals() async {
     final allMeals = await getAllMeals();
     final nameToMeals = <String, List<Meal>>{};
-    
+
     for (final m in allMeals) {
       final norm = m.nameNormalized ?? normalizeArabic(m.name);
       nameToMeals.putIfAbsent(norm, () => []).add(m);
     }
-    
+
     for (final entry in nameToMeals.entries) {
       final duplicates = entry.value;
       if (duplicates.length <= 1) continue;
-      
+
       duplicates.sort((a, b) {
         if ((a.cloudId != null) != (b.cloudId != null)) {
           return a.cloudId != null ? -1 : 1;
@@ -301,10 +320,10 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
         }
         return b.id.compareTo(a.id);
       });
-      
+
       final survivor = duplicates.first;
       final victims = duplicates.skip(1).toList();
-      
+
       await transaction(() async {
         final anyFavorite = duplicates.any((d) => d.isFavorite);
         if (anyFavorite && !survivor.isFavorite) {
@@ -324,7 +343,10 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
           }
         }
         for (final victim in victims) {
-          await customStatement('UPDATE meal_history SET meal_id = ? WHERE meal_id = ?', [survivor.id, victim.id]);
+          await customStatement(
+            'UPDATE meal_history SET meal_id = ? WHERE meal_id = ?',
+            [survivor.id, victim.id],
+          );
           await (delete(meals)..where((t) => t.id.equals(victim.id))).go();
           await _deletePhotoFile(victim);
         }
@@ -360,7 +382,10 @@ class MealsDao extends DatabaseAccessor<AppDatabase> with _$MealsDaoMixin {
           );
         }
         for (final victim in victims) {
-          await customStatement('UPDATE meal_history SET meal_id = ? WHERE meal_id = ?', [survivor.id, victim.id]);
+          await customStatement(
+            'UPDATE meal_history SET meal_id = ? WHERE meal_id = ?',
+            [survivor.id, victim.id],
+          );
           await (delete(meals)..where((t) => t.id.equals(victim.id))).go();
           await _deletePhotoFile(victim);
         }

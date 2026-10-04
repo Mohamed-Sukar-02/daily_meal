@@ -35,8 +35,9 @@ void main() async {
     );
     try {
       await FirebaseAppCheck.instance.activate(
-        providerAndroid:
-            kDebugMode ? const AndroidDebugProvider() : const AndroidPlayIntegrityProvider(),
+        providerAndroid: kDebugMode
+            ? const AndroidDebugProvider()
+            : const AndroidPlayIntegrityProvider(),
       );
     } catch (e) {
       // App Check must never block startup of an offline-first app.
@@ -138,7 +139,9 @@ class _DailyMealAppState extends ConsumerState<DailyMealApp> {
 
       // Cold start straight from a notification: the plugin reports the launch
       // payload, which the router cannot accept before its first frame.
-      NotificationService.instance.getColdStartNotificationPayload().then((launchPayload) {
+      NotificationService.instance.getColdStartNotificationPayload().then((
+        launchPayload,
+      ) {
         if (launchPayload != null && launchPayload.isNotEmpty && mounted) {
           final safeRoute = sanitizeNotificationRoute(launchPayload);
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -189,16 +192,21 @@ class _DailyMealAppState extends ConsumerState<DailyMealApp> {
             statusBarColor: Colors.transparent,
             // Android: icon color. Dark icons on the light theme, light
             // icons on the dark theme.
-            statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+            statusBarIconBrightness: isDark
+                ? Brightness.light
+                : Brightness.dark,
             // iOS: brightness of the status-bar *background*, so the meaning
             // is inverted relative to the Android flag above.
             statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
             systemNavigationBarColor: Colors.transparent,
-            systemNavigationBarIconBrightness:
-                isDark ? Brightness.light : Brightness.dark,
+            systemNavigationBarIconBrightness: isDark
+                ? Brightness.light
+                : Brightness.dark,
           ),
           child: Directionality(
-            textDirection: locale.languageCode == 'ar' ? TextDirection.rtl : TextDirection.ltr,
+            textDirection: locale.languageCode == 'ar'
+                ? TextDirection.rtl
+                : TextDirection.ltr,
             child: child ?? const SizedBox.shrink(),
           ),
         );

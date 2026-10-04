@@ -33,7 +33,8 @@ void main() {
     expect(
       file.existsSync(),
       isTrue,
-      reason: 'expects the package root as the working directory (flutter test)',
+      reason:
+          'expects the package root as the working directory (flutter test)',
     );
 
     final pattern = RegExp(r'^\s*String get (\w+) *=> *(.*)$');
@@ -52,7 +53,8 @@ void main() {
     expect(
       offenders,
       isEmpty,
-      reason: 'display getters with no `isEn` branch show one language in both: '
+      reason:
+          'display getters with no `isEn` branch show one language in both: '
           '${offenders.join(', ')}. Add the missing branch, or list the getter in '
           'localeNeutralGetters only if the value is identical in both locales.',
     );

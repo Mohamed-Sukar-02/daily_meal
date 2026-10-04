@@ -350,7 +350,13 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
     );
   }
 
-  Widget _buildVaultCounter(BuildContext context, int localCount, List<Meal>? localMeals, Brightness brightness, AppStrings strings) {
+  Widget _buildVaultCounter(
+    BuildContext context,
+    int localCount,
+    List<Meal>? localMeals,
+    Brightness brightness,
+    AppStrings strings,
+  ) {
     final isExplore = _tabIndex == _tabExplore;
     final publicMealsAsync = ref.watch(publicMealsProvider);
 
@@ -376,7 +382,10 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                   const SizedBox(width: 6),
                   Container(
                     key: const ValueKey('vault_local_count'),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: AppPalette.chipGreen(brightness).background,
                       borderRadius: BorderRadius.circular(12),
@@ -392,84 +401,98 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                   ),
                 ],
               )
-              : publicMealsAsync.when(
-                  data: (cloudMeals) {
-                    final cloudCount = cloudMeals.length;
-                    int sharedCount = 0;
-                    if (localMeals != null) {
-                      final localCloudIds = localMeals.map((m) => m.cloudId).where((id) => id != null).toSet();
-                      sharedCount = cloudMeals.where((cm) => localCloudIds.contains(cm.id)).length;
-                    }
-                    final newCount = cloudMeals.length - sharedCount;
+            : publicMealsAsync.when(
+                data: (cloudMeals) {
+                  final cloudCount = cloudMeals.length;
+                  int sharedCount = 0;
+                  if (localMeals != null) {
+                    final localCloudIds = localMeals
+                        .map((m) => m.cloudId)
+                        .where((id) => id != null)
+                        .toSet();
+                    sharedCount = cloudMeals
+                        .where((cm) => localCloudIds.contains(cm.id))
+                        .length;
+                  }
+                  final newCount = cloudMeals.length - sharedCount;
 
-                    return Row(
-                      key: const ValueKey('vault_explore_count_row'),
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // الجديد (beside الأصلي)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: AppPalette.card(brightness),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: AppPalette.hairline(brightness),
-                            ),
-                          ),
-                          child: Text(
-                            strings.vaultNewCount(newCount),
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              color: AppPalette.brandGreen,
-                            ),
+                  return Row(
+                    key: const ValueKey('vault_explore_count_row'),
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // الجديد (beside الأصلي)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppPalette.card(brightness),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: AppPalette.hairline(brightness),
                           ),
                         ),
-                        const SizedBox(width: 6),
-                        // الأصلي
-                        Container(
-                          key: const ValueKey('vault_explore_count'),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: AppPalette.chipGreen(brightness).background,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            strings.vaultCloudCount(cloudCount),
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: AppPalette.chipGreen(brightness).foreground,
-                            ),
+                        child: Text(
+                          strings.vaultNewCount(newCount),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: AppPalette.brandGreen,
                           ),
                         ),
-                      ],
-                    );
-                  },
-                  loading: () => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppPalette.chipGreen(brightness).background,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: SizedBox(
-                      width: 40,
-                      height: 16,
-                      child: Center(
-                        child: SizedBox(
-                          width: 12,
-                          height: 12,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
+                      ),
+                      const SizedBox(width: 6),
+                      // الأصلي
+                      Container(
+                        key: const ValueKey('vault_explore_count'),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppPalette.chipGreen(brightness).background,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          strings.vaultCloudCount(cloudCount),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
                             color: AppPalette.chipGreen(brightness).foreground,
                           ),
                         ),
                       ),
+                    ],
+                  );
+                },
+                loading: () => Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppPalette.chipGreen(brightness).background,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: SizedBox(
+                    width: 40,
+                    height: 16,
+                    child: Center(
+                      child: SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppPalette.chipGreen(brightness).foreground,
+                        ),
+                      ),
                     ),
                   ),
-                  error: (_, _) => const SizedBox.shrink(),
                 ),
+                error: (_, _) => const SizedBox.shrink(),
+              ),
       ),
     );
   }
@@ -503,8 +526,7 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
         .map((m) => m.cloudId)
         .whereType<String>()
         .toSet();
-    final localStarterCount =
-        localList.where((m) => m.isStarterMeal).length;
+    final localStarterCount = localList.where((m) => m.isStarterMeal).length;
     final missingStarterCount = cloudMeals
         .where((cm) => cm.isStarterMeal)
         .where((cm) => !localCloudIds.contains(cm.id))
@@ -531,90 +553,94 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
         key: const ValueKey('vault_sync_defaults_button'),
         onTap: () async {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          
+
           if (!cloudReady) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(strings.syncOffline)),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(strings.syncOffline)));
             return;
           }
-          
+
           if (missingStarterCount == 0) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(strings.syncUpToDate)),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(strings.syncUpToDate)));
             return;
           }
 
           try {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(strings.syncingDefaults)),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(strings.syncingDefaults)));
             final db = ref.read(databaseProvider);
             await AppConfigSyncService.instance.manualSyncStarterMeals(db);
             if (context.mounted) {
               ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(strings.defaultsSynced)),
-            );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(strings.defaultsSynced)));
+            }
+          } catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(strings.defaultsSyncFailed)),
+              );
+            }
           }
-        } catch (e) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(strings.defaultsSyncFailed)),
-            );
-          }
-        }
-      },
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.all(2),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            TweenAnimationBuilder<Color?>(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-              tween: ColorTween(end: iconColor),
-              builder: (context, color, child) => AppIcon(
-                AppGlyph.swap,
-                color: color ?? iconColor,
-                size: 22,
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.all(2),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              TweenAnimationBuilder<Color?>(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                tween: ColorTween(end: iconColor),
+                builder: (context, color, child) =>
+                    AppIcon(AppGlyph.swap, color: color ?? iconColor, size: 22),
               ),
-            ),
-            if (badgeCount != null)
-              // Overflows away from the meals chip (its `end` side) so the
-              // micro-badge never touches the counter it sits beside.
-              PositionedDirectional(
-                bottom: -5,
-                end: -7,
-                child: Container(
-                  key: const ValueKey('vault_sync_badge'),
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  constraints: const BoxConstraints(minWidth: 15, minHeight: 15),
-                  decoration: BoxDecoration(
-                    color: AppPalette.textPrimary(brightness),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppPalette.card(brightness), width: 1),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '$badgeCount',
-                      style: TextStyle(
-                        fontSize: 9,
-                        height: 1,
-                        fontWeight: FontWeight.w800,
+              if (badgeCount != null)
+                // Overflows away from the meals chip (its `end` side) so the
+                // micro-badge never touches the counter it sits beside.
+                PositionedDirectional(
+                  bottom: -5,
+                  end: -7,
+                  child: Container(
+                    key: const ValueKey('vault_sync_badge'),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    constraints: const BoxConstraints(
+                      minWidth: 15,
+                      minHeight: 15,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppPalette.textPrimary(brightness),
+                      shape: BoxShape.circle,
+                      border: Border.all(
                         color: AppPalette.card(brightness),
+                        width: 1,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '$badgeCount',
+                        style: TextStyle(
+                          fontSize: 9,
+                          height: 1,
+                          fontWeight: FontWeight.w800,
+                          color: AppPalette.card(brightness),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
-    ));
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -692,7 +718,8 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                     57.0 + 52.0 + (_isFilterBarVisible ? 58.0 : 0.0),
                 bottom: PreferredSize(
                   preferredSize: Size.fromHeight(
-                      57.0 + 52.0 + (_isFilterBarVisible ? 58.0 : 0.0)),
+                    57.0 + 52.0 + (_isFilterBarVisible ? 58.0 : 0.0),
+                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -713,8 +740,9 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                                     const SizedBox(width: 14),
                                     AppIcon(
                                       AppGlyph.search,
-                                      color:
-                                          AppPalette.textSecondary(brightness),
+                                      color: AppPalette.textSecondary(
+                                        brightness,
+                                      ),
                                       size: 22,
                                     ),
                                     const SizedBox(width: 10),
@@ -725,7 +753,8 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                                         style: TextStyle(
                                           fontSize: 14,
                                           color: AppPalette.textPrimary(
-                                              brightness),
+                                            brightness,
+                                          ),
                                         ),
                                         decoration: InputDecoration(
                                           isCollapsed: true,
@@ -734,13 +763,15 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                                           hintStyle: TextStyle(
                                             fontSize: 14,
                                             color: AppPalette.textSecondary(
-                                                brightness),
+                                              brightness,
+                                            ),
                                           ),
                                         ),
                                         onChanged: (val) {
                                           ref
                                               .read(
-                                                  vaultFilterProvider.notifier)
+                                                vaultFilterProvider.notifier,
+                                              )
                                               .setSearchQuery(val);
                                         },
                                       ),
@@ -753,7 +784,8 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                                         }
                                         return IconButton(
                                           key: const Key(
-                                              'vault_search_clear_button'),
+                                            'vault_search_clear_button',
+                                          ),
                                           padding: EdgeInsets.zero,
                                           constraints: const BoxConstraints(
                                             minWidth: 32,
@@ -762,14 +794,16 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                                           icon: AppIcon(
                                             AppGlyph.close,
                                             color: AppPalette.textSecondary(
-                                                brightness),
+                                              brightness,
+                                            ),
                                             size: 16,
                                           ),
                                           onPressed: () {
                                             _searchController.clear();
                                             ref
-                                                .read(vaultFilterProvider
-                                                    .notifier)
+                                                .read(
+                                                  vaultFilterProvider.notifier,
+                                                )
                                                 .setSearchQuery('');
                                           },
                                         );
@@ -842,11 +876,11 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                       ? SliverGrid.builder(
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 14,
-                            mainAxisSpacing: 14,
-                            childAspectRatio: 0.98,
-                          ),
+                                crossAxisCount: 2,
+                                crossAxisSpacing: 14,
+                                mainAxisSpacing: 14,
+                                childAspectRatio: 0.98,
+                              ),
                           itemCount: visible.length,
                           itemBuilder: (context, index) {
                             final meal = visible[index];
@@ -857,7 +891,9 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                               child: MealVaultCard(
                                 meal: meal,
                                 onEdit: () => QuickAddSheet.show(
-                                    context, mealToEdit: meal),
+                                  context,
+                                  mealToEdit: meal,
+                                ),
                                 onDelete: () =>
                                     DeleteMealDialog.show(context, meal),
                               ),
@@ -875,7 +911,9 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
                                 child: MealVaultListTile(
                                   meal: meal,
                                   onEdit: () => QuickAddSheet.show(
-                                      context, mealToEdit: meal),
+                                    context,
+                                    mealToEdit: meal,
+                                  ),
                                   onDelete: () =>
                                       DeleteMealDialog.show(context, meal),
                                 ),
@@ -903,11 +941,7 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
     );
   }
 
-
-  Widget _buildTuneButton(
-    Brightness brightness,
-    VaultFilterState filter,
-  ) {
+  Widget _buildTuneButton(Brightness brightness, VaultFilterState filter) {
     final hasActiveFilter = filter.hasActiveFilters || _quickOnly;
     final isExpanded = _isFilterBarVisible;
 
@@ -1057,13 +1091,13 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
         followerAnchor: Alignment.topCenter,
         offset: const Offset(0, 6),
         child: TapRegion(
-        groupId: 'vault_view_toggle',
-        onTapOutside: (_) {
-          if (_viewTogglePortal.isShowing) {
-            _viewTogglePortal.hide();
-          }
-        },
-        child: Material(
+          groupId: 'vault_view_toggle',
+          onTapOutside: (_) {
+            if (_viewTogglePortal.isShowing) {
+              _viewTogglePortal.hide();
+            }
+          },
+          child: Material(
             color: Colors.transparent,
             child: Container(
               width: 44,
@@ -1144,9 +1178,7 @@ class _MealVaultScreenState extends ConsumerState<MealVaultScreen> {
         child: Icon(
           icon,
           size: 20,
-          color: selected
-              ? Colors.white
-              : AppPalette.textSecondary(brightness),
+          color: selected ? Colors.white : AppPalette.textSecondary(brightness),
         ),
       ),
     );
@@ -1228,23 +1260,11 @@ class _VaultTabs extends StatelessWidget {
 
     final Widget iconWidget;
     if (assetPath != null) {
-      iconWidget = ImageIcon(
-        AssetImage(assetPath),
-        size: 22,
-        color: iconColor,
-      );
+      iconWidget = ImageIcon(AssetImage(assetPath), size: 22, color: iconColor);
     } else if (iconData != null) {
-      iconWidget = Icon(
-        iconData,
-        size: 22,
-        color: iconColor,
-      );
+      iconWidget = Icon(iconData, size: 22, color: iconColor);
     } else {
-      iconWidget = AppIcon(
-        glyph ?? AppGlyph.vault,
-        size: 22,
-        color: iconColor,
-      );
+      iconWidget = AppIcon(glyph ?? AppGlyph.vault, size: 22, color: iconColor);
     }
 
     return GestureDetector(
@@ -1328,15 +1348,13 @@ class _AddIn10SecondsTooltipState extends State<_AddIn10SecondsTooltip>
 
     // Subtle, gentle sway back and forth: -0.055 rad (~ -3.1 deg) to +0.055 rad (~ +3.1 deg)
     _angleAnimation = Tween<double>(begin: -0.055, end: 0.055).animate(
-      CurvedAnimation(
-        parent: _swayController,
-        curve: Curves.easeInOutSine,
-      ),
+      CurvedAnimation(parent: _swayController, curve: Curves.easeInOutSine),
     );
 
     // In widget tests, avoid repeating infinite animation loops so tester.pumpAndSettle() can complete
-    final isTest =
-        WidgetsBinding.instance.runtimeType.toString().contains('Test');
+    final isTest = WidgetsBinding.instance.runtimeType.toString().contains(
+      'Test',
+    );
     if (!isTest) {
       _swayController.repeat(reverse: true);
     }
@@ -1420,7 +1438,8 @@ class _AddIn10SecondsTooltipState extends State<_AddIn10SecondsTooltip>
                     ),
                   ),
                 );
-                if (!constraints.hasBoundedWidth || !constraints.hasBoundedHeight) {
+                if (!constraints.hasBoundedWidth ||
+                    !constraints.hasBoundedHeight) {
                   // Nothing to fit into: leave the label at its natural size.
                   return label;
                 }

@@ -28,7 +28,8 @@ part 'app_database.g.dart';
   daos: [MealsDao, MealHistoryDao, AppSettingsDao],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase([QueryExecutor? e]) : super(e ?? driftDatabase(name: 'daily_meal_db'));
+  AppDatabase([QueryExecutor? e])
+    : super(e ?? driftDatabase(name: 'daily_meal_db'));
 
   @override
   int get schemaVersion => 12;
@@ -38,10 +39,18 @@ class AppDatabase extends _$AppDatabase {
     onCreate: (Migrator m) async {
       await m.createAll();
 
-      await customStatement('CREATE INDEX IF NOT EXISTS idx_meal_history_meal_id ON meal_history (meal_id)');
-      await customStatement('CREATE INDEX IF NOT EXISTS idx_meal_history_cooked_at ON meal_history (cooked_at DESC)');
-      await customStatement('CREATE INDEX IF NOT EXISTS idx_meals_name ON meals (name)');
-      await customStatement('CREATE INDEX IF NOT EXISTS idx_meals_name_normalized ON meals (name_normalized)');
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_meal_history_meal_id ON meal_history (meal_id)',
+      );
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_meal_history_cooked_at ON meal_history (cooked_at DESC)',
+      );
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_meals_name ON meals (name)',
+      );
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_meals_name_normalized ON meals (name_normalized)',
+      );
 
       await into(appSettings).insert(
         AppSettingsCompanion(
@@ -66,7 +75,9 @@ class AppDatabase extends _$AppDatabase {
 
       final normalizedSeed = initialEgyptianMealsSeed.map((c) {
         if (c.name.present) {
-          return c.copyWith(nameNormalized: Value(normalizeArabic(c.name.value)));
+          return c.copyWith(
+            nameNormalized: Value(normalizeArabic(c.name.value)),
+          );
         }
         return c;
       }).toList();
@@ -75,7 +86,10 @@ class AppDatabase extends _$AppDatabase {
       });
     },
     onUpgrade: (Migrator m, int from, int to) async {
-      Future<void> safeAddColumn(TableInfo table, GeneratedColumn column) async {
+      Future<void> safeAddColumn(
+        TableInfo table,
+        GeneratedColumn column,
+      ) async {
         try {
           await m.addColumn(table, column);
         } catch (_) {
@@ -101,7 +115,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 7) {
         try {
-          await customStatement('UPDATE app_settings SET notifications_enabled = 0 WHERE id = 1');
+          await customStatement(
+            'UPDATE app_settings SET notifications_enabled = 0 WHERE id = 1',
+          );
         } catch (_) {}
       }
       if (from < 8) {
@@ -110,33 +126,50 @@ class AppDatabase extends _$AppDatabase {
         await safeAddColumn(appSettings, appSettings.fishCooldownDays);
         await safeAddColumn(appSettings, appSettings.meatlessCooldownDays);
         try {
-          await customStatement('UPDATE app_settings SET meatless_cooldown_days = 0 WHERE id = 1');
+          await customStatement(
+            'UPDATE app_settings SET meatless_cooldown_days = 0 WHERE id = 1',
+          );
         } catch (_) {}
       }
       if (from < 9) {
         try {
-          await customStatement('CREATE INDEX IF NOT EXISTS idx_meal_history_meal_id ON meal_history (meal_id)');
-          await customStatement('CREATE INDEX IF NOT EXISTS idx_meal_history_cooked_at ON meal_history (cooked_at DESC)');
-          await customStatement('CREATE INDEX IF NOT EXISTS idx_meals_name ON meals (name)');
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_meal_history_meal_id ON meal_history (meal_id)',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_meal_history_cooked_at ON meal_history (cooked_at DESC)',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_meals_name ON meals (name)',
+          );
         } catch (_) {}
       }
       if (from < 10) {
         await safeAddColumn(meals, meals.nameNormalized);
         try {
-          await customStatement('CREATE INDEX IF NOT EXISTS idx_meals_name_normalized ON meals (name_normalized)');
-          final rows = await customSelect('SELECT id, name FROM meals WHERE name_normalized IS NULL').get();
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_meals_name_normalized ON meals (name_normalized)',
+          );
+          final rows = await customSelect(
+            'SELECT id, name FROM meals WHERE name_normalized IS NULL',
+          ).get();
           for (final row in rows) {
             final id = row.read<int>('id');
             final name = row.read<String>('name');
             final normalized = normalizeArabic(name);
-            await customStatement('UPDATE meals SET name_normalized = ? WHERE id = ?', [normalized, id]);
+            await customStatement(
+              'UPDATE meals SET name_normalized = ? WHERE id = ?',
+              [normalized, id],
+            );
           }
         } catch (_) {}
       }
       if (from < 11) {
         await safeAddColumn(meals, meals.isStarterMeal);
         try {
-          await customStatement('UPDATE meals SET is_starter_meal = 1 WHERE id <= 20');
+          await customStatement(
+            'UPDATE meals SET is_starter_meal = 1 WHERE id <= 20',
+          );
         } catch (_) {}
       }
       if (from < 12) {
@@ -156,7 +189,8 @@ class AppDatabase extends _$AppDatabase {
       if (!isTest) {
         try {
           final prefs = await SharedPreferences.getInstance();
-          alreadyHealed = prefs.getInt('self_heal_schema_version') == schemaVersion;
+          alreadyHealed =
+              prefs.getInt('self_heal_schema_version') == schemaVersion;
         } catch (_) {}
       }
       if (!alreadyHealed) {
@@ -177,79 +211,143 @@ class AppDatabase extends _$AppDatabase {
   Future<void> _selfHealSchema() async {
     try {
       // 1. Check and heal app_settings table
-      final settingsCols = await customSelect('PRAGMA table_info(app_settings)').get();
-      final settingsColNames = settingsCols.map((r) => r.read<String>('name')).toSet();
+      final settingsCols = await customSelect(
+        'PRAGMA table_info(app_settings)',
+      ).get();
+      final settingsColNames = settingsCols
+          .map((r) => r.read<String>('name'))
+          .toSet();
 
       if (settingsColNames.isNotEmpty) {
         if (!settingsColNames.contains('cooldown_days')) {
-          await customStatement('ALTER TABLE app_settings ADD COLUMN cooldown_days INTEGER NOT NULL DEFAULT 14');
+          await customStatement(
+            'ALTER TABLE app_settings ADD COLUMN cooldown_days INTEGER NOT NULL DEFAULT 14',
+          );
         }
         if (!settingsColNames.contains('chicken_cooldown_days')) {
-          await customStatement('ALTER TABLE app_settings ADD COLUMN chicken_cooldown_days INTEGER NOT NULL DEFAULT 2');
+          await customStatement(
+            'ALTER TABLE app_settings ADD COLUMN chicken_cooldown_days INTEGER NOT NULL DEFAULT 2',
+          );
         }
         if (!settingsColNames.contains('beef_cooldown_days')) {
-          await customStatement('ALTER TABLE app_settings ADD COLUMN beef_cooldown_days INTEGER NOT NULL DEFAULT 2');
+          await customStatement(
+            'ALTER TABLE app_settings ADD COLUMN beef_cooldown_days INTEGER NOT NULL DEFAULT 2',
+          );
         }
         if (!settingsColNames.contains('fish_cooldown_days')) {
-          await customStatement('ALTER TABLE app_settings ADD COLUMN fish_cooldown_days INTEGER NOT NULL DEFAULT 4');
+          await customStatement(
+            'ALTER TABLE app_settings ADD COLUMN fish_cooldown_days INTEGER NOT NULL DEFAULT 4',
+          );
         }
         if (!settingsColNames.contains('meatless_cooldown_days')) {
-          await customStatement('ALTER TABLE app_settings ADD COLUMN meatless_cooldown_days INTEGER NOT NULL DEFAULT 0');
+          await customStatement(
+            'ALTER TABLE app_settings ADD COLUMN meatless_cooldown_days INTEGER NOT NULL DEFAULT 0',
+          );
         }
         if (!settingsColNames.contains('notification_hour')) {
-          await customStatement('ALTER TABLE app_settings ADD COLUMN notification_hour INTEGER NOT NULL DEFAULT 12');
+          await customStatement(
+            'ALTER TABLE app_settings ADD COLUMN notification_hour INTEGER NOT NULL DEFAULT 12',
+          );
         }
         if (!settingsColNames.contains('notification_minute')) {
-          await customStatement('ALTER TABLE app_settings ADD COLUMN notification_minute INTEGER NOT NULL DEFAULT 0');
+          await customStatement(
+            'ALTER TABLE app_settings ADD COLUMN notification_minute INTEGER NOT NULL DEFAULT 0',
+          );
         }
         if (!settingsColNames.contains('notifications_enabled')) {
-          await customStatement('ALTER TABLE app_settings ADD COLUMN notifications_enabled INTEGER NOT NULL DEFAULT 0');
+          await customStatement(
+            'ALTER TABLE app_settings ADD COLUMN notifications_enabled INTEGER NOT NULL DEFAULT 0',
+          );
         }
         if (!settingsColNames.contains('theme_mode')) {
-          await customStatement("ALTER TABLE app_settings ADD COLUMN theme_mode TEXT NOT NULL DEFAULT 'system'");
+          await customStatement(
+            "ALTER TABLE app_settings ADD COLUMN theme_mode TEXT NOT NULL DEFAULT 'system'",
+          );
         }
         if (!settingsColNames.contains('language')) {
-          await customStatement("ALTER TABLE app_settings ADD COLUMN language TEXT NOT NULL DEFAULT 'ar'");
+          await customStatement(
+            "ALTER TABLE app_settings ADD COLUMN language TEXT NOT NULL DEFAULT 'ar'",
+          );
         }
         if (!settingsColNames.contains('is_first_run')) {
-          await customStatement('ALTER TABLE app_settings ADD COLUMN is_first_run INTEGER NOT NULL DEFAULT 1');
+          await customStatement(
+            'ALTER TABLE app_settings ADD COLUMN is_first_run INTEGER NOT NULL DEFAULT 1',
+          );
         }
         if (!settingsColNames.contains('user_name')) {
-          await customStatement('ALTER TABLE app_settings ADD COLUMN user_name TEXT');
+          await customStatement(
+            'ALTER TABLE app_settings ADD COLUMN user_name TEXT',
+          );
         }
         if (!settingsColNames.contains('user_email')) {
-          await customStatement('ALTER TABLE app_settings ADD COLUMN user_email TEXT');
+          await customStatement(
+            'ALTER TABLE app_settings ADD COLUMN user_email TEXT',
+          );
         }
         if (!settingsColNames.contains('user_gender')) {
-          await customStatement('ALTER TABLE app_settings ADD COLUMN user_gender TEXT');
+          await customStatement(
+            'ALTER TABLE app_settings ADD COLUMN user_gender TEXT',
+          );
         }
         if (!settingsColNames.contains('user_avatar')) {
-          await customStatement('ALTER TABLE app_settings ADD COLUMN user_avatar TEXT');
+          await customStatement(
+            'ALTER TABLE app_settings ADD COLUMN user_avatar TEXT',
+          );
         }
 
         // Clean up any NULLs in non-nullable columns that might have been left by older builds
-        await customStatement('UPDATE app_settings SET cooldown_days = 14 WHERE cooldown_days IS NULL');
+        await customStatement(
+          'UPDATE app_settings SET cooldown_days = 14 WHERE cooldown_days IS NULL',
+        );
         // Backfill NULLs to new defaults
-        await customStatement('UPDATE app_settings SET chicken_cooldown_days = 2 WHERE chicken_cooldown_days IS NULL');
-        await customStatement('UPDATE app_settings SET beef_cooldown_days = 2 WHERE beef_cooldown_days IS NULL');
-        await customStatement('UPDATE app_settings SET fish_cooldown_days = 4 WHERE fish_cooldown_days IS NULL');
-        await customStatement('UPDATE app_settings SET meatless_cooldown_days = 0 WHERE meatless_cooldown_days IS NULL');
-        await customStatement('UPDATE app_settings SET notification_hour = 12 WHERE notification_hour IS NULL');
-        await customStatement('UPDATE app_settings SET notification_minute = 0 WHERE notification_minute IS NULL');
-        await customStatement('UPDATE app_settings SET notifications_enabled = 0 WHERE notifications_enabled IS NULL');
-        await customStatement("UPDATE app_settings SET theme_mode = 'system' WHERE theme_mode IS NULL");
-        await customStatement("UPDATE app_settings SET language = 'ar' WHERE language IS NULL");
-        await customStatement('UPDATE app_settings SET is_first_run = 1 WHERE is_first_run IS NULL');
+        await customStatement(
+          'UPDATE app_settings SET chicken_cooldown_days = 2 WHERE chicken_cooldown_days IS NULL',
+        );
+        await customStatement(
+          'UPDATE app_settings SET beef_cooldown_days = 2 WHERE beef_cooldown_days IS NULL',
+        );
+        await customStatement(
+          'UPDATE app_settings SET fish_cooldown_days = 4 WHERE fish_cooldown_days IS NULL',
+        );
+        await customStatement(
+          'UPDATE app_settings SET meatless_cooldown_days = 0 WHERE meatless_cooldown_days IS NULL',
+        );
+        await customStatement(
+          'UPDATE app_settings SET notification_hour = 12 WHERE notification_hour IS NULL',
+        );
+        await customStatement(
+          'UPDATE app_settings SET notification_minute = 0 WHERE notification_minute IS NULL',
+        );
+        await customStatement(
+          'UPDATE app_settings SET notifications_enabled = 0 WHERE notifications_enabled IS NULL',
+        );
+        await customStatement(
+          "UPDATE app_settings SET theme_mode = 'system' WHERE theme_mode IS NULL",
+        );
+        await customStatement(
+          "UPDATE app_settings SET language = 'ar' WHERE language IS NULL",
+        );
+        await customStatement(
+          'UPDATE app_settings SET is_first_run = 1 WHERE is_first_run IS NULL',
+        );
 
         // Sanitize any numeric PINs/passwords or invalid emails mistakenly saved in user profile
-        await customStatement("UPDATE app_settings SET user_name = NULL WHERE user_name IS NOT NULL AND user_name NOT GLOB '*[^0-9]*'");
-        await customStatement("UPDATE app_settings SET user_email = NULL WHERE user_email IS NOT NULL AND user_email NOT LIKE '%@%'");
+        await customStatement(
+          "UPDATE app_settings SET user_name = NULL WHERE user_name IS NOT NULL AND user_name NOT GLOB '*[^0-9]*'",
+        );
+        await customStatement(
+          "UPDATE app_settings SET user_email = NULL WHERE user_email IS NOT NULL AND user_email NOT LIKE '%@%'",
+        );
 
         if (!settingsColNames.contains('recommendation_source')) {
-          await customStatement("ALTER TABLE app_settings ADD COLUMN recommendation_source TEXT NOT NULL DEFAULT 'vault_only'");
+          await customStatement(
+            "ALTER TABLE app_settings ADD COLUMN recommendation_source TEXT NOT NULL DEFAULT 'vault_only'",
+          );
         }
         if (!settingsColNames.contains('auto_friday_feast_filter')) {
-          await customStatement('ALTER TABLE app_settings ADD COLUMN auto_friday_feast_filter INTEGER NOT NULL DEFAULT 0');
+          await customStatement(
+            'ALTER TABLE app_settings ADD COLUMN auto_friday_feast_filter INTEGER NOT NULL DEFAULT 0',
+          );
         }
       }
     } catch (_) {}
@@ -257,30 +355,40 @@ class AppDatabase extends _$AppDatabase {
     try {
       // 2. Check and heal meals table
       final mealsCols = await customSelect('PRAGMA table_info(meals)').get();
-      final mealsColNames = mealsCols.map((r) => r.read<String>('name')).toSet();
+      final mealsColNames = mealsCols
+          .map((r) => r.read<String>('name'))
+          .toSet();
 
       if (mealsColNames.isNotEmpty) {
         if (!mealsColNames.contains('cloud_id')) {
           await customStatement('ALTER TABLE meals ADD COLUMN cloud_id TEXT');
         }
         if (!mealsColNames.contains('name_normalized')) {
-          await customStatement('ALTER TABLE meals ADD COLUMN name_normalized TEXT');
+          await customStatement(
+            'ALTER TABLE meals ADD COLUMN name_normalized TEXT',
+          );
         }
         if (!mealsColNames.contains('photo_path')) {
           await customStatement('ALTER TABLE meals ADD COLUMN photo_path TEXT');
         }
         if (!mealsColNames.contains('is_friday_special')) {
-          await customStatement('ALTER TABLE meals ADD COLUMN is_friday_special INTEGER NOT NULL DEFAULT 0');
+          await customStatement(
+            'ALTER TABLE meals ADD COLUMN is_friday_special INTEGER NOT NULL DEFAULT 0',
+          );
         }
         // meals.is_budget_friendly is deliberately NOT re-added: the feature is
         // gone and the Drift declaration no longer names it, so the dead column
         // simply stays defaulted on old installs. Dropping it for real would
         // need a table rebuild (its CHECK constraint blocks ALTER .. DROP).
         if (!mealsColNames.contains('is_favorite')) {
-          await customStatement('ALTER TABLE meals ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0');
+          await customStatement(
+            'ALTER TABLE meals ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0',
+          );
         }
         if (!mealsColNames.contains('custom_cooldown_days')) {
-          await customStatement('ALTER TABLE meals ADD COLUMN custom_cooldown_days INTEGER');
+          await customStatement(
+            'ALTER TABLE meals ADD COLUMN custom_cooldown_days INTEGER',
+          );
         }
         if (!mealsColNames.contains('notes')) {
           await customStatement('ALTER TABLE meals ADD COLUMN notes TEXT');
@@ -289,8 +397,12 @@ class AppDatabase extends _$AppDatabase {
           await customStatement('ALTER TABLE meals ADD COLUMN short_name TEXT');
         }
         if (!mealsColNames.contains('is_starter_meal')) {
-          await customStatement('ALTER TABLE meals ADD COLUMN is_starter_meal INTEGER NOT NULL DEFAULT 0');
-          await customStatement('UPDATE meals SET is_starter_meal = 1 WHERE id <= 20');
+          await customStatement(
+            'ALTER TABLE meals ADD COLUMN is_starter_meal INTEGER NOT NULL DEFAULT 0',
+          );
+          await customStatement(
+            'UPDATE meals SET is_starter_meal = 1 WHERE id <= 20',
+          );
         }
       }
     } catch (_) {}
@@ -298,20 +410,33 @@ class AppDatabase extends _$AppDatabase {
     try {
       // 3. Ensure all performance indexes exist FIRST, so the backfill
       // query below can use idx_meals_name_normalized instead of a full scan.
-      await customStatement('CREATE INDEX IF NOT EXISTS idx_meal_history_meal_id ON meal_history (meal_id)');
-      await customStatement('CREATE INDEX IF NOT EXISTS idx_meal_history_cooked_at ON meal_history (cooked_at DESC)');
-      await customStatement('CREATE INDEX IF NOT EXISTS idx_meals_name ON meals (name)');
-      await customStatement('CREATE INDEX IF NOT EXISTS idx_meals_name_normalized ON meals (name_normalized)');
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_meal_history_meal_id ON meal_history (meal_id)',
+      );
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_meal_history_cooked_at ON meal_history (cooked_at DESC)',
+      );
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_meals_name ON meals (name)',
+      );
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_meals_name_normalized ON meals (name_normalized)',
+      );
     } catch (_) {}
 
     try {
       // 4. Populate missing name_normalized values (now index-assisted)
-      final nullRows = await customSelect('SELECT id, name FROM meals WHERE name_normalized IS NULL').get();
+      final nullRows = await customSelect(
+        'SELECT id, name FROM meals WHERE name_normalized IS NULL',
+      ).get();
       for (final row in nullRows) {
         final id = row.read<int>('id');
         final name = row.read<String>('name');
         final normalized = normalizeArabic(name);
-        await customStatement('UPDATE meals SET name_normalized = ? WHERE id = ?', [normalized, id]);
+        await customStatement(
+          'UPDATE meals SET name_normalized = ? WHERE id = ?',
+          [normalized, id],
+        );
       }
     } catch (_) {}
   }

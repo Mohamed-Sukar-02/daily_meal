@@ -5,8 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import '../helpers/app_harness.dart';
 
 void main() {
-  testWidgets('Home resets its scroll offset when the tab is re-entered',
-      (tester) async {
+  testWidgets('Home resets its scroll offset when the tab is re-entered', (
+    tester,
+  ) async {
     final db = await pumpApp(tester);
 
     const listKey = Key('home_recommendations_list');
@@ -19,14 +20,18 @@ void main() {
     await tapNav(tester, 'history');
     await tapNav(tester, 'home');
 
-    expect(scrollOffset(tester, listKey), 0,
-        reason: 'Home UI state must be reset on re-entry');
+    expect(
+      scrollOffset(tester, listKey),
+      0,
+      reason: 'Home UI state must be reset on re-entry',
+    );
 
     await tearDownApp(tester, db);
   });
 
-  testWidgets('Settings resets its scroll offset when the tab is re-entered',
-      (tester) async {
+  testWidgets('Settings resets its scroll offset when the tab is re-entered', (
+    tester,
+  ) async {
     final db = await pumpApp(tester);
 
     const listKey = Key('settings_scroll_view');
@@ -45,8 +50,9 @@ void main() {
     await tearDownApp(tester, db);
   });
 
-  testWidgets('Vault keeps its grid position across branch switches',
-      (tester) async {
+  testWidgets('Vault keeps its grid position across branch switches', (
+    tester,
+  ) async {
     final db = await pumpApp(tester);
 
     const gridKey = Key('vault_grid_view');
@@ -61,14 +67,18 @@ void main() {
     await tapNav(tester, 'settings');
     await tapNav(tester, 'vault');
 
-    expect(scrollOffset(tester, gridKey), before,
-        reason: 'The vault must preserve its state across branch switches');
+    expect(
+      scrollOffset(tester, gridKey),
+      before,
+      reason: 'The vault must preserve its state across branch switches',
+    );
 
     await tearDownApp(tester, db);
   });
 
-  testWidgets('Entering "My Vault" clears the search box and filters',
-      (tester) async {
+  testWidgets('Entering "My Vault" clears the search box and filters', (
+    tester,
+  ) async {
     final db = await pumpApp(tester);
 
     await tapNav(tester, 'vault');
@@ -97,8 +107,9 @@ void main() {
     await tearDownApp(tester, db);
   });
 
-  testWidgets('Explore keeps its own state across internal tab switches',
-      (tester) async {
+  testWidgets('Explore keeps its own state across internal tab switches', (
+    tester,
+  ) async {
     final db = await pumpApp(tester);
 
     await tapNav(tester, 'vault');
@@ -136,8 +147,8 @@ void main() {
     expect(AvatarService.avatarAssets.length, 20);
     expect(
       AvatarService.maleAvatars.toSet().intersection(
-            AvatarService.femaleAvatars.toSet(),
-          ),
+        AvatarService.femaleAvatars.toSet(),
+      ),
       isEmpty,
     );
     expect(

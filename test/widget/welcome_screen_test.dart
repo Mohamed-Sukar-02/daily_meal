@@ -23,9 +23,7 @@ void main() {
 
   Widget buildTestWidget({Locale locale = const Locale('ar')}) {
     return ProviderScope(
-      overrides: [
-        appDatabaseProvider.overrideWithValue(db),
-      ],
+      overrides: [appDatabaseProvider.overrideWithValue(db)],
       child: MaterialApp(
         locale: locale,
         supportedLocales: const [Locale('ar'), Locale('en')],
@@ -39,7 +37,9 @@ void main() {
     );
   }
 
-  testWidgets('Step 1 renders hero branding and START NOW button', (tester) async {
+  testWidgets('Step 1 renders hero branding and START NOW button', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(1080, 2200);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -50,70 +50,82 @@ void main() {
 
     // Verify Step 1 elements
     expect(find.byKey(const Key('welcome_start_now_button')), findsOneWidget);
-    expect(find.text(AppStrings(const Locale('ar')).welcomeHeroTitle), findsOneWidget);
-    expect(find.text(AppStrings(const Locale('ar')).welcomeHeroDescription), findsOneWidget);
+    expect(
+      find.text(AppStrings(const Locale('ar')).welcomeHeroTitle),
+      findsOneWidget,
+    );
+    expect(
+      find.text(AppStrings(const Locale('ar')).welcomeHeroDescription),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('Tapping START NOW navigates to Step 2 and Back returns to Step 1', (tester) async {
-    tester.view.physicalSize = const Size(1080, 2200);
-    tester.view.devicePixelRatio = 2.0;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets(
+    'Tapping START NOW navigates to Step 2 and Back returns to Step 1',
+    (tester) async {
+      tester.view.physicalSize = const Size(1080, 2200);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(buildTestWidget());
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
 
-    // Tap START NOW
-    await tester.tap(find.byKey(const Key('welcome_start_now_button')));
-    await tester.pumpAndSettle();
+      // Tap START NOW
+      await tester.tap(find.byKey(const Key('welcome_start_now_button')));
+      await tester.pumpAndSettle();
 
-    // Verify Step 2 elements exist
-    expect(find.byKey(const Key('welcome_name_field')), findsOneWidget);
-    expect(find.byKey(const Key('welcome_gender_male')), findsOneWidget);
-    expect(find.byKey(const Key('welcome_gender_female')), findsOneWidget);
-    expect(find.byKey(const Key('welcome_submit_button')), findsOneWidget);
-    expect(find.byKey(const Key('welcome_back_button')), findsOneWidget);
+      // Verify Step 2 elements exist
+      expect(find.byKey(const Key('welcome_name_field')), findsOneWidget);
+      expect(find.byKey(const Key('welcome_gender_male')), findsOneWidget);
+      expect(find.byKey(const Key('welcome_gender_female')), findsOneWidget);
+      expect(find.byKey(const Key('welcome_submit_button')), findsOneWidget);
+      expect(find.byKey(const Key('welcome_back_button')), findsOneWidget);
 
-    // Tap Back button
-    await tester.tap(find.byKey(const Key('welcome_back_button')));
-    await tester.pumpAndSettle();
+      // Tap Back button
+      await tester.tap(find.byKey(const Key('welcome_back_button')));
+      await tester.pumpAndSettle();
 
-    // Back on Step 1
-    expect(find.byKey(const Key('welcome_start_now_button')), findsOneWidget);
-  });
+      // Back on Step 1
+      expect(find.byKey(const Key('welcome_start_now_button')), findsOneWidget);
+    },
+  );
 
-  testWidgets('Selecting gender shows corresponding avatars and updates selection', (tester) async {
-    tester.view.physicalSize = const Size(1080, 2200);
-    tester.view.devicePixelRatio = 2.0;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets(
+    'Selecting gender shows corresponding avatars and updates selection',
+    (tester) async {
+      tester.view.physicalSize = const Size(1080, 2200);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(buildTestWidget());
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('welcome_start_now_button')));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('welcome_start_now_button')));
+      await tester.pumpAndSettle();
 
-    // Initially no avatar list is visible
-    expect(find.byKey(const Key('welcome_avatar_MO1.png')), findsNothing);
-    expect(find.byKey(const Key('welcome_avatar_F01.png')), findsNothing);
+      // Initially no avatar list is visible
+      expect(find.byKey(const Key('welcome_avatar_MO1.png')), findsNothing);
+      expect(find.byKey(const Key('welcome_avatar_F01.png')), findsNothing);
 
-    // Select Male
-    await tester.tap(find.byKey(const Key('welcome_gender_male')));
-    await tester.pumpAndSettle();
+      // Select Male
+      await tester.tap(find.byKey(const Key('welcome_gender_male')));
+      await tester.pumpAndSettle();
 
-    // Male avatars appear
-    expect(find.byKey(const Key('welcome_avatar_MO1.png')), findsOneWidget);
-    expect(find.byKey(const Key('welcome_avatar_F01.png')), findsNothing);
+      // Male avatars appear
+      expect(find.byKey(const Key('welcome_avatar_MO1.png')), findsOneWidget);
+      expect(find.byKey(const Key('welcome_avatar_F01.png')), findsNothing);
 
-    // Switch to Female
-    await tester.tap(find.byKey(const Key('welcome_gender_female')));
-    await tester.pumpAndSettle();
+      // Switch to Female
+      await tester.tap(find.byKey(const Key('welcome_gender_female')));
+      await tester.pumpAndSettle();
 
-    // Female avatars appear
-    expect(find.byKey(const Key('welcome_avatar_F01.png')), findsOneWidget);
-    expect(find.byKey(const Key('welcome_avatar_MO1.png')), findsNothing);
-  });
+      // Female avatars appear
+      expect(find.byKey(const Key('welcome_avatar_F01.png')), findsOneWidget);
+      expect(find.byKey(const Key('welcome_avatar_MO1.png')), findsNothing);
+    },
+  );
 
   testWidgets('Submitting form saves welcome data to database', (tester) async {
     tester.view.physicalSize = const Size(1080, 2200);
@@ -128,7 +140,10 @@ void main() {
     await tester.pumpAndSettle();
 
     // Fill Name
-    await tester.enterText(find.byKey(const Key('welcome_name_field')), 'سارة أحمد');
+    await tester.enterText(
+      find.byKey(const Key('welcome_name_field')),
+      'سارة أحمد',
+    );
     await tester.pumpAndSettle();
 
     // Select Female

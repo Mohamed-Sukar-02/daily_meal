@@ -7,11 +7,11 @@ import 'package:flutter_test/flutter_test.dart';
 import '../helpers/app_harness.dart';
 
 Finder get avatarTiles => find.byWidgetPredicate((w) {
-      final key = w.key;
-      return key is ValueKey<String> &&
-          key.value.startsWith('profile_avatar_') &&
-          !key.value.contains('empty_hint');
-    });
+  final key = w.key;
+  return key is ValueKey<String> &&
+      key.value.startsWith('profile_avatar_') &&
+      !key.value.contains('empty_hint');
+});
 
 Future<void> openProfileDialog(WidgetTester tester) async {
   await tapNav(tester, 'settings');
@@ -22,14 +22,16 @@ Future<void> openProfileDialog(WidgetTester tester) async {
   expect(find.byKey(const Key('profile_save_button')), findsOneWidget);
 }
 
-bool saveEnabled(WidgetTester tester) => tester
-    .widget<FilledButton>(find.byKey(const Key('profile_save_button')))
-    .onPressed !=
+bool saveEnabled(WidgetTester tester) =>
+    tester
+        .widget<FilledButton>(find.byKey(const Key('profile_save_button')))
+        .onPressed !=
     null;
 
 void main() {
-  testWidgets('gender is required and nothing can be saved before choosing',
-      (tester) async {
+  testWidgets('gender is required and nothing can be saved before choosing', (
+    tester,
+  ) async {
     final db = await pumpApp(tester);
 
     await openProfileDialog(tester);
@@ -45,8 +47,9 @@ void main() {
     await tearDownApp(tester, db);
   });
 
-  testWidgets('choosing a gender shows only that gender\'s avatars',
-      (tester) async {
+  testWidgets('choosing a gender shows only that gender\'s avatars', (
+    tester,
+  ) async {
     final db = await pumpApp(tester);
 
     await openProfileDialog(tester);
@@ -68,41 +71,47 @@ void main() {
     expect(find.byKey(const Key('profile_avatar_MO1.png')), findsNothing);
     expect(find.byKey(const Key('profile_avatar_MY3.png')), findsNothing);
     expect(find.byKey(const Key('profile_avatar_F01.png')), findsOneWidget);
-    expect(saveEnabled(tester), isTrue,
-        reason: 'the profile must never be left without an avatar');
+    expect(
+      saveEnabled(tester),
+      isTrue,
+      reason: 'the profile must never be left without an avatar',
+    );
 
     await tearDownApp(tester, db);
   });
 
-  testWidgets('a saved gender + avatar are restored when reopening the dialog',
-      (tester) async {
-    final db = await pumpApp(tester);
+  testWidgets(
+    'a saved gender + avatar are restored when reopening the dialog',
+    (tester) async {
+      final db = await pumpApp(tester);
 
-    await openProfileDialog(tester);
-    await tester.tap(find.byKey(const Key('profile_gender_female')));
-    await tester.pumpAndSettle();
-    // Pick a specific avatar so the assertion below is deterministic.
-    await tester.tap(find.byKey(const Key('profile_avatar_FY2.png')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('profile_save_button')));
-    await tester.pumpAndSettle();
+      await openProfileDialog(tester);
+      await tester.tap(find.byKey(const Key('profile_gender_female')));
+      await tester.pumpAndSettle();
+      // Pick a specific avatar so the assertion below is deterministic.
+      await tester.tap(find.byKey(const Key('profile_avatar_FY2.png')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('profile_save_button')));
+      await tester.pumpAndSettle();
 
-    // Dialog closed and the choice was written to the database.
-    expect(find.byKey(const Key('profile_save_button')), findsNothing);
-    final settings = await db.appSettingsDao.getSettings();
-    expect(settings.userGender, UserGender.female);
-    expect(settings.userAvatar, 'assets/avatars/FY2.png');
+      // Dialog closed and the choice was written to the database.
+      expect(find.byKey(const Key('profile_save_button')), findsNothing);
+      final settings = await db.appSettingsDao.getSettings();
+      expect(settings.userGender, UserGender.female);
+      expect(settings.userAvatar, 'assets/avatars/FY2.png');
 
-    await openProfileDialog(tester);
-    expect(avatarTiles, findsNWidgets(AvatarService.femaleAvatars.length));
-    expect(find.byKey(const Key('profile_avatar_FY2.png')), findsOneWidget);
-    expect(saveEnabled(tester), isTrue);
+      await openProfileDialog(tester);
+      expect(avatarTiles, findsNWidgets(AvatarService.femaleAvatars.length));
+      expect(find.byKey(const Key('profile_avatar_FY2.png')), findsOneWidget);
+      expect(saveEnabled(tester), isTrue);
 
-    await tearDownApp(tester, db);
-  });
+      await tearDownApp(tester, db);
+    },
+  );
 
-  testWidgets('a stored avatar that does not match the gender is replaced',
-      (tester) async {
+  testWidgets('a stored avatar that does not match the gender is replaced', (
+    tester,
+  ) async {
     final db = await pumpApp(tester);
 
     // Simulate legacy data: a male avatar stored against a female profile.

@@ -14,8 +14,9 @@ import 'package:flutter_test/flutter_test.dart';
 // MealScreen mockup-layout regression guard.
 //
 // Pins the outer chrome locked to meal_screen-light / meal_screen-dark:
-//   floating short name · cloud · hero + full-name scrim · green info banner
-//   · Main/Side tabs · More Favorites · bottom pill.
+//   floating short name · cloud · hero at the vault ratio · favourite chip on
+//   the photo's top-right corner · green info banner (full name + category
+//   marks) · Main/Side tabs · More Favorites · bottom pill.
 // ---------------------------------------------------------------------------
 
 Meal _sampleMeal({
@@ -25,6 +26,8 @@ Meal _sampleMeal({
   String? notes = 'تتقلى الثوم كويس قبل الإضافة',
   bool favorite = true,
   bool friday = false,
+  ProteinType protein = ProteinType.chicken,
+  CarbsType carbs = CarbsType.rice,
 }) {
   final now = DateTime(2026, 9, 22, 12);
   return Meal(
@@ -32,8 +35,8 @@ Meal _sampleMeal({
     name: name,
     nameNormalized: name,
     photoPath: null,
-    proteinType: ProteinType.chicken,
-    carbsType: CarbsType.rice,
+    proteinType: protein,
+    carbsType: carbs,
     category: MealCategory.egyptianTraditional,
     prepTime: 45,
     isFridaySpecial: friday,
@@ -80,7 +83,9 @@ Future<void> _pumpMealScreen(
       overrides: [
         allMealsProvider.overrideWith((ref) => Stream.value(meals)),
         favoriteMealsProvider.overrideWith(
-          (ref) => Stream.value(favorites ?? meals.where((m) => m.isFavorite).toList()),
+          (ref) => Stream.value(
+            favorites ?? meals.where((m) => m.isFavorite).toList(),
+          ),
         ),
       ],
       child: MaterialApp(
@@ -107,17 +112,16 @@ void main() {
   testWidgets('renders mockup chrome for a known meal', (tester) async {
     await _pumpMealScreen(
       tester,
-      meals: [
-        _sampleMeal(),
-        _favMeal(8, 'كشري'),
-        _favMeal(9, 'محشي'),
-      ],
+      meals: [_sampleMeal(), _favMeal(8, 'كشري'), _favMeal(9, 'محشي')],
     );
 
     expect(find.byKey(const Key('meal_screen')), findsOneWidget);
     expect(find.byKey(const Key('meal_screen_body')), findsOneWidget);
     expect(find.byKey(const Key('meal_screen_back_button')), findsOneWidget);
-    expect(find.byKey(const Key('meal_screen_favorite_button')), findsOneWidget);
+    expect(
+      find.byKey(const Key('meal_screen_favorite_button')),
+      findsOneWidget,
+    );
     expect(find.byKey(const Key('meal_screen_cloud_button')), findsOneWidget);
     expect(find.byKey(const Key('meal_screen_short_name')), findsOneWidget);
     expect(find.byKey(const Key('meal_screen_hero')), findsOneWidget);
@@ -138,7 +142,9 @@ void main() {
     expect(find.text('ملوخية خضراء بالفراخ'), findsOneWidget);
   });
 
-  testWidgets('falls back to full name when shortName is empty', (tester) async {
+  testWidgets('falls back to full name when shortName is empty', (
+    tester,
+  ) async {
     await _pumpMealScreen(
       tester,
       meals: [_sampleMeal(shortName: null, name: 'كشري محترم')],
@@ -151,11 +157,7 @@ void main() {
   });
 
   testWidgets('shows not-found state for a missing meal id', (tester) async {
-    await _pumpMealScreen(
-      tester,
-      meals: [_sampleMeal(id: 1)],
-      mealId: 999,
-    );
+    await _pumpMealScreen(tester, meals: [_sampleMeal(id: 1)], mealId: 999);
 
     expect(find.byKey(const Key('meal_screen_not_found')), findsOneWidget);
     expect(find.byKey(const Key('meal_screen_body')), findsNothing);
@@ -177,27 +179,66 @@ void main() {
     expect(find.byKey(const Key('meal_screen_dish_panel')), findsOneWidget);
   });
 
-  testWidgets('info banner shows the ingredient and freshness columns',
-      (tester) async {
+  testWidgets('info banner carries the full name and one mark per group', (
+    tester,
+  ) async {
     await _pumpMealScreen(tester, meals: [_sampleMeal()]);
 
     final strings = const AppStrings(Locale('ar'));
-    expect(find.text(strings.freshAndNatural), findsOneWidget);
+
+    // The name left the hero and now owns the card's reading-start column.
+    final name = find.byKey(const Key('meal_screen_full_name'));
+    expect(name, findsOneWidget);
+    expect(tester.widget<Text>(name).data, 'ملوخية خضراء بالفراخ');
+
+    expect(find.text(strings.proteinMarkLabel('chicken')), findsOneWidget);
+    expect(find.text(strings.carbsMarkLabel('rice')), findsOneWidget);
+
+    // Each mark is the emoji the rest of the app uses for that food, never a
+    // drawn glyph: swapping this column back to `AppGlyph` is the regression
+    // these two lines pin against.
+    expect(find.text(ProteinType.chicken.emoji), findsOneWidget);
+    expect(find.text(CarbsType.rice.emoji), findsOneWidget);
     expect(
-      find.text(
-        '${ProteinType.chicken.label(strings)}, '
-        '${CarbsType.rice.label(strings)}',
+      find.descendant(
+        of: find.byKey(const Key('meal_screen_info_card')),
+        matching: find.byType(AppIcon),
       ),
-      findsOneWidget,
+      findsNothing,
     );
+
+    // The freshness column the marks replaced is gone, not buried behind them.
+    expect(find.text(strings.freshAndNatural), findsNothing);
   });
+
+  testWidgets(
+    'a meal with neither protein nor carbs marks itself by category',
+    (tester) async {
+      await _pumpMealScreen(
+        tester,
+        meals: [_sampleMeal(protein: ProteinType.none, carbs: CarbsType.none)],
+      );
+
+      final strings = const AppStrings(Locale('ar'));
+      expect(
+        find.text(strings.categoryMarkLabel('egyptianTraditional')),
+        findsOneWidget,
+      );
+      expect(find.text(MealCategory.egyptianTraditional.emoji), findsOneWidget);
+      expect(find.text(strings.proteinMarkLabel('chicken')), findsNothing);
+      expect(find.text(strings.carbsMarkLabel('rice')), findsNothing);
+    },
+  );
 
   testWidgets('bottom pill is an empty shell', (tester) async {
     await _pumpMealScreen(tester, meals: [_sampleMeal()]);
 
     final pill = find.byKey(const Key('meal_screen_bottom_pill'));
     expect(pill, findsOneWidget);
-    expect(find.descendant(of: pill, matching: find.byType(Text)), findsNothing);
+    expect(
+      find.descendant(of: pill, matching: find.byType(Text)),
+      findsNothing,
+    );
   });
 
   testWidgets('dark mode paints without throwing', (tester) async {
@@ -211,8 +252,9 @@ void main() {
     expect(find.byKey(const Key('meal_screen_bottom_pill')), findsOneWidget);
   });
 
-  testWidgets('LTR English layout exposes dish tabs and more favorites',
-      (tester) async {
+  testWidgets('LTR English layout exposes dish tabs and more favorites', (
+    tester,
+  ) async {
     await _pumpMealScreen(
       tester,
       meals: [
@@ -235,8 +277,9 @@ void main() {
     expect(find.text('Molokhia'), findsWidgets);
   });
 
-  testWidgets('app bar short name is true-centered and status glyph is absent',
-      (tester) async {
+  testWidgets('app bar short name is true-centered and status glyph is absent', (
+    tester,
+  ) async {
     await _pumpMealScreen(
       tester,
       meals: [_sampleMeal(friday: true), _favMeal(8, 'كشري')],
@@ -285,24 +328,51 @@ void main() {
       findsOneWidget,
     );
 
-    // Cloud + favorite form one adjacent pair, kept apart from back.
-    final cloudRect = tester
-        .getRect(find.byKey(const Key('meal_screen_cloud_button')));
-    final favoriteRect = tester
-        .getRect(find.byKey(const Key('meal_screen_favorite_button')));
+    // Cloud + overflow are the whole trailing group now, and they stay
+    // adjacent: the sync mark took the slot the favourite vacated.
+    final cloudRect = tester.getRect(
+      find.byKey(const Key('meal_screen_cloud_button')),
+    );
+    final actionsRect = tester.getRect(
+      find.byKey(const Key('meal_screen_actions_button')),
+    );
     final backRect = tester.getRect(backButton);
 
-    expect((cloudRect.center.dy - favoriteRect.center.dy).abs(), lessThan(1.0));
-    final pairGap = (cloudRect.center.dx - favoriteRect.center.dx).abs() -
-        (cloudRect.width + favoriteRect.width) / 2;
+    expect((cloudRect.center.dy - actionsRect.center.dy).abs(), lessThan(1.0));
+    final pairGap =
+        (cloudRect.center.dx - actionsRect.center.dx).abs() -
+        (cloudRect.width + actionsRect.width) / 2;
     expect(pairGap, lessThan(8.0));
-    final pairToBackGap = (cloudRect.center.dx - backRect.center.dx).abs() -
+    final pairToBackGap =
+        (cloudRect.center.dx - backRect.center.dx).abs() -
         (cloudRect.width + backRect.width) / 2;
     expect(pairToBackGap, greaterThan(pairGap));
+
+    // The group hugs the edge — the reading-end one, which is the left in
+    // Arabic — which is what frees the header's middle for the name instead of
+    // trading the name against the marks.
+    expect(actionsRect.left, lessThan(12.0));
+
+    // The favourite left the header entirely and now floats inside the photo,
+    // pinned to its top-right corner: the whole box sits below the app bar,
+    // clear of the info card's top edge, and hugs the photo's own top rather
+    // than its bottom. Visual right, so Arabic and English place it alike.
+    final favoriteRect = tester.getRect(
+      find.byKey(const Key('meal_screen_favorite_button')),
+    );
+    final cardRect = tester.getRect(
+      find.byKey(const Key('meal_screen_info_card')),
+    );
+    final surfaceW = tester.binding.renderViews.first.size.width;
+    expect(favoriteRect.top, greaterThan(headerBottom));
+    expect(favoriteRect.bottom, lessThanOrEqualTo(cardRect.top));
+    expect(surfaceW - favoriteRect.right, inInclusiveRange(12.0, 24.0));
+    expect(favoriteRect.top - headerBottom, lessThan(40.0));
   });
 
-  testWidgets('LTR English header keeps the back arrow and the action pair',
-      (tester) async {
+  testWidgets('LTR English header keeps the back arrow and the action pair', (
+    tester,
+  ) async {
     await _pumpMealScreen(
       tester,
       meals: [
@@ -358,28 +428,35 @@ void main() {
       );
     }
 
-    final cloudRect = tester
-        .getRect(find.byKey(const Key('meal_screen_cloud_button')));
-    final favoriteRect = tester
-        .getRect(find.byKey(const Key('meal_screen_favorite_button')));
+    final cloudRect = tester.getRect(
+      find.byKey(const Key('meal_screen_cloud_button')),
+    );
+    final actionsRect = tester.getRect(
+      find.byKey(const Key('meal_screen_actions_button')),
+    );
     final backRect = tester.getRect(backButton);
 
-    expect((cloudRect.center.dy - favoriteRect.center.dy).abs(), lessThan(1.0));
-    final pairGap = (cloudRect.center.dx - favoriteRect.center.dx).abs() -
-        (cloudRect.width + favoriteRect.width) / 2;
+    expect((cloudRect.center.dy - actionsRect.center.dy).abs(), lessThan(1.0));
+    final pairGap =
+        (cloudRect.center.dx - actionsRect.center.dx).abs() -
+        (cloudRect.width + actionsRect.width) / 2;
     expect(pairGap, lessThan(8.0));
-    final pairToBackGap = (cloudRect.center.dx - backRect.center.dx).abs() -
+    final pairToBackGap =
+        (cloudRect.center.dx - backRect.center.dx).abs() -
         (cloudRect.width + backRect.width) / 2;
     expect(pairToBackGap, greaterThan(pairGap));
+
+    // Same edge-hugging group as the Arabic case, mirrored with the row.
+    expect(
+      tester.binding.renderViews.first.size.width - actionsRect.right,
+      lessThan(12.0),
+    );
   });
 
-  testWidgets('hides more-favorites when no other favorites exist',
-      (tester) async {
-    await _pumpMealScreen(
-      tester,
-      meals: [_sampleMeal()],
-      favorites: const [],
-    );
+  testWidgets('hides more-favorites when no other favorites exist', (
+    tester,
+  ) async {
+    await _pumpMealScreen(tester, meals: [_sampleMeal()], favorites: const []);
     expect(find.byKey(const Key('meal_screen_more_favorites')), findsNothing);
   });
 }

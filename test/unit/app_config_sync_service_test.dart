@@ -98,10 +98,7 @@ void main() {
     });
 
     test('handles missing or malformed fields safely with fallbacks', () {
-      final map = <String, dynamic>{
-        'cooldownDays': null,
-        'invalidField': 999,
-      };
+      final map = <String, dynamic>{'cooldownDays': null, 'invalidField': 999};
 
       final parsed = SystemDefaults.fromMap(map);
       expect(parsed.cooldownDays, 14);
@@ -111,181 +108,253 @@ void main() {
   });
 
   group('AppConfigSyncService cache & offline', () {
-    test('getCachedDefaults returns fallback defaults when nothing cached', () async {
-      final defaults = await AppConfigSyncService.instance.getCachedDefaults();
-      expect(defaults.cooldownDays, 14);
-      expect(defaults.chickenCooldownDays, 2);
-      expect(defaults.meatlessCooldownDays, 3);
-    });
+    test(
+      'getCachedDefaults returns fallback defaults when nothing cached',
+      () async {
+        final defaults = await AppConfigSyncService.instance
+            .getCachedDefaults();
+        expect(defaults.cooldownDays, 14);
+        expect(defaults.chickenCooldownDays, 2);
+        expect(defaults.meatlessCooldownDays, 3);
+      },
+    );
 
-    test('syncWithFirebase returns cached defaults safely during test/offline', () async {
-      final result = await AppConfigSyncService.instance.syncWithFirebase();
-      expect(result.cooldownDays, 14);
-      expect(result.chickenCooldownDays, 2);
-    });
+    test(
+      'syncWithFirebase returns cached defaults safely during test/offline',
+      () async {
+        final result = await AppConfigSyncService.instance.syncWithFirebase();
+        expect(result.cooldownDays, 14);
+        expect(result.chickenCooldownDays, 2);
+      },
+    );
   });
 
   group('Starter meals sync identity', () {
-    test('cloud rename updates the local meal via cloudId and keeps history intact', () async {
-      final meal = await _seedStarter(db, 'Kofta Mashwy', cloudId: 'doc-1', isFavorite: true);
-      final historyId = await db.mealHistoryDao.logCookedMeal(meal);
+    test(
+      'cloud rename updates the local meal via cloudId and keeps history intact',
+      () async {
+        final meal = await _seedStarter(
+          db,
+          'Kofta Mashwy',
+          cloudId: 'doc-1',
+          isFavorite: true,
+        );
+        final historyId = await db.mealHistoryDao.logCookedMeal(meal);
 
-      service.remoteStarterDocsFetcher = () async => [
-            _doc('doc-1', 'Kofta bil Sinnyora', {
-              'proteinType': 'beef',
-              'shortName': 'كفتة',
-              'prepTimeMinutes': 60,
-            }),
-          ];
+        service.remoteStarterDocsFetcher = () async => [
+          _doc('doc-1', 'Kofta bil Sinnyora', {
+            'proteinType': 'beef',
+            'shortName': 'كفتة',
+            'prepTimeMinutes': 60,
+          }),
+        ];
 
-      // Auto-sync (isManual = false) used to DELETE name-mismatched meals.
-      await service.syncStarterMealsForTest(db, isManual: false);
+        // Auto-sync (isManual = false) used to DELETE name-mismatched meals.
+        await service.syncStarterMealsForTest(db, isManual: false);
 
-      final after = await db.mealsDao.getMealById(meal.id);
-      expect(after, isNotNull, reason: 'a cloud rename must never delete the local meal');
-      expect(after!.name, 'Kofta bil Sinnyora');
-      expect(after.cloudId, 'doc-1');
-      expect(after.proteinType, ProteinType.beef);
-      expect(after.shortName, 'كفتة');
-      expect(after.prepTime, 60);
-      expect(after.isStarterMeal, isTrue);
-      expect(after.isFavorite, isTrue, reason: 'local favourites are preserved');
+        final after = await db.mealsDao.getMealById(meal.id);
+        expect(
+          after,
+          isNotNull,
+          reason: 'a cloud rename must never delete the local meal',
+        );
+        expect(after!.name, 'Kofta bil Sinnyora');
+        expect(after.cloudId, 'doc-1');
+        expect(after.proteinType, ProteinType.beef);
+        expect(after.shortName, 'كفتة');
+        expect(after.prepTime, 60);
+        expect(after.isStarterMeal, isTrue);
+        expect(
+          after.isFavorite,
+          isTrue,
+          reason: 'local favourites are preserved',
+        );
 
-      final history = await (db.select(db.mealHistory)..where((t) => t.id.equals(historyId))).getSingle();
-      expect(history.mealId, meal.id, reason: 'history must not be orphaned (SET NULL)');
-    });
+        final history = await (db.select(
+          db.mealHistory,
+        )..where((t) => t.id.equals(historyId))).getSingle();
+        expect(
+          history.mealId,
+          meal.id,
+          reason: 'history must not be orphaned (SET NULL)',
+        );
+      },
+    );
 
-    test('a starter update never flattens a tag the cloud cannot name', () async {
-      // `dairy` and `potato` have no tokens of their own: the staging payload
-      // writes them as `other`/`none`. The sync used to write that fold back
-      // over the local row — unattended, with `touchUpdatedAt: false` — which
-      // retagged the dish and moved protein `none` into the meatless cooldown
-      // window. Plain fields must still follow the catalog.
-      final now = DateTime(2026, 9, 20, 12);
-      final id = await db.mealsDao.insertMeal(MealsCompanion.insert(
-        name: 'Shakshuka bel Gibna',
-        proteinType: ProteinType.dairy,
-        carbsType: CarbsType.potato,
-        category: MealCategory.egyptianTraditional,
-        prepTime: 15,
-        createdAt: Value(now),
-        updatedAt: Value(now),
-        isStarterMeal: const Value(true),
-        cloudId: const Value('doc-7'),
-      ));
+    test(
+      'a starter update never flattens a tag the cloud cannot name',
+      () async {
+        // `dairy` and `potato` have no tokens of their own: the staging payload
+        // writes them as `other`/`none`. The sync used to write that fold back
+        // over the local row — unattended, with `touchUpdatedAt: false` — which
+        // retagged the dish and moved protein `none` into the meatless cooldown
+        // window. Plain fields must still follow the catalog.
+        final now = DateTime(2026, 9, 20, 12);
+        final id = await db.mealsDao.insertMeal(
+          MealsCompanion.insert(
+            name: 'Shakshuka bel Gibna',
+            proteinType: ProteinType.dairy,
+            carbsType: CarbsType.potato,
+            category: MealCategory.egyptianTraditional,
+            prepTime: 15,
+            createdAt: Value(now),
+            updatedAt: Value(now),
+            isStarterMeal: const Value(true),
+            cloudId: const Value('doc-7'),
+          ),
+        );
 
-      service.remoteStarterDocsFetcher = () async => [
-            _doc('doc-7', 'Shakshuka bel Gibna', {
-              'proteinType': 'other',
-              'carbsType': 'none',
-              'prepTimeMinutes': 20,
-            }),
-          ];
+        service.remoteStarterDocsFetcher = () async => [
+          _doc('doc-7', 'Shakshuka bel Gibna', {
+            'proteinType': 'other',
+            'carbsType': 'none',
+            'prepTimeMinutes': 20,
+          }),
+        ];
 
-      await service.syncStarterMealsForTest(db, isManual: false);
+        await service.syncStarterMealsForTest(db, isManual: false);
 
-      final after = await db.mealsDao.getMealById(id);
-      expect(after?.prepTime, 20, reason: 'expressible fields still sync');
-      expect(
-        after?.proteinType,
-        ProteinType.dairy,
-        reason: '"other" is a fold, not a claim that this dish has no protein',
-      );
-      expect(after?.carbsType, CarbsType.potato);
-    });
+        final after = await db.mealsDao.getMealById(id);
+        expect(after?.prepTime, 20, reason: 'expressible fields still sync');
+        expect(
+          after?.proteinType,
+          ProteinType.dairy,
+          reason:
+              '"other" is a fold, not a claim that this dish has no protein',
+        );
+        expect(after?.carbsType, CarbsType.potato);
+      },
+    );
 
-    test('a starter update still applies a protein the cloud does name', () async {
-      final now = DateTime(2026, 9, 20, 12);
-      final id = await db.mealsDao.insertMeal(MealsCompanion.insert(
-        name: 'Sayadieh',
-        proteinType: ProteinType.chicken,
-        carbsType: CarbsType.rice,
-        category: MealCategory.egyptianTraditional,
-        prepTime: 40,
-        createdAt: Value(now),
-        updatedAt: Value(now),
-        isStarterMeal: const Value(true),
-        cloudId: const Value('doc-8'),
-      ));
+    test(
+      'a starter update still applies a protein the cloud does name',
+      () async {
+        final now = DateTime(2026, 9, 20, 12);
+        final id = await db.mealsDao.insertMeal(
+          MealsCompanion.insert(
+            name: 'Sayadieh',
+            proteinType: ProteinType.chicken,
+            carbsType: CarbsType.rice,
+            category: MealCategory.egyptianTraditional,
+            prepTime: 40,
+            createdAt: Value(now),
+            updatedAt: Value(now),
+            isStarterMeal: const Value(true),
+            cloudId: const Value('doc-8'),
+          ),
+        );
 
-      service.remoteStarterDocsFetcher = () async => [
-            _doc('doc-8', 'Sayadieh', {'proteinType': 'fish'}),
-          ];
+        service.remoteStarterDocsFetcher = () async => [
+          _doc('doc-8', 'Sayadieh', {'proteinType': 'fish'}),
+        ];
 
-      await service.syncStarterMealsForTest(db, isManual: false);
-      expect((await db.mealsDao.getMealById(id))?.proteinType, ProteinType.fish);
-    });
+        await service.syncStarterMealsForTest(db, isManual: false);
+        expect(
+          (await db.mealsDao.getMealById(id))?.proteinType,
+          ProteinType.fish,
+        );
+      },
+    );
 
-    test('empty cloud response does not wipe or de-list local starter meals', () async {
-      // AppDatabase seeds ~20 starter meals on first open; count a baseline
-      // instead of hard-coding it.
-      await _seedStarter(db, 'Foul Mudammas', cloudId: 'doc-1');
-      await _seedStarter(db, 'Taameya', cloudId: 'doc-2');
-      final before = await db.mealsDao.getStarterMeals();
+    test(
+      'empty cloud response does not wipe or de-list local starter meals',
+      () async {
+        // AppDatabase seeds ~20 starter meals on first open; count a baseline
+        // instead of hard-coding it.
+        await _seedStarter(db, 'Foul Mudammas', cloudId: 'doc-1');
+        await _seedStarter(db, 'Taameya', cloudId: 'doc-2');
+        final before = await db.mealsDao.getStarterMeals();
 
-      service.remoteStarterDocsFetcher = () async => [];
+        service.remoteStarterDocsFetcher = () async => [];
 
-      await service.syncStarterMealsForTest(db, isManual: false);
+        await service.syncStarterMealsForTest(db, isManual: false);
 
-      final after = await db.mealsDao.getStarterMeals();
-      expect(after, hasLength(before.length));
-      expect(after.map((m) => m.name), containsAll(['Foul Mudammas', 'Taameya']));
-    });
+        final after = await db.mealsDao.getStarterMeals();
+        expect(after, hasLength(before.length));
+        expect(
+          after.map((m) => m.name),
+          containsAll(['Foul Mudammas', 'Taameya']),
+        );
+      },
+    );
 
-    test('meal removed from the cloud catalog is de-listed, not deleted', () async {
-      final meal = await _seedStarter(db, 'Hamburger', cloudId: 'doc-9', notes: 'سر التتبيلة');
-      final historyId = await db.mealHistoryDao.logCookedMeal(meal);
+    test(
+      'meal removed from the cloud catalog is de-listed, not deleted',
+      () async {
+        final meal = await _seedStarter(
+          db,
+          'Hamburger',
+          cloudId: 'doc-9',
+          notes: 'سر التتبيلة',
+        );
+        final historyId = await db.mealHistoryDao.logCookedMeal(meal);
 
-      service.remoteStarterDocsFetcher = () async => [
-            _doc('doc-10', 'Shawarma'), // unrelated, but keeps the response non-empty
-          ];
+        service.remoteStarterDocsFetcher = () async => [
+          _doc(
+            'doc-10',
+            'Shawarma',
+          ), // unrelated, but keeps the response non-empty
+        ];
 
-      await service.syncStarterMealsForTest(db, isManual: false);
+        await service.syncStarterMealsForTest(db, isManual: false);
 
-      final after = await db.mealsDao.getMealById(meal.id);
-      expect(after, isNotNull, reason: 'the row itself must survive');
-      expect(after!.isStarterMeal, isFalse);
-      expect(after.notes, 'سر التتبيلة');
+        final after = await db.mealsDao.getMealById(meal.id);
+        expect(after, isNotNull, reason: 'the row itself must survive');
+        expect(after!.isStarterMeal, isFalse);
+        expect(after.notes, 'سر التتبيلة');
 
-      final history = await (db.select(db.mealHistory)..where((t) => t.id.equals(historyId))).getSingle();
-      expect(history.mealId, meal.id);
+        final history = await (db.select(
+          db.mealHistory,
+        )..where((t) => t.id.equals(historyId))).getSingle();
+        expect(history.mealId, meal.id);
 
-      final starters = await db.mealsDao.getStarterMeals();
-      expect(starters.map((m) => m.name), isNot(contains('Hamburger')));
-      expect(starters.map((m) => m.name), contains('Shawarma'));
-    });
+        final starters = await db.mealsDao.getStarterMeals();
+        expect(starters.map((m) => m.name), isNot(contains('Hamburger')));
+        expect(starters.map((m) => m.name), contains('Shawarma'));
+      },
+    );
 
-    test('legacy starter without cloudId still matches by trimmed name and links the doc', () async {
-      final meal = await _seedStarter(db, '  Molokheya  '); // pre-cloudId row
+    test(
+      'legacy starter without cloudId still matches by trimmed name and links the doc',
+      () async {
+        final meal = await _seedStarter(db, '  Molokheya  '); // pre-cloudId row
 
-      service.remoteStarterDocsFetcher = () async => [
-            _doc('doc-7', 'Molokheya', {'carbsType': 'bread'}),
-          ];
+        service.remoteStarterDocsFetcher = () async => [
+          _doc('doc-7', 'Molokheya', {'carbsType': 'bread'}),
+        ];
 
-      await service.syncStarterMealsForTest(db, isManual: false);
+        await service.syncStarterMealsForTest(db, isManual: false);
 
-      final starters = await db.mealsDao.getStarterMeals();
-      expect(starters, hasLength(1), reason: 'no duplicate insert for a legacy name match');
-      expect(starters.single.id, meal.id);
-      expect(starters.single.cloudId, 'doc-7');
-      expect(starters.single.carbsType, CarbsType.bread);
-    });
+        final starters = await db.mealsDao.getStarterMeals();
+        expect(
+          starters,
+          hasLength(1),
+          reason: 'no duplicate insert for a legacy name match',
+        );
+        expect(starters.single.id, meal.id);
+        expect(starters.single.cloudId, 'doc-7');
+        expect(starters.single.carbsType, CarbsType.bread);
+      },
+    );
 
-    test('user deletion blacklist prevents re-insertion of starter meals', () async {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList('deleted_starter_meals', ['doc-8']);
+    test(
+      'user deletion blacklist prevents re-insertion of starter meals',
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setStringList('deleted_starter_meals', ['doc-8']);
 
-      service.remoteStarterDocsFetcher = () async => [
-            _doc('doc-8', 'Removed By User'),
-            _doc('doc-11', 'Still Available'),
-          ];
+        service.remoteStarterDocsFetcher = () async => [
+          _doc('doc-8', 'Removed By User'),
+          _doc('doc-11', 'Still Available'),
+        ];
 
-      await service.syncStarterMealsForTest(db, isManual: false);
+        await service.syncStarterMealsForTest(db, isManual: false);
 
-      final all = await db.mealsDao.getAllMeals();
-      expect(all.map((m) => m.name), isNot(contains('Removed By User')));
-      expect(all.map((m) => m.name), contains('Still Available'));
-      expect(prefs.getStringList('deleted_starter_meals'), contains('doc-8'));
-    });
+        final all = await db.mealsDao.getAllMeals();
+        expect(all.map((m) => m.name), isNot(contains('Removed By User')));
+        expect(all.map((m) => m.name), contains('Still Available'));
+        expect(prefs.getStringList('deleted_starter_meals'), contains('doc-8'));
+      },
+    );
   });
 }

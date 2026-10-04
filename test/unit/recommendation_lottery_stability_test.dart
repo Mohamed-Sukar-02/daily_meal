@@ -16,25 +16,26 @@ import 'package:flutter_test/flutter_test.dart';
 /// The lottery is now a hash of `(id, day, seed)`. These cases pin that: an
 /// untouched meal keeps its rank when the pool churns around it.
 Meal _meal(int id) => Meal(
-      id: id,
-      name: 'وجبة $id',
-      photoPath: null,
-      proteinType: ProteinType.chicken,
-      carbsType: CarbsType.rice,
-      category: MealCategory.egyptianTraditional,
-      isStarterMeal: false,
-      prepTime: 30,
-      isFridaySpecial: false,
-      isFavorite: false,
-      createdAt: DateTime(2026, 1, 1),
-      updatedAt: DateTime(2026, 1, 1),
-      cloudId: null,
-      nameNormalized: null,
-    );
+  id: id,
+  name: 'وجبة $id',
+  photoPath: null,
+  proteinType: ProteinType.chicken,
+  carbsType: CarbsType.rice,
+  category: MealCategory.egyptianTraditional,
+  isStarterMeal: false,
+  prepTime: 30,
+  isFridaySpecial: false,
+  isFavorite: false,
+  createdAt: DateTime(2026, 1, 1),
+  updatedAt: DateTime(2026, 1, 1),
+  cloudId: null,
+  nameNormalized: null,
+);
 
 /// A history row for [mealId] cooked on [day] — enough to push it out of the
 /// candidate pool at relaxation level 0 without touching anybody else's score.
-MealHistoryData _cooked(int historyId, int mealId, DateTime day) => MealHistoryData(
+MealHistoryData _cooked(int historyId, int mealId, DateTime day) =>
+    MealHistoryData(
       id: historyId,
       mealId: mealId,
       mealName: 'وجبة $mealId',
@@ -47,21 +48,21 @@ MealHistoryData _cooked(int historyId, int mealId, DateTime day) => MealHistoryD
     );
 
 AppSettingsData _settings() => AppSettingsData(
-      id: 1,
-      cooldownDays: 14,
-      chickenCooldownDays: 7,
-      beefCooldownDays: 2,
-      fishCooldownDays: 4,
-      meatlessCooldownDays: 0,
-      notificationHour: 12,
-      notificationMinute: 0,
-      notificationsEnabled: false,
-      themeMode: AppThemeModePreference.system,
-      language: AppLanguagePreference.ar,
-      isFirstRun: false,
-      recommendationSource: RecommendationSource.vault_only,
-      autoFridayFeastFilter: false,
-    );
+  id: 1,
+  cooldownDays: 14,
+  chickenCooldownDays: 7,
+  beefCooldownDays: 2,
+  fishCooldownDays: 4,
+  meatlessCooldownDays: 0,
+  notificationHour: 12,
+  notificationMinute: 0,
+  notificationsEnabled: false,
+  themeMode: AppThemeModePreference.system,
+  language: AppLanguagePreference.ar,
+  isFirstRun: false,
+  recommendationSource: RecommendationSource.vault_only,
+  autoFridayFeastFilter: false,
+);
 
 void main() {
   const engine = CooldownEngine();
@@ -79,36 +80,40 @@ void main() {
       r.recommendations.map((m) => m.id).toList();
 
   group('seeded lottery is per meal, not per pool position', () {
-    test('cooking the top card leaves the other two exactly where they were', () {
-      for (var seed = 0; seed < 25; seed++) {
-        final before = engine.compute<Meal>(
-          meals: pool,
-          history: const [],
-          settings: _settings(),
-          today: wednesday,
-          shuffleSeed: seed,
-        );
-        expect(before.recommendations, hasLength(3), reason: 'seed $seed');
-        final topCard = before.recommendations.first.id;
+    test(
+      'cooking the top card leaves the other two exactly where they were',
+      () {
+        for (var seed = 0; seed < 25; seed++) {
+          final before = engine.compute<Meal>(
+            meals: pool,
+            history: const [],
+            settings: _settings(),
+            today: wednesday,
+            shuffleSeed: seed,
+          );
+          expect(before.recommendations, hasLength(3), reason: 'seed $seed');
+          final topCard = before.recommendations.first.id;
 
-        final after = engine.compute<Meal>(
-          meals: pool,
-          history: [_cooked(1, topCard, wednesday)],
-          settings: _settings(),
-          today: wednesday,
-          shuffleSeed: seed,
-        );
+          final after = engine.compute<Meal>(
+            meals: pool,
+            history: [_cooked(1, topCard, wednesday)],
+            settings: _settings(),
+            today: wednesday,
+            shuffleSeed: seed,
+          );
 
-        // The remaining cards keep their relative order and simply move up a
-        // slot: what used to be #2 and #3 are the new #1 and #2.
-        expect(
-          shown(after).sublist(0, 2),
-          equals(shown(before).sublist(1, 3)),
-          reason: 'logging $topCard must not re-shuffle the cards nobody tapped '
-              '(seed $seed: ${shown(before)} -> ${shown(after)})',
-        );
-      }
-    });
+          // The remaining cards keep their relative order and simply move up a
+          // slot: what used to be #2 and #3 are the new #1 and #2.
+          expect(
+            shown(after).sublist(0, 2),
+            equals(shown(before).sublist(1, 3)),
+            reason:
+                'logging $topCard must not re-shuffle the cards nobody tapped '
+                '(seed $seed: ${shown(before)} -> ${shown(after)})',
+          );
+        }
+      },
+    );
 
     test('the day is stable across an unrelated history write', () {
       final before = engine.compute<Meal>(

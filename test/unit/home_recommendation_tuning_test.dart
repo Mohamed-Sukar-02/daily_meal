@@ -6,16 +6,12 @@ import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-const _proteins = [
-  ProteinType.chicken,
-  ProteinType.beef,
-  ProteinType.fish,
-];
+const _proteins = [ProteinType.chicken, ProteinType.beef, ProteinType.fish];
 
 /// The two knobs the cases below care about, per meal.
 class _Spec {
   _Spec(this.id, {ProteinType? protein})
-      : protein = protein ?? _proteins[id % _proteins.length];
+    : protein = protein ?? _proteins[id % _proteins.length];
 
   final int id;
   final ProteinType protein;
@@ -49,22 +45,26 @@ Future<_Harness> _start(
 }) async {
   final db = AppDatabase(NativeDatabase.memory());
   await db.appSettingsDao.ensureSettings();
-  await db.appSettingsDao.updateSettings(AppSettingsCompanion(
-    cooldownDays: Value(cooldownDays),
-    chickenCooldownDays: Value(chickenCooldownDays),
-    beefCooldownDays: Value(beefCooldownDays),
-    fishCooldownDays: Value(fishCooldownDays),
-  ));
+  await db.appSettingsDao.updateSettings(
+    AppSettingsCompanion(
+      cooldownDays: Value(cooldownDays),
+      chickenCooldownDays: Value(chickenCooldownDays),
+      beefCooldownDays: Value(beefCooldownDays),
+      fishCooldownDays: Value(fishCooldownDays),
+    ),
+  );
   await db.mealsDao.deleteAllMeals();
   for (final spec in meals) {
-    await db.mealsDao.insertMeal(MealsCompanion(
-      id: Value(spec.id),
-      name: Value('Meal ${spec.id}'),
-      proteinType: Value(spec.protein),
-      carbsType: const Value(CarbsType.rice),
-      category: const Value(MealCategory.egyptianTraditional),
-      prepTime: const Value(30),
-    ));
+    await db.mealsDao.insertMeal(
+      MealsCompanion(
+        id: Value(spec.id),
+        name: Value('Meal ${spec.id}'),
+        proteinType: Value(spec.protein),
+        carbsType: const Value(CarbsType.rice),
+        category: const Value(MealCategory.egyptianTraditional),
+        prepTime: const Value(30),
+      ),
+    );
   }
 
   final container = ProviderContainer(
@@ -78,9 +78,7 @@ Future<_Harness> _start(
 
 /// Eleven meals, ids 11..21 — comfortably above the three cards the day shows,
 /// so the variety and cooldown rules have somewhere to go.
-List<_Spec> _vault() => [
-      for (var id = 11; id <= 21; id++) _Spec(id),
-    ];
+List<_Spec> _vault() => [for (var id = 11; id <= 21; id++) _Spec(id)];
 
 void main() {
   group('vault capacity vs cooldown', () {
@@ -105,22 +103,30 @@ void main() {
       final harness = await _start(_vault(), cooldownDays: 10);
       addTearDown(harness.dispose);
 
-      expect(harness.container.read(vaultCapacityProvider)!.isTooSmall, isFalse);
-    });
-
-    test('a protein rule stricter than the global one drives the warning',
-        () async {
-      final harness = await _start(
-        [_Spec(11, protein: ProteinType.chicken)],
-        cooldownDays: 3,
-        chickenCooldownDays: 21,
+      expect(
+        harness.container.read(vaultCapacityProvider)!.isTooSmall,
+        isFalse,
       );
-      addTearDown(harness.dispose);
-
-      final capacity = harness.container.read(vaultCapacityProvider);
-      expect(capacity!.cooldownDays, 21,
-          reason: 'the chicken window is the one that will re-serve this meal');
-      expect(capacity.isTooSmall, isTrue);
     });
+
+    test(
+      'a protein rule stricter than the global one drives the warning',
+      () async {
+        final harness = await _start(
+          [_Spec(11, protein: ProteinType.chicken)],
+          cooldownDays: 3,
+          chickenCooldownDays: 21,
+        );
+        addTearDown(harness.dispose);
+
+        final capacity = harness.container.read(vaultCapacityProvider);
+        expect(
+          capacity!.cooldownDays,
+          21,
+          reason: 'the chicken window is the one that will re-serve this meal',
+        );
+        expect(capacity.isTooSmall, isTrue);
+      },
+    );
   });
 }

@@ -33,7 +33,10 @@ class RemoteNotificationService {
       return;
     }
     try {
-      final query = _fs.collection('admin_notifications').orderBy('sentAt', descending: true).limit(maxItems);
+      final query = _fs
+          .collection('admin_notifications')
+          .orderBy('sentAt', descending: true)
+          .limit(maxItems);
 
       await for (final snapshot in query.snapshots()) {
         yield snapshot.docs.map(_mapDoc).toList();
@@ -43,8 +46,9 @@ class RemoteNotificationService {
     }
   }
 
-  static NotificationItem _mapDoc(QueryDocumentSnapshot<Map<String, dynamic>> doc) =>
-      fromData(doc.id, doc.data());
+  static NotificationItem _mapDoc(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) => fromData(doc.id, doc.data());
 
   /// Public only so the field mapping can be tested without a live document.
   @visibleForTesting
@@ -52,7 +56,10 @@ class RemoteNotificationService {
     return NotificationItem(
       id: id,
       title: {'ar': _text(data['titleAr']), 'en': _text(data['titleEn'])},
-      subtitle: {'ar': _text(data['messageAr']), 'en': _text(data['messageEn'])},
+      subtitle: {
+        'ar': _text(data['messageAr']),
+        'en': _text(data['messageEn']),
+      },
       time: _time(data['sentAt']),
       type: _type(data['type']),
       route: _route(data['route']),
@@ -68,7 +75,8 @@ class RemoteNotificationService {
   /// location lands the user on go_router's error page.
   static String _route(Object? value) => sanitizeNotificationRoute(value);
 
-  static DateTime _time(Object? value) => value is Timestamp ? value.toDate() : DateTime.now();
+  static DateTime _time(Object? value) =>
+      value is Timestamp ? value.toDate() : DateTime.now();
 
   static NotificationType _type(Object? value) {
     switch (value) {

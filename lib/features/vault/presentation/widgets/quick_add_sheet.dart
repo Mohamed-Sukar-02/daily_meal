@@ -18,7 +18,7 @@ import '../../../../core/widgets/meal_image.dart';
 import '../../providers/vault_providers.dart';
 
 /// Quick Add Meal — professional image upload implementation
-/// 
+///
 /// Latest professional practices (2024-2025):
 /// - Uses system photo picker (Android Photo Picker + iOS PHPicker) - no broad storage permission needed [4][5]
 /// - Supports limited access: iOS 14+ PHPicker & Android 14+ photo picker allow user to select specific photos [6][9]
@@ -190,7 +190,9 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     // عشان نتجنب LateInitializationError قبل أي استخدام في build
     final m = widget.mealToEdit;
     _nameController = TextEditingController(text: m?.name ?? '');
-    _prepTimeController = TextEditingController(text: m?.prepTime.toString() ?? '30');
+    _prepTimeController = TextEditingController(
+      text: m?.prepTime.toString() ?? '30',
+    );
     _notesController = TextEditingController(text: m?.notes ?? '');
     _shortNameController = TextEditingController(text: m?.shortName ?? '');
     _nameController.addListener(_onFormChanged);
@@ -240,7 +242,8 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
   }
 
   int get _prepMins => int.tryParse(_prepTimeController.text) ?? 30;
-  void _setPrep(int v) => setState(() => _prepTimeController.text = v.clamp(5, 180).toString());
+  void _setPrep(int v) =>
+      setState(() => _prepTimeController.text = v.clamp(5, 180).toString());
 
   // Professional: recover lost image after Android activity destruction [8][10]
   Future<void> _retrieveLostData() async {
@@ -303,7 +306,10 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     return true;
   }
 
-  Future<bool> _showPermissionDialog({required String title, required String content}) async {
+  Future<bool> _showPermissionDialog({
+    required String title,
+    required String content,
+  }) async {
     final strings = AppStrings.of(context);
     final result = await showDialog<bool>(
       context: context,
@@ -311,8 +317,14 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
         title: Text(title),
         content: Text(content),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(strings.cancel)),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(strings.openSettings)),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(strings.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(strings.openSettings),
+          ),
         ],
       ),
     );
@@ -333,7 +345,10 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
             final result = await Permission.camera.request();
             if (!result.isGranted) {
               if (mounted) {
-                AppToast.showError(context, AppStrings.of(context).cameraPermissionDenied);
+                AppToast.showError(
+                  context,
+                  AppStrings.of(context).cameraPermissionDenied,
+                );
               }
               return;
             }
@@ -380,13 +395,18 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
         final strings = AppStrings.of(context);
         AppToast.showSuccess(
           context,
-          source == ImageSource.camera ? strings.photoCaptured : strings.photoPicked,
+          source == ImageSource.camera
+              ? strings.photoCaptured
+              : strings.photoPicked,
         );
       }
     } on PlatformException catch (e) {
       debugPrint('PlatformException picking image: $e');
       if (mounted) {
-        AppToast.showError(context, AppStrings.of(context).imagePickError('${e.message}'));
+        AppToast.showError(
+          context,
+          AppStrings.of(context).imagePickError('${e.message}'),
+        );
       }
     } catch (e) {
       debugPrint('Error picking image: $e');
@@ -404,7 +424,9 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppPalette.card(brightness),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (ctx) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
@@ -413,12 +435,23 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Center(
-                child: Container(width: 44, height: 5, decoration: BoxDecoration(color: isDark ? Colors.white24 : const Color(0xFFE4E9F0), borderRadius: BorderRadius.circular(3))),
+                child: Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white24 : const Color(0xFFE4E9F0),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
               ),
               const SizedBox(height: 20),
               Text(
                 strings.chooseMealPhoto,
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppPalette.textPrimary(brightness)),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppPalette.textPrimary(brightness),
+                ),
               ),
               const SizedBox(height: 16),
               _sourceOption(
@@ -480,9 +513,15 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: isDestructive ? Colors.red.shade50 : AppPalette.tabContainer(brightness),
+          color: isDestructive
+              ? Colors.red.shade50
+              : AppPalette.tabContainer(brightness),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: isDestructive ? Colors.red.shade200 : AppPalette.hairline(brightness)),
+          border: Border.all(
+            color: isDestructive
+                ? Colors.red.shade200
+                : AppPalette.hairline(brightness),
+          ),
         ),
         child: Row(
           children: [
@@ -490,23 +529,50 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: isDestructive ? Colors.red.shade100 : AppPalette.card(brightness),
+                color: isDestructive
+                    ? Colors.red.shade100
+                    : AppPalette.card(brightness),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: isDestructive ? Colors.red.shade700 : AppPalette.textPrimary(brightness), size: 22),
+              child: Icon(
+                icon,
+                color: isDestructive
+                    ? Colors.red.shade700
+                    : AppPalette.textPrimary(brightness),
+                size: 22,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: isDestructive ? Colors.red.shade700 : AppPalette.textPrimary(brightness))),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: isDestructive
+                          ? Colors.red.shade700
+                          : AppPalette.textPrimary(brightness),
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(subtitle, style: TextStyle(fontSize: 11, color: AppPalette.textSecondary(brightness))),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppPalette.textSecondary(brightness),
+                    ),
+                  ),
                 ],
               ),
             ),
-            AppIcon(AppGlyph.chevron, color: AppPalette.textSecondary(brightness), size: 18),
+            AppIcon(
+              AppGlyph.chevron,
+              color: AppPalette.textSecondary(brightness),
+              size: 18,
+            ),
           ],
         ),
       ),
@@ -523,29 +589,36 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     setState(() => _saving = true);
     try {
       if (isEditing) {
-        await ref.read(vaultControllerProvider.notifier).updateMeal(widget.mealToEdit!.copyWith(
-              name: name,
-              category: _selectedCategory,
-              proteinType: _selectedProtein,
-              carbsType: _selectedCarbs,
-              prepTime: prep,
-              photoPath: Value(_photoPath),
-              notes: Value(notes.isEmpty ? null : notes),
-              shortName: Value(shortName.isEmpty ? null : shortName),
-              isFridaySpecial: _isFridaySpecial,
-              isFavorite: _isFavorite,
-              // A `Value`, not a bare `null`: clearing the override back to "same as
-              // the rules" has to reach the row as an explicit NULL. `replace`
-              // writes null columns (the same way removing the photo does), while a
-              // companion that simply omits the field would be read as "no opinion".
-              customCooldownDays: Value(_cooldownDays),
-              updatedAt: DateTime.now(),
-            ));
+        await ref
+            .read(vaultControllerProvider.notifier)
+            .updateMeal(
+              widget.mealToEdit!.copyWith(
+                name: name,
+                category: _selectedCategory,
+                proteinType: _selectedProtein,
+                carbsType: _selectedCarbs,
+                prepTime: prep,
+                photoPath: Value(_photoPath),
+                notes: Value(notes.isEmpty ? null : notes),
+                shortName: Value(shortName.isEmpty ? null : shortName),
+                isFridaySpecial: _isFridaySpecial,
+                isFavorite: _isFavorite,
+                // A `Value`, not a bare `null`: clearing the override back to "same as
+                // the rules" has to reach the row as an explicit NULL. `replace`
+                // writes null columns (the same way removing the photo does), while a
+                // companion that simply omits the field would be read as "no opinion".
+                customCooldownDays: Value(_cooldownDays),
+                updatedAt: DateTime.now(),
+              ),
+            );
         if (mounted) {
           // Written already: leave without asking, and with the guard released
           // so nothing intercepts this pop and re-opens the prompt.
           _closeSelf();
-          AppToast.showSuccess(context, AppStrings.of(context).mealUpdated(name));
+          AppToast.showSuccess(
+            context,
+            AppStrings.of(context).mealUpdated(name),
+          );
         }
       } else {
         // Duplicate guard on the folded name — the same form search matches on,
@@ -559,12 +632,20 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
           AppToast.showError(context, 'هذه الأكلة موجودة بالفعل في خزنتك');
           return;
         }
-        await ref.read(vaultControllerProvider.notifier).addMeal(
-              name: name, category: _selectedCategory, proteinType: _selectedProtein, carbsType: _selectedCarbs,
-              prepTimeMinutes: prep, photoPath: _photoPath, isFridaySpecial: _isFridaySpecial,
+        await ref
+            .read(vaultControllerProvider.notifier)
+            .addMeal(
+              name: name,
+              category: _selectedCategory,
+              proteinType: _selectedProtein,
+              carbsType: _selectedCarbs,
+              prepTimeMinutes: prep,
+              photoPath: _photoPath,
+              isFridaySpecial: _isFridaySpecial,
               isFavorite: _isFavorite,
               notes: notes.isEmpty ? null : notes,
-              shortName: shortName.isEmpty ? null : shortName);
+              shortName: shortName.isEmpty ? null : shortName,
+            );
         if (mounted) {
           _closeSelf();
           AppToast.showSuccess(context, AppStrings.of(context).mealAdded(name));
@@ -598,428 +679,886 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
           if (!didPop) _requestClose();
         },
         child: Container(
-        decoration: BoxDecoration(
-          color: AppPalette.card(brightness),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Padding(
-          padding: EdgeInsets.only(bottom: bottomInset),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.90),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(height: 10),
-                  Container(width: 44, height: 5, decoration: BoxDecoration(color: isDark ? Colors.white24 : const Color(0xFFE4E9F0), borderRadius: BorderRadius.circular(3))),
-                  const SizedBox(height: 14),
-                  // Header - removed chef hat spark as requested
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        InkWell(
-                          customBorder: const CircleBorder(),
-                          onTap: _requestClose,
-                          child: Container(
-                            width: 32, height: 32,
-                            decoration: BoxDecoration(color: isDark ? Colors.white10 : const Color(0xFFF0F2F5), shape: BoxShape.circle),
-                            child: Icon(Icons.close, size: 18, color: isDark ? Colors.white70 : const Color(0xFF5A6B81)),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(strings.quickAddMealTitle, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppPalette.textPrimary(brightness))),
-                              const SizedBox(height: 2),
-                              Text(strings.quickAddMealSubtitle, style: TextStyle(fontSize: 12, color: AppPalette.textSecondary(brightness))),
-                            ],
-                          ),
-                        ),
-                      ],
+          decoration: BoxDecoration(
+            color: AppPalette.card(brightness),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Padding(
+            padding: EdgeInsets.only(bottom: bottomInset),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.90,
+              ),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 10),
+                    Container(
+                      width: 44,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white24
+                            : const Color(0xFFE4E9F0),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  Flexible(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                    const SizedBox(height: 14),
+                    // Header - removed chef hat spark as requested
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Photo + Meal Name row - professional image upload
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Professional Add Photo with preview and limited access support
-                              InkWell(
-                                borderRadius: BorderRadius.circular(14),
-                                onTap: _isPicking ? null : () => _showImageSourceSheet(brightness),
-                                child: Container(
-                                  width: 110, height: 110,
-                                  decoration: BoxDecoration(
-                                    color: isDark ? Colors.white10 : const Color(0xFFF7F8FB),
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(color: isDark ? Colors.white24 : const Color(0xFFD9DFE8), width: 1),
+                          InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: _requestClose,
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? Colors.white10
+                                    : const Color(0xFFF0F2F5),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.close,
+                                size: 18,
+                                color: isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF5A6B81),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  strings.quickAddMealTitle,
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppPalette.textPrimary(brightness),
                                   ),
-                                  clipBehavior: Clip.antiAlias,
-                                  child: _pickedImageFile != null
-                                      ? Stack(
-                                          children: [
-                                            MealImage(
-                                              photoPath: _pickedImageFile!.path,
-                                              width: 110,
-                                              height: 110,
-                                              cacheWidth: 600,
-                                              fallback: Container(color: AppPalette.tabContainer(brightness)),
-                                            ),
-                                            Positioned(
-                                              top: 4,
-                                              right: 4,
-                                              child: Container(
-                                                width: 24,
-                                                height: 24,
-                                                decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.6), shape: BoxShape.circle),
-                                                child: InkWell(
-                                                  customBorder: const CircleBorder(),
-                                                  onTap: () => setState(() {
-                                                    _pickedImageFile = null;
-                                                    _photoPath = null;
-                                                  }),
-                                                  child: const Icon(Icons.close, size: 14, color: Colors.white),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  strings.quickAddMealSubtitle,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppPalette.textSecondary(brightness),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Photo + Meal Name row - professional image upload
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Professional Add Photo with preview and limited access support
+                                InkWell(
+                                  borderRadius: BorderRadius.circular(14),
+                                  onTap: _isPicking
+                                      ? null
+                                      : () => _showImageSourceSheet(brightness),
+                                  child: Container(
+                                    width: 110,
+                                    height: 110,
+                                    decoration: BoxDecoration(
+                                      color: isDark
+                                          ? Colors.white10
+                                          : const Color(0xFFF7F8FB),
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(
+                                        color: isDark
+                                            ? Colors.white24
+                                            : const Color(0xFFD9DFE8),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    clipBehavior: Clip.antiAlias,
+                                    child: _pickedImageFile != null
+                                        ? Stack(
+                                            children: [
+                                              MealImage(
+                                                photoPath:
+                                                    _pickedImageFile!.path,
+                                                width: 110,
+                                                height: 110,
+                                                cacheWidth: 600,
+                                                fallback: Container(
+                                                  color:
+                                                      AppPalette.tabContainer(
+                                                        brightness,
+                                                      ),
                                                 ),
                                               ),
-                                            ),
-                                            if (_isPicking)
-                                              Container(
-                                                color: Colors.black.withValues(alpha: 0.4),
-                                                child: const Center(child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
+                                              Positioned(
+                                                top: 4,
+                                                right: 4,
+                                                child: Container(
+                                                  width: 24,
+                                                  height: 24,
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.black
+                                                        .withValues(alpha: 0.6),
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: InkWell(
+                                                    customBorder:
+                                                        const CircleBorder(),
+                                                    onTap: () => setState(() {
+                                                      _pickedImageFile = null;
+                                                      _photoPath = null;
+                                                    }),
+                                                    child: const Icon(
+                                                      Icons.close,
+                                                      size: 14,
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                                ),
                                               ),
-                                          ],
-                                        )
-                                      : DashedBorder(
-                                          color: isDark ? Colors.white24 : const Color(0xFFCBD3DF),
-                                          radius: 14,
-                                          child: Column(
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              Container(
-                                                width: 40, height: 40,
-                                                decoration: BoxDecoration(color: isDark ? Colors.white10 : const Color(0xFFE9EDF3), shape: BoxShape.circle),
-                                                child: Icon(_isPicking ? Icons.hourglass_top_rounded : Icons.photo_camera_outlined, size: 20, color: isDark ? Colors.white70 : const Color(0xFF5A6B81)),
-                                              ),
-                                              const SizedBox(height: 6),
-                                              Text(_isPicking ? strings.loading : strings.addPhoto, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isDark ? Colors.white70 : const Color(0xFF16283B))),
+                                              if (_isPicking)
+                                                Container(
+                                                  color: Colors.black
+                                                      .withValues(alpha: 0.4),
+                                                  child: const Center(
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          color: Colors.white,
+                                                          strokeWidth: 2,
+                                                        ),
+                                                  ),
+                                                ),
                                             ],
+                                          )
+                                        : DashedBorder(
+                                            color: isDark
+                                                ? Colors.white24
+                                                : const Color(0xFFCBD3DF),
+                                            radius: 14,
+                                            child: Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Container(
+                                                  width: 40,
+                                                  height: 40,
+                                                  decoration: BoxDecoration(
+                                                    color: isDark
+                                                        ? Colors.white10
+                                                        : const Color(
+                                                            0xFFE9EDF3,
+                                                          ),
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: Icon(
+                                                    _isPicking
+                                                        ? Icons
+                                                              .hourglass_top_rounded
+                                                        : Icons
+                                                              .photo_camera_outlined,
+                                                    size: 20,
+                                                    color: isDark
+                                                        ? Colors.white70
+                                                        : const Color(
+                                                            0xFF5A6B81,
+                                                          ),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 6),
+                                                Text(
+                                                  _isPicking
+                                                      ? strings.loading
+                                                      : strings.addPhoto,
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: isDark
+                                                        ? Colors.white70
+                                                        : const Color(
+                                                            0xFF16283B,
+                                                          ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                // Meal Name field
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Container(
+                                            width: 28,
+                                            height: 28,
+                                            decoration: BoxDecoration(
+                                              color: isDark
+                                                  ? Colors.white10
+                                                  : const Color(0xFFFFF3E0),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Center(
+                                              child: Text(
+                                                '🍴',
+                                                style: TextStyle(fontSize: 14),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            strings.mealNameLabel,
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w700,
+                                              color: isDark
+                                                  ? Colors.white70
+                                                  : const Color(0xFF16283B),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      TextFormField(
+                                        key: const Key('meal_form_name_field'),
+                                        controller: _nameController,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: isDark
+                                              ? Colors.white
+                                              : const Color(0xFF16283B),
+                                        ),
+                                        decoration: InputDecoration(
+                                          hintText: strings.mealNameHint,
+                                          hintStyle: TextStyle(
+                                            fontSize: 12,
+                                            color: isDark
+                                                ? Colors.white38
+                                                : const Color(0xFF9AA6B2),
+                                          ),
+                                          filled: true,
+                                          fillColor: isDark
+                                              ? Colors.white10
+                                              : const Color(0xFFF7F8FB),
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                                vertical: 12,
+                                              ),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: isDark
+                                                  ? Colors.white24
+                                                  : const Color(0xFFE4E9F0),
+                                            ),
+                                          ),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: isDark
+                                                  ? Colors.white24
+                                                  : const Color(0xFFE4E9F0),
+                                            ),
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            borderSide: const BorderSide(
+                                              color: AppPalette.brandGreen,
+                                            ),
                                           ),
                                         ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              // Meal Name field
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Container(
-                                          width: 28, height: 28,
-                                          decoration: BoxDecoration(color: isDark ? Colors.white10 : const Color(0xFFFFF3E0), shape: BoxShape.circle),
-                                          child: const Center(child: Text('🍴', style: TextStyle(fontSize: 14))),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(strings.mealNameLabel, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? Colors.white70 : const Color(0xFF16283B))),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    TextFormField(
-                                      key: const Key('meal_form_name_field'),
-                                      controller: _nameController,
-                                      style: TextStyle(fontSize: 13, color: isDark ? Colors.white : const Color(0xFF16283B)),
-                                      decoration: InputDecoration(
-                                        hintText: strings.mealNameHint,
-                                        hintStyle: TextStyle(fontSize: 12, color: isDark ? Colors.white38 : const Color(0xFF9AA6B2)),
-                                        filled: true,
-                                        fillColor: isDark ? Colors.white10 : const Color(0xFFF7F8FB),
-                                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? Colors.white24 : const Color(0xFFE4E9F0))),
-                                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? Colors.white24 : const Color(0xFFE4E9F0))),
-                                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppPalette.brandGreen)),
+                                        maxLength: 120,
+                                        validator: (v) {
+                                          if (v == null || v.trim().isEmpty)
+                                            return strings.mealNameRequired;
+                                          if (v.trim().length < 2)
+                                            return strings.mealNameMinLength;
+                                          return null;
+                                        },
                                       ),
-                                      maxLength: 120,
-                                      validator: (v) {
-                                        if (v == null || v.trim().isEmpty) return strings.mealNameRequired;
-                                        if (v.trim().length < 2) return strings.mealNameMinLength;
-                                        return null;
-                                      },
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            // Protein Type
+                            _labelRow(
+                              isDark,
+                              AppGlyph.steak,
+                              const Color(0xFF6C5CE7),
+                              strings.proteinTypeLabel,
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: ProteinType.values.map((p) {
+                                final isSelected = _selectedProtein == p;
+                                final (color, fg) = _proteinColors(p);
+                                return _pill(
+                                  isDark,
+                                  label: p.label(strings),
+                                  emoji: p.emoji,
+                                  selected: isSelected,
+                                  color: color,
+                                  fg: fg,
+                                  onTap: () =>
+                                      setState(() => _selectedProtein = p),
+                                );
+                              }).toList(),
+                            ),
+                            const SizedBox(height: 14),
+                            // Carb Type - عرض كل الأنواع
+                            Row(
+                              children: [
+                                Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? Colors.white10
+                                        : const Color(0xFFFFF3E0),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Center(
+                                    child: Text(
+                                      '🍚',
+                                      style: TextStyle(fontSize: 14),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  strings.carbsTypeShort,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark
+                                        ? Colors.white70
+                                        : const Color(0xFF16283B),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  strings.carbsTypeLabel,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isDark
+                                        ? Colors.white54
+                                        : const Color(0xFF7B8794),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: CarbsType.values.map((c) {
+                                final isSelected = _selectedCarbs == c;
+                                final (color, fg) = _carbsColors(c);
+                                return _pill(
+                                  isDark,
+                                  label: c.label(strings),
+                                  emoji: c.emoji,
+                                  selected: isSelected,
+                                  color: color,
+                                  fg: fg,
+                                  onTap: () =>
+                                      setState(() => _selectedCarbs = c),
+                                );
+                              }).toList(),
+                            ),
+                            const SizedBox(height: 14),
+                            // Category Type
+                            _labelRow(
+                              isDark,
+                              AppGlyph.pot,
+                              const Color(0xFF6C5CE7),
+                              strings.categoryShortLabel,
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: MealCategory.values.map((cat) {
+                                final isSelected = _selectedCategory == cat;
+                                return _pill(
+                                  isDark,
+                                  label: cat.label(strings),
+                                  emoji: '🍲',
+                                  selected: isSelected,
+                                  color: const Color(0xFFE7E1F9),
+                                  fg: const Color(0xFF6C5CE7),
+                                  onTap: () =>
+                                      setState(() => _selectedCategory = cat),
+                                );
+                              }).toList(),
+                            ),
+                            const SizedBox(height: 14),
+                            // Meal flags.
+                            _labelRow(
+                              isDark,
+                              AppGlyph.star,
+                              const Color(0xFFFF9800),
+                              strings.mealFlagsLabel,
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                _pill(
+                                  isDark,
+                                  label: strings.fridaySpecial,
+                                  emoji: '🕌',
+                                  selected: _isFridaySpecial,
+                                  color: const Color(0xFFE7E1F9),
+                                  fg: const Color(0xFF6C5CE7),
+                                  onTap: () => setState(
+                                    () => _isFridaySpecial = !_isFridaySpecial,
+                                  ),
+                                ),
+                                _pill(
+                                  isDark,
+                                  label: strings.favorite,
+                                  emoji: '⭐',
+                                  selected: _isFavorite,
+                                  color: const Color(0xFFFFEBEE),
+                                  fg: const Color(0xFFE91E63),
+                                  onTap: () => setState(
+                                    () => _isFavorite = !_isFavorite,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (isEditing) ...[
+                              const SizedBox(height: 14),
+                              _labelRow(
+                                isDark,
+                                AppGlyph.clock,
+                                const Color(0xFF0E6B4A),
+                                strings.mealCooldownOverrideLabel,
+                              ),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  for (final days in const <int?>[
+                                    null,
+                                    0,
+                                    1,
+                                    2,
+                                    3,
+                                    5,
+                                    7,
+                                    14,
+                                    30,
+                                  ])
+                                    _pill(
+                                      isDark,
+                                      label: strings.mealCooldownOverrideOption(
+                                        days,
+                                      ),
+                                      emoji: '⏳',
+                                      selected: _cooldownDays == days,
+                                      color: const Color(0xFFE8F5E9),
+                                      fg: const Color(0xFF0E6B4A),
+                                      onTap: () =>
+                                          setState(() => _cooldownDays = days),
+                                    ),
+                                ],
+                              ),
+                            ],
+                            const SizedBox(height: 14),
+                            // Time
+                            Row(
+                              children: [
+                                Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? Colors.white10
+                                        : const Color(0xFFE8F5E9),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.access_time,
+                                    size: 16,
+                                    color: isDark
+                                        ? Colors.white70
+                                        : const Color(0xFF0E6B4A),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  strings.timeLabel,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark
+                                        ? Colors.white70
+                                        : const Color(0xFF16283B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: () => _showTimePicker(isDark),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? Colors.white10
+                                      : const Color(0xFFE8F5E9),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isDark
+                                        ? Colors.white24
+                                        : const Color(0xFFDCF2E7),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.access_time,
+                                      size: 16,
+                                      color: isDark
+                                          ? Colors.white70
+                                          : const Color(0xFF0E6B4A),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      strings.minutes(_prepMins),
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: isDark
+                                            ? Colors.white
+                                            : const Color(0xFF0E6B4A),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Icon(
+                                      Icons.keyboard_arrow_down,
+                                      size: 18,
+                                      color: isDark
+                                          ? Colors.white70
+                                          : const Color(0xFF0E6B4A),
                                     ),
                                   ],
                                 ),
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          // Protein Type
-                          _labelRow(isDark, AppGlyph.steak, const Color(0xFF6C5CE7), strings.proteinTypeLabel),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8, runSpacing: 8,
-                            children: ProteinType.values.map((p) {
-                              final isSelected = _selectedProtein == p;
-                              final (color, fg) = _proteinColors(p);
-                              return _pill(
-                                isDark,
-                                label: p.label(strings),
-                                emoji: p.emoji,
-                                selected: isSelected,
-                                color: color,
-                                fg: fg,
-                                onTap: () => setState(() => _selectedProtein = p),
-                              );
-                            }).toList(),
-                          ),
-                          const SizedBox(height: 14),
-                          // Carb Type - عرض كل الأنواع
-                          Row(
-                            children: [
-                              Container(width: 28, height: 28, decoration: BoxDecoration(color: isDark ? Colors.white10 : const Color(0xFFFFF3E0), shape: BoxShape.circle), child: const Center(child: Text('🍚', style: TextStyle(fontSize: 14)))),
-                              const SizedBox(width: 8),
-                              Text(strings.carbsTypeShort, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? Colors.white70 : const Color(0xFF16283B))),
-                              const SizedBox(width: 8),
-                              Text(strings.carbsTypeLabel, style: TextStyle(fontSize: 12, color: isDark ? Colors.white54 : const Color(0xFF7B8794))),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8, runSpacing: 8,
-                            children: CarbsType.values.map((c) {
-                              final isSelected = _selectedCarbs == c;
-                              final (color, fg) = _carbsColors(c);
-                              return _pill(
-                                isDark,
-                                label: c.label(strings),
-                                emoji: _carbsEmoji(c),
-                                selected: isSelected,
-                                color: color,
-                                fg: fg,
-                                onTap: () => setState(() => _selectedCarbs = c),
-                              );
-                            }).toList(),
-                          ),
-                          const SizedBox(height: 14),
-                          // Category Type
-                          _labelRow(isDark, AppGlyph.pot, const Color(0xFF6C5CE7), strings.categoryShortLabel),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8, runSpacing: 8,
-                            children: MealCategory.values.map((cat) {
-                              final isSelected = _selectedCategory == cat;
-                              return _pill(
-                                isDark,
-                                label: cat.label(strings),
-                                emoji: '🍲',
-                                selected: isSelected,
-                                color: const Color(0xFFE7E1F9),
-                                fg: const Color(0xFF6C5CE7),
-                                onTap: () => setState(() => _selectedCategory = cat),
-                              );
-                            }).toList(),
-                          ),
-                          const SizedBox(height: 14),
-                          // Meal flags.
-                          _labelRow(isDark, AppGlyph.star, const Color(0xFFFF9800), strings.mealFlagsLabel),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8, runSpacing: 8,
-                            children: [
-                              _pill(
-                                isDark,
-                                label: strings.fridaySpecial,
-                                emoji: '🕌',
-                                selected: _isFridaySpecial,
-                                color: const Color(0xFFE7E1F9),
-                                fg: const Color(0xFF6C5CE7),
-                                onTap: () => setState(() => _isFridaySpecial = !_isFridaySpecial),
-                              ),
-                              _pill(
-                                isDark,
-                                label: strings.favorite,
-                                emoji: '⭐',
-                                selected: _isFavorite,
-                                color: const Color(0xFFFFEBEE),
-                                fg: const Color(0xFFE91E63),
-                                onTap: () => setState(() => _isFavorite = !_isFavorite),
-                              ),
-                            ],
-                          ),
-                          if (isEditing) ...[
-                            const SizedBox(height: 14),
-                            _labelRow(isDark, AppGlyph.clock, const Color(0xFF0E6B4A),
-                                strings.mealCooldownOverrideLabel),
-                            const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 8, runSpacing: 8,
+                            ),
+                            const SizedBox(height: 16),
+                            // Short name — the title MealScreen shows in its header
+                            Row(
                               children: [
-                                for (final days in const <int?>[null, 0, 1, 2, 3, 5, 7, 14, 30])
-                                  _pill(
-                                    isDark,
-                                    label: strings.mealCooldownOverrideOption(days),
-                                    emoji: '⏳',
-                                    selected: _cooldownDays == days,
-                                    color: const Color(0xFFE8F5E9),
-                                    fg: const Color(0xFF0E6B4A),
-                                    onTap: () => setState(() => _cooldownDays = days),
+                                Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? Colors.white10
+                                        : const Color(0xFFE3F0FD),
+                                    shape: BoxShape.circle,
                                   ),
+                                  child: Icon(
+                                    Icons.short_text_rounded,
+                                    size: 16,
+                                    color: isDark
+                                        ? Colors.white70
+                                        : const Color(0xFF1565C0),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    strings.mealShortNameLabel,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: isDark
+                                          ? Colors.white70
+                                          : const Color(0xFF16283B),
+                                    ),
+                                  ),
+                                ),
                               ],
                             ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              key: const Key('meal_form_short_name_field'),
+                              controller: _shortNameController,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF16283B),
+                              ),
+                              decoration: InputDecoration(
+                                hintText: strings.mealShortNameHint,
+                                hintStyle: TextStyle(
+                                  fontSize: 12,
+                                  color: isDark
+                                      ? Colors.white38
+                                      : const Color(0xFF9AA6B2),
+                                ),
+                                filled: true,
+                                fillColor: isDark
+                                    ? Colors.white10
+                                    : const Color(0xFFF7F8FB),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 12,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: isDark
+                                        ? Colors.white24
+                                        : const Color(0xFFE4E9F0),
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: isDark
+                                        ? Colors.white24
+                                        : const Color(0xFFE4E9F0),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: AppPalette.brandGreen,
+                                  ),
+                                ),
+                              ),
+                              maxLength: 30,
+                            ),
+                            const SizedBox(height: 16),
+                            // Notes / recipe
+                            Row(
+                              children: [
+                                Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? Colors.white10
+                                        : const Color(0xFFFFF3E0),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.sticky_note_2_outlined,
+                                    size: 16,
+                                    color: isDark
+                                        ? Colors.white70
+                                        : const Color(0xFFEF6C00),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    strings.mealNotesLabel,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: isDark
+                                          ? Colors.white70
+                                          : const Color(0xFF16283B),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              key: const Key('meal_form_notes_field'),
+                              controller: _notesController,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF16283B),
+                              ),
+                              decoration: InputDecoration(
+                                hintText: strings.mealNotesHint,
+                                hintStyle: TextStyle(
+                                  fontSize: 12,
+                                  color: isDark
+                                      ? Colors.white38
+                                      : const Color(0xFF9AA6B2),
+                                ),
+                                filled: true,
+                                fillColor: isDark
+                                    ? Colors.white10
+                                    : const Color(0xFFF7F8FB),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 12,
+                                ),
+                                alignLabelWithHint: true,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: isDark
+                                        ? Colors.white24
+                                        : const Color(0xFFE4E9F0),
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: isDark
+                                        ? Colors.white24
+                                        : const Color(0xFFE4E9F0),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: AppPalette.brandGreen,
+                                  ),
+                                ),
+                              ),
+                              maxLines: 3,
+                              maxLength: 500,
+                            ),
+                            Offstage(
+                              child: TextFormField(
+                                key: const Key('meal_form_prep_time_field'),
+                                controller: _prepTimeController,
+                                validator: (v) {
+                                  if (v == null || v.trim().isEmpty)
+                                    return strings.fieldRequired;
+                                  final p = int.tryParse(v.trim());
+                                  if (p == null || p <= 0)
+                                    return strings.fieldInvalid;
+                                  return null;
+                                },
+                              ),
+                            ),
+                            const SizedBox(height: 22),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    key: const Key('meal_form_cancel_button'),
+                                    onPressed: _requestClose,
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: isDark
+                                          ? Colors.white70
+                                          : const Color(0xFF16283B),
+                                      side: BorderSide(
+                                        color: isDark
+                                            ? Colors.white24
+                                            : const Color(0xFFD9DFE8),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 14,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(24),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      strings.cancel,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: FilledButton.icon(
+                                    key: const Key('meal_form_save_button'),
+                                    // Disabled while the write runs: a second tap
+                                    // would store the meal twice.
+                                    onPressed: _saving ? null : _save,
+                                    icon: const Icon(
+                                      Icons.restaurant_menu,
+                                      size: 18,
+                                      color: Colors.white,
+                                    ),
+                                    label: Text(
+                                      isEditing
+                                          ? strings.saveChanges
+                                          : strings.saveMeal,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: AppPalette.brandGreen,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 14,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(24),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(
+                              height: MediaQuery.of(context).padding.bottom + 8,
+                            ),
                           ],
-                          const SizedBox(height: 14),
-                          // Time
-                          Row(
-                            children: [
-                              Container(width: 28, height: 28, decoration: BoxDecoration(color: isDark ? Colors.white10 : const Color(0xFFE8F5E9), shape: BoxShape.circle), child: Icon(Icons.access_time, size: 16, color: isDark ? Colors.white70 : const Color(0xFF0E6B4A))),
-                              const SizedBox(width: 8),
-                              Text(strings.timeLabel, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? Colors.white70 : const Color(0xFF16283B))),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          InkWell(
-                            borderRadius: BorderRadius.circular(12),
-                            onTap: () => _showTimePicker(isDark),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: isDark ? Colors.white10 : const Color(0xFFE8F5E9),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: isDark ? Colors.white24 : const Color(0xFFDCF2E7)),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.access_time, size: 16, color: isDark ? Colors.white70 : const Color(0xFF0E6B4A)),
-                                  const SizedBox(width: 8),
-                                  Text(strings.minutes(_prepMins), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? Colors.white : const Color(0xFF0E6B4A))),
-                                  const SizedBox(width: 8),
-                                  Icon(Icons.keyboard_arrow_down, size: 18, color: isDark ? Colors.white70 : const Color(0xFF0E6B4A)),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          // Short name — the title MealScreen shows in its header
-                          Row(
-                            children: [
-                              Container(width: 28, height: 28, decoration: BoxDecoration(color: isDark ? Colors.white10 : const Color(0xFFE3F0FD), shape: BoxShape.circle), child: Icon(Icons.short_text_rounded, size: 16, color: isDark ? Colors.white70 : const Color(0xFF1565C0))),
-                              const SizedBox(width: 8),
-                              Flexible(child: Text(strings.mealShortNameLabel, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? Colors.white70 : const Color(0xFF16283B)))),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          TextFormField(
-                            key: const Key('meal_form_short_name_field'),
-                            controller: _shortNameController,
-                            style: TextStyle(fontSize: 13, color: isDark ? Colors.white : const Color(0xFF16283B)),
-                            decoration: InputDecoration(
-                              hintText: strings.mealShortNameHint,
-                              hintStyle: TextStyle(fontSize: 12, color: isDark ? Colors.white38 : const Color(0xFF9AA6B2)),
-                              filled: true,
-                              fillColor: isDark ? Colors.white10 : const Color(0xFFF7F8FB),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? Colors.white24 : const Color(0xFFE4E9F0))),
-                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? Colors.white24 : const Color(0xFFE4E9F0))),
-                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppPalette.brandGreen)),
-                            ),
-                            maxLength: 30,
-                          ),
-                          const SizedBox(height: 16),
-                          // Notes / recipe
-                          Row(
-                            children: [
-                              Container(width: 28, height: 28, decoration: BoxDecoration(color: isDark ? Colors.white10 : const Color(0xFFFFF3E0), shape: BoxShape.circle), child: Icon(Icons.sticky_note_2_outlined, size: 16, color: isDark ? Colors.white70 : const Color(0xFFEF6C00))),
-                              const SizedBox(width: 8),
-                              Flexible(child: Text(strings.mealNotesLabel, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? Colors.white70 : const Color(0xFF16283B)))),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          TextFormField(
-                            key: const Key('meal_form_notes_field'),
-                            controller: _notesController,
-                            style: TextStyle(fontSize: 13, color: isDark ? Colors.white : const Color(0xFF16283B)),
-                            decoration: InputDecoration(
-                              hintText: strings.mealNotesHint,
-                              hintStyle: TextStyle(fontSize: 12, color: isDark ? Colors.white38 : const Color(0xFF9AA6B2)),
-                              filled: true,
-                              fillColor: isDark ? Colors.white10 : const Color(0xFFF7F8FB),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                              alignLabelWithHint: true,
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? Colors.white24 : const Color(0xFFE4E9F0))),
-                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? Colors.white24 : const Color(0xFFE4E9F0))),
-                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppPalette.brandGreen)),
-                            ),
-                            maxLines: 3,
-                            maxLength: 500,
-                          ),
-                          Offstage(
-                            child: TextFormField(
-                              key: const Key('meal_form_prep_time_field'),
-                              controller: _prepTimeController,
-                              validator: (v) {
-                                if (v == null || v.trim().isEmpty) return strings.fieldRequired;
-                                final p = int.tryParse(v.trim());
-                                if (p == null || p <= 0) return strings.fieldInvalid;
-                                return null;
-                              },
-                            ),
-                          ),
-                          const SizedBox(height: 22),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton(
-                                  key: const Key('meal_form_cancel_button'),
-                                  onPressed: _requestClose,
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: isDark ? Colors.white70 : const Color(0xFF16283B),
-                                    side: BorderSide(color: isDark ? Colors.white24 : const Color(0xFFD9DFE8)),
-                                    padding: const EdgeInsets.symmetric(vertical: 14),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                                  ),
-                                  child: Text(strings.cancel, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: FilledButton.icon(
-                                  key: const Key('meal_form_save_button'),
-                                  // Disabled while the write runs: a second tap
-                                  // would store the meal twice.
-                                  onPressed: _saving ? null : _save,
-                                  icon: const Icon(Icons.restaurant_menu, size: 18, color: Colors.white),
-                                  label: Text(isEditing ? strings.saveChanges : strings.saveMeal, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: AppPalette.brandGreen,
-                                    padding: const EdgeInsets.symmetric(vertical: 14),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
-                        ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -1058,32 +1597,36 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     }
   }
 
-  String _carbsEmoji(CarbsType c) {
-    switch (c) {
-      case CarbsType.rice:
-        return '🍚';
-      case CarbsType.pasta:
-        return '🍝';
-      case CarbsType.bread:
-        return '🍞';
-      case CarbsType.potato:
-        return '🥔';
-      case CarbsType.grains:
-        return '🌾';
-      case CarbsType.none:
-        return '🥗';
-    }
-  }
-
   Widget _labelRow(bool isDark, AppGlyph glyph, Color bg, String label) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Row(
           children: [
-            Container(width: 28, height: 28, decoration: BoxDecoration(color: isDark ? Colors.white10 : bg.withValues(alpha: 0.15), shape: BoxShape.circle), child: Center(child: AppIcon(glyph, color: isDark ? Colors.white70 : bg, size: 16))),
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white10 : bg.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: AppIcon(
+                  glyph,
+                  color: isDark ? Colors.white70 : bg,
+                  size: 16,
+                ),
+              ),
+            ),
             const SizedBox(width: 8),
-            Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? Colors.white70 : const Color(0xFF16283B))),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: isDark ? Colors.white70 : const Color(0xFF16283B),
+              ),
+            ),
           ],
         ),
         const Spacer(),
@@ -1091,23 +1634,48 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     );
   }
 
-  Widget _pill(bool isDark, {required String label, required String emoji, required bool selected, required Color color, required Color fg, required VoidCallback onTap}) {
+  Widget _pill(
+    bool isDark, {
+    required String label,
+    required String emoji,
+    required bool selected,
+    required Color color,
+    required Color fg,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? (isDark ? fg.withValues(alpha: 0.25) : color) : (isDark ? Colors.white10 : const Color(0xFFF7F8FB)),
+          color: selected
+              ? (isDark ? fg.withValues(alpha: 0.25) : color)
+              : (isDark ? Colors.white10 : const Color(0xFFF7F8FB)),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: selected ? (isDark ? fg.withValues(alpha: 0.5) : fg.withValues(alpha: 0.25)) : (isDark ? Colors.white24 : const Color(0xFFE4E9F0))),
+          border: Border.all(
+            color: selected
+                ? (isDark
+                      ? fg.withValues(alpha: 0.5)
+                      : fg.withValues(alpha: 0.25))
+                : (isDark ? Colors.white24 : const Color(0xFFE4E9F0)),
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(emoji, style: const TextStyle(fontSize: 14)),
             const SizedBox(width: 6),
-            Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: selected ? (isDark ? Colors.white : fg) : (isDark ? Colors.white70 : const Color(0xFF5A6B81)))),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: selected
+                    ? (isDark ? Colors.white : fg)
+                    : (isDark ? Colors.white70 : const Color(0xFF5A6B81)),
+              ),
+            ),
           ],
         ),
       ),
@@ -1120,15 +1688,31 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     showModalBottomSheet(
       context: context,
       backgroundColor: isDark ? const Color(0xFF1A1F2A) : Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
       builder: (ctx) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: options.map((m) => ListTile(
-            title: Text(strings.minutes(m), style: TextStyle(color: isDark ? Colors.white : const Color(0xFF16283B))),
-            trailing: _prepMins == m ? const Icon(Icons.check, color: AppPalette.brandGreen) : null,
-            onTap: () { Navigator.pop(ctx); _setPrep(m); },
-          )).toList(),
+          children: options
+              .map(
+                (m) => ListTile(
+                  title: Text(
+                    strings.minutes(m),
+                    style: TextStyle(
+                      color: isDark ? Colors.white : const Color(0xFF16283B),
+                    ),
+                  ),
+                  trailing: _prepMins == m
+                      ? const Icon(Icons.check, color: AppPalette.brandGreen)
+                      : null,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _setPrep(m);
+                  },
+                ),
+              )
+              .toList(),
         ),
       ),
     );
@@ -1140,7 +1724,12 @@ class DashedBorder extends StatelessWidget {
   final Widget child;
   final Color color;
   final double radius;
-  const DashedBorder({super.key, required this.child, required this.color, required this.radius});
+  const DashedBorder({
+    super.key,
+    required this.child,
+    required this.color,
+    required this.radius,
+  });
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
@@ -1149,14 +1738,21 @@ class DashedBorder extends StatelessWidget {
     );
   }
 }
+
 class _DashedPainter extends CustomPainter {
   final Color color;
   final double radius;
   _DashedPainter({required this.color, required this.radius});
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color..style = PaintingStyle.stroke..strokeWidth = 1.2;
-    final rrect = RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(radius));
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    final rrect = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      Radius.circular(radius),
+    );
     const dash = 6.0, gap = 4.0;
     final path = Path()..addRRect(rrect);
     final metrics = path.computeMetrics().first;
@@ -1167,6 +1763,7 @@ class _DashedPainter extends CustomPainter {
       dist += dash + gap;
     }
   }
+
   @override
   bool shouldRepaint(covariant CustomPainter old) => false;
 }

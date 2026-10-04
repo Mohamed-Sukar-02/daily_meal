@@ -97,19 +97,25 @@ void main() {
       container.read(settingsControllerProvider.notifier);
 
   group('resetToDefaults cancels the OS reminder', () {
-    test('cancels the scheduled notification and clears the persisted flag',
-        () async {
-      await db.appSettingsDao.toggleNotifications(true);
+    test(
+      'cancels the scheduled notification and clears the persisted flag',
+      () async {
+        await db.appSettingsDao.toggleNotifications(true);
 
-      await controller().resetToDefaults();
+        await controller().resetToDefaults();
 
-      expect(notifications.cancelCalls, 1,
-          reason: 'the Android alarm survives the SQLite reset unless '
-              'cancelNotification() is called');
-      final settings = await db.appSettingsDao.getSettings();
-      expect(settings.notificationsEnabled, isFalse);
-      expect(container.read(settingsControllerProvider).hasError, isFalse);
-    });
+        expect(
+          notifications.cancelCalls,
+          1,
+          reason:
+              'the Android alarm survives the SQLite reset unless '
+              'cancelNotification() is called',
+        );
+        final settings = await db.appSettingsDao.getSettings();
+        expect(settings.notificationsEnabled, isFalse);
+        expect(container.read(settingsControllerProvider).hasError, isFalse);
+      },
+    );
 
     test('still cancels when notifications were already off', () async {
       await controller().resetToDefaults();
@@ -133,7 +139,8 @@ void main() {
       expect(
         last.strings.localNotificationTitle,
         const AppStrings(Locale('en')).localNotificationTitle,
-        reason: 'the OS reminder must carry the new language copy, not the '
+        reason:
+            'the OS reminder must carry the new language copy, not the '
             'strings frozen at schedule time',
       );
 
@@ -141,13 +148,15 @@ void main() {
       expect(settings.language, AppLanguagePreference.en);
     });
 
-    test('leaves the OS alarm untouched when notifications are disabled',
-        () async {
-      await controller().updateLanguage(AppLanguagePreference.en);
+    test(
+      'leaves the OS alarm untouched when notifications are disabled',
+      () async {
+        await controller().updateLanguage(AppLanguagePreference.en);
 
-      expect(notifications.scheduled, isEmpty);
-      expect(notifications.cancelCalls, 0);
-    });
+        expect(notifications.scheduled, isEmpty);
+        expect(notifications.cancelCalls, 0);
+      },
+    );
   });
 
   group('toggleNotifications rolls back when scheduling fails', () {
@@ -161,39 +170,50 @@ void main() {
       );
 
       final settings = await db.appSettingsDao.getSettings();
-      expect(settings.notificationsEnabled, isFalse,
-          reason: 'the switch must not claim a reminder that was never '
-              'scheduled');
-      expect(notifications.cancelCalls, greaterThanOrEqualTo(1),
-          reason: 'a half-scheduled reminder must be cancelled on rollback');
+      expect(
+        settings.notificationsEnabled,
+        isFalse,
+        reason:
+            'the switch must not claim a reminder that was never '
+            'scheduled',
+      );
+      expect(
+        notifications.cancelCalls,
+        greaterThanOrEqualTo(1),
+        reason: 'a half-scheduled reminder must be cancelled on rollback',
+      );
       expect(container.read(settingsControllerProvider).hasError, isTrue);
     });
 
-    test('enable happy path persists true and schedules exactly once',
-        () async {
-      await db.appSettingsDao.updateNotificationTime(9, 15);
+    test(
+      'enable happy path persists true and schedules exactly once',
+      () async {
+        await db.appSettingsDao.updateNotificationTime(9, 15);
 
-      await controller().toggleNotifications(true);
+        await controller().toggleNotifications(true);
 
-      final settings = await db.appSettingsDao.getSettings();
-      expect(settings.notificationsEnabled, isTrue);
-      expect(notifications.scheduled, hasLength(1));
-      expect(notifications.scheduled.single.hour, 9);
-      expect(notifications.scheduled.single.minute, 15);
-      expect(notifications.cancelCalls, 0);
-    });
+        final settings = await db.appSettingsDao.getSettings();
+        expect(settings.notificationsEnabled, isTrue);
+        expect(notifications.scheduled, hasLength(1));
+        expect(notifications.scheduled.single.hour, 9);
+        expect(notifications.scheduled.single.minute, 15);
+        expect(notifications.cancelCalls, 0);
+      },
+    );
 
-    test('permission denial keeps the flag OFF and cancels without scheduling',
-        () async {
-      notifications.permissionsGranted = false;
+    test(
+      'permission denial keeps the flag OFF and cancels without scheduling',
+      () async {
+        notifications.permissionsGranted = false;
 
-      await controller().toggleNotifications(true);
+        await controller().toggleNotifications(true);
 
-      final settings = await db.appSettingsDao.getSettings();
-      expect(settings.notificationsEnabled, isFalse);
-      expect(notifications.scheduled, isEmpty);
-      expect(notifications.cancelCalls, 1);
-    });
+        final settings = await db.appSettingsDao.getSettings();
+        expect(settings.notificationsEnabled, isFalse);
+        expect(notifications.scheduled, isEmpty);
+        expect(notifications.cancelCalls, 1);
+      },
+    );
 
     test('disable persists OFF and cancels the reminder', () async {
       await db.appSettingsDao.toggleNotifications(true);
@@ -204,6 +224,30 @@ void main() {
       expect(settings.notificationsEnabled, isFalse);
       expect(notifications.cancelCalls, 1);
       expect(notifications.scheduled, isEmpty);
+    });
+
+    test('re-enabling after disabling toggles ON and re-arms successfully', () async {
+      await db.appSettingsDao.updateNotificationTime(8, 30);
+
+      // 1. Enable
+      await controller().toggleNotifications(true);
+      var settings = await db.appSettingsDao.getSettings();
+      expect(settings.notificationsEnabled, isTrue);
+      expect(notifications.scheduled, hasLength(1));
+
+      // 2. Disable
+      await controller().toggleNotifications(false);
+      settings = await db.appSettingsDao.getSettings();
+      expect(settings.notificationsEnabled, isFalse);
+      expect(notifications.cancelCalls, 1);
+
+      // 3. Re-enable
+      await controller().toggleNotifications(true);
+      settings = await db.appSettingsDao.getSettings();
+      expect(settings.notificationsEnabled, isTrue);
+      expect(notifications.scheduled, hasLength(2));
+      expect(notifications.scheduled.last.hour, 8);
+      expect(notifications.scheduled.last.minute, 30);
     });
   });
 
@@ -232,7 +276,8 @@ void main() {
       expect(
         notifications.scheduled,
         isEmpty,
-        reason: 'a disabled reminder must not be armed by the day-answered check, '
+        reason:
+            'a disabled reminder must not be armed by the day-answered check, '
             'which runs after the switch — not instead of it',
       );
       expect(notifications.cancelCalls, 0);
@@ -249,25 +294,32 @@ void main() {
       expect(notifications.scheduled.last.skipRestOfToday, isTrue);
     });
 
-    test('a plan counts as an answer; a plan pointing at a deleted dish does not',
-        () async {
-      await db.appSettingsDao.toggleNotifications(true);
-      final meal = (await db.mealsDao.getAllMeals()).first;
+    test(
+      'a plan counts as an answer; a plan pointing at a deleted dish does not',
+      () async {
+        await db.appSettingsDao.toggleNotifications(true);
+        final meal = (await db.mealsDao.getAllMeals()).first;
 
-      await PlannedMeal.plan(meal.id);
-      await controller().rescheduleDailyReminder();
-      expect(notifications.scheduled.last.skipRestOfToday, isTrue,
-          reason: 'picking a dish is the decision the reminder exists to prompt');
+        await PlannedMeal.plan(meal.id);
+        await controller().rescheduleDailyReminder();
+        expect(
+          notifications.scheduled.last.skipRestOfToday,
+          isTrue,
+          reason:
+              'picking a dish is the decision the reminder exists to prompt',
+        );
 
-      await db.mealsDao.deleteMeal(meal.id);
-      await controller().rescheduleDailyReminder();
-      expect(
-        notifications.scheduled.last.skipRestOfToday,
-        isFalse,
-        reason: 'a dangling id is not an answer — and Home hides the banner for '
-            'the same reason, so the two readers must agree',
-      );
-    });
+        await db.mealsDao.deleteMeal(meal.id);
+        await controller().rescheduleDailyReminder();
+        expect(
+          notifications.scheduled.last.skipRestOfToday,
+          isFalse,
+          reason:
+              'a dangling id is not an answer — and Home hides the banner for '
+              'the same reason, so the two readers must agree',
+        );
+      },
+    );
 
     test('a row from yesterday is not an answer for today', () async {
       await db.appSettingsDao.toggleNotifications(true);

@@ -83,36 +83,36 @@ class SpinWheelPainter extends CustomPainter {
   /// the ellipsis takes over.
   TextPainter _layoutLabel(String text, double maxWidth) {
     TextPainter build(double fontSize) => TextPainter(
-          text: TextSpan(
-            text: text,
-            style: TextStyle(
-              color: isDark
-                  ? Colors.white
-                  : AppPalette.textPrimary(Brightness.light),
-              fontSize: fontSize,
-              fontWeight: FontWeight.w900,
-              overflow: TextOverflow.ellipsis,
-              shadows: isDark
-                  ? const [
-                      Shadow(
-                        color: Colors.black54,
-                        blurRadius: 4,
-                        offset: Offset(0, 1),
-                      ),
-                    ]
-                  : const [
-                      Shadow(
-                        color: Colors.white70,
-                        blurRadius: 2,
-                        offset: Offset(0, 1),
-                      ),
-                    ],
-            ),
-          ),
-          textDirection: TextDirection.rtl,
-          textScaler: TextScaler.noScaling,
-          maxLines: 1,
-        )..layout(maxWidth: maxWidth);
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          color: isDark
+              ? Colors.white
+              : AppPalette.textPrimary(Brightness.light),
+          fontSize: fontSize,
+          fontWeight: FontWeight.w900,
+          overflow: TextOverflow.ellipsis,
+          shadows: isDark
+              ? const [
+                  Shadow(
+                    color: Colors.black54,
+                    blurRadius: 4,
+                    offset: Offset(0, 1),
+                  ),
+                ]
+              : const [
+                  Shadow(
+                    color: Colors.white70,
+                    blurRadius: 2,
+                    offset: Offset(0, 1),
+                  ),
+                ],
+        ),
+      ),
+      textDirection: TextDirection.rtl,
+      textScaler: TextScaler.noScaling,
+      maxLines: 1,
+    )..layout(maxWidth: maxWidth);
 
     final label = build(14);
     if (!label.didExceedMaxLines) return label;

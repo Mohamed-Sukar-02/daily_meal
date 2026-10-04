@@ -124,17 +124,13 @@ class AppTheme {
       cardTheme: CardThemeData(
         color: AppPalette.card(colorScheme.brightness),
         elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         clipBehavior: Clip.antiAlias,
       ),
       chipTheme: ChipThemeData(
         backgroundColor: AppPalette.tabContainer(colorScheme.brightness),
         side: BorderSide.none,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
       sliderTheme: SliderThemeData(
         activeTrackColor: AppPalette.brandGreen,
@@ -144,20 +140,20 @@ class AppTheme {
         trackHeight: 6,
       ),
       switchTheme: SwitchThemeData(
-        thumbColor: WidgetStateProperty.resolveWith((states) =>
-            states.contains(WidgetState.selected)
-                ? Colors.white
-                : AppPalette.navIdle(colorScheme.brightness)),
-        trackColor: WidgetStateProperty.resolveWith((states) =>
-            states.contains(WidgetState.selected)
-                ? AppPalette.brandGreen
-                : AppPalette.outline(colorScheme.brightness)),
+        thumbColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? Colors.white
+              : AppPalette.navIdle(colorScheme.brightness),
+        ),
+        trackColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? AppPalette.brandGreen
+              : AppPalette.outline(colorScheme.brightness),
+        ),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: AppPalette.card(colorScheme.brightness),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
@@ -170,9 +166,7 @@ class AppTheme {
           fontWeight: FontWeight.w600,
           fontSize: 14,
         ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(999),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
         elevation: 12,
       ),
       dividerTheme: DividerThemeData(

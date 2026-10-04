@@ -125,10 +125,9 @@ class MealImage extends StatelessWidget {
             Container(
               height: height,
               width: width,
-              color: Theme.of(context)
-                  .colorScheme
-                  .surfaceContainerHighest
-                  .withValues(alpha: 0.3),
+              color: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
               alignment: Alignment.center,
               child: const SizedBox(
                 width: 24,

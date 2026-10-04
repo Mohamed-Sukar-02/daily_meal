@@ -113,8 +113,11 @@ void main() {
       tester.element(find.byKey(const ValueKey('nav_destination_home'))),
     ).push('/meal/$id');
     await tester.pumpAndSettle();
-    expect(find.byKey(mealScreen), findsOneWidget,
-        reason: 'the meal under edit must be the one on screen');
+    expect(
+      find.byKey(mealScreen),
+      findsOneWidget,
+      reason: 'the meal under edit must be the one on screen',
+    );
 
     await tapVisible(tester, actionsButton);
     await tapVisible(tester, editAction);
@@ -128,8 +131,9 @@ void main() {
 
   // -------------------------------------------------------------------------
 
-  testWidgets('editing a meal prefills the notes and short-name fields',
-      (tester) async {
+  testWidgets('editing a meal prefills the notes and short-name fields', (
+    tester,
+  ) async {
     const name = 'ملوخية بالفراخ';
     const shortName = 'ملوخية';
     const notes = 'يُشوّح الثوم والكزبرة قبل الإضافة للمرقة';
@@ -150,8 +154,11 @@ void main() {
       notes,
       reason: 'a stored recipe must not open as an empty box',
     );
-    expect(textOf(tester, nameField), name,
-        reason: 'the two new fields did not displace the existing prefill');
+    expect(
+      textOf(tester, nameField),
+      name,
+      reason: 'the two new fields did not displace the existing prefill',
+    );
 
     // The fields read the row, not a guess: what is stored is what is shown.
     final stored = await db.mealsDao.getMealById(id);
@@ -161,8 +168,9 @@ void main() {
     await tearDownApp(tester, db);
   });
 
-  testWidgets('typing only into notes or short name flags unsaved changes',
-      (tester) async {
+  testWidgets('typing only into notes or short name flags unsaved changes', (
+    tester,
+  ) async {
     const notes = 'ملاحظة محفوظة مسبقا';
     final (db, id) = await openEditorOn(
       tester,
@@ -181,8 +189,11 @@ void main() {
     );
     await tapVisible(tester, keepEditingButton);
     expect(find.byKey(discardDialog), findsNothing);
-    expect(find.byKey(saveButton), findsOneWidget,
-        reason: '"keep editing" leaves the sheet where it was');
+    expect(
+      find.byKey(saveButton),
+      findsOneWidget,
+      reason: '"keep editing" leaves the sheet where it was',
+    );
 
     // 2. Put the notes back, so what follows is dirty *only* through the short
     // name: a guard that forgot that column would let this exit through in
@@ -190,9 +201,13 @@ void main() {
     await setField(tester, notesField, notes);
     await appendTo(tester, shortNameField, 'بالخل');
     await tapBarrier(tester);
-    expect(find.byKey(discardDialog), findsOneWidget,
-        reason: 'a barrier dismissal runs Navigator.maybePop, which '
-            'PopScope.canPop has to gate on the live field values');
+    expect(
+      find.byKey(discardDialog),
+      findsOneWidget,
+      reason:
+          'a barrier dismissal runs Navigator.maybePop, which '
+          'PopScope.canPop has to gate on the live field values',
+    );
     await tapVisible(tester, keepEditingButton);
 
     // 3. Still only the short name pending: back, then a real discard, which is
@@ -211,8 +226,9 @@ void main() {
     await tearDownApp(tester, db);
   });
 
-  testWidgets('saving writes the new notes and short name to the row',
-      (tester) async {
+  testWidgets('saving writes the new notes and short name to the row', (
+    tester,
+  ) async {
     const name = 'كشري بالجبن';
     const editedShortName = 'كشري بالجبنة';
     const editedNotes = 'أرز وشعرية وعدس، والجبن فوقه في الفرن';
@@ -228,17 +244,27 @@ void main() {
 
     await tapVisible(tester, saveButton);
 
-    expect(find.byKey(discardDialog), findsNothing,
-        reason: 'the row is already written — asking now is the bug');
-    expect(find.byKey(saveButton), findsNothing,
-        reason: 'a committed save closes the sheet');
+    expect(
+      find.byKey(discardDialog),
+      findsNothing,
+      reason: 'the row is already written — asking now is the bug',
+    );
+    expect(
+      find.byKey(saveButton),
+      findsNothing,
+      reason: 'a committed save closes the sheet',
+    );
 
     final row = await db.mealsDao.getMealById(id);
     expect(row?.shortName, editedShortName);
     expect(row?.notes, editedNotes);
-    expect(row?.name, name,
-        reason: 'editing the two text fields must not touch the rest of the '
-            'row');
+    expect(
+      row?.name,
+      name,
+      reason:
+          'editing the two text fields must not touch the rest of the '
+          'row',
+    );
     expect(row?.prepTime, 45);
 
     await runOutToasts(tester);

@@ -128,8 +128,7 @@ class _PointerPainter extends CustomPainter {
     final bulb = Rect.fromCircle(center: center, radius: _bulbR);
 
     final start = math.atan2(left.dy - center.dy, left.dx - center.dx);
-    var sweep =
-        math.atan2(right.dy - center.dy, right.dx - center.dx) - start;
+    var sweep = math.atan2(right.dy - center.dy, right.dx - center.dx) - start;
     if (sweep < 0) sweep += 2 * math.pi;
 
     return Path()
@@ -146,9 +145,7 @@ class _PointerPainter extends CustomPainter {
         center,
         6,
         Paint()
-          ..color = isDark
-              ? AppPalette.darkCard
-              : AppPalette.lightTextPrimary,
+          ..color = isDark ? AppPalette.darkCard : AppPalette.lightTextPrimary,
       )
       ..drawCircle(
         center,

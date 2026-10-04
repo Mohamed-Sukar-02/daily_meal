@@ -8,7 +8,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('Bottom navigation bar renders custom icons and switches tabs', (WidgetTester tester) async {
+  testWidgets('Bottom navigation bar renders custom icons and switches tabs', (
+    WidgetTester tester,
+  ) async {
     final inMemoryDb = AppDatabase(NativeDatabase.memory());
     await inMemoryDb.appSettingsDao.ensureSettings();
     await inMemoryDb.appSettingsDao.updateSettings(
@@ -17,9 +19,7 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          appDatabaseProvider.overrideWithValue(inMemoryDb),
-        ],
+        overrides: [appDatabaseProvider.overrideWithValue(inMemoryDb)],
         child: const DailyMealApp(),
       ),
     );
@@ -32,8 +32,14 @@ void main() {
     // Verify nav destinations exist
     expect(find.byKey(const ValueKey('nav_destination_home')), findsOneWidget);
     expect(find.byKey(const ValueKey('nav_destination_vault')), findsOneWidget);
-    expect(find.byKey(const ValueKey('nav_destination_history')), findsOneWidget);
-    expect(find.byKey(const ValueKey('nav_destination_settings')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('nav_destination_history')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('nav_destination_settings')),
+      findsOneWidget,
+    );
 
     // Verify ImageIcon is rendered for vault and Icon for history
     expect(find.byType(ImageIcon), findsOneWidget);

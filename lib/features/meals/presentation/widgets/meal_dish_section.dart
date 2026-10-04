@@ -106,7 +106,8 @@ class MealDishSection extends StatelessWidget {
             ),
             child: KeyedSubtree(
               key: const Key('meal_screen_dish_panel'),
-              child: panelBody ??
+              child:
+                  panelBody ??
                   _EmptyDishPanel(
                     label: _labelFor(selected, strings),
                     brightness: brightness,

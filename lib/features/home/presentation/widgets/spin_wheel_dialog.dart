@@ -43,14 +43,17 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
     _audioPlayer.setAsset('assets/audio/tick.wav');
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 5000), // Longer for premium casino feel
+      duration: const Duration(
+        milliseconds: 5000,
+      ), // Longer for premium casino feel
     );
     _animation = Tween<double>(begin: 0, end: 0).animate(_controller);
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
       if (mounted) {
         Navigator.of(context).pop();
       }
@@ -59,20 +62,25 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
 
   Future<void> _initAudioSession() async {
     final session = await AudioSession.instance;
-    await session.configure(const AudioSessionConfiguration(
-      avAudioSessionCategory: AVAudioSessionCategory.ambient,
-      avAudioSessionCategoryOptions: AVAudioSessionCategoryOptions.mixWithOthers,
-      avAudioSessionMode: AVAudioSessionMode.defaultMode,
-      avAudioSessionRouteSharingPolicy: AVAudioSessionRouteSharingPolicy.defaultPolicy,
-      avAudioSessionSetActiveOptions: AVAudioSessionSetActiveOptions.none,
-      androidAudioAttributes: AndroidAudioAttributes(
-        contentType: AndroidAudioContentType.sonification,
-        flags: AndroidAudioFlags.none,
-        usage: AndroidAudioUsage.assistanceSonification,
+    await session.configure(
+      const AudioSessionConfiguration(
+        avAudioSessionCategory: AVAudioSessionCategory.ambient,
+        avAudioSessionCategoryOptions:
+            AVAudioSessionCategoryOptions.mixWithOthers,
+        avAudioSessionMode: AVAudioSessionMode.defaultMode,
+        avAudioSessionRouteSharingPolicy:
+            AVAudioSessionRouteSharingPolicy.defaultPolicy,
+        avAudioSessionSetActiveOptions: AVAudioSessionSetActiveOptions.none,
+        androidAudioAttributes: AndroidAudioAttributes(
+          contentType: AndroidAudioContentType.sonification,
+          flags: AndroidAudioFlags.none,
+          usage: AndroidAudioUsage.assistanceSonification,
+        ),
+        androidAudioFocusGainType:
+            AndroidAudioFocusGainType.gainTransientMayDuck,
+        androidWillPauseWhenDucked: true,
       ),
-      androidAudioFocusGainType: AndroidAudioFocusGainType.gainTransientMayDuck,
-      androidWillPauseWhenDucked: true,
-    ));
+    );
   }
 
   @override
@@ -93,10 +101,10 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
 
     final random = math.Random();
     final candidateCount = widget.candidates.length;
-    
+
     // Distribute into many segments evenly
     int multiplier = 12 ~/ candidateCount;
-    if (multiplier < 2) multiplier = 2; 
+    if (multiplier < 2) multiplier = 2;
     final totalSegments = candidateCount * multiplier;
 
     final winnerIndex = random.nextInt(candidateCount);
@@ -109,39 +117,42 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
         winningSegments.add(i);
       }
     }
-    
+
     // Pick a random specific segment to land on
-    final targetSegment = winningSegments[random.nextInt(winningSegments.length)];
+    final targetSegment =
+        winningSegments[random.nextInt(winningSegments.length)];
 
     // Target angle brings the chosen sector directly under the top pointer (-pi/2 relative to wheel)
     final targetSectorAngle = (targetSegment + 0.5) * sectorAngle;
-    
+
     double baseEndAngle = -math.pi / 2 - targetSectorAngle;
     while (baseEndAngle < 0) {
       baseEndAngle += 2 * math.pi;
     }
-    
+
     const fullSpins = 8 * 2 * math.pi;
     final minEndAngle = _currentAngle + fullSpins;
-    
+
     double endAngle = baseEndAngle;
     while (endAngle < minEndAngle) {
       endAngle += 2 * math.pi;
     }
 
-    _animation = Tween<double>(begin: _currentAngle, end: endAngle).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCirc),
-    )..addListener(() {
-        final currentA = _animation.value;
-        final currentSegment = ((currentA + math.pi / 2) / sectorAngle).floor();
-        if (currentSegment != _lastSegment) {
-          _lastSegment = currentSegment;
-          HapticFeedback.lightImpact();
-          _audioPlayer.seek(Duration.zero);
-          _audioPlayer.play();
-        }
-        setState(() {});
-      });
+    _animation =
+        Tween<double>(begin: _currentAngle, end: endAngle).animate(
+          CurvedAnimation(parent: _controller, curve: Curves.easeOutCirc),
+        )..addListener(() {
+          final currentA = _animation.value;
+          final currentSegment = ((currentA + math.pi / 2) / sectorAngle)
+              .floor();
+          if (currentSegment != _lastSegment) {
+            _lastSegment = currentSegment;
+            HapticFeedback.lightImpact();
+            _audioPlayer.seek(Duration.zero);
+            _audioPlayer.play();
+          }
+          setState(() {});
+        });
 
     // Seed the pointer's starting segment so the first peg crossing ticks.
     _lastSegment = ((_currentAngle + math.pi / 2) / sectorAngle).floor();
@@ -180,54 +191,54 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
       child: Container(
         height: MediaQuery.sizeOf(context).height * 0.75,
         decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-      ),
-      child: Column(
-        children: [
-          // Drag Handle
-          Center(
-            child: Container(
-              margin: const EdgeInsets.only(top: 12, bottom: 8),
-              width: 48,
-              height: 4,
-              decoration: BoxDecoration(
-                color: theme.dividerColor,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          
-          // Header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Center(
-              child: Text(
-                strings.spinWheelTitle,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
+          color: theme.colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          children: [
+            // Drag Handle
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 48,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.dividerColor,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
-          ),
 
-          const SizedBox(height: 16),
-
-          // Content Area (Candidates or Winner)
-          Expanded(
-            child: Padding(
+            // Header
+            Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: _winnerMeal == null 
-                  ? _buildCandidatesList(isRtl)
-                  : _buildWinnerCard(strings, theme),
+              child: Center(
+                child: Text(
+                  strings.spinWheelTitle,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
             ),
-          ),
 
-          // Roulette Wheel Anchored at Bottom
-          _buildRouletteWheel(context, strings),
-        ],
+            const SizedBox(height: 16),
+
+            // Content Area (Candidates or Winner)
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: _winnerMeal == null
+                    ? _buildCandidatesList(isRtl)
+                    : _buildWinnerCard(strings, theme),
+              ),
+            ),
+
+            // Roulette Wheel Anchored at Bottom
+            _buildRouletteWheel(context, strings),
+          ],
+        ),
       ),
-    ),
     );
   }
 
@@ -269,10 +280,7 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
       builder: (context, value, child) {
         return Transform.scale(
           scale: value,
-          child: Opacity(
-            opacity: value.clamp(0.0, 1.0),
-            child: child,
-          ),
+          child: Opacity(opacity: value.clamp(0.0, 1.0), child: child),
         );
       },
       child: Column(
@@ -312,8 +320,12 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
               color: theme.colorScheme.primaryContainer,
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
-                BoxShadow(color: theme.colorScheme.primary.withValues(alpha: 0.2), blurRadius: 20, spreadRadius: 2)
-              ]
+                BoxShadow(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                ),
+              ],
             ),
             child: Text(
               _winnerMeal!.name,
@@ -333,9 +345,17 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
                   onPressed: _spin,
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 18),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
-                  child: Text(strings.spinWheelAgain, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  child: Text(
+                    strings.spinWheelAgain,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -347,9 +367,17 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
                   },
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 18),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
-                  child: Text(strings.cookedThisOne, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  child: Text(
+                    strings.cookedThisOne,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -372,7 +400,8 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
     final totalSegments = widget.candidates.length * effectiveMultiplier;
     final sweepAngle = (2 * math.pi) / totalSegments;
 
-    final phase = ((currentA + math.pi / 2) % sweepAngle + sweepAngle) % sweepAngle;
+    final phase =
+        ((currentA + math.pi / 2) % sweepAngle + sweepAngle) % sweepAngle;
     final phaseNormalized = phase / sweepAngle;
     // Slowly gets pushed back, then snaps to 0 when passing the peg. The pin
     // now pivots on its rivet instead of its top edge, so the amplitude is
@@ -380,7 +409,7 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
     final flapperAngle = -0.68 * math.pow(phaseNormalized, 4).toDouble();
 
     return SizedBox(
-      height: (wheelSize / 2) + 24, 
+      height: (wheelSize / 2) + 24,
       width: MediaQuery.sizeOf(context).width,
       child: Stack(
         alignment: Alignment.topCenter,
@@ -403,14 +432,11 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
           ),
 
           // Pawl riding the pegs.
-          Positioned(
-            top: 0,
-            child: SpinWheelPointer(angle: flapperAngle),
-          ),
+          Positioned(top: 0, child: SpinWheelPointer(angle: flapperAngle)),
 
           // Central SPIN Button
           Positioned(
-            bottom: -24, 
+            bottom: -24,
             child: GestureDetector(
               onTap: _isSpinning ? null : _spin,
               child: Container(
@@ -420,7 +446,13 @@ class _SpinWheelBottomSheetState extends State<SpinWheelBottomSheet>
                   color: const Color(0xFFFFD54F),
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white, width: 4),
-                  boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, -2))],
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 10,
+                      offset: Offset(0, -2),
+                    ),
+                  ],
                 ),
                 alignment: Alignment.center,
                 child: Text(

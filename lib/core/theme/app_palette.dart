@@ -55,7 +55,8 @@ class AppPalette {
   static Color background(Brightness b) =>
       b == Brightness.dark ? darkBg : lightBg;
 
-  static Color card(Brightness b) => b == Brightness.dark ? darkCard : lightCard;
+  static Color card(Brightness b) =>
+      b == Brightness.dark ? darkCard : lightCard;
 
   static Color textPrimary(Brightness b) =>
       b == Brightness.dark ? darkTextPrimary : lightTextPrimary;
@@ -87,35 +88,61 @@ class AppPalette {
   /// The primary call-to-action ("Cook This") is green in dark mode and
   /// coral in light mode – exactly as in the mockups.
   static Gradient ctaGradient(Brightness b) => b == Brightness.dark
-      ? const LinearGradient(
-          colors: [Color(0xFF1FD487), brandGreenDeep],
-        )
-      : const LinearGradient(
-          colors: [Color(0xFFF58A63), brandCoral],
-        );
+      ? const LinearGradient(colors: [Color(0xFF1FD487), brandGreenDeep])
+      : const LinearGradient(colors: [Color(0xFFF58A63), brandCoral]);
 
   // ---------------------------------------------------------------------------
   // Meta chips (protein = rose, time = gold, category = violet)
   // ---------------------------------------------------------------------------
   static ChipStyle chipRose(Brightness b) => b == Brightness.dark
-      ? const ChipStyle(background: Color(0xFF46242E), foreground: Color(0xFFF27D95))
-      : const ChipStyle(background: Color(0xFFFBE3E5), foreground: Color(0xFFD25565));
+      ? const ChipStyle(
+          background: Color(0xFF46242E),
+          foreground: Color(0xFFF27D95),
+        )
+      : const ChipStyle(
+          background: Color(0xFFFBE3E5),
+          foreground: Color(0xFFD25565),
+        );
 
   static ChipStyle chipGold(Brightness b) => b == Brightness.dark
-      ? const ChipStyle(background: Color(0xFF4A3B14), foreground: Color(0xFFE9B33C))
-      : const ChipStyle(background: Color(0xFFFBF3D2), foreground: Color(0xFFA07D1C));
+      ? const ChipStyle(
+          background: Color(0xFF4A3B14),
+          foreground: Color(0xFFE9B33C),
+        )
+      : const ChipStyle(
+          background: Color(0xFFFBF3D2),
+          foreground: Color(0xFFA07D1C),
+        );
 
   static ChipStyle chipViolet(Brightness b) => b == Brightness.dark
-      ? const ChipStyle(background: Color(0xFF3A2A57), foreground: Color(0xFFA78BFA))
-      : const ChipStyle(background: Color(0xFFE7E1F9), foreground: Color(0xFF6C5CE7));
+      ? const ChipStyle(
+          background: Color(0xFF3A2A57),
+          foreground: Color(0xFFA78BFA),
+        )
+      : const ChipStyle(
+          background: Color(0xFFE7E1F9),
+          foreground: Color(0xFF6C5CE7),
+        );
 
   static ChipStyle chipBlue(Brightness b) => b == Brightness.dark
-      ? const ChipStyle(background: Color(0xFF1A2B3B), foreground: Color(0xFF90CAF9))
-      : const ChipStyle(background: Color(0xFFE3F0FD), foreground: Color(0xFF1565C0));
+      ? const ChipStyle(
+          background: Color(0xFF1A2B3B),
+          foreground: Color(0xFF90CAF9),
+        )
+      : const ChipStyle(
+          background: Color(0xFFE3F0FD),
+          foreground: Color(0xFF1565C0),
+        );
 
   static ChipStyle chipGreen(Brightness b) => b == Brightness.dark
-      ? const ChipStyle(background: Color(0xFF123B2A), foreground: Color(0xFF4ADE80))
-      : const ChipStyle(background: Color(0xFFDCF2E7), foreground: Color(0xFF0E6B4A));
+      ? const ChipStyle(
+          background: Color(0xFF123B2A),
+          foreground: Color(0xFF4ADE80),
+        )
+      : const ChipStyle(
+          background: Color(0xFFDCF2E7),
+          foreground: Color(0xFF0E6B4A),
+        );
 
   // ---------------------------------------------------------------------------
   // Home recommendation card panels
@@ -169,6 +196,16 @@ class AppPalette {
   /// mode, so one ink pair serves every hue the photo can hand over.
   static Color panelInk(Brightness b) =>
       b == Brightness.dark ? Colors.white : lightTextPrimary;
+
+  /// The surface of a feed row the user has not opened yet.
+  ///
+  /// A wash of the brand green over the card rather than the coloured outline
+  /// the notification centre used to draw: an unread stack of bordered boxes
+  /// read as clutter, while the same rows separated only by tone stay quiet.
+  static Color unreadSurface(Brightness b) => Color.alphaBlend(
+    brandGreen.withValues(alpha: b == Brightness.dark ? 0.13 : 0.07),
+    card(b),
+  );
 
   static Color panelInkSoft(Brightness b) =>
       b == Brightness.dark ? const Color(0xB3FFFFFF) : lightTextSecondary;

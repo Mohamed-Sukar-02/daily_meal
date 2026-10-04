@@ -26,20 +26,49 @@ import 'package:daily_meal/features/vault/data/models/cloud_meal.dart';
 // ---------------------------------------------------------------------------
 
 const Set<String> _requiredKeys = {
-  'name', 'proteinType', 'carbsType', 'category',
-  'prepTimeMinutes', 'createdAt', 'status', 'proposedBy',
+  'name',
+  'proteinType',
+  'carbsType',
+  'category',
+  'prepTimeMinutes',
+  'createdAt',
+  'status',
+  'proposedBy',
 };
 
 const Set<String> _allowedKeys = {
-  'id', 'name', 'imageUrl', 'proteinType', 'carbsType', 'category',
-  'prepTimeMinutes', 'isFridaySpecial', 'isBudgetFriendly',
-  'isStarterMeal', 'notes', 'createdAt', 'proposedBy', 'status',
+  'id',
+  'name',
+  'imageUrl',
+  'proteinType',
+  'carbsType',
+  'category',
+  'prepTimeMinutes',
+  'isFridaySpecial',
+  'isBudgetFriendly',
+  'isStarterMeal',
+  'notes',
+  'createdAt',
+  'proposedBy',
+  'status',
 };
 
-const Set<String> _cloudProteins = {'chicken', 'beef', 'fish', 'meatless', 'other'};
+const Set<String> _cloudProteins = {
+  'chicken',
+  'beef',
+  'fish',
+  'meatless',
+  'other',
+};
 const Set<String> _cloudCarbs = {'rice', 'pasta', 'bread', 'none'};
 const Set<String> _cloudCategories = {
-  'tabeekh', 'casserole', 'dry_sandwich', 'popular', 'seafood', 'soup_stew', 'vegetarian',
+  'tabeekh',
+  'casserole',
+  'dry_sandwich',
+  'popular',
+  'seafood',
+  'soup_stew',
+  'vegetarian',
 };
 
 /// Mirror of `isValidStagingMeal()` from firestore.rules.
@@ -59,7 +88,8 @@ bool _rulesAccept(Map<String, dynamic> data) {
   if (data.containsKey('isFridaySpecial') && data['isFridaySpecial'] is! bool) {
     return false;
   }
-  if (data.containsKey('isBudgetFriendly') && data['isBudgetFriendly'] is! bool) {
+  if (data.containsKey('isBudgetFriendly') &&
+      data['isBudgetFriendly'] is! bool) {
     return false;
   }
   if (data.containsKey('isStarterMeal') && data['isStarterMeal'] != false) {
@@ -136,8 +166,11 @@ void main() {
       );
 
       expect(payload, isNotNull);
-      expect(_rulesAccept(payload!), isTrue,
-          reason: 'payload must satisfy isValidStagingMeal: $payload');
+      expect(
+        _rulesAccept(payload!),
+        isTrue,
+        reason: 'payload must satisfy isValidStagingMeal: $payload',
+      );
       expect(payload['status'], 'pending');
       expect(payload['proposedBy'], 'uid-123');
       expect(payload['isStarterMeal'], isFalse);
@@ -145,15 +178,18 @@ void main() {
       expect(payload['notes'], 'بصل كتير');
     });
 
-    test('never leaks shortName / id / local-only keys (rules use hasOnly)', () {
-      final payload = MealProposalPayload.build(
-        meal: _meal(shortName: 'كشري'),
-        proposedByUid: 'uid-1',
-      )!;
-      expect(payload.containsKey('shortName'), isFalse);
-      expect(payload.containsKey('id'), isFalse);
-      expect(payload.keys.every(_allowedKeys.contains), isTrue);
-    });
+    test(
+      'never leaks shortName / id / local-only keys (rules use hasOnly)',
+      () {
+        final payload = MealProposalPayload.build(
+          meal: _meal(shortName: 'كشري'),
+          proposedByUid: 'uid-1',
+        )!;
+        expect(payload.containsKey('shortName'), isFalse);
+        expect(payload.containsKey('id'), isFalse);
+        expect(payload.keys.every(_allowedKeys.contains), isTrue);
+      },
+    );
 
     test('createdAt is an ISO-8601 string within the 10..40 char window', () {
       final instant = DateTime.utc(2026, 9, 21, 9, 30);
@@ -173,11 +209,17 @@ void main() {
 
     test('name shorter than 2 chars after trim fails fast (null payload)', () {
       expect(
-        MealProposalPayload.build(meal: _meal(name: 'ف'), proposedByUid: 'u'),
+        MealProposalPayload.build(
+          meal: _meal(name: 'ف'),
+          proposedByUid: 'u',
+        ),
         isNull,
       );
       expect(
-        MealProposalPayload.build(meal: _meal(name: '  '), proposedByUid: 'u'),
+        MealProposalPayload.build(
+          meal: _meal(name: '  '),
+          proposedByUid: 'u',
+        ),
         isNull,
       );
     });
@@ -244,65 +286,75 @@ void main() {
   // holds, so it probes the payload's own `name` — not `meal.name`. These
   // tests pin that single source of truth: if the builder ever changes its
   // trimming or its cap, the probe follows automatically or this group fails.
-  group('MealProposalPayload.vaultProbeNames — the strings the vault stores', () {
-    test('the probe name is the payload name, not the raw local name', () {
-      final meal = _meal(name: '  محشي بلدي  ', shortName: 'محشي');
-      final payload = MealProposalPayload.build(
-        meal: meal,
-        proposedByUid: 'u',
-      )!;
+  group(
+    'MealProposalPayload.vaultProbeNames — the strings the vault stores',
+    () {
+      test('the probe name is the payload name, not the raw local name', () {
+        final meal = _meal(name: '  محشي بلدي  ', shortName: 'محشي');
+        final payload = MealProposalPayload.build(
+          meal: meal,
+          proposedByUid: 'u',
+        )!;
 
-      // The stored payload name is the first thing the probe asks for, so the
-      // two can never drift apart.
-      expect(MealProposalPayload.vaultProbeNames(meal).first, payload['name']);
-      expect(MealProposalPayload.vaultProbeNames(meal), ['محشي بلدي', 'محشي']);
-    });
+        // The stored payload name is the first thing the probe asks for, so the
+        // two can never drift apart.
+        expect(
+          MealProposalPayload.vaultProbeNames(meal).first,
+          payload['name'],
+        );
+        expect(MealProposalPayload.vaultProbeNames(meal), [
+          'محشي بلدي',
+          'محشي',
+        ]);
+      });
 
-    test('a shortName equal to the name is probed once, not twice', () {
-      expect(
-        MealProposalPayload.vaultProbeNames(_meal(shortName: 'كشري')),
-        ['كشري'],
-      );
-    });
+      test('a shortName equal to the name is probed once, not twice', () {
+        expect(MealProposalPayload.vaultProbeNames(_meal(shortName: 'كشري')), [
+          'كشري',
+        ]);
+      });
 
-    test('a missing or blank shortName adds no candidate', () {
-      expect(
-        MealProposalPayload.vaultProbeNames(_meal(shortName: null)),
-        ['كشري'],
-      );
-      expect(
-        MealProposalPayload.vaultProbeNames(_meal(shortName: '   ')),
-        ['كشري'],
-      );
-    });
+      test('a missing or blank shortName adds no candidate', () {
+        expect(MealProposalPayload.vaultProbeNames(_meal(shortName: null)), [
+          'كشري',
+        ]);
+        expect(MealProposalPayload.vaultProbeNames(_meal(shortName: '   ')), [
+          'كشري',
+        ]);
+      });
 
-    test('the 100-char cloud cap applies to the probe too', () {
-      final long = 'أ' * 120; // local column allows up to 120
-      final candidates = MealProposalPayload.vaultProbeNames(
-        _meal(name: long, shortName: long),
-      );
-      expect(candidates, hasLength(1));
-      expect(candidates.single.length, 100);
-    });
+      test('the 100-char cloud cap applies to the probe too', () {
+        final long = 'أ' * 120; // local column allows up to 120
+        final candidates = MealProposalPayload.vaultProbeNames(
+          _meal(name: long, shortName: long),
+        );
+        expect(candidates, hasLength(1));
+        expect(candidates.single.length, 100);
+      });
 
-    test('a name below the rules minimum leaves nothing to probe', () {
-      expect(
-        MealProposalPayload.vaultProbeNames(_meal(name: 'ف', shortName: null)),
-        isEmpty,
-      );
-      expect(
-        MealProposalPayload.vaultProbeNames(_meal(name: '   ', shortName: null)),
-        isEmpty,
-      );
-    });
+      test('a name below the rules minimum leaves nothing to probe', () {
+        expect(
+          MealProposalPayload.vaultProbeNames(
+            _meal(name: 'ف', shortName: null),
+          ),
+          isEmpty,
+        );
+        expect(
+          MealProposalPayload.vaultProbeNames(
+            _meal(name: '   ', shortName: null),
+          ),
+          isEmpty,
+        );
+      });
 
-    test('payloadName mirrors build exactly', () {
-      expect(MealProposalPayload.payloadName('  كشري  '), 'كشري');
-      expect(MealProposalPayload.payloadName('ف'), isNull);
-      expect(MealProposalPayload.payloadName('  '), isNull);
-      expect(MealProposalPayload.payloadName('أ' * 120), hasLength(100));
-    });
-  });
+      test('payloadName mirrors build exactly', () {
+        expect(MealProposalPayload.payloadName('  كشري  '), 'كشري');
+        expect(MealProposalPayload.payloadName('ف'), isNull);
+        expect(MealProposalPayload.payloadName('  '), isNull);
+        expect(MealProposalPayload.payloadName('أ' * 120), hasLength(100));
+      });
+    },
+  );
 
   group('MealCloudVocabulary — every local enum lands in the cloud set', () {
     test('proteinType maps into {chicken, beef, fish, meatless, other}', () {
@@ -314,10 +366,16 @@ void main() {
         );
       }
       // Round-trip identities (download side maps meatless→legume).
-      expect(MealCloudVocabulary.proteinToCloud(ProteinType.chicken), 'chicken');
+      expect(
+        MealCloudVocabulary.proteinToCloud(ProteinType.chicken),
+        'chicken',
+      );
       expect(MealCloudVocabulary.proteinToCloud(ProteinType.beef), 'beef');
       expect(MealCloudVocabulary.proteinToCloud(ProteinType.fish), 'fish');
-      expect(MealCloudVocabulary.proteinToCloud(ProteinType.legume), 'meatless');
+      expect(
+        MealCloudVocabulary.proteinToCloud(ProteinType.legume),
+        'meatless',
+      );
     });
 
     test('carbsType maps into {rice, pasta, bread, none}', () {
@@ -333,34 +391,37 @@ void main() {
     });
 
     test(
-        'category maps into {tabeekh, casserole, dry_sandwich, popular, seafood, '
-        'soup_stew, vegetarian}', () {
-      for (final category in MealCategory.values) {
+      'category maps into {tabeekh, casserole, dry_sandwich, popular, seafood, '
+      'soup_stew, vegetarian}',
+      () {
+        for (final category in MealCategory.values) {
+          expect(
+            _cloudCategories.contains(
+              MealCloudVocabulary.categoryToCloud(category),
+            ),
+            isTrue,
+            reason: '$category escaped the cloud vocabulary',
+          );
+        }
+        // Round-trip identities (download side: tabeekh→egyptianTraditional…).
         expect(
-          _cloudCategories
-              .contains(MealCloudVocabulary.categoryToCloud(category)),
-          isTrue,
-          reason: '$category escaped the cloud vocabulary',
+          MealCloudVocabulary.categoryToCloud(MealCategory.ovenBaked),
+          'casserole',
         );
-      }
-      // Round-trip identities (download side: tabeekh→egyptianTraditional…).
-      expect(
-        MealCloudVocabulary.categoryToCloud(MealCategory.ovenBaked),
-        'casserole',
-      );
-      expect(
-        MealCloudVocabulary.categoryToCloud(MealCategory.fastFood),
-        'dry_sandwich',
-      );
-      expect(
-        MealCloudVocabulary.categoryToCloud(MealCategory.soupStew),
-        'soup_stew',
-      );
-      expect(
-        MealCloudVocabulary.categoryToCloud(MealCategory.vegetarian),
-        'vegetarian',
-      );
-    });
+        expect(
+          MealCloudVocabulary.categoryToCloud(MealCategory.fastFood),
+          'dry_sandwich',
+        );
+        expect(
+          MealCloudVocabulary.categoryToCloud(MealCategory.soupStew),
+          'soup_stew',
+        );
+        expect(
+          MealCloudVocabulary.categoryToCloud(MealCategory.vegetarian),
+          'vegetarian',
+        );
+      },
+    );
 
     test('a payload for EVERY enum combination is rules-valid', () {
       for (final protein in ProteinType.values) {
@@ -374,8 +435,11 @@ void main() {
               ),
               proposedByUid: 'uid-exhaustive',
             )!;
-            expect(_rulesAccept(payload), isTrue,
-                reason: 'rejected combo: $protein/$carbs/$category → $payload');
+            expect(
+              _rulesAccept(payload),
+              isTrue,
+              reason: 'rejected combo: $protein/$carbs/$category → $payload',
+            );
           }
         }
       }
@@ -393,20 +457,29 @@ void main() {
       if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
     });
 
-    test('rejects null / empty / remote / asset paths without touching disk', () {
-      expect(MealProposalPayload.eligibleImageFile(null), isNull);
-      expect(MealProposalPayload.eligibleImageFile('   '), isNull);
-      expect(
-        MealProposalPayload.eligibleImageFile('https://cdn.test/a.jpg'),
-        isNull,
-      );
-      expect(
-        MealProposalPayload.eligibleImageFile('http://cdn.test/a.jpg'),
-        isNull,
-      );
-      expect(MealProposalPayload.eligibleImageFile('assets/icon.png'), isNull);
-      expect(MealProposalPayload.eligibleImageFile('asset:assets/icon.png'), isNull);
-    });
+    test(
+      'rejects null / empty / remote / asset paths without touching disk',
+      () {
+        expect(MealProposalPayload.eligibleImageFile(null), isNull);
+        expect(MealProposalPayload.eligibleImageFile('   '), isNull);
+        expect(
+          MealProposalPayload.eligibleImageFile('https://cdn.test/a.jpg'),
+          isNull,
+        );
+        expect(
+          MealProposalPayload.eligibleImageFile('http://cdn.test/a.jpg'),
+          isNull,
+        );
+        expect(
+          MealProposalPayload.eligibleImageFile('assets/icon.png'),
+          isNull,
+        );
+        expect(
+          MealProposalPayload.eligibleImageFile('asset:assets/icon.png'),
+          isNull,
+        );
+      },
+    );
 
     test('rejects a missing file instead of throwing', () {
       expect(
@@ -446,21 +519,18 @@ void main() {
     const strings = AppStrings(Locale('ar'));
 
     CloudMeal cloud({int prepTimeMinutes = 45}) => CloudMeal(
-          id: 'c-1',
-          name: 'كشري',
-          proteinType: 'meatless',
-          carbsType: 'rice',
-          category: 'tabeekh',
-          prepTimeMinutes: prepTimeMinutes,
-          createdAt: DateTime(2026, 9, 20, 12),
-        );
+      id: 'c-1',
+      name: 'كشري',
+      proteinType: 'meatless',
+      carbsType: 'rice',
+      category: 'tabeekh',
+      prepTimeMinutes: prepTimeMinutes,
+      createdAt: DateTime(2026, 9, 20, 12),
+    );
 
     // Matches `cloud()` field for field, including the absent short name.
-    Meal downloaded({int prepTime = 45}) => _meal(
-          cloudId: 'c-1',
-          prepTime: prepTime,
-          shortName: null,
-        );
+    Meal downloaded({int prepTime = 45}) =>
+        _meal(cloudId: 'c-1', prepTime: prepTime, shortName: null);
 
     test('a purely local meal is always proposable', () {
       expect(
@@ -472,7 +542,10 @@ void main() {
     test('a cloud meal still identical to its copy is not proposable', () {
       expect(
         isProposableAgainstCloud(
-          meal: downloaded(), cloud: cloud(), strings: strings),
+          meal: downloaded(),
+          cloud: cloud(),
+          strings: strings,
+        ),
         isFalse,
       );
     });
@@ -488,13 +561,19 @@ void main() {
       );
     });
 
-    test('a cloud-linked meal whose cloud row vanished is proposable again', () {
-      expect(
-        isProposableAgainstCloud(
-          meal: downloaded(), cloud: null, strings: strings),
-        isTrue,
-      );
-    });
+    test(
+      'a cloud-linked meal whose cloud row vanished is proposable again',
+      () {
+        expect(
+          isProposableAgainstCloud(
+            meal: downloaded(),
+            cloud: null,
+            strings: strings,
+          ),
+          isTrue,
+        );
+      },
+    );
   });
 
   group('ProposalQuota — daily allowance', () {
@@ -649,7 +728,8 @@ void main() {
     });
 
     test('a disabled anonymous provider is called out by name', () {
-      const message = 'The given sign-in provider is disabled for this '
+      const message =
+          'The given sign-in provider is disabled for this '
           'Firebase project. Enable it in the Firebase console.';
       for (final code in const [
         'operation-not-allowed',
@@ -666,25 +746,32 @@ void main() {
       }
     });
 
-    test('a stage that never answers is reported as unreachable, not unknown',
-        () {
-      expect(
-        ProposalFailureDiagnoser.classify(
-          TimeoutException('Future not completed', const Duration(seconds: 20)),
-        ),
-        ProposalFailureReason.writeUnreachable,
-      );
-    });
+    test(
+      'a stage that never answers is reported as unreachable, not unknown',
+      () {
+        expect(
+          ProposalFailureDiagnoser.classify(
+            TimeoutException(
+              'Future not completed',
+              const Duration(seconds: 20),
+            ),
+          ),
+          ProposalFailureReason.writeUnreachable,
+        );
+      },
+    );
 
-    test('other auth codes stay anonymous-sign-in failures, not provider ones',
-        () {
-      expect(
-        ProposalFailureDiagnoser.classify(
-          FirebaseAuthException(code: 'Too-Many-Requests', message: 'quota'),
-        ),
-        ProposalFailureReason.anonymousSignInRejected,
-      );
-    });
+    test(
+      'other auth codes stay anonymous-sign-in failures, not provider ones',
+      () {
+        expect(
+          ProposalFailureDiagnoser.classify(
+            FirebaseAuthException(code: 'Too-Many-Requests', message: 'quota'),
+          ),
+          ProposalFailureReason.anonymousSignInRejected,
+        );
+      },
+    );
 
     test('permission-denied means the deployed rules rejected the write', () {
       expect(
@@ -723,22 +810,27 @@ void main() {
       );
     });
 
-    test('anything unrecognised reports unknown, and describe keeps it readable',
-        () {
-      expect(
-        ProposalFailureDiagnoser.classify('boom'),
-        ProposalFailureReason.unknown,
-      );
-      expect(ProposalFailureDiagnoser.describe('boom'), 'boom');
+    test(
+      'anything unrecognised reports unknown, and describe keeps it readable',
+      () {
+        expect(
+          ProposalFailureDiagnoser.classify('boom'),
+          ProposalFailureReason.unknown,
+        );
+        expect(ProposalFailureDiagnoser.describe('boom'), 'boom');
 
-      final long = FirebaseException(
-        plugin: 'cloud_firestore',
-        code: 'internal',
-        message: 'x' * 400,
-      );
-      expect(ProposalFailureDiagnoser.describe(long).length, lessThanOrEqualTo(180));
-      expect(ProposalFailureDiagnoser.describe(long), contains('internal'));
-    });
+        final long = FirebaseException(
+          plugin: 'cloud_firestore',
+          code: 'internal',
+          message: 'x' * 400,
+        );
+        expect(
+          ProposalFailureDiagnoser.describe(long).length,
+          lessThanOrEqualTo(180),
+        );
+        expect(ProposalFailureDiagnoser.describe(long), contains('internal'));
+      },
+    );
 
     test('errorCode reads the provider code structurally', () {
       expect(
@@ -780,7 +872,8 @@ void main() {
     test('an unreachable network during sign-in is not called a rejection', () {
       final unreachable = FirebaseAuthException(
         code: 'network-request-failed',
-        message: 'A network error (such as timeout, interrupted connection or '
+        message:
+            'A network error (such as timeout, interrupted connection or '
             'unreachable host) has occurred.',
       );
       expect(
@@ -795,7 +888,10 @@ void main() {
       // A real rejection still says so: the reorder did not swallow it.
       expect(
         ProposalFailureDiagnoser.classify(
-          FirebaseAuthException(code: 'user-disabled', message: 'account disabled'),
+          FirebaseAuthException(
+            code: 'user-disabled',
+            message: 'account disabled',
+          ),
         ),
         ProposalFailureReason.anonymousSignInRejected,
       );
@@ -812,12 +908,11 @@ void main() {
           );
 
       expect(forCode('unavailable'), ProposalFailureReason.writeUnreachable);
-      expect(forCode('deadline-exceeded'),
-          ProposalFailureReason.writeUnreachable);
       expect(
-        forCode('unauthenticated'),
-        ProposalFailureReason.signInStateLost,
+        forCode('deadline-exceeded'),
+        ProposalFailureReason.writeUnreachable,
       );
+      expect(forCode('unauthenticated'), ProposalFailureReason.signInStateLost);
       expect(
         forCode('resource-exhausted'),
         ProposalFailureReason.cloudQuotaExhausted,
@@ -866,8 +961,9 @@ void main() {
       final missing = ProposalFailureDiagnoser.localPhotoReason(
         LocalPhotoIssue.missing,
       );
-      final empty =
-          ProposalFailureDiagnoser.localPhotoReason(LocalPhotoIssue.empty);
+      final empty = ProposalFailureDiagnoser.localPhotoReason(
+        LocalPhotoIssue.empty,
+      );
       final tooLarge = ProposalFailureDiagnoser.localPhotoReason(
         LocalPhotoIssue.tooLarge,
       );
@@ -913,9 +1009,10 @@ void main() {
         final small = File('${dir.path}/small.jpg')
           ..writeAsBytesSync(List<int>.filled(2048, 3));
         final empty = File('${dir.path}/empty.jpg')..writeAsBytesSync(<int>[]);
-        final big = File('${dir.path}/big.jpg')..writeAsBytesSync(
-              List<int>.filled(MealProposalPayload.maxImageBytes + 1, 3),
-            );
+        final big = File('${dir.path}/big.jpg')
+          ..writeAsBytesSync(
+            List<int>.filled(MealProposalPayload.maxImageBytes + 1, 3),
+          );
         final ghost = '${dir.path}/ghost.jpg';
 
         expect(
@@ -991,7 +1088,11 @@ void main() {
         if (reason == ProposalFailureReason.unknown) continue;
         final ar = proposalFailureLabel(arabic, reason, cause: cause);
         final en = proposalFailureLabel(english, reason, cause: cause);
-        expect(ar, isNot(en), reason: '$reason was written in one language only');
+        expect(
+          ar,
+          isNot(en),
+          reason: '$reason was written in one language only',
+        );
         expect(
           arabicScript.hasMatch(ar),
           isTrue,
@@ -1044,26 +1145,27 @@ void main() {
     // walking the enum here is what catches a code that was wired but wired to
     // the wrong string.
     ProposalOutcome outcomeFor(ProposalOutcomeCode code) => switch (code) {
-          ProposalOutcomeCode.submitted => ProposalOutcome.submitted(),
-          ProposalOutcomeCode.alreadyProposed =>
-            ProposalOutcome.alreadyProposed(),
-          ProposalOutcomeCode.alreadyInPublicVault =>
-            ProposalOutcome.alreadyInPublicVault(),
-          ProposalOutcomeCode.blockedNoConnection =>
-            ProposalOutcome.blocked(CloudAccessStatus.noConnection),
-          ProposalOutcomeCode.blockedRequiresWifi =>
-            ProposalOutcome.blocked(CloudAccessStatus.requiresWifi),
-          ProposalOutcomeCode.invalidName => ProposalOutcome.invalidName(),
-          ProposalOutcomeCode.dailyLimitReached =>
-            ProposalOutcome.dailyLimitReached(),
-          ProposalOutcomeCode.cloudUnchanged => ProposalOutcome.cloudUnchanged(),
-          // Rendered with a named stage rather than `unknown`, which is the one
-          // reason allowed to echo the raw provider text back.
-          ProposalOutcomeCode.failed => ProposalOutcome.failed(
-              cause,
-              reason: ProposalFailureReason.writePermissionDenied,
-            ),
-        };
+      ProposalOutcomeCode.submitted => ProposalOutcome.submitted(),
+      ProposalOutcomeCode.alreadyProposed => ProposalOutcome.alreadyProposed(),
+      ProposalOutcomeCode.alreadyInPublicVault =>
+        ProposalOutcome.alreadyInPublicVault(),
+      ProposalOutcomeCode.blockedNoConnection => ProposalOutcome.blocked(
+        CloudAccessStatus.noConnection,
+      ),
+      ProposalOutcomeCode.blockedRequiresWifi => ProposalOutcome.blocked(
+        CloudAccessStatus.requiresWifi,
+      ),
+      ProposalOutcomeCode.invalidName => ProposalOutcome.invalidName(),
+      ProposalOutcomeCode.dailyLimitReached =>
+        ProposalOutcome.dailyLimitReached(),
+      ProposalOutcomeCode.cloudUnchanged => ProposalOutcome.cloudUnchanged(),
+      // Rendered with a named stage rather than `unknown`, which is the one
+      // reason allowed to echo the raw provider text back.
+      ProposalOutcomeCode.failed => ProposalOutcome.failed(
+        cause,
+        reason: ProposalFailureReason.writePermissionDenied,
+      ),
+    };
 
     test('every outcome code has a non-empty line in BOTH locales', () {
       for (final code in ProposalOutcomeCode.values) {
@@ -1080,11 +1182,7 @@ void main() {
         final outcome = outcomeFor(code);
         final ar = proposalOutcomeLabel(arabic, outcome);
         final en = proposalOutcomeLabel(english, outcome);
-        expect(
-          ar,
-          isNot(en),
-          reason: '$code was written in one language only',
-        );
+        expect(ar, isNot(en), reason: '$code was written in one language only');
         expect(
           arabicScript.hasMatch(ar),
           isTrue,
@@ -1108,17 +1206,20 @@ void main() {
       expect(ProposalOutcome.alreadyInPublicVault().isSuccess, isFalse);
     });
 
-    test('the public-vault line keeps the backlog wording, the 👏 included', () {
-      final outcome = ProposalOutcome.alreadyInPublicVault();
-      expect(
-        proposalOutcomeLabel(arabic, outcome),
-        'هذه الأكلة متوفرة بالفعل في الخزنة العامة 👏',
-      );
-      expect(
-        proposalOutcomeLabel(english, outcome),
-        'This meal is already available in the public vault 👏',
-      );
-    });
+    test(
+      'the public-vault line keeps the backlog wording, the 👏 included',
+      () {
+        final outcome = ProposalOutcome.alreadyInPublicVault();
+        expect(
+          proposalOutcomeLabel(arabic, outcome),
+          'هذه الأكلة متوفرة بالفعل في الخزنة العامة 👏',
+        );
+        expect(
+          proposalOutcomeLabel(english, outcome),
+          'This meal is already available in the public vault 👏',
+        );
+      },
+    );
   });
 
   // Gap 6: the gate lives where the payload is built, not only in the UI flow.
@@ -1126,38 +1227,38 @@ void main() {
     MealProposalService gated(CloudAccessStatus status) =>
         MealProposalService(accessStatus: () async => status);
 
-    test('a blocked network stops before Firebase, with the right code',
-        () async {
-      const cases = <CloudAccessStatus, ProposalOutcomeCode>{
-        CloudAccessStatus.noConnection:
-            ProposalOutcomeCode.blockedNoConnection,
-        CloudAccessStatus.requiresWifi: ProposalOutcomeCode.blockedRequiresWifi,
-      };
-      for (final entry in cases.entries) {
-        final outcome = await gated(entry.key).proposeMeal(_meal());
-        expect(outcome.code, entry.value, reason: entry.key.name);
-        expect(outcome.isSuccess, isFalse);
-      }
-    });
+    test(
+      'a blocked network stops before Firebase, with the right code',
+      () async {
+        const cases = <CloudAccessStatus, ProposalOutcomeCode>{
+          CloudAccessStatus.noConnection:
+              ProposalOutcomeCode.blockedNoConnection,
+          CloudAccessStatus.requiresWifi:
+              ProposalOutcomeCode.blockedRequiresWifi,
+        };
+        for (final entry in cases.entries) {
+          final outcome = await gated(entry.key).proposeMeal(_meal());
+          expect(outcome.code, entry.value, reason: entry.key.name);
+          expect(outcome.isSuccess, isFalse);
+        }
+      },
+    );
 
     test('a gate that throws is read as no connection', () async {
       final outcome = await MealProposalService(
-        accessStatus: () async => throw StateError('connectivity plugin missing'),
+        accessStatus: () async =>
+            throw StateError('connectivity plugin missing'),
       ).proposeMeal(_meal());
       expect(outcome.code, ProposalOutcomeCode.blockedNoConnection);
     });
 
     test('the shared helper normalises both outcomes the same way', () async {
       expect(
-        await resolveProposalCloudAccess(
-          () async => CloudAccessStatus.allowed,
-        ),
+        await resolveProposalCloudAccess(() async => CloudAccessStatus.allowed),
         CloudAccessStatus.allowed,
       );
       expect(
-        await resolveProposalCloudAccess(
-          () async => throw Exception('boom'),
-        ),
+        await resolveProposalCloudAccess(() async => throw Exception('boom')),
         CloudAccessStatus.noConnection,
       );
     });
@@ -1176,15 +1277,17 @@ void main() {
       expect(outcome.reason, ProposalFailureReason.firebaseNotReady);
     });
 
-    test('a service built without a gate does not invent a network failure',
-        () async {
-      final outcome = await MealProposalService().proposeMeal(_meal());
-      expect(
-        outcome.code,
-        isNot(ProposalOutcomeCode.blockedNoConnection),
-        reason: 'direct construction has no connectivity plumbing to ask',
-      );
-    });
+    test(
+      'a service built without a gate does not invent a network failure',
+      () async {
+        final outcome = await MealProposalService().proposeMeal(_meal());
+        expect(
+          outcome.code,
+          isNot(ProposalOutcomeCode.blockedNoConnection),
+          reason: 'direct construction has no connectivity plumbing to ask',
+        );
+      },
+    );
   });
 
   // The fourth safeguard: `vault_meals` is public-read (`firestore.rules`), so
@@ -1208,12 +1311,11 @@ void main() {
     MealProposalService probing(
       SharedPreferences prefs,
       Future<bool> Function(List<String> vaultNames) probe,
-    ) =>
-        MealProposalService(
-          prefs: prefs,
-          accessStatus: () async => CloudAccessStatus.allowed,
-          publicVaultDuplicateProbe: probe,
-        );
+    ) => MealProposalService(
+      prefs: prefs,
+      accessStatus: () async => CloudAccessStatus.allowed,
+      publicVaultDuplicateProbe: probe,
+    );
 
     test('a vault hit stops the proposal with its own outcome', () async {
       final prefs = await freshPrefs();
@@ -1228,7 +1330,7 @@ void main() {
       expect(outcome.isSuccess, isFalse);
       // Probed with the payload's stored name first, then the local short name.
       expect(probed, [
-        ['محشي بلدي', 'محشي']
+        ['محشي بلدي', 'محشي'],
       ]);
     });
 
@@ -1236,8 +1338,10 @@ void main() {
       final prefs = await freshPrefs();
       final meal = _meal(id: 22, name: 'كشري');
 
-      final outcome = await probing(prefs, (names) async => true)
-          .proposeMeal(meal);
+      final outcome = await probing(
+        prefs,
+        (names) async => true,
+      ).proposeMeal(meal);
 
       expect(outcome.code, ProposalOutcomeCode.alreadyInPublicVault);
       expect(ProposalQuota(prefs).usedToday(), 0);
@@ -1254,8 +1358,10 @@ void main() {
       final prefs = await freshPrefs();
       await probing(prefs, (names) async => true).proposeMeal(_meal(id: 23));
 
-      final next = await probing(prefs, (names) async => false)
-          .proposeMeal(_meal(id: 24));
+      final next = await probing(
+        prefs,
+        (names) async => false,
+      ).proposeMeal(_meal(id: 24));
 
       // No Firebase exists in a unit test, so the stage right after the
       // pre-flight (anonymous sign-in) is what fails — proof the duplicate
@@ -1280,63 +1386,70 @@ void main() {
       expect(outcome.reason, ProposalFailureReason.firebaseNotReady);
     });
 
-    test('a vault read that throws is swallowed, never reported to the user',
-        () async {
-      final prefs = await freshPrefs();
+    test(
+      'a vault read that throws is swallowed, never reported to the user',
+      () async {
+        final prefs = await freshPrefs();
 
-      for (final probe in <Future<bool> Function(List<String>)>[
-        // Rules/network shaped failures…
-        (names) async => throw FirebaseException(
-              plugin: 'cloud_firestore',
-              code: 'permission-denied',
-              message: 'Missing or insufficient permissions.',
-            ),
-        (names) async => throw TimeoutException('vault never answered'),
-        // …and a Firebase that was never initialised (a plain synchronous
-        // throw, the shape a unit test and a misconfigured build both produce).
-        (names) =>
-            throw StateError("No Firebase App '[DEFAULT]' has been created"),
-      ]) {
-        final outcome = await probing(prefs, probe).proposeMeal(_meal());
+        for (final probe in <Future<bool> Function(List<String>)>[
+          // Rules/network shaped failures…
+          (names) async => throw FirebaseException(
+            plugin: 'cloud_firestore',
+            code: 'permission-denied',
+            message: 'Missing or insufficient permissions.',
+          ),
+          (names) async => throw TimeoutException('vault never answered'),
+          // …and a Firebase that was never initialised (a plain synchronous
+          // throw, the shape a unit test and a misconfigured build both produce).
+          (names) =>
+              throw StateError("No Firebase App '[DEFAULT]' has been created"),
+        ]) {
+          final outcome = await probing(prefs, probe).proposeMeal(_meal());
 
-        expect(
-          outcome.code,
-          isNot(ProposalOutcomeCode.alreadyInPublicVault),
-          reason: 'a check that cannot answer may not claim a duplicate',
-        );
+          expect(
+            outcome.code,
+            isNot(ProposalOutcomeCode.alreadyInPublicVault),
+            reason: 'a check that cannot answer may not claim a duplicate',
+          );
+          expect(outcome.code, ProposalOutcomeCode.failed);
+          expect(
+            outcome.reason,
+            ProposalFailureReason.firebaseNotReady,
+            reason:
+                'the proposal kept going and died at the next stage, as before',
+          );
+          expect(ProposalQuota(prefs).usedToday(), 0);
+        }
+      },
+    );
+
+    test(
+      'a vault read that never answers is cut off by its own deadline',
+      () async {
+        final prefs = await freshPrefs();
+        final never = Completer<bool>();
+        final watch = Stopwatch()..start();
+
+        final outcome = await probing(
+          prefs,
+          (names) => never.future,
+        ).proposeMeal(_meal());
+        watch.stop();
+
         expect(outcome.code, ProposalOutcomeCode.failed);
+        expect(outcome.reason, ProposalFailureReason.firebaseNotReady);
         expect(
-          outcome.reason,
-          ProposalFailureReason.firebaseNotReady,
-          reason: 'the proposal kept going and died at the next stage, as before',
+          watch.elapsed,
+          greaterThanOrEqualTo(MealProposalService.publicVaultReadTimeout),
+          reason: 'the deadline is what released the flow',
         );
-        expect(ProposalQuota(prefs).usedToday(), 0);
-      }
-    });
-
-    test('a vault read that never answers is cut off by its own deadline',
-        () async {
-      final prefs = await freshPrefs();
-      final never = Completer<bool>();
-      final watch = Stopwatch()..start();
-
-      final outcome =
-          await probing(prefs, (names) => never.future).proposeMeal(_meal());
-      watch.stop();
-
-      expect(outcome.code, ProposalOutcomeCode.failed);
-      expect(outcome.reason, ProposalFailureReason.firebaseNotReady);
-      expect(
-        watch.elapsed,
-        greaterThanOrEqualTo(MealProposalService.publicVaultReadTimeout),
-        reason: 'the deadline is what released the flow',
-      );
-      expect(
-        watch.elapsed,
-        lessThan(MealProposalService.publicVaultReadTimeout * 3),
-        reason: 'the pre-flight must not hold the propose button open',
-      );
-    });
+        expect(
+          watch.elapsed,
+          lessThan(MealProposalService.publicVaultReadTimeout * 3),
+          reason: 'the pre-flight must not hold the propose button open',
+        );
+      },
+    );
 
     test('nothing to probe means no network read at all', () async {
       final prefs = await freshPrefs();
@@ -1354,8 +1467,7 @@ void main() {
       expect(outcome.code, isNot(ProposalOutcomeCode.alreadyInPublicVault));
     });
 
-    test('the default probe runs the live query path and cannot block',
-        () async {
+    test('the default probe runs the live query path and cannot block', () async {
       final prefs = await freshPrefs();
 
       // No injected stand-in and no Firebase in this process: `_queryPublicVault`

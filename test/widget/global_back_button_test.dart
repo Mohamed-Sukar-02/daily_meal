@@ -33,7 +33,8 @@ void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     platformCalls = <MethodCall>[];
-    messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
     // Replaces the test binding's default `flutter/platform` handler for the
     // duration of the test only.
     messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
@@ -47,10 +48,12 @@ void main() {
   });
 
   bool tabSelected(WidgetTester tester, String destination) {
-    final widget = tester.widget<Text>(find.descendant(
-      of: find.byKey(ValueKey('nav_destination_$destination')),
-      matching: find.byType(Text),
-    ));
+    final widget = tester.widget<Text>(
+      find.descendant(
+        of: find.byKey(ValueKey('nav_destination_$destination')),
+        matching: find.byType(Text),
+      ),
+    );
     return widget.style?.fontWeight == FontWeight.w700;
   }
 
@@ -72,8 +75,9 @@ void main() {
     await tester.pump();
   }
 
-  String exitToast(WidgetTester tester) =>
-      AppStrings.of(tester.element(find.byType(Scaffold).first)).pressAgainToExit;
+  String exitToast(WidgetTester tester) => AppStrings.of(
+    tester.element(find.byType(Scaffold).first),
+  ).pressAgainToExit;
 
   /// A tab tap that burns as little fake time as the shell needs to switch
   /// (`_navLock` releases on a post-frame callback with a 32 ms fallback).
@@ -89,7 +93,9 @@ void main() {
       platformCalls.any((c) => c.method == 'SystemNavigator.pop');
 
   testWidgets('back on a secondary tab walks to Home without arming the exit '
-      'warning, and the warning then needs its own two presses', (tester) async {
+      'warning, and the warning then needs its own two presses', (
+    tester,
+  ) async {
     final db = await pumpApp(tester);
     await tapNav(tester, 'vault');
     expect(tabSelected(tester, 'vault'), isTrue);
@@ -97,26 +103,45 @@ void main() {
     // Press 1 — on Vault: navigate home. No exit copy, nothing armed.
     await pressBack(tester);
     await tester.pumpAndSettle();
-    expect(tabSelected(tester, 'home'), isTrue,
-        reason: 'back from a secondary tab belongs to that tab: it walks to Home');
-    expect(find.text(exitToast(tester)), findsNothing,
-        reason: 'warning about exiting while the user is still travelling to '
-            'Home is the misleading copy this item is about');
+    expect(
+      tabSelected(tester, 'home'),
+      isTrue,
+      reason: 'back from a secondary tab belongs to that tab: it walks to Home',
+    );
+    expect(
+      find.text(exitToast(tester)),
+      findsNothing,
+      reason:
+          'warning about exiting while the user is still travelling to '
+          'Home is the misleading copy this item is about',
+    );
 
     // Press 2 — now on Home: warn, and only now start the window.
     await pressBack(tester);
-    expect(find.text(exitToast(tester)), findsOneWidget,
-        reason: 'the first press that happens *on* Home owns the warning');
-    expect(appWasAskedToExit(), isFalse,
-        reason: 'one press on Home never exits');
+    expect(
+      find.text(exitToast(tester)),
+      findsOneWidget,
+      reason: 'the first press that happens *on* Home owns the warning',
+    );
+    expect(
+      appWasAskedToExit(),
+      isFalse,
+      reason: 'one press on Home never exits',
+    );
 
     // Press 3 — inside the window: leave, exactly as before.
     await pressBack(tester);
     await tester.pump();
-    expect(appWasAskedToExit(), isTrue,
-        reason: 'the warned-about second press does exit');
-    expect(platformCalls.where((c) => c.method == 'SystemNavigator.pop').length, 1,
-        reason: 'the tab-switch press must not have exited on the way');
+    expect(
+      appWasAskedToExit(),
+      isTrue,
+      reason: 'the warned-about second press does exit',
+    );
+    expect(
+      platformCalls.where((c) => c.method == 'SystemNavigator.pop').length,
+      1,
+      reason: 'the tab-switch press must not have exited on the way',
+    );
 
     await runOutToasts(tester);
     await tearDownApp(tester, db);
@@ -138,11 +163,18 @@ void main() {
     expect(tabSelected(tester, 'home'), isTrue);
 
     await pressBack(tester);
-    expect(appWasAskedToExit(), isFalse,
-        reason: 'a press across a tab change is a first press again, however '
-            'soon it follows the warning it was given');
-    expect(find.text(exitToast(tester)), findsOneWidget,
-        reason: 'and the user is told so again');
+    expect(
+      appWasAskedToExit(),
+      isFalse,
+      reason:
+          'a press across a tab change is a first press again, however '
+          'soon it follows the warning it was given',
+    );
+    expect(
+      find.text(exitToast(tester)),
+      findsOneWidget,
+      reason: 'and the user is told so again',
+    );
 
     // Third press of this new window exits.
     await pressBack(tester);
@@ -153,21 +185,28 @@ void main() {
     await tearDownApp(tester, db);
   });
 
-  testWidgets('back on every secondary tab only changes the tab',
-      (tester) async {
+  testWidgets('back on every secondary tab only changes the tab', (
+    tester,
+  ) async {
     final db = await pumpApp(tester);
 
     for (final destination in destinations.where((d) => d != 'home')) {
       await tapNav(tester, destination);
-      expect(tabSelected(tester, destination), isTrue,
-          reason: 'setup: $destination is on screen');
+      expect(
+        tabSelected(tester, destination),
+        isTrue,
+        reason: 'setup: $destination is on screen',
+      );
       platformCalls.clear();
 
       await pressBack(tester);
       await tester.pumpAndSettle();
 
-      expect(tabSelected(tester, 'home'), isTrue,
-          reason: 'back from $destination belongs to $destination');
+      expect(
+        tabSelected(tester, 'home'),
+        isTrue,
+        reason: 'back from $destination belongs to $destination',
+      );
       expect(find.text(exitToast(tester)), findsNothing);
       expect(appWasAskedToExit(), isFalse);
     }

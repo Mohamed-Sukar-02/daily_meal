@@ -24,50 +24,67 @@ void main() {
       .first;
 
   Future<void> revealSwitch(WidgetTester tester) => tester.scrollUntilVisible(
-        find.byKey(switchKey),
-        200,
-        scrollable: listScrollable,
+    find.byKey(switchKey),
+    200,
+    scrollable: listScrollable,
+  );
+
+  testWidgets(
+    'the switch mirrors the notifier and toggling it writes through',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final db = await pumpApp(tester);
+
+      await tapNav(tester, 'settings');
+      await revealSwitch(tester);
+      await tester.pumpAndSettle();
+      expect(find.byKey(switchKey), findsOneWidget);
+
+      // Read the very same container the app runs on, through the switch's own
+      // element, so this asserts the provider behind the UI and not a copy.
+      final container = ProviderScope.containerOf(
+        tester.element(find.byKey(switchKey)),
+      );
+      expect(
+        container.read(wifiOnlyCloudProvider),
+        isFalse,
+        reason: 'the shipped default is off (see kWifiOnlyCloudDefault)',
+      );
+      expect(tester.widget<Switch>(find.byKey(switchKey)).value, isFalse);
+
+      await tester.tap(find.byKey(switchKey));
+      await tester.pumpAndSettle();
+
+      expect(
+        container.read(wifiOnlyCloudProvider),
+        isTrue,
+        reason: 'the notifier must follow the tap',
+      );
+      expect(
+        tester.widget<Switch>(find.byKey(switchKey)).value,
+        isTrue,
+        reason: 'and the switch must reflect the notifier, not local state',
+      );
+      final prefs = await SharedPreferences.getInstance();
+      expect(
+        prefs.getBool(prefsKey),
+        isTrue,
+        reason: 'the choice has to survive a restart',
       );
 
-  testWidgets('the switch mirrors the notifier and toggling it writes through',
-      (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    final db = await pumpApp(tester);
+      // Turning it back off writes the same key — no sticky "Wi-Fi only".
+      await tester.tap(find.byKey(switchKey));
+      await tester.pumpAndSettle();
+      expect(container.read(wifiOnlyCloudProvider), isFalse);
+      expect(prefs.getBool(prefsKey), isFalse);
 
-    await tapNav(tester, 'settings');
-    await revealSwitch(tester);
-    await tester.pumpAndSettle();
-    expect(find.byKey(switchKey), findsOneWidget);
+      await tearDownApp(tester, db);
+    },
+  );
 
-    // Read the very same container the app runs on, through the switch's own
-    // element, so this asserts the provider behind the UI and not a copy.
-    final container = ProviderScope.containerOf(tester.element(find.byKey(switchKey)));
-    expect(container.read(wifiOnlyCloudProvider), isFalse,
-        reason: 'the shipped default is off (see kWifiOnlyCloudDefault)');
-    expect(tester.widget<Switch>(find.byKey(switchKey)).value, isFalse);
-
-    await tester.tap(find.byKey(switchKey));
-    await tester.pumpAndSettle();
-
-    expect(container.read(wifiOnlyCloudProvider), isTrue,
-        reason: 'the notifier must follow the tap');
-    expect(tester.widget<Switch>(find.byKey(switchKey)).value, isTrue,
-        reason: 'and the switch must reflect the notifier, not local state');
-    final prefs = await SharedPreferences.getInstance();
-    expect(prefs.getBool(prefsKey), isTrue,
-        reason: 'the choice has to survive a restart');
-
-    // Turning it back off writes the same key — no sticky "Wi-Fi only".
-    await tester.tap(find.byKey(switchKey));
-    await tester.pumpAndSettle();
-    expect(container.read(wifiOnlyCloudProvider), isFalse);
-    expect(prefs.getBool(prefsKey), isFalse);
-
-    await tearDownApp(tester, db);
-  });
-
-  testWidgets('a persisted Wi-Fi-only choice shows up on the switch',
-      (tester) async {
+  testWidgets('a persisted Wi-Fi-only choice shows up on the switch', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({prefsKey: true});
     final db = await pumpApp(tester);
 
@@ -75,11 +92,19 @@ void main() {
     await revealSwitch(tester);
     await tester.pumpAndSettle();
 
-    final container = ProviderScope.containerOf(tester.element(find.byKey(switchKey)));
-    expect(container.read(wifiOnlyCloudProvider), isTrue,
-        reason: 'the notifier loads from SharedPreferences on start');
-    expect(tester.widget<Switch>(find.byKey(switchKey)).value, isTrue,
-        reason: 'and the switch renders it');
+    final container = ProviderScope.containerOf(
+      tester.element(find.byKey(switchKey)),
+    );
+    expect(
+      container.read(wifiOnlyCloudProvider),
+      isTrue,
+      reason: 'the notifier loads from SharedPreferences on start',
+    );
+    expect(
+      tester.widget<Switch>(find.byKey(switchKey)).value,
+      isTrue,
+      reason: 'and the switch renders it',
+    );
 
     await tearDownApp(tester, db);
   });

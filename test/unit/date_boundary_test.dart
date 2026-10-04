@@ -10,7 +10,11 @@ void main() {
       final t2 = DateTime(2025, 1, 16, 0, 10);
 
       expect(app_date_utils.isSameLocalDay(t1, t2), false);
-      expect(app_date_utils.daysBetweenLocal(t1, t2), 1, reason: '23:50 and 00:10 next day should be 1 day apart');
+      expect(
+        app_date_utils.daysBetweenLocal(t1, t2),
+        1,
+        reason: '23:50 and 00:10 next day should be 1 day apart',
+      );
     });
 
     test('23:50 and 23:55 same day are same local day', () {
@@ -27,7 +31,11 @@ void main() {
       final daysJan31 = app_date_utils.daysSinceEpoch(jan31);
       final daysFeb1 = app_date_utils.daysSinceEpoch(feb1);
 
-      expect(daysFeb1 - daysJan31, 1, reason: 'Should be 1 day apart, not break on month boundary');
+      expect(
+        daysFeb1 - daysJan31,
+        1,
+        reason: 'Should be 1 day apart, not break on month boundary',
+      );
 
       final feb28 = DateTime(2025, 2, 28);
       final mar1 = DateTime(2025, 3, 1);

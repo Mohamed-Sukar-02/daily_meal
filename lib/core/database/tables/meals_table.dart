@@ -39,9 +39,11 @@ class Meals extends Table {
   TextColumn get carbsType => textEnum<CarbsType>()();
   TextColumn get category => textEnum<MealCategory>()();
   IntColumn get prepTime => integer()(); // in minutes
-  BoolColumn get isFridaySpecial => boolean().withDefault(const Constant(false))();
+  BoolColumn get isFridaySpecial =>
+      boolean().withDefault(const Constant(false))();
   BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
-  BoolColumn get isStarterMeal => boolean().withDefault(const Constant(false))();
+  BoolColumn get isStarterMeal =>
+      boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
   TextColumn get cloudId => text().nullable()();
@@ -83,6 +85,25 @@ extension CarbsTypeX on CarbsType {
   String label(AppStrings strings) => strings.carbsLabel(name);
 
   String get labelArabic => label(const AppStrings(Locale('ar')));
+
+  /// Emoji used by the badge marks, matching [ProteinTypeX.emoji] and the
+  /// quick-add picker so one carb never reads as two different foods.
+  String get emoji {
+    switch (this) {
+      case CarbsType.rice:
+        return '🍚';
+      case CarbsType.pasta:
+        return '🍝';
+      case CarbsType.bread:
+        return '🍞';
+      case CarbsType.potato:
+        return '🥔';
+      case CarbsType.grains:
+        return '🌾';
+      case CarbsType.none:
+        return '🥗';
+    }
+  }
 }
 
 extension MealCategoryX on MealCategory {
@@ -90,4 +111,23 @@ extension MealCategoryX on MealCategory {
   String label(AppStrings strings) => strings.categoryLabel(name);
 
   String get labelArabic => label(const AppStrings(Locale('ar')));
+
+  /// Emoji for the mark a meal falls back to when it has neither a protein nor
+  /// a carb to show.
+  String get emoji {
+    switch (this) {
+      case MealCategory.egyptianTraditional:
+        return '🍲';
+      case MealCategory.ovenBaked:
+        return '🥘';
+      case MealCategory.fastFood:
+        return '🍔';
+      case MealCategory.seafood:
+        return '🦐';
+      case MealCategory.soupStew:
+        return '🍜';
+      case MealCategory.vegetarian:
+        return '🥗';
+    }
+  }
 }

@@ -57,7 +57,9 @@ Future<void> _pumpSheet(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('vault sheet keeps the legacy edit/delete action keys', (tester) async {
+  testWidgets('vault sheet keeps the legacy edit/delete action keys', (
+    tester,
+  ) async {
     await _pumpSheet(tester);
 
     expect(find.byKey(const Key('meal_details_sheet')), findsOneWidget);
@@ -65,28 +67,34 @@ void main() {
     expect(find.byKey(const Key('meal_details_delete_button')), findsOneWidget);
   });
 
-  testWidgets('vault sheet exposes cloud-export and full-details entry points',
-      (tester) async {
-    await _pumpSheet(tester);
+  testWidgets(
+    'vault sheet exposes cloud-export and full-details entry points',
+    (tester) async {
+      await _pumpSheet(tester);
 
-    expect(find.byKey(const Key('meal_details_propose_button')), findsOneWidget);
-    expect(
-      find.byKey(const Key('meal_details_fullscreen_button')),
-      findsOneWidget,
-    );
-    // Both new buttons are enabled for a resolvable vault meal.
-    final propose = tester.widget<OutlinedButton>(
-      find.byKey(const Key('meal_details_propose_button')),
-    );
-    expect(propose.onPressed, isNotNull);
-    final fullscreen = tester.widget<OutlinedButton>(
-      find.byKey(const Key('meal_details_fullscreen_button')),
-    );
-    expect(fullscreen.onPressed, isNotNull);
-  });
+      expect(
+        find.byKey(const Key('meal_details_propose_button')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('meal_details_fullscreen_button')),
+        findsOneWidget,
+      );
+      // Both new buttons are enabled for a resolvable vault meal.
+      final propose = tester.widget<OutlinedButton>(
+        find.byKey(const Key('meal_details_propose_button')),
+      );
+      expect(propose.onPressed, isNotNull);
+      final fullscreen = tester.widget<OutlinedButton>(
+        find.byKey(const Key('meal_details_fullscreen_button')),
+      );
+      expect(fullscreen.onPressed, isNotNull);
+    },
+  );
 
-  testWidgets('history context stays read-only (no action buttons leak in)',
-      (tester) async {
+  testWidgets('history context stays read-only (no action buttons leak in)', (
+    tester,
+  ) async {
     final now = DateTime(2026, 9, 21, 12);
     await tester.pumpWidget(
       ProviderScope(

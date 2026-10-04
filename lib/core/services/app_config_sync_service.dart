@@ -85,7 +85,8 @@ class AppConfigSyncService {
 
     // Listen for transitions to online
     _connectivitySub = Connectivity().onConnectivityChanged.listen((results) {
-      final hasInterface = results.isNotEmpty && !results.contains(ConnectivityResult.none);
+      final hasInterface =
+          results.isNotEmpty && !results.contains(ConnectivityResult.none);
       if (hasInterface) {
         syncWithFirebase(db: db).catchError((e) {
           debugPrint('[AppConfigSyncService] Background sync error: $e');
@@ -103,7 +104,8 @@ class AppConfigSyncService {
   /// If offline, fails gracefully without throwing or blocking UI.
 
   Future<SystemDefaults> syncWithFirebase({AppDatabase? db}) async {
-    if (Platform.environment.containsKey('FLUTTER_TEST')) return getCachedDefaults();
+    if (Platform.environment.containsKey('FLUTTER_TEST'))
+      return getCachedDefaults();
     if (_isSyncing) return getCachedDefaults();
 
     // Quick reachability check
@@ -111,14 +113,18 @@ class AppConfigSyncService {
       timeout: const Duration(seconds: 2),
     );
     if (!reachable) {
-      debugPrint('[AppConfigSyncService] Device is offline, keeping local defaults.');
+      debugPrint(
+        '[AppConfigSyncService] Device is offline, keeping local defaults.',
+      );
       return getCachedDefaults();
     }
 
     // Honour the user's "Cloud on Wi-Fi only" policy — reachability alone is
     // not consent. This runs at startup and on every connectivity change.
     if (!await CloudPolicy.isCloudAllowedNow()) {
-      debugPrint('[AppConfigSyncService] Wi-Fi-only policy active — sync deferred.');
+      debugPrint(
+        '[AppConfigSyncService] Wi-Fi-only policy active — sync deferred.',
+      );
       return getCachedDefaults();
     }
 
@@ -150,7 +156,9 @@ class AppConfigSyncService {
                 chickenCooldownDays: Value(remoteDefaults.chickenCooldownDays),
                 beefCooldownDays: Value(remoteDefaults.beefCooldownDays),
                 fishCooldownDays: Value(remoteDefaults.fishCooldownDays),
-                meatlessCooldownDays: Value(remoteDefaults.meatlessCooldownDays),
+                meatlessCooldownDays: Value(
+                  remoteDefaults.meatlessCooldownDays,
+                ),
                 notificationHour: Value(remoteDefaults.notificationHour),
                 notificationMinute: Value(remoteDefaults.notificationMinute),
               ),
@@ -160,14 +168,20 @@ class AppConfigSyncService {
 
         if (db != null && isFirstRun) {
           _syncStarterMeals(db, isManual: false).catchError((e) {
-            debugPrint('[AppConfigSyncService] Starter meals auto sync error: ');
+            debugPrint(
+              '[AppConfigSyncService] Starter meals auto sync error: ',
+            );
           });
         }
 
-        debugPrint('[AppConfigSyncService] Successfully synced system defaults from Firebase.');
+        debugPrint(
+          '[AppConfigSyncService] Successfully synced system defaults from Firebase.',
+        );
         return remoteDefaults;
       } else {
-        debugPrint('[AppConfigSyncService] admin_config/system_defaults not found on Firebase. Using local defaults.');
+        debugPrint(
+          '[AppConfigSyncService] admin_config/system_defaults not found on Firebase. Using local defaults.',
+        );
       }
     } catch (e) {
       debugPrint('[AppConfigSyncService] Sync failed or offline: ');
@@ -185,8 +199,10 @@ class AppConfigSyncService {
 
   /// Test entry point for the auto-sync path (isManual defaults to false).
   @visibleForTesting
-  Future<void> syncStarterMealsForTest(AppDatabase db, {bool isManual = false}) =>
-      _syncStarterMeals(db, isManual: isManual);
+  Future<void> syncStarterMealsForTest(
+    AppDatabase db, {
+    bool isManual = false,
+  }) => _syncStarterMeals(db, isManual: isManual);
 
   Future<List<RemoteStarterDoc>> _fetchRemoteStarterDocs() async {
     final override = remoteStarterDocsFetcher;
@@ -204,10 +220,13 @@ class AppConfigSyncService {
     ];
   }
 
-  Future<void> _syncStarterMeals(AppDatabase db, {bool isManual = false}) async {
+  Future<void> _syncStarterMeals(
+    AppDatabase db, {
+    bool isManual = false,
+  }) async {
     try {
       await db.mealsDao.deduplicateMeals();
-      
+
       final prefs = await SharedPreferences.getInstance();
       final blacklistedIds = prefs.getStringList('deleted_starter_meals') ?? [];
 
@@ -217,8 +236,10 @@ class AppConfigSyncService {
       // transient permission failure) must never wipe the local starter
       // catalog. Skip the whole pass and keep what the user has.
       if (docs.isEmpty) {
-        debugPrint('[AppConfigSyncService] Starter meals sync: cloud returned '
-            '0 documents — skipping deletions/de-listings.');
+        debugPrint(
+          '[AppConfigSyncService] Starter meals sync: cloud returned '
+          '0 documents — skipping deletions/de-listings.',
+        );
         return;
       }
 
@@ -271,12 +292,19 @@ class AppConfigSyncService {
         if (r == null) continue;
         // Exists in both — update it with cloud properties (including a
         // renamed name), preserving local isFavorite, notes, cooldown, etc.
-        final localPhoto = await MealImageLocalizer.instance
-            .localize(r.data['imageUrl'] as String?);
-        updates.add(_StarterMealUpdate(
+        final localPhoto = await MealImageLocalizer.instance.localize(
+          r.data['imageUrl'] as String?,
+        );
+        updates.add(
+          _StarterMealUpdate(
             l.id,
-            _cloudCompanion(r, localizePhoto: localPhoto, existing: l)
-                .copyWith(isStarterMeal: const Value(true))));
+            _cloudCompanion(
+              r,
+              localizePhoto: localPhoto,
+              existing: l,
+            ).copyWith(isStarterMeal: const Value(true)),
+          ),
+        );
       }
 
       // Genuinely gone from the cloud starter catalog (or user-blacklisted):
@@ -286,9 +314,9 @@ class AppConfigSyncService {
         for (final l in localMeals)
           if (l.isStarterMeal && !matchByLocalId.containsKey(l.id)) l.id,
       ];
-      
+
       final localNames = <String>{
-        for (final l in localMeals) normalizeArabic(l.name.trim())
+        for (final l in localMeals) normalizeArabic(l.name.trim()),
       };
 
       final inserts = <MealsCompanion>[];
@@ -297,18 +325,21 @@ class AppConfigSyncService {
         if (blacklistedIds.contains(doc.id)) continue; // Respect user deletions
         final name = (doc.data['name'] as String? ?? '').trim();
         if (name.isEmpty) continue;
-        
+
         final normalizedName = normalizeArabic(name);
         if (localNames.contains(normalizedName)) continue;
         localNames.add(normalizedName);
-        
-        final localPhoto = await MealImageLocalizer.instance
-            .localize(doc.data['imageUrl'] as String?);
+
+        final localPhoto = await MealImageLocalizer.instance.localize(
+          doc.data['imageUrl'] as String?,
+        );
         final companion = _cloudCompanion(doc, localizePhoto: localPhoto);
-        inserts.add(companion.copyWith(
-          name: Value(name),
-          isStarterMeal: const Value(true),
-        ));
+        inserts.add(
+          companion.copyWith(
+            name: Value(name),
+            isStarterMeal: const Value(true),
+          ),
+        );
       }
 
       await db.transaction(() async {
@@ -330,8 +361,10 @@ class AppConfigSyncService {
           await db.mealsDao.insertMeal(companion);
         }
       });
-      debugPrint('[AppConfigSyncService] Starter meals sync (manual=$isManual) completed successfully: '
-          '${updates.length} updated, ${deListedIds.length} de-listed, ${inserts.length} inserted.');
+      debugPrint(
+        '[AppConfigSyncService] Starter meals sync (manual=$isManual) completed successfully: '
+        '${updates.length} updated, ${deListedIds.length} de-listed, ${inserts.length} inserted.',
+      );
     } catch (e) {
       debugPrint('[AppConfigSyncService] Starter meals sync failed: ');
       if (isManual) rethrow; // Let the UI handle the error
@@ -365,17 +398,24 @@ class AppConfigSyncService {
       // Only touch photoPath when a localized file actually exists. Writing
       // NULL here (cloud doc without imageUrl, or failed download) wiped
       // previously localized/user-set photo on next update.
-      photoPath:
-          localizePhoto != null ? Value(localizePhoto) : const Value.absent(),
+      photoPath: localizePhoto != null
+          ? Value(localizePhoto)
+          : const Value.absent(),
       shortName: Value(rData['shortName'] as String?),
-      proteinType: existing != null &&
+      proteinType:
+          existing != null &&
               MealCloudVocabulary.proteinFoldWouldDowngrade(
-                  existing.proteinType, proteinToken)
+                existing.proteinType,
+                proteinToken,
+              )
           ? const Value.absent()
           : Value(_mapProtein(proteinToken)),
-      carbsType: existing != null &&
+      carbsType:
+          existing != null &&
               MealCloudVocabulary.carbsFoldWouldDowngrade(
-                  existing.carbsType, carbsToken)
+                existing.carbsType,
+                carbsToken,
+              )
           ? const Value.absent()
           : Value(_mapCarbs(carbsToken)),
       category: Value(_mapCategory(rData['category'] as String? ?? 'popular')),
@@ -396,18 +436,28 @@ class AppConfigSyncService {
 
   CarbsType _mapCarbs(String c) => MealCloudVocabulary.carbsFromCloud(c);
 
-  MealCategory _mapCategory(String c) => MealCloudVocabulary.categoryFromCloud(c);
+  MealCategory _mapCategory(String c) =>
+      MealCloudVocabulary.categoryFromCloud(c);
 
   Future<void> _cacheDefaults(SystemDefaults defaults) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('cfg_cooldown_days', defaults.cooldownDays);
-      await prefs.setInt('cfg_chicken_cooldown_days', defaults.chickenCooldownDays);
+      await prefs.setInt(
+        'cfg_chicken_cooldown_days',
+        defaults.chickenCooldownDays,
+      );
       await prefs.setInt('cfg_beef_cooldown_days', defaults.beefCooldownDays);
       await prefs.setInt('cfg_fish_cooldown_days', defaults.fishCooldownDays);
-      await prefs.setInt('cfg_meatless_cooldown_days', defaults.meatlessCooldownDays);
+      await prefs.setInt(
+        'cfg_meatless_cooldown_days',
+        defaults.meatlessCooldownDays,
+      );
       await prefs.setInt('cfg_notification_hour', defaults.notificationHour);
-      await prefs.setInt('cfg_notification_minute', defaults.notificationMinute);
+      await prefs.setInt(
+        'cfg_notification_minute',
+        defaults.notificationMinute,
+      );
       if (defaults.minAppVersion != null) {
         await prefs.setString('cfg_min_app_version', defaults.minAppVersion!);
       }

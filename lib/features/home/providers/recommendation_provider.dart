@@ -42,21 +42,21 @@ final refreshSeedProvider = StateProvider<int>((ref) => 0);
 /// emitted yet. Matches the columns' defaults, so the very first suggestion
 /// pass ranks against the same windows a fresh install actually has.
 AppSettingsData _fallbackSettings() => AppSettingsData(
-      id: 1,
-      cooldownDays: 14,
-      chickenCooldownDays: 2,
-      beefCooldownDays: 2,
-      fishCooldownDays: 4,
-      meatlessCooldownDays: 3,
-      notificationHour: 12,
-      notificationMinute: 0,
-      notificationsEnabled: false,
-      themeMode: AppThemeModePreference.system,
-      language: AppLanguagePreference.ar,
-      isFirstRun: true,
-      recommendationSource: RecommendationSource.vault_only,
-      autoFridayFeastFilter: false,
-    );
+  id: 1,
+  cooldownDays: 14,
+  chickenCooldownDays: 2,
+  beefCooldownDays: 2,
+  fishCooldownDays: 4,
+  meatlessCooldownDays: 3,
+  notificationHour: 12,
+  notificationMinute: 0,
+  notificationsEnabled: false,
+  themeMode: AppThemeModePreference.system,
+  language: AppLanguagePreference.ar,
+  isFirstRun: true,
+  recommendationSource: RecommendationSource.vault_only,
+  autoFridayFeastFilter: false,
+);
 
 /// Fingerprint of everything that is allowed to change *which* meals get
 /// suggested. Deliberately blind to a meal's own cosmetic fields: the drift
@@ -95,12 +95,15 @@ String _eligibilityKey({
   // engine reads that value before the protein windows, so leaving it out of
   // the token would let a meal set to "never again for 30 days" keep the card
   // slot it had earned under the old window.
-  final mealSignature = (meals
-          .map((m) =>
-              '${m.id}:${m.proteinType.name}:${m.carbsType.name}:${m.isFridaySpecial ? 'F' : '-'}:c${m.customCooldownDays ?? '-'}')
-          .toList()
-        ..sort())
-      .join(',');
+  final mealSignature =
+      (meals
+              .map(
+                (m) =>
+                    '${m.id}:${m.proteinType.name}:${m.carbsType.name}:${m.isFridaySpecial ? 'F' : '-'}:c${m.customCooldownDays ?? '-'}',
+              )
+              .toList()
+            ..sort())
+          .join(',');
 
   // WHY newest-cooked-day-per-meal instead of history.length: the engine only
   // ever reads that same map (`lastCookedByMealId`), so the count missed real
@@ -137,9 +140,10 @@ String _eligibilityKey({
 }
 
 final todayRecommendationsProvider =
-    NotifierProvider<TodayRecommendationsNotifier, AsyncValue<RecommendationResult<Meal>>>(
-  TodayRecommendationsNotifier.new,
-);
+    NotifierProvider<
+      TodayRecommendationsNotifier,
+      AsyncValue<RecommendationResult<Meal>>
+    >(TodayRecommendationsNotifier.new);
 
 class TodayRecommendationsNotifier
     extends Notifier<AsyncValue<RecommendationResult<Meal>>> {
@@ -169,7 +173,8 @@ class TodayRecommendationsNotifier
       return AsyncValue.error(settingsAsync.error!, settingsAsync.stackTrace!);
     }
 
-    final isInitialLoading = (mealsAsync.isLoading && !mealsAsync.hasValue) ||
+    final isInitialLoading =
+        (mealsAsync.isLoading && !mealsAsync.hasValue) ||
         (historyAsync.isLoading && !historyAsync.hasValue) ||
         (settingsAsync.isLoading && !settingsAsync.hasValue);
     if (isInitialLoading) {
@@ -196,13 +201,15 @@ class TodayRecommendationsNotifier
       final byId = {for (final m in meals) m.id: m};
       final fresh = pinnedIds.map((id) => byId[id]).whereType<Meal>().toList();
       if (fresh.length == pinnedIds.length) {
-        return AsyncValue.data(RecommendationResult<Meal>(
-          recommendations: fresh,
-          relaxationLevel: pinned.relaxationLevel,
-          isEmptyVault: pinned.isEmptyVault,
-          computedDate: pinned.computedDate,
-          repeatedIds: pinned.repeatedIds,
-        ));
+        return AsyncValue.data(
+          RecommendationResult<Meal>(
+            recommendations: fresh,
+            relaxationLevel: pinned.relaxationLevel,
+            isEmptyVault: pinned.isEmptyVault,
+            computedDate: pinned.computedDate,
+            repeatedIds: pinned.repeatedIds,
+          ),
+        );
       }
     }
 
@@ -232,7 +239,6 @@ class TodayRecommendationsNotifier
       return AsyncValue.error(err, st);
     }
   }
-
 }
 
 /// Vault size measured against the longest cooldown window in force — the
@@ -294,7 +300,11 @@ class RecommendationController extends AsyncNotifier<void> {
   @override
   FutureOr<void> build() {}
 
-  Future<int> logCookedToday(Meal meal, {DateTime? cookedAt, String? notes}) async {
+  Future<int> logCookedToday(
+    Meal meal, {
+    DateTime? cookedAt,
+    String? notes,
+  }) async {
     state = const AsyncValue.loading();
     try {
       final db = ref.read(appDatabaseProvider);
@@ -319,7 +329,11 @@ class RecommendationController extends AsyncNotifier<void> {
   Future<int> markCookedToday(Meal meal, {DateTime? cookedAt, String? notes}) =>
       logCookedToday(meal, cookedAt: cookedAt, notes: notes);
 
-  Future<int> logLeftover(Meal meal, {DateTime? cookedAt, String? notes}) async {
+  Future<int> logLeftover(
+    Meal meal, {
+    DateTime? cookedAt,
+    String? notes,
+  }) async {
     state = const AsyncValue.loading();
     try {
       final db = ref.read(appDatabaseProvider);
@@ -460,5 +474,5 @@ class RecommendationController extends AsyncNotifier<void> {
 
 final recommendationControllerProvider =
     AsyncNotifierProvider<RecommendationController, void>(() {
-  return RecommendationController();
-});
+      return RecommendationController();
+    });

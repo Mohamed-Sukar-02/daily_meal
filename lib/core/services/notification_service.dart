@@ -13,7 +13,8 @@ class NotificationService {
   static final NotificationService instance = NotificationService._internal();
   NotificationService._internal();
 
-  final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _plugin =
+      FlutterLocalNotificationsPlugin();
 
   /// Invoked when the user taps a system notification. The payload is the
   /// route the notification was created for, and the app's root wires this to
@@ -34,9 +35,8 @@ class NotificationService {
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    const InitializationSettings initializationSettings = InitializationSettings(
-      android: initializationSettingsAndroid,
-    );
+    const InitializationSettings initializationSettings =
+        InitializationSettings(android: initializationSettingsAndroid);
 
     await _plugin.initialize(
       initializationSettings,
@@ -66,18 +66,28 @@ class NotificationService {
     if (kIsWeb) return true;
     if (Platform.isAndroid) {
       final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
-          _plugin.resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>();
-      final granted = await androidImplementation?.requestNotificationsPermission();
-      // Exact alarms is a separate scheduling permission; prompt for it but don't
-      // block on the result. Scheduling re-checks it live via
-      // canScheduleExactNotifications(), so no value is cached here.
-      try {
-        await androidImplementation?.requestExactAlarmsPermission();
-      } catch (_) {}
+          _plugin
+              .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin
+              >();
+      final granted = await androidImplementation
+          ?.requestNotificationsPermission();
       // granted == null => platform < Android 13, permission is implicitly granted
       if (granted == null) return true;
       return granted;
+    }
+    if (Platform.isIOS) {
+      final IOSFlutterLocalNotificationsPlugin? iosImplementation =
+          _plugin
+              .resolvePlatformSpecificImplementation<
+                IOSFlutterLocalNotificationsPlugin
+              >();
+      final granted = await iosImplementation?.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      return granted ?? true;
     }
     return true;
   }
@@ -111,30 +121,40 @@ class NotificationService {
     final now = tz.TZDateTime.now(tz.local);
     // The floor the first occurrence is measured from: today, or the day after
     // when today has already been answered.
-    final floor =
-        skipRestOfToday ? now.add(const Duration(days: 1)) : now;
-    tz.TZDateTime scheduledDate =
-        tz.TZDateTime(tz.local, floor.year, floor.month, floor.day, hour, minute);
+    final floor = skipRestOfToday ? now.add(const Duration(days: 1)) : now;
+    tz.TZDateTime scheduledDate = tz.TZDateTime(
+      tz.local,
+      floor.year,
+      floor.month,
+      floor.day,
+      hour,
+      minute,
+    );
 
     if (scheduledDate.isBefore(floor)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
 
-    final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'daily_meal_channel',
-      strings.localNotificationChannelName,
-      channelDescription: strings.localNotificationDescription,
-      importance: Importance.high,
-      priority: Priority.high,
-    );
+    final AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+          'daily_meal_channel',
+          strings.localNotificationChannelName,
+          channelDescription: strings.localNotificationDescription,
+          importance: Importance.high,
+          priority: Priority.high,
+        );
 
-    final NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
+    final NotificationDetails platformDetails = NotificationDetails(
+      android: androidDetails,
+    );
 
     bool canExact = false;
     if (Platform.isAndroid) {
       try {
-        final androidImpl = _plugin.resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
+        final androidImpl = _plugin
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >();
         canExact = await androidImpl?.canScheduleExactNotifications() ?? false;
       } catch (_) {
         canExact = false;
@@ -201,9 +221,7 @@ class NotificationService {
       priority: Priority.high,
       showWhen: true,
     );
-    final details = NotificationDetails(
-      android: androidDetails,
-    );
+    final details = NotificationDetails(android: androidDetails);
     await _plugin.show(id, title, body, details, payload: payload);
   }
 }

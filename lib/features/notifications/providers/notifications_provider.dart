@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/database/database_providers.dart';
+import '../../../core/navigation/notification_route.dart';
 import '../../../core/services/device_profile.dart';
 import '../../settings/providers/settings_providers.dart';
 import '../data/remote_notification_service.dart';
@@ -38,8 +39,8 @@ class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
   NotificationsNotifier({
     RemoteNotificationService? service,
     required Future<DeviceProfile> deviceProfile,
-  })  : _service = service ?? RemoteNotificationService(),
-        super(const []) {
+  }) : _service = service ?? RemoteNotificationService(),
+       super(const []) {
     _start(deviceProfile);
   }
 
@@ -75,7 +76,8 @@ class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
       },
       // The service already absorbs read failures into a closed stream; this is
       // the belt-and-braces path for anything raised below it.
-      onError: (Object e) => debugPrint('NotificationsNotifier: feed error: $e'),
+      onError: (Object e) =>
+          debugPrint('NotificationsNotifier: feed error: $e'),
     );
   }
 
@@ -137,13 +139,32 @@ class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
   }
 }
 
-final notificationsProvider = StateNotifierProvider<NotificationsNotifier, List<NotificationItem>>((ref) {
-  return NotificationsNotifier(
-    deviceProfile: ref.watch(deviceProfileProvider.future),
-  );
-});
+final notificationsProvider =
+    StateNotifierProvider<NotificationsNotifier, List<NotificationItem>>((ref) {
+      return NotificationsNotifier(
+        deviceProfile: ref.watch(deviceProfileProvider.future),
+      );
+    });
 
 final unreadNotificationsProvider = Provider<bool>((ref) {
   final notifications = ref.watch(notificationsProvider);
   return notifications.any((item) => !item.isRead);
 });
+
+/// The photograph of the meal a broadcast is about, read off the vault row its
+/// own route points at.
+///
+/// The admin panel sends text and a route, never a picture, so the meal behind
+/// that route is the only place a photo can come from. `null` covers every miss
+/// at once: no meal in the route, the meal was deleted, or it has no photo —
+/// the card then falls back to its type glyph.
+final notificationMealPhotoProvider =
+    FutureProvider.family<String?, MealTarget>((ref, target) async {
+      final dao = ref.watch(mealsDaoProvider);
+      final localId = target.localId;
+      final meal = localId != null
+          ? await dao.getMealById(localId)
+          : await dao.getMealByCloudId(target.cloudId!);
+      final path = meal?.photoPath?.trim() ?? '';
+      return path.isEmpty ? null : path;
+    });

@@ -28,8 +28,10 @@ class MoreFavoritesGrid extends ConsumerWidget {
 
     return favAsync.when(
       data: (allFavs) {
-        final items =
-            allFavs.where((m) => m.id != currentMealId).take(6).toList();
+        final items = allFavs
+            .where((m) => m.id != currentMealId)
+            .take(6)
+            .toList();
         if (items.isEmpty) return const SizedBox.shrink();
 
         return Padding(

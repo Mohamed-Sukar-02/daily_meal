@@ -17,7 +17,8 @@ class BlinkingCard extends StatefulWidget {
   State<BlinkingCard> createState() => _BlinkingCardState();
 }
 
-class _BlinkingCardState extends State<BlinkingCard> with SingleTickerProviderStateMixin {
+class _BlinkingCardState extends State<BlinkingCard>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<Color?> _colorAnimation;
 
@@ -36,10 +37,10 @@ class _BlinkingCardState extends State<BlinkingCard> with SingleTickerProviderSt
 
   void _setupAnimation() {
     final baseColor = AppPalette.card(widget.brightness);
-    final highlightColor = widget.brightness == Brightness.dark 
-        ? Colors.white.withOpacity(0.15) 
+    final highlightColor = widget.brightness == Brightness.dark
+        ? Colors.white.withOpacity(0.15)
         : Colors.black.withOpacity(0.15);
-    
+
     _colorAnimation = TweenSequence<Color?>([
       TweenSequenceItem(
         weight: 30,

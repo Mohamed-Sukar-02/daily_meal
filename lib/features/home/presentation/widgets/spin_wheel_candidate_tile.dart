@@ -174,8 +174,10 @@ class _TileSurfacePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-    final rrect =
-        RRect.fromRectAndRadius(rect, const Radius.circular(SpinWheelCandidateTile.radius));
+    final rrect = RRect.fromRectAndRadius(
+      rect,
+      const Radius.circular(SpinWheelCandidateTile.radius),
+    );
 
     // +1 / -1 so gradients and the glow follow the orb to the correct edge.
     final orbSide = isRtl ? 1.0 : -1.0;

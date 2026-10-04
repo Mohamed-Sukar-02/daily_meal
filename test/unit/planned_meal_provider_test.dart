@@ -67,9 +67,13 @@ void main() {
       await PlannedMeal.plan(9, now: tuesdayNight);
 
       await PlannedMeal.clearIfMatches(7, now: tuesdayNight);
-      expect(await PlannedMeal.current(now: tuesdayNight), 9,
-          reason: 'withdrawing a newer decision than the one offered is worse '
-              'than a tap that does nothing');
+      expect(
+        await PlannedMeal.current(now: tuesdayNight),
+        9,
+        reason:
+            'withdrawing a newer decision than the one offered is worse '
+            'than a tap that does nothing',
+      );
 
       await PlannedMeal.clearIfMatches(9, now: tuesdayNight);
       expect(await PlannedMeal.current(now: tuesdayNight), isNull);

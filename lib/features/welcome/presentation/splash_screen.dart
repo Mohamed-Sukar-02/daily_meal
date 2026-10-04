@@ -179,8 +179,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   builder: (context, constraints) {
                     // The wordmark is dense illustration — it needs real pixel
                     // room or the spice textures collapse into mush.
-                    final logoSize =
-                        (constraints.maxWidth * 0.52).clamp(160.0, 230.0);
+                    final logoSize = (constraints.maxWidth * 0.52).clamp(
+                      160.0,
+                      230.0,
+                    );
 
                     return Column(
                       mainAxisAlignment: MainAxisAlignment.center,

@@ -62,8 +62,16 @@ void main() {
       await db.mealHistoryDao.deleteHistoryEntry(id1);
 
       history = await db.mealHistoryDao.getAllHistory();
-      expect(history.any((h) => h.id == id1), false, reason: 'id1 should be deleted');
-      expect(history.any((h) => h.id == id2), true, reason: 'id2 should still exist - undo must delete by id not last row');
+      expect(
+        history.any((h) => h.id == id1),
+        false,
+        reason: 'id1 should be deleted',
+      );
+      expect(
+        history.any((h) => h.id == id2),
+        true,
+        reason: 'id2 should still exist - undo must delete by id not last row',
+      );
 
       await db.mealHistoryDao.deleteHistoryEntry(id2);
       history = await db.mealHistoryDao.getAllHistory();

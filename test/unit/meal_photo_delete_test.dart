@@ -15,19 +15,23 @@ Future<AppDatabase> _openDb() async {
   return db;
 }
 
-Future<Meal> _insertMeal(AppDatabase db, {
+Future<Meal> _insertMeal(
+  AppDatabase db, {
   required String name,
   String? photoPath,
 }) async {
-  final id = await db.mealsDao.insertMeal(MealsCompanion(
-    name: drift.Value(name),
-    proteinType: const drift.Value(ProteinType.chicken),
-    carbsType: const drift.Value(CarbsType.rice),
-    category: const drift.Value(MealCategory.egyptianTraditional),
-    prepTime: const drift.Value(30),
-    photoPath:
-        photoPath == null ? const drift.Value(null) : drift.Value(photoPath),
-  ));
+  final id = await db.mealsDao.insertMeal(
+    MealsCompanion(
+      name: drift.Value(name),
+      proteinType: const drift.Value(ProteinType.chicken),
+      carbsType: const drift.Value(CarbsType.rice),
+      category: const drift.Value(MealCategory.egyptianTraditional),
+      prepTime: const drift.Value(30),
+      photoPath: photoPath == null
+          ? const drift.Value(null)
+          : drift.Value(photoPath),
+    ),
+  );
   return (await db.mealsDao.getMealById(id))!;
 }
 
@@ -48,33 +52,44 @@ void main() {
     if (await dir.exists()) await dir.delete(recursive: true);
   });
 
-  test('deleting a meal deletes the photo file it was the only owner of',
-      () async {
-    final db = await _openDb();
-    final file = await _photo(dir, 'solo.jpg');
-    final meal = await _insertMeal(db, name: 'Solo', photoPath: file.path);
+  test(
+    'deleting a meal deletes the photo file it was the only owner of',
+    () async {
+      final db = await _openDb();
+      final file = await _photo(dir, 'solo.jpg');
+      final meal = await _insertMeal(db, name: 'Solo', photoPath: file.path);
 
-    final deleted = await db.mealsDao.deleteMeal(meal.id);
+      final deleted = await db.mealsDao.deleteMeal(meal.id);
 
-    expect(deleted, 1);
-    expect(await db.mealsDao.getMealById(meal.id), isNull);
-    expect(file.existsSync(), isFalse,
-        reason: 'the row is gone, so its bytes are the leak this fixes');
-  });
+      expect(deleted, 1);
+      expect(await db.mealsDao.getMealById(meal.id), isNull);
+      expect(
+        file.existsSync(),
+        isFalse,
+        reason: 'the row is gone, so its bytes are the leak this fixes',
+      );
+    },
+  );
 
   test('a photo shared with a surviving meal is kept', () async {
     final db = await _openDb();
     // Content-addressed cloud downloads: two vault entries from one URL point
     // at the same file, and deleting it for the first would break the second.
     final file = await _photo(dir, 'shared.jpg');
-    final first =
-        await _insertMeal(db, name: 'First copy', photoPath: file.path);
+    final first = await _insertMeal(
+      db,
+      name: 'First copy',
+      photoPath: file.path,
+    );
     await _insertMeal(db, name: 'Second copy', photoPath: file.path);
 
     await db.mealsDao.deleteMeal(first.id);
 
-    expect(file.existsSync(), isTrue,
-        reason: 'the surviving meal still renders this file');
+    expect(
+      file.existsSync(),
+      isTrue,
+      reason: 'the surviving meal still renders this file',
+    );
   });
 
   test('a remote photo is left alone', () async {
@@ -84,8 +99,11 @@ void main() {
 
     await db.mealsDao.deleteMeal(meal.id);
 
-    expect(await db.mealsDao.getMealById(meal.id), isNull,
-        reason: 'the row is deleted normally');
+    expect(
+      await db.mealsDao.getMealById(meal.id),
+      isNull,
+      reason: 'the row is deleted normally',
+    );
   });
 
   test('a bundled asset photo is left alone', () async {
@@ -99,9 +117,13 @@ void main() {
 
     await db.mealsDao.deleteMeal(meal.id);
 
-    expect(File(asset).existsSync(), isFalse,
-        reason: 'an absolute path under an assets/ folder is still ours to '
-            'free — the guard is about the assets/ reference form');
+    expect(
+      File(asset).existsSync(),
+      isFalse,
+      reason:
+          'an absolute path under an assets/ folder is still ours to '
+          'free — the guard is about the assets/ reference form',
+    );
 
     final relative = await _insertMeal(
       db,
@@ -110,9 +132,13 @@ void main() {
     );
     await db.mealsDao.deleteMeal(relative.id);
 
-    expect(File('assets/welcome_hero.jpg').existsSync(), isTrue,
-        reason: 'an assets/ reference is a file bundled with the app, never a '
-            'meal photo to delete');
+    expect(
+      File('assets/welcome_hero.jpg').existsSync(),
+      isTrue,
+      reason:
+          'an assets/ reference is a file bundled with the app, never a '
+          'meal photo to delete',
+    );
   });
 
   test('a missing file is not an error', () async {
@@ -125,8 +151,13 @@ void main() {
 
     final deleted = await db.mealsDao.deleteMeal(meal.id);
 
-    expect(deleted, 1, reason: 'the delete must not throw when the bytes are '
-        'already missing — the row was still removed');
+    expect(
+      deleted,
+      1,
+      reason:
+          'the delete must not throw when the bytes are '
+          'already missing — the row was still removed',
+    );
   });
 
   test('a meal without a photo deletes nothing on disk', () async {

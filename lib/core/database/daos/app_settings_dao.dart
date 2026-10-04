@@ -7,7 +7,8 @@ import '../../services/app_config_sync_service.dart';
 part 'app_settings_dao.g.dart';
 
 @DriftAccessor(tables: [AppSettings])
-class AppSettingsDao extends DatabaseAccessor<AppDatabase> with _$AppSettingsDaoMixin {
+class AppSettingsDao extends DatabaseAccessor<AppDatabase>
+    with _$AppSettingsDaoMixin {
   AppSettingsDao(super.db);
 
   static const int settingsRowId = 1;
@@ -38,16 +39,16 @@ class AppSettingsDao extends DatabaseAccessor<AppDatabase> with _$AppSettingsDao
     return (select(appSettings)..where((t) => t.id.equals(settingsRowId)))
         .watchSingleOrNull()
         .asyncMap((setting) async {
-      if (setting != null) return setting;
-      return await ensureSettings();
-    });
+          if (setting != null) return setting;
+          return await ensureSettings();
+        });
   }
 
   /// Get current AppSettings snapshot; guarantees fallback if missing
   Future<AppSettingsData> getSettings() async {
-    final existing = await (select(appSettings)
-          ..where((t) => t.id.equals(settingsRowId)))
-        .getSingleOrNull();
+    final existing = await (select(
+      appSettings,
+    )..where((t) => t.id.equals(settingsRowId))).getSingleOrNull();
 
     if (existing != null) return existing;
     return await ensureSettings();
@@ -55,22 +56,25 @@ class AppSettingsDao extends DatabaseAccessor<AppDatabase> with _$AppSettingsDao
 
   /// Ensures singleton settings row exists
   Future<AppSettingsData> ensureSettings() async {
-    final existing = await (select(appSettings)
-          ..where((t) => t.id.equals(settingsRowId)))
-        .getSingleOrNull();
+    final existing = await (select(
+      appSettings,
+    )..where((t) => t.id.equals(settingsRowId))).getSingleOrNull();
     if (existing != null) return existing;
 
-    await into(appSettings).insert(
-      defaultSettings,
-      mode: InsertMode.insertOrIgnore,
-    );
-    return (select(appSettings)..where((t) => t.id.equals(settingsRowId))).getSingle();
+    await into(
+      appSettings,
+    ).insert(defaultSettings, mode: InsertMode.insertOrIgnore);
+    return (select(
+      appSettings,
+    )..where((t) => t.id.equals(settingsRowId))).getSingle();
   }
 
   /// Update singleton settings row
   Future<void> updateSettings(AppSettingsCompanion companion) async {
     await ensureSettings();
-    await (update(appSettings)..where((t) => t.id.equals(settingsRowId))).write(companion);
+    await (update(
+      appSettings,
+    )..where((t) => t.id.equals(settingsRowId))).write(companion);
   }
 
   /// Update cooldown duration in days (clamped between 0 and 60 days, 0 = disabled)
@@ -81,22 +85,30 @@ class AppSettingsDao extends DatabaseAccessor<AppDatabase> with _$AppSettingsDao
 
   Future<void> updateChickenCooldownDays(int days) async {
     final clamped = days.clamp(0, 60);
-    await updateSettings(AppSettingsCompanion(chickenCooldownDays: Value(clamped)));
+    await updateSettings(
+      AppSettingsCompanion(chickenCooldownDays: Value(clamped)),
+    );
   }
 
   Future<void> updateBeefCooldownDays(int days) async {
     final clamped = days.clamp(0, 60);
-    await updateSettings(AppSettingsCompanion(beefCooldownDays: Value(clamped)));
+    await updateSettings(
+      AppSettingsCompanion(beefCooldownDays: Value(clamped)),
+    );
   }
 
   Future<void> updateFishCooldownDays(int days) async {
     final clamped = days.clamp(0, 60);
-    await updateSettings(AppSettingsCompanion(fishCooldownDays: Value(clamped)));
+    await updateSettings(
+      AppSettingsCompanion(fishCooldownDays: Value(clamped)),
+    );
   }
 
   Future<void> updateMeatlessCooldownDays(int days) async {
     final clamped = days.clamp(0, 60);
-    await updateSettings(AppSettingsCompanion(meatlessCooldownDays: Value(clamped)));
+    await updateSettings(
+      AppSettingsCompanion(meatlessCooldownDays: Value(clamped)),
+    );
   }
 
   /// Update theme mode preference
@@ -125,7 +137,9 @@ class AppSettingsDao extends DatabaseAccessor<AppDatabase> with _$AppSettingsDao
 
   /// Toggle notification enabled status
   Future<void> toggleNotifications(bool enabled) async {
-    await updateSettings(AppSettingsCompanion(notificationsEnabled: Value(enabled)));
+    await updateSettings(
+      AppSettingsCompanion(notificationsEnabled: Value(enabled)),
+    );
   }
 
   /// Alias for toggleNotifications
@@ -140,7 +154,7 @@ class AppSettingsDao extends DatabaseAccessor<AppDatabase> with _$AppSettingsDao
 
   /// Update welcome data (name, email, gender, avatar) and set isFirstRun to false
   Future<void> updateWelcomeData({
-    required String userName, 
+    required String userName,
     String? userEmail,
     String? userGender,
     String? userAvatar,
@@ -176,6 +190,8 @@ class AppSettingsDao extends DatabaseAccessor<AppDatabase> with _$AppSettingsDao
       recommendationSource: const Value(RecommendationSource.vault_only),
       autoFridayFeastFilter: const Value(false),
     );
-    await (update(appSettings)..where((t) => t.id.equals(settingsRowId))).write(companion);
+    await (update(
+      appSettings,
+    )..where((t) => t.id.equals(settingsRowId))).write(companion);
   }
 }

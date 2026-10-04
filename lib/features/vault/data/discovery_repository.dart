@@ -9,12 +9,13 @@ import 'models/cloud_meal.dart';
 /// Carries the original error but no display text — the UI localises the
 /// message (`AppStrings.discoveryFetchFailed`).
 class CloudMealsFetchException implements Exception {
+  final String errorCode;
   final Object cause;
 
-  const CloudMealsFetchException(this.cause);
+  const CloudMealsFetchException(this.errorCode, this.cause);
 
   @override
-  String toString() => 'CloudMealsFetchException: $cause';
+  String toString() => 'CloudMealsFetchException ($errorCode): $cause';
 }
 
 final discoveryRepositoryProvider = Provider<DiscoveryRepository>((ref) {
@@ -33,7 +34,7 @@ class DiscoveryRepository {
   /// offline boot or tests — so discovery renders an empty state instead of a
   /// `[core/no-app]` crash.
   Future<List<CloudMeal>> fetchPublicMeals({
-    int limit = 50,
+    int limit = 500,
     DocumentSnapshot? startAfter,
   }) async {
     final firestore = _firestore;
@@ -42,15 +43,27 @@ class DiscoveryRepository {
       var query = firestore
           .collection('vault_meals')
           .where('status', isEqualTo: 'approved')
+          .orderBy('createdAt', descending: true)
           .limit(limit);
       if (startAfter != null) {
         query = query.startAfterDocument(startAfter);
       }
       final snapshot = await query.get();
 
-      return snapshot.docs.map((doc) => CloudMeal.fromMap(doc.data(), doc.id)).toList();
+      return snapshot.docs
+          .map((doc) => CloudMeal.fromMap(doc.data(), doc.id))
+          .toList();
     } catch (e) {
-      throw CloudMealsFetchException(e);
+      String errorCode = '500';
+      if (e is FirebaseException) {
+        if (e.code == 'failed-precondition')
+          errorCode = '101';
+        else if (e.code == 'permission-denied')
+          errorCode = '403';
+        else if (e.code == 'unavailable')
+          errorCode = '503';
+      }
+      throw CloudMealsFetchException(errorCode, e);
     }
   }
 
@@ -69,7 +82,16 @@ class DiscoveryRepository {
       final meal = CloudMeal.fromMap(data, doc.id);
       return meal.status == 'approved' ? meal : null;
     } catch (e) {
-      throw CloudMealsFetchException(e);
+      String errorCode = '500';
+      if (e is FirebaseException) {
+        if (e.code == 'failed-precondition')
+          errorCode = '101';
+        else if (e.code == 'permission-denied')
+          errorCode = '403';
+        else if (e.code == 'unavailable')
+          errorCode = '503';
+      }
+      throw CloudMealsFetchException(errorCode, e);
     }
   }
 }

@@ -36,11 +36,16 @@ class NotificationSyncService {
 
       // On first launch, seed with current time so we don't spam historical notifications
       if (lastCheckMillis == null || lastCheckMillis == 0) {
-        await prefs.setInt(_kLastCheckKey, DateTime.now().millisecondsSinceEpoch);
+        await prefs.setInt(
+          _kLastCheckKey,
+          DateTime.now().millisecondsSinceEpoch,
+        );
         return;
       }
 
-      final lastCheckTime = DateTime.fromMillisecondsSinceEpoch(lastCheckMillis);
+      final lastCheckTime = DateTime.fromMillisecondsSinceEpoch(
+        lastCheckMillis,
+      );
 
       final snapshot = await FirebaseFirestore.instance
           .collection('admin_notifications')
@@ -63,7 +68,8 @@ class NotificationSyncService {
         // broadcast this build cannot place — a `v` it has never seen, a `kind`
         // outside the three it knows — stays silent, and stays silent ahead of
         // the watermark and the per-launch cap so it spends neither.
-        if (!NotificationSegment.parse(data['segment']).matchesDevice(profile)) continue;
+        if (!NotificationSegment.parse(data['segment']).matchesDevice(profile))
+          continue;
 
         final sentAt = (data['sentAt'] as Timestamp?)?.toDate();
         if (sentAt == null) continue;
@@ -77,8 +83,12 @@ class NotificationSyncService {
           if (shownCount >= maxShownPerLaunch) continue;
           shownCount++;
 
-          var title = isEn ? (data['titleEn']?.toString() ?? '') : (data['titleAr']?.toString() ?? '');
-          var body = isEn ? (data['messageEn']?.toString() ?? '') : (data['messageAr']?.toString() ?? '');
+          var title = isEn
+              ? (data['titleEn']?.toString() ?? '')
+              : (data['titleAr']?.toString() ?? '');
+          var body = isEn
+              ? (data['messageEn']?.toString() ?? '')
+              : (data['messageAr']?.toString() ?? '');
           if (title.length > 80) title = '${title.substring(0, 77)}...';
           if (body.length > 240) body = '${body.substring(0, 237)}...';
 

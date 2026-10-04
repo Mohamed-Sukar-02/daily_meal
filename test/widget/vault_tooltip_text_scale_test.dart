@@ -44,33 +44,44 @@ void main() {
     expect(g.bubbleWidth, closeTo(_bubbleWidth, 0.5));
     expect(g.bubbleHeight, closeTo(_bubbleHeight, 0.5));
 
-    debugPrint('tooltip 1.5x/360: label top ${g.label.top.toStringAsFixed(3)} '
-        'bottom ${g.label.bottom.toStringAsFixed(3)} '
-        'height ${g.label.height.toStringAsFixed(3)} '
-        '(body ends at ${_bubbleHeight - _tailHeight})');
+    debugPrint(
+      'tooltip 1.5x/360: label top ${g.label.top.toStringAsFixed(3)} '
+      'bottom ${g.label.bottom.toStringAsFixed(3)} '
+      'height ${g.label.height.toStringAsFixed(3)} '
+      '(body ends at ${_bubbleHeight - _tailHeight})',
+    );
 
     // The tail line is the edge the 39.675px label used to hang 3.7px past at
     // this scale — that is the "over the FAB" of the bug report.
     _expectInsideBody(g.label, 'the "add in 10 seconds" label');
-    expect(g.label.height, greaterThan(20.0),
-        reason: 'the label scales down to fit, it must not be crushed away');
+    expect(
+      g.label.height,
+      greaterThan(20.0),
+      reason: 'the label scales down to fit, it must not be crushed away',
+    );
 
-    expect(tester.takeException(), isNull,
-        reason: 'the tooltip must not overflow its bubble at 1.5x text');
+    expect(
+      tester.takeException(),
+      isNull,
+      reason: 'the tooltip must not overflow its bubble at 1.5x text',
+    );
     await _close(tester, db);
   });
 
-  testWidgets('FAB tooltip keeps its designed label geometry at 1.0x text',
-      (tester) async {
+  testWidgets('FAB tooltip keeps its designed label geometry at 1.0x text', (
+    tester,
+  ) async {
     final db = await _openVault(tester, textScale: 1.0);
     final g = _measureTooltip(tester);
 
     expect(g.bubbleWidth, closeTo(_bubbleWidth, 0.5));
     expect(g.bubbleHeight, closeTo(_bubbleHeight, 0.5));
 
-    debugPrint('tooltip 1.0x/360: label top ${g.label.top.toStringAsFixed(3)} '
-        'bottom ${g.label.bottom.toStringAsFixed(3)} '
-        'height ${g.label.height.toStringAsFixed(3)}');
+    debugPrint(
+      'tooltip 1.0x/360: label top ${g.label.top.toStringAsFixed(3)} '
+      'bottom ${g.label.bottom.toStringAsFixed(3)} '
+      'height ${g.label.height.toStringAsFixed(3)}',
+    );
 
     // 2 lines of 11.5 x 1.15 = 13.225px of line box, centred in the 32px
     // label area the 4/11 gutters leave. Measured on this harness with the
@@ -78,10 +89,16 @@ void main() {
     // painted box pair is 25.362px tall, top at 7.638, bottom at 33.000 —
     // the same numbers with the guard in and with it taken out (checked on
     // the reverted widget), i.e. scaleDown is inert at a normal text scale.
-    expect(g.label.height, closeTo(25.362, 0.6),
-        reason: 'the guard must be inert at a normal text scale');
-    expect(g.label.top, closeTo(7.638, 0.6),
-        reason: 'the label must sit exactly where it did before the guard');
+    expect(
+      g.label.height,
+      closeTo(25.362, 0.6),
+      reason: 'the guard must be inert at a normal text scale',
+    );
+    expect(
+      g.label.top,
+      closeTo(7.638, 0.6),
+      reason: 'the label must sit exactly where it did before the guard',
+    );
     expect(g.label.bottom, closeTo(33.000, 0.6));
 
     _expectInsideBody(g.label, 'the unscaled label');
@@ -122,35 +139,62 @@ Rect _bubbleBody() =>
 
 void _expectInsideBody(Rect label, String what) {
   final body = _bubbleBody();
-  expect(label.top, greaterThanOrEqualTo(body.top - 0.5),
-      reason: '$what is painted above the bubble');
-  expect(label.bottom, lessThanOrEqualTo(body.bottom + 0.5),
-      reason: '$what hangs below the bubble body into the tail — over the FAB');
-  expect(label.left, greaterThanOrEqualTo(body.left - 0.5),
-      reason: '$what starts outside the bubble on the left');
-  expect(label.right, lessThanOrEqualTo(body.right + 0.5),
-      reason: '$what runs past the bubble on the right');
+  expect(
+    label.top,
+    greaterThanOrEqualTo(body.top - 0.5),
+    reason: '$what is painted above the bubble',
+  );
+  expect(
+    label.bottom,
+    lessThanOrEqualTo(body.bottom + 0.5),
+    reason: '$what hangs below the bubble body into the tail — over the FAB',
+  );
+  expect(
+    label.left,
+    greaterThanOrEqualTo(body.left - 0.5),
+    reason: '$what starts outside the bubble on the left',
+  );
+  expect(
+    label.right,
+    lessThanOrEqualTo(body.right + 0.5),
+    reason: '$what runs past the bubble on the right',
+  );
 }
 
 _TooltipGeometry _measureTooltip(WidgetTester tester) {
   final tooltip = find.byKey(const ValueKey('vault_add_tooltip'));
-  expect(tooltip, findsOneWidget,
-      reason: 'the vault FAB must still show the speech-bubble tooltip');
+  expect(
+    tooltip,
+    findsOneWidget,
+    reason: 'the vault FAB must still show the speech-bubble tooltip',
+  );
   final strings = AppStrings(const Locale('ar'));
   expect(
-      find.descendant(of: tooltip, matching: find.text(strings.vaultAddIn10Seconds)),
-      findsOneWidget,
-      reason: 'the two-line label is still in the tree (a guard may shrink it, '
-          'never drop it)');
+    find.descendant(
+      of: tooltip,
+      matching: find.text(strings.vaultAddIn10Seconds),
+    ),
+    findsOneWidget,
+    reason:
+        'the two-line label is still in the tree (a guard may shrink it, '
+        'never drop it)',
+  );
 
   final bubbleFinder = find.descendant(
-      of: tooltip, matching: find.byType(CustomPaint));
-  expect(bubbleFinder, findsOneWidget,
-      reason: 'the only CustomPaint in the tooltip is the bubble painter');
+    of: tooltip,
+    matching: find.byType(CustomPaint),
+  );
+  expect(
+    bubbleFinder,
+    findsOneWidget,
+    reason: 'the only CustomPaint in the tooltip is the bubble painter',
+  );
   final bubbleRo = tester.renderObject(bubbleFinder) as RenderBox;
 
   final paragraph =
-      tester.renderObject(find.descendant(of: tooltip, matching: find.byType(RichText)).first)
+      tester.renderObject(
+            find.descendant(of: tooltip, matching: find.byType(RichText)).first,
+          )
           as RenderParagraph;
   final text = paragraph.text.toPlainText();
   expect(text, contains('\n'), reason: 'the bug is a two-line label');
@@ -158,16 +202,23 @@ _TooltipGeometry _measureTooltip(WidgetTester tester) {
     TextSelection(baseOffset: 0, extentOffset: text.length),
     boxHeightStyle: ui.BoxHeightStyle.includeLineSpacingMiddle,
   );
-  expect(boxes, hasLength(2),
-      reason: 'both lines are laid out and painted — this is what the fix has '
-          'to keep inside the bubble');
+  expect(
+    boxes,
+    hasLength(2),
+    reason:
+        'both lines are laid out and painted — this is what the fix has '
+        'to keep inside the bubble',
+  );
 
   // Bubble-local, so the static sway rotation cancels out of the comparison.
   final toBubble = paragraph.getTransformTo(bubbleRo);
   Rect? label;
   for (final box in boxes) {
     final a = MatrixUtils.transformPoint(toBubble, Offset(box.left, box.top));
-    final b = MatrixUtils.transformPoint(toBubble, Offset(box.right, box.bottom));
+    final b = MatrixUtils.transformPoint(
+      toBubble,
+      Offset(box.right, box.bottom),
+    );
     // No Rect.union on this dart:ui — fold the two corners in by hand.
     label = label == null
         ? Rect.fromPoints(a, b)
@@ -182,8 +233,10 @@ _TooltipGeometry _measureTooltip(WidgetTester tester) {
 }
 
 /// Boots the shell at [textScale] on a narrow phone and opens the Meal Vault.
-Future<AppDatabase> _openVault(WidgetTester tester,
-    {required double textScale}) async {
+Future<AppDatabase> _openVault(
+  WidgetTester tester, {
+  required double textScale,
+}) async {
   SharedPreferences.setMockInitialValues({});
   await tester.binding.setSurfaceSize(_narrowPhone);
   addTearDown(() => tester.binding.setSurfaceSize(null));

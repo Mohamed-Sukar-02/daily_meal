@@ -71,7 +71,10 @@ class OrphanImageSweeper {
   }
 
   @visibleForTesting
-  static Future<void> sweepInIsolate(String docsPath, Set<String> dbPaths) async {
+  static Future<void> sweepInIsolate(
+    String docsPath,
+    Set<String> dbPaths,
+  ) async {
     final imagesDir = Directory('$docsPath/meal_images');
     if (!await imagesDir.exists()) return;
 
@@ -110,7 +113,8 @@ class OrphanImageSweeper {
         final filePath = entity.path;
         final basename = filePath.split('/').last.split('\\').last;
 
-        if (referencedBasenames.contains(basename) || referencedFullPaths.contains(filePath)) {
+        if (referencedBasenames.contains(basename) ||
+            referencedFullPaths.contains(filePath)) {
           continue;
         }
 

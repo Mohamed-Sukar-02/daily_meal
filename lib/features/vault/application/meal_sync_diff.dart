@@ -75,21 +75,27 @@ List<MealCloudDiff> mealCloudDiffs(
   compareTag(
     strings.proteinTypeLabel,
     agreesInCloud: MealCloudVocabulary.sameCloudProtein(
-        local.proteinType, cloud.proteinType),
+      local.proteinType,
+      cloud.proteinType,
+    ),
     localValue: local.proteinType.label(strings),
     cloudValue: cloudProteinType(cloud.proteinType).label(strings),
   );
   compareTag(
     strings.carbsTypeLabel,
-    agreesInCloud:
-        MealCloudVocabulary.sameCloudCarbs(local.carbsType, cloud.carbsType),
+    agreesInCloud: MealCloudVocabulary.sameCloudCarbs(
+      local.carbsType,
+      cloud.carbsType,
+    ),
     localValue: local.carbsType.label(strings),
     cloudValue: cloudCarbsType(cloud.carbsType).label(strings),
   );
   compareTag(
     strings.categoryShortLabel,
     agreesInCloud: MealCloudVocabulary.sameCloudCategory(
-        local.category, cloud.category),
+      local.category,
+      cloud.category,
+    ),
     localValue: local.category.label(strings),
     cloudValue: cloudCategory(cloud.category).label(strings),
   );
@@ -103,7 +109,11 @@ List<MealCloudDiff> mealCloudDiffs(
     _flag(local.isFridaySpecial, strings),
     _flag(cloud.isFridaySpecial, strings),
   );
-  compare(strings.notesLabel, (local.notes ?? '').trim(), (cloud.notes ?? '').trim());
+  compare(
+    strings.notesLabel,
+    (local.notes ?? '').trim(),
+    (cloud.notes ?? '').trim(),
+  );
 
   return diffs;
 }

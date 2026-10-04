@@ -219,8 +219,9 @@ class QuickMealView extends StatelessWidget {
   }
 
   static const double _heroRadius = 22;
-  static const BorderRadius _heroBorderRadius =
-      BorderRadius.all(Radius.circular(_heroRadius));
+  static const BorderRadius _heroBorderRadius = BorderRadius.all(
+    Radius.circular(_heroRadius),
+  );
 
   // --- Metrics of the quick card, measured from the home mockups -----------
   // They are design constants rather than parameters: every caller of the
@@ -229,8 +230,9 @@ class QuickMealView extends StatelessWidget {
   // and that lives in [MealCardVariant].
 
   static const double _quickCardRadius = 26;
-  static const BorderRadius _quickCardBorderRadius =
-      BorderRadius.all(Radius.circular(_quickCardRadius));
+  static const BorderRadius _quickCardBorderRadius = BorderRadius.all(
+    Radius.circular(_quickCardRadius),
+  );
 
   /// Fixed tile height. The card used to be a wide, short photo band with the
   /// text stacked under it, which made three recommendations taller than the
@@ -238,15 +240,105 @@ class QuickMealView extends StatelessWidget {
   static const double _quickTileHeight = 192;
 
   /// Inset of the panel's text from the tile's start, top and bottom edges.
-  static const double _quickPad = 16;
+  static const double _quickPad = 14;
 
   /// Clearance kept between the text block and the seam, so a name never sits
   /// on the edge the photo breaks through.
-  static const double _quickSeamGap = 14;
+  static const double _quickSeamGap = 10;
 
   static const double _quickControlInset = 12;
   static const double _quickControlSize = 40;
   static const double _quickMetaSize = 12.5;
+
+  /// Dynamically computes and renders the meal name so that it displays
+  /// completely without clipping, utilizing the full space allocated to it
+  /// while keeping a balanced, natural line wrapping (preferring <= 3 lines
+  /// to avoid single-word vertical stacking).
+  static Widget _buildDynamicMealName(
+    String name,
+    double maxWidth,
+    double maxHeight,
+    Color ink,
+    bool atStart,
+    TextDirection direction,
+    TextScaler textScaler,
+  ) {
+    double chosenSize = 12.0;
+    int chosenMaxLines = 3;
+    bool found = false;
+
+    // Pass 1: Prefer fitting within <= 3 lines to maintain balanced typography
+    // and prevent single words from breaking into narrow vertical stacks.
+    for (double size = 24.0; size >= 12.0; size -= 1.0) {
+      final painter = TextPainter(
+        text: TextSpan(
+          text: name,
+          style: TextStyle(
+            fontSize: size,
+            height: 1.16,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        textDirection: direction,
+        textScaler: textScaler,
+        maxLines: 3,
+      )..layout(maxWidth: maxWidth);
+
+      if (!painter.didExceedMaxLines && painter.height <= maxHeight) {
+        chosenSize = size;
+        chosenMaxLines = 3;
+        found = true;
+        break;
+      }
+    }
+
+    // Pass 2: Fallback for exceptionally long dish names that genuinely require 4 lines.
+    if (!found) {
+      for (double size = 24.0; size >= 11.0; size -= 1.0) {
+        final painter = TextPainter(
+          text: TextSpan(
+            text: name,
+            style: TextStyle(
+              fontSize: size,
+              height: 1.16,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          textDirection: direction,
+          textScaler: textScaler,
+          maxLines: 4,
+        )..layout(maxWidth: maxWidth);
+
+        if (painter.height <= maxHeight) {
+          chosenSize = size;
+          chosenMaxLines = 4;
+          break;
+        }
+      }
+    }
+
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: atStart
+          ? AlignmentDirectional.centerStart
+          : AlignmentDirectional.centerEnd,
+      child: SizedBox(
+        width: maxWidth,
+        child: Text(
+          name,
+          maxLines: chosenMaxLines,
+          overflow: TextOverflow.ellipsis,
+          textAlign: atStart ? TextAlign.start : TextAlign.end,
+          style: TextStyle(
+            fontSize: chosenSize,
+            height: 1.16,
+            fontWeight: FontWeight.w800,
+            color: ink,
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -335,16 +427,56 @@ class QuickMealView extends StatelessWidget {
           // The seam meets the tile's top and bottom edges at [seamX] and bows
           // to [seamX + lean] at mid-height — which is where the words live, so
           // the panel's usable width is the bowed one, not the edge one.
-          final seamX =
-              panelOnLeft ? w * variant.panelShare : w * (1 - variant.panelShare);
+          final seamX = panelOnLeft
+              ? w * variant.panelShare
+              : w * (1 - variant.panelShare);
           final lean = panelOnLeft ? variant.seamBulge : -variant.seamBulge;
           final topX = seamX - lean * 1.5;
           final bottomX = seamX + lean * 1.5;
           final minSeam = topX < bottomX ? topX : bottomX;
           final maxSeam = topX > bottomX ? topX : bottomX;
-          final panelMid = panelOnLeft ? minSeam : w - maxSeam;
-          final textWidth =
-              (panelMid - _quickPad - _quickSeamGap).clamp(0.0, w);
+          // Each vertical zone of the card uses the curve width at its own
+          // height, so text follows the S-curve instead of using a single
+          // rectangle. The panel covers the image wherever the curve extends,
+          // so text may safely sit on top of the photo in those regions.
+          final topUsable = panelOnLeft ? topX : w - topX;
+          final midUsable = panelOnLeft ? seamX : w - seamX;
+          final bottomUsable = panelOnLeft ? bottomX : w - bottomX;
+
+          final topWidth = (topUsable - _quickPad - _quickSeamGap).clamp(
+            80.0,
+            w * 0.55,
+          );
+          final midWidth = (midUsable - _quickPad - _quickSeamGap).clamp(
+            80.0,
+            w * 0.55,
+          );
+          final bottomWidth = (bottomUsable - _quickPad - _quickSeamGap).clamp(
+            80.0,
+            w * 0.55,
+          );
+
+          // The dish name owns the middle vertical zone where the panel reaches across
+          // the card towards the seam. We allocate the full usable width of the curve
+          // in this zone, letting the title spread horizontally and vertically without
+          // crossing into the bare photo area.
+          final maxPanelSpan = [
+            topUsable,
+            midUsable,
+            bottomUsable,
+          ].reduce((a, b) => a > b ? a : b);
+          final nameWidth = (maxPanelSpan - _quickPad - _quickSeamGap).clamp(
+            130.0,
+            w * 0.55,
+          );
+
+          // The outer container must be wide enough to hold the widest section.
+          final containerWidth = [
+            topWidth,
+            nameWidth,
+            midWidth,
+            bottomWidth,
+          ].reduce((a, b) => a > b ? a : b);
           // The photo is centred in the strip the panel leaves it, not in the
           // whole tile. Boxed to the full tile it would sit behind the panel's
           // own half, and a dish that fills the frame ends up with its edge
@@ -392,67 +524,75 @@ class QuickMealView extends StatelessWidget {
                   ),
                 ),
                 PositionedDirectional(
-                  top: 10,
-                  bottom: 10,
-                  start: atStart ? 14 : null,
-                  end: atStart ? null : 14,
-                  width: textWidth,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: atStart
-                        ? AlignmentDirectional.centerStart
-                        : AlignmentDirectional.centerEnd,
-                    child: SizedBox(
-                      width: textWidth,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: atStart
-                            ? CrossAxisAlignment.start
-                            : CrossAxisAlignment.end,
-                        children: [
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            reverse: !atStart,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (proteinType != ProteinType.none)
-                                  _quickPill(
-                                    brightness,
-                                    _proteinStyle(proteinType, brightness),
-                                    proteinType.emoji,
-                                    proteinType.label(strings),
-                                    cap: textWidth,
-                                  ),
-                                if (isFridaySpecial) ...[
-                                  const SizedBox(width: 8),
-                                  _quickPill(
-                                    brightness,
-                                    AppPalette.chipGold(brightness),
-                                    '🔥',
-                                    strings.fridaySpecial,
-                                    cap: textWidth,
-                                  ),
-                                ],
+                  top: 8,
+                  bottom: 8,
+                  start: atStart ? _quickPad : null,
+                  end: atStart ? null : _quickPad,
+                  width: containerWidth,
+                  child: Column(
+                    crossAxisAlignment: atStart
+                        ? CrossAxisAlignment.start
+                        : CrossAxisAlignment.end,
+                    children: [
+                      // --- Topmost: Protein pill (+ Friday special) ---
+                      SizedBox(
+                        width: topWidth,
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          reverse: !atStart,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (proteinType != ProteinType.none)
+                                _quickPill(
+                                  brightness,
+                                  _proteinStyle(proteinType, brightness),
+                                  proteinType.emoji,
+                                  proteinType.label(strings),
+                                  cap: topWidth,
+                                ),
+                              if (isFridaySpecial) ...[
+                                const SizedBox(width: 6),
+                                _quickPill(
+                                  brightness,
+                                  AppPalette.chipGold(brightness),
+                                  '🔥',
+                                  strings.fridaySpecial,
+                                  cap: topWidth,
+                                ),
                               ],
-                            ),
+                            ],
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign:
-                                atStart ? TextAlign.start : TextAlign.end,
-                            style: TextStyle(
-                              fontSize: 22,
-                              height: 1.25,
-                              fontWeight: FontWeight.w800,
-                              color: ink,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Column(
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      // --- Middle: Full available space dynamically allocated to meal name ---
+                      Expanded(
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            return Align(
+                              alignment: atStart
+                                  ? AlignmentDirectional.centerStart
+                                  : AlignmentDirectional.centerEnd,
+                              child: _buildDynamicMealName(
+                                name,
+                                nameWidth,
+                                constraints.maxHeight,
+                                ink,
+                                atStart,
+                                direction,
+                                MediaQuery.textScalerOf(context),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      // --- Directly above button: Category ---
+                      if (category != null) ...[
+                        SizedBox(
+                          width: midWidth,
+                          child: Column(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: atStart
                                 ? CrossAxisAlignment.start
@@ -460,28 +600,17 @@ class QuickMealView extends StatelessWidget {
                             children: [
                               _quickMeta(
                                 AppPalette.chipGold(brightness).foreground,
-                                AppGlyph.clock,
-                                '${prepTimeMinutes ?? 0} min',
-                                cap: textWidth,
+                                category!.label(strings),
+                                cap: midWidth,
                               ),
-                              if (category != null) ...[
-                                const SizedBox(height: 6),
-                                _quickMeta(
-                                  AppPalette.panelInkSoft(brightness),
-                                  AppGlyph.oven,
-                                  category!.label(strings),
-                                  cap: textWidth,
-                                ),
-                              ],
                             ],
                           ),
-                          if (footer != null) ...[
-                            const SizedBox(height: 12),
-                            SizedBox(width: 145, child: footer!),
-                          ],
-                        ],
-                      ),
-                    ),
+                        ),
+                        const SizedBox(height: 4),
+                      ],
+                      // --- Lowest point: Cook button ---
+                      ?footer,
+                    ],
                   ),
                 ),
                 // The heart floats on the photo's outer edge, where no word can
@@ -524,7 +653,7 @@ class QuickMealView extends StatelessWidget {
     return ConstrainedBox(
       constraints: BoxConstraints(maxWidth: cap),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(999),
@@ -555,15 +684,33 @@ class QuickMealView extends StatelessWidget {
     );
   }
 
-  /// Unfilled fact on the panel — time, category. Same glyph-plus-label shape
+  /// Unfilled fact on the panel — category. Same glyph-plus-label shape
   /// as the pill with the surface dropped, so the two rows cannot be mistaken
   /// for each other.
   Widget _quickMeta(
     Color color,
-    AppGlyph glyph,
     String label, {
+    AppGlyph? glyph,
     required double cap,
   }) {
+    final textWidget = Text(
+      label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontSize: _quickMetaSize,
+        fontWeight: FontWeight.w700,
+        color: color,
+      ),
+    );
+
+    if (glyph == null) {
+      return ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: cap),
+        child: FittedBox(fit: BoxFit.scaleDown, child: textWidget),
+      );
+    }
+
     return ConstrainedBox(
       constraints: BoxConstraints(maxWidth: cap),
       child: Row(
@@ -572,19 +719,7 @@ class QuickMealView extends StatelessWidget {
           AppIcon(glyph, color: color, size: 15),
           const SizedBox(width: 5),
           Flexible(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: _quickMetaSize,
-                  fontWeight: FontWeight.w700,
-                  color: color,
-                ),
-              ),
-            ),
+            child: FittedBox(fit: BoxFit.scaleDown, child: textWidget),
           ),
         ],
       ),
@@ -662,11 +797,7 @@ class QuickMealView extends StatelessWidget {
               PositionedDirectional(
                 top: 12,
                 start: 12,
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: badges,
-                ),
+                child: Wrap(spacing: 8, runSpacing: 8, children: badges),
               ),
           ],
         ),
@@ -699,7 +830,7 @@ class QuickMealView extends StatelessWidget {
         ],
         Text(
           name,
-          maxLines: 2,
+          maxLines: 5,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             fontSize: 21,
@@ -733,7 +864,11 @@ class QuickMealView extends StatelessWidget {
           label: strings.carbsTypeLabel,
           value: carbsType.label(strings),
           style: _neutralStyle(brightness),
-          child: AppIcon(AppGlyph.pot, color: _neutralStyle(brightness).foreground, size: 15),
+          child: AppIcon(
+            AppGlyph.pot,
+            color: _neutralStyle(brightness).foreground,
+            size: 15,
+          ),
         ),
       if (prepTimeMinutes != null)
         _SpecCell(
@@ -896,10 +1031,10 @@ class _SeamClipper extends CustomClipper<Path> {
         ? size.width * panelShare
         : size.width * (1 - panelShare);
     final lean = panelOnLeft ? seamBulge : -seamBulge;
-    
+
     final topX = seamX - lean * 1.5;
     final bottomX = seamX + lean * 1.5;
-    
+
     return Path()
       ..moveTo(anchor, 0)
       ..lineTo(topX, 0)
@@ -932,10 +1067,7 @@ class _PanelOrnaments extends StatelessWidget {
   final MealCardVariant variant;
   final Brightness brightness;
 
-  const _PanelOrnaments({
-    required this.variant,
-    required this.brightness,
-  });
+  const _PanelOrnaments({required this.variant, required this.brightness});
 
   @override
   Widget build(BuildContext context) {
@@ -952,8 +1084,14 @@ class _PanelOrnaments extends StatelessWidget {
     );
   }
 
-  Widget _mark(AppGlyph glyph, double x, double y, double size, double angle,
-      Color colour) {
+  Widget _mark(
+    AppGlyph glyph,
+    double x,
+    double y,
+    double size,
+    double angle,
+    Color colour,
+  ) {
     return Align(
       alignment: AlignmentDirectional(x, y),
       child: Transform.rotate(

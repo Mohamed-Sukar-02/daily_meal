@@ -8,7 +8,9 @@ import 'package:daily_meal/core/database/database_providers.dart';
 import 'package:daily_meal/features/home/presentation/widgets/home_header.dart';
 
 void main() {
-  testWidgets('App launches successfully smoke test', (WidgetTester tester) async {
+  testWidgets('App launches successfully smoke test', (
+    WidgetTester tester,
+  ) async {
     final inMemoryDb = AppDatabase(NativeDatabase.memory());
     await inMemoryDb.appSettingsDao.ensureSettings();
     await inMemoryDb.appSettingsDao.updateSettings(
@@ -17,14 +19,12 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          appDatabaseProvider.overrideWithValue(inMemoryDb),
-        ],
+        overrides: [appDatabaseProvider.overrideWithValue(inMemoryDb)],
         child: const DailyMealApp(),
       ),
     );
     await tester.pumpAndSettle();
-    
+
     // Wait for the async splash screen navigation to resolve
     await tester.pump(const Duration(milliseconds: 500));
     await tester.pumpAndSettle();

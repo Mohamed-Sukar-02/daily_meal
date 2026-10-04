@@ -23,22 +23,24 @@ class _FakeFeed extends RemoteNotificationService {
   final List<NotificationItem> _items;
 
   @override
-  Stream<List<NotificationItem>> getNotificationsStream() => Stream.value(_items);
+  Stream<List<NotificationItem>> getNotificationsStream() =>
+      Stream.value(_items);
 }
 
 NotificationItem _item(String route) => NotificationItem(
-      id: 'n-$route',
-      title: const {'ar': 'feed-title', 'en': 'feed-title'},
-      subtitle: const {'ar': 'body', 'en': 'body'},
-      time: DateTime.now(),
-      type: NotificationType.meal,
-      route: route,
-    );
+  id: 'n-$route',
+  title: const {'ar': 'feed-title', 'en': 'feed-title'},
+  subtitle: const {'ar': 'body', 'en': 'body'},
+  time: DateTime.now(),
+  type: NotificationType.meal,
+  route: route,
+);
 
 /// None of the cards below carry a `segment`, so no profile changes what is
 /// published — but the notifier wants one before it publishes anything.
-Future<DeviceProfile> _deviceProfile() =>
-    Future.value(DeviceProfile(firstOpenedAt: DateTime(2020), hasCooked: false));
+Future<DeviceProfile> _deviceProfile() => Future.value(
+  DeviceProfile(firstOpenedAt: DateTime(2020), hasCooked: false),
+);
 
 void main() {
   late AppDatabase db;
@@ -60,7 +62,9 @@ void main() {
       ],
     );
     // `GoRouter.of` only resolves from inside the router's own subtree.
-    GoRouter.of(tester.element(find.byType(ScaffoldWithNavBar))).push('/notifications');
+    GoRouter.of(
+      tester.element(find.byType(ScaffoldWithNavBar)),
+    ).push('/notifications');
     await tester.pumpAndSettle();
     expect(find.byType(NotificationsScreen), findsOneWidget);
   }
@@ -70,7 +74,9 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('tapping a notification opens the route the admin panel sent', (tester) async {
+  testWidgets('tapping a notification opens the route the admin panel sent', (
+    tester,
+  ) async {
     await openFeed(tester, _item('/settings'));
 
     await tapCard(tester);
@@ -82,21 +88,23 @@ void main() {
     await tearDownApp(tester, db);
   });
 
-  testWidgets('a query-string route (/vault?tab=explore) lands on the vault without throwing',
-      (tester) async {
-    await openFeed(tester, _item('/vault?tab=explore'));
+  testWidgets(
+    'a query-string route (/vault?tab=explore) lands on the vault without throwing',
+    (tester) async {
+      await openFeed(tester, _item('/vault?tab=explore'));
 
-    await tapCard(tester);
+      await tapCard(tester);
 
-    expect(tester.takeException(), isNull);
-    // Painted, not merely kept alive inside the shell's IndexedStack.
-    expect(find.byType(MealVaultScreen), findsOneWidget);
-    expect(find.byType(NotificationsScreen), findsNothing);
-    // The bottom bar is still there, so the tab strip follows the branch.
-    expect(find.byType(ScaffoldWithNavBar), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      // Painted, not merely kept alive inside the shell's IndexedStack.
+      expect(find.byType(MealVaultScreen), findsOneWidget);
+      expect(find.byType(NotificationsScreen), findsNothing);
+      // The bottom bar is still there, so the tab strip follows the branch.
+      expect(find.byType(ScaffoldWithNavBar), findsOneWidget);
 
-    await tearDownApp(tester, db);
-  });
+      await tearDownApp(tester, db);
+    },
+  );
 
   testWidgets('a cloud meal route pushes the meal screen', (tester) async {
     await openFeed(tester, _item('/meal/cloud/abc123'));
@@ -109,7 +117,9 @@ void main() {
     await tearDownApp(tester, db);
   });
 
-  testWidgets('the Home fallback route closes the feed instead of erroring', (tester) async {
+  testWidgets('the Home fallback route closes the feed instead of erroring', (
+    tester,
+  ) async {
     await openFeed(tester, _item('/'));
 
     await tapCard(tester);
@@ -121,20 +131,26 @@ void main() {
     await tearDownApp(tester, db);
   });
 
-  testWidgets('a notification without a route marks itself read and stays put', (tester) async {
-    await openFeed(tester, NotificationItem(
-      id: 'no-route',
-      title: const {'ar': 'feed-title', 'en': 'feed-title'},
-      subtitle: const {'ar': 'body', 'en': 'body'},
-      time: DateTime.now(),
-      type: NotificationType.meal,
-    ));
+  testWidgets(
+    'a notification without a route marks itself read and stays put',
+    (tester) async {
+      await openFeed(
+        tester,
+        NotificationItem(
+          id: 'no-route',
+          title: const {'ar': 'feed-title', 'en': 'feed-title'},
+          subtitle: const {'ar': 'body', 'en': 'body'},
+          time: DateTime.now(),
+          type: NotificationType.meal,
+        ),
+      );
 
-    await tapCard(tester);
+      await tapCard(tester);
 
-    expect(tester.takeException(), isNull);
-    expect(find.byType(NotificationsScreen), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      expect(find.byType(NotificationsScreen), findsOneWidget);
 
-    await tearDownApp(tester, db);
-  });
+      await tearDownApp(tester, db);
+    },
+  );
 }

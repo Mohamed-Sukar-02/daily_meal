@@ -91,7 +91,4 @@ class MealScreenPalette {
       : lightTabStroke;
   static Color tabActiveText(Brightness b) => accent(b);
   static Color tabInactiveText(Brightness b) => muted(b);
-
-  // ── Hero name ──────────────────────────────────────────────────────────
-  static Color fullName(Brightness b) => text(b);
 }

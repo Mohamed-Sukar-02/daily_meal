@@ -179,11 +179,7 @@ class SpinWheelButton extends StatelessWidget {
   final VoidCallback? onTap;
   final bool enabled;
 
-  const SpinWheelButton({
-    super.key,
-    this.onTap,
-    this.enabled = true,
-  });
+  const SpinWheelButton({super.key, this.onTap, this.enabled = true});
 
   @override
   Widget build(BuildContext context) {
@@ -293,4 +289,3 @@ class SpinWheelButton extends StatelessWidget {
     );
   }
 }
-

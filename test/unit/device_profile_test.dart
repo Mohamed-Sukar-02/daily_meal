@@ -40,14 +40,21 @@ void main() {
     });
 
     test('seeds a pre-existing install as a veteran, never as new', () async {
-      final profile = await DeviceProfile.load(existingInstall: true, hasCooked: false);
+      final profile = await DeviceProfile.load(
+        existingInstall: true,
+        hasCooked: false,
+      );
 
       expect(profile.hasCooked, isFalse);
-      expect(await storedFirstOpenedAt(), DateTime(2000, 1, 1).millisecondsSinceEpoch);
+      expect(
+        await storedFirstOpenedAt(),
+        DateTime(2000, 1, 1).millisecondsSinceEpoch,
+      );
       expect(
         profile.isNewWithin(365),
         isFalse,
-        reason: 'updating the app must not put a long-time user back inside '
+        reason:
+            'updating the app must not put a long-time user back inside '
             'the new window',
       );
     });
@@ -56,7 +63,8 @@ void main() {
   group('DeviceProfile.isNewWithin', () {
     final now = DateTime(2026, 6, 10);
 
-    DeviceProfile openedDaysAgo(int days, {bool hasCooked = false}) => DeviceProfile(
+    DeviceProfile openedDaysAgo(int days, {bool hasCooked = false}) =>
+        DeviceProfile(
           firstOpenedAt: now.subtract(Duration(days: days)),
           hasCooked: hasCooked,
         );
@@ -67,7 +75,10 @@ void main() {
     });
 
     test('a cooked meal makes the device returning whatever its tenure', () {
-      expect(openedDaysAgo(0, hasCooked: true).isNewWithin(365, now: now), isFalse);
+      expect(
+        openedDaysAgo(0, hasCooked: true).isNewWithin(365, now: now),
+        isFalse,
+      );
     });
 
     test('a device first opened today is new inside any window', () {
@@ -91,34 +102,46 @@ void main() {
       await db.close();
     });
 
-    test('treats a first launch with nothing recorded as a new device', () async {
-      final profile = await container.read(deviceProfileProvider.future);
+    test(
+      'treats a first launch with nothing recorded as a new device',
+      () async {
+        final profile = await container.read(deviceProfileProvider.future);
 
-      expect(profile.hasCooked, isFalse);
-      expect(profile.isNewWithin(7), isTrue);
-    });
+        expect(profile.hasCooked, isFalse);
+        expect(profile.isNewWithin(7), isTrue);
+      },
+    );
 
     test('counts a completed onboarding as a pre-existing install', () async {
       await db.appSettingsDao.updateFirstRun(false);
 
       final profile = await container.read(deviceProfileProvider.future);
 
-      expect(await storedFirstOpenedAt(), DateTime(2000, 1, 1).millisecondsSinceEpoch);
+      expect(
+        await storedFirstOpenedAt(),
+        DateTime(2000, 1, 1).millisecondsSinceEpoch,
+      );
       expect(profile.isNewWithin(7), isFalse);
     });
 
-    test('counts a logged meal as a pre-existing install and as cooked', () async {
-      await db.mealHistoryDao.logMeal(
-        mealName: 'takeout',
-        proteinType: ProteinType.none,
-        carbsType: CarbsType.none,
-        cookedAt: DateTime(2026, 2, 2),
-      );
+    test(
+      'counts a logged meal as a pre-existing install and as cooked',
+      () async {
+        await db.mealHistoryDao.logMeal(
+          mealName: 'takeout',
+          proteinType: ProteinType.none,
+          carbsType: CarbsType.none,
+          cookedAt: DateTime(2026, 2, 2),
+        );
 
-      final profile = await container.read(deviceProfileProvider.future);
+        final profile = await container.read(deviceProfileProvider.future);
 
-      expect(profile.hasCooked, isTrue);
-      expect(await storedFirstOpenedAt(), DateTime(2000, 1, 1).millisecondsSinceEpoch);
-    });
+        expect(profile.hasCooked, isTrue);
+        expect(
+          await storedFirstOpenedAt(),
+          DateTime(2000, 1, 1).millisecondsSinceEpoch,
+        );
+      },
+    );
   });
 }

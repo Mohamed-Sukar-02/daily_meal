@@ -57,7 +57,9 @@ class VaultEmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              isSearchResult ? strings.vaultNoResultsDesc : strings.vaultEmptyDesc,
+              isSearchResult
+                  ? strings.vaultNoResultsDesc
+                  : strings.vaultEmptyDesc,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13,
@@ -69,14 +71,22 @@ class VaultEmptyState extends StatelessWidget {
               OutlinedButton.icon(
                 key: const Key('vault_clear_filters_button'),
                 onPressed: onAction,
-                icon: const AppIcon(AppGlyph.close, size: 16, color: AppPalette.brandGreen),
+                icon: const AppIcon(
+                  AppGlyph.close,
+                  size: 16,
+                  color: AppPalette.brandGreen,
+                ),
                 label: Text(strings.vaultResetFilters),
               )
             else
               FilledButton.icon(
                 key: const Key('vault_empty_add_button'),
                 onPressed: onAction,
-                icon: const AppIcon(AppGlyph.plus, color: Colors.white, size: 18),
+                icon: const AppIcon(
+                  AppGlyph.plus,
+                  color: Colors.white,
+                  size: 18,
+                ),
                 label: Text(strings.addFirstMeal),
               ),
           ],

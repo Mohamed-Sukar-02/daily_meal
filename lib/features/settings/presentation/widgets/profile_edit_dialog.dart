@@ -171,7 +171,9 @@ class _ProfileEditDialogState extends ConsumerState<ProfileEditDialog> {
 
     setState(() => _saving = true);
     try {
-      await ref.read(settingsControllerProvider.notifier).updateProfile(
+      await ref
+          .read(settingsControllerProvider.notifier)
+          .updateProfile(
             userName: _nameController.text.trim().isEmpty
                 ? strings.defaultUserName
                 : _nameController.text.trim(),
@@ -211,144 +213,154 @@ class _ProfileEditDialogState extends ConsumerState<ProfileEditDialog> {
         if (!didPop) _requestClose();
       },
       child: AlertDialog(
-      title: Text(strings.editProfile),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              key: const Key('profile_name_field'),
-              controller: _nameController,
-              autofillHints: const [AutofillHints.name],
-              decoration: InputDecoration(
-                labelText: strings.nameField,
-                prefixIcon: const Icon(Icons.person),
+        title: Text(strings.editProfile),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                key: const Key('profile_name_field'),
+                controller: _nameController,
+                autofillHints: const [AutofillHints.name],
+                decoration: InputDecoration(
+                  labelText: strings.nameField,
+                  prefixIcon: const Icon(Icons.person),
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              key: const Key('profile_email_field'),
-              controller: _emailController,
-              autofillHints: const [AutofillHints.email],
-              decoration: InputDecoration(
-                labelText: strings.emailField,
-                prefixIcon: const Icon(Icons.email),
+              const SizedBox(height: 16),
+              TextField(
+                key: const Key('profile_email_field'),
+                controller: _emailController,
+                autofillHints: const [AutofillHints.email],
+                decoration: InputDecoration(
+                  labelText: strings.emailField,
+                  prefixIcon: const Icon(Icons.email),
+                ),
+                keyboardType: TextInputType.emailAddress,
               ),
-              keyboardType: TextInputType.emailAddress,
-            ),
-            const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-            // --- Gender (required) -----------------------------------------
-            Text(
-              strings.genderField,
-              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: _GenderChip(
-                    key: const Key('profile_gender_male'),
-                    label: strings.genderMale,
-                    icon: Icons.male_rounded,
-                    selected: _gender == UserGender.male,
-                    brightness: brightness,
-                    onTap: () => _selectGender(UserGender.male),
-                  ),
+              // --- Gender (required) -----------------------------------------
+              Text(
+                strings.genderField,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _GenderChip(
-                    key: const Key('profile_gender_female'),
-                    label: strings.genderFemale,
-                    icon: Icons.female_rounded,
-                    selected: _gender == UserGender.female,
-                    brightness: brightness,
-                    onTap: () => _selectGender(UserGender.female),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // --- Avatars filtered by gender --------------------------------
-            Text(
-              strings.chooseAvatar,
-              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              genderChosen ? strings.avatarsForGenderHint : strings.genderRequired,
-              style: TextStyle(
-                fontSize: 12,
-                height: 1.4,
-                color: genderChosen
-                    ? AppPalette.textSecondary(brightness)
-                    : AppPalette.heartCoral,
               ),
-            ),
-            const SizedBox(height: 12),
-            if (avatars.isEmpty)
-              Container(
-                key: const Key('profile_avatar_empty_hint'),
-                height: 56,
-                alignment: AlignmentDirectional.center,
-                decoration: BoxDecoration(
-                  color: AppPalette.tabContainer(brightness),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    AppIcon(
-                      AppGlyph.person,
-                      color: AppPalette.textSecondary(brightness),
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      strings.genderRequired,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppPalette.textSecondary(brightness),
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            else
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
+              const SizedBox(height: 10),
+              Row(
                 children: [
-                  for (final asset in avatars)
-                    _AvatarTile(
-                      key: Key('profile_avatar_${asset.split('/').last}'),
-                      asset: asset,
-                      selected: _avatar == asset,
+                  Expanded(
+                    child: _GenderChip(
+                      key: const Key('profile_gender_male'),
+                      label: strings.genderMale,
+                      icon: Icons.male_rounded,
+                      selected: _gender == UserGender.male,
                       brightness: brightness,
-                      onTap: () => setState(() => _avatar = asset),
+                      onTap: () => _selectGender(UserGender.male),
                     ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _GenderChip(
+                      key: const Key('profile_gender_female'),
+                      label: strings.genderFemale,
+                      icon: Icons.female_rounded,
+                      selected: _gender == UserGender.female,
+                      brightness: brightness,
+                      onTap: () => _selectGender(UserGender.female),
+                    ),
+                  ),
                 ],
               ),
-          ],
+              const SizedBox(height: 20),
+
+              // --- Avatars filtered by gender --------------------------------
+              Text(
+                strings.chooseAvatar,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                genderChosen
+                    ? strings.avatarsForGenderHint
+                    : strings.genderRequired,
+                style: TextStyle(
+                  fontSize: 12,
+                  height: 1.4,
+                  color: genderChosen
+                      ? AppPalette.textSecondary(brightness)
+                      : AppPalette.heartCoral,
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (avatars.isEmpty)
+                Container(
+                  key: const Key('profile_avatar_empty_hint'),
+                  height: 56,
+                  alignment: AlignmentDirectional.center,
+                  decoration: BoxDecoration(
+                    color: AppPalette.tabContainer(brightness),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AppIcon(
+                        AppGlyph.person,
+                        color: AppPalette.textSecondary(brightness),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        strings.genderRequired,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppPalette.textSecondary(brightness),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    for (final asset in avatars)
+                      _AvatarTile(
+                        key: Key('profile_avatar_${asset.split('/').last}'),
+                        asset: asset,
+                        selected: _avatar == asset,
+                        brightness: brightness,
+                        onTap: () => setState(() => _avatar = asset),
+                      ),
+                  ],
+                ),
+            ],
+          ),
         ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          TextButton(
+            onPressed: _saving ? null : _requestClose,
+            child: Text(strings.cancel),
+          ),
+          FilledButton(
+            key: const Key('profile_save_button'),
+            // Required-field rule: nothing can be saved before a gender is picked.
+            onPressed: (genderChosen && _avatar != null && !_saving)
+                ? _save
+                : null,
+            child: Text(strings.save),
+          ),
+        ],
       ),
-      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      actions: [
-        TextButton(
-          onPressed: _saving ? null : _requestClose,
-          child: Text(strings.cancel),
-        ),
-        FilledButton(
-          key: const Key('profile_save_button'),
-          // Required-field rule: nothing can be saved before a gender is picked.
-          onPressed: (genderChosen && _avatar != null && !_saving) ? _save : null,
-          child: Text(strings.save),
-        ),
-      ],
-    ),
     );
   }
 }
@@ -383,7 +395,9 @@ class _GenderChip extends StatelessWidget {
               : AppPalette.tabContainer(brightness),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: selected ? AppPalette.brandGreen : AppPalette.hairline(brightness),
+            color: selected
+                ? AppPalette.brandGreen
+                : AppPalette.hairline(brightness),
             width: 1,
           ),
         ),
@@ -473,7 +487,11 @@ class _AvatarTile extends StatelessWidget {
               return Container(
                 color: const Color(0xFFF3C64F),
                 child: const Center(
-                  child: AppIcon(AppGlyph.person, color: Colors.white, size: 24),
+                  child: AppIcon(
+                    AppGlyph.person,
+                    color: Colors.white,
+                    size: 24,
+                  ),
                 ),
               );
             },

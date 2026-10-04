@@ -236,10 +236,7 @@ class ProposalFailureDiagnoser {
   };
 
   /// The caller (or the OS, when the app was backgrounded) stopped the request.
-  static const Set<String> _cancelledCodes = <String>{
-    'cancelled',
-    'aborted',
-  };
+  static const Set<String> _cancelledCodes = <String>{'cancelled', 'aborted'};
 
   static ProposalFailureReason classify(Object error) {
     final code = errorCode(error)?.trim().toLowerCase();
@@ -348,10 +345,7 @@ class ProposalFailureDiagnoser {
   /// to a single line and capped so it cannot blow out the toast.
   static String describe(Object error) {
     final code = errorCode(error);
-    final text = error
-        .toString()
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
+    final text = error.toString().replaceAll(RegExp(r'\s+'), ' ').trim();
     final joined = code == null ? text : '$code · $text';
     return joined.length <= 180 ? joined : '${joined.substring(0, 177)}…';
   }
@@ -370,12 +364,18 @@ class ProposalOutcome {
   /// True when a photo made it into the payload (uploaded or remote URL).
   final bool imageAttached;
 
-  const ProposalOutcome._(this.code,
-      {this.cause, this.reason = ProposalFailureReason.unknown, this.imageAttached = false});
+  const ProposalOutcome._(
+    this.code, {
+    this.cause,
+    this.reason = ProposalFailureReason.unknown,
+    this.imageAttached = false,
+  });
 
   factory ProposalOutcome.submitted({bool imageAttached = false}) =>
-      ProposalOutcome._(ProposalOutcomeCode.submitted,
-          imageAttached: imageAttached);
+      ProposalOutcome._(
+        ProposalOutcomeCode.submitted,
+        imageAttached: imageAttached,
+      );
 
   factory ProposalOutcome.alreadyProposed() =>
       const ProposalOutcome._(ProposalOutcomeCode.alreadyProposed);
@@ -385,7 +385,8 @@ class ProposalOutcome {
   factory ProposalOutcome.alreadyInPublicVault() =>
       const ProposalOutcome._(ProposalOutcomeCode.alreadyInPublicVault);
 
-  factory ProposalOutcome.blocked(CloudAccessStatus status) => ProposalOutcome._(
+  factory ProposalOutcome.blocked(CloudAccessStatus status) =>
+      ProposalOutcome._(
         status == CloudAccessStatus.requiresWifi
             ? ProposalOutcomeCode.blockedRequiresWifi
             : ProposalOutcomeCode.blockedNoConnection,
@@ -413,8 +414,11 @@ class ProposalOutcome {
       '${ProposalFailureDiagnoser.errorCode(error) ?? '-'} '
       '(${classified.name}) — $error',
     );
-    return ProposalOutcome._(ProposalOutcomeCode.failed,
-        cause: error, reason: classified);
+    return ProposalOutcome._(
+      ProposalOutcomeCode.failed,
+      cause: error,
+      reason: classified,
+    );
   }
 
   bool get isSuccess => code == ProposalOutcomeCode.submitted;
@@ -484,7 +488,9 @@ class MealProposalPayload {
   static String? payloadName(String rawName) {
     final name = rawName.trim();
     if (name.length < minNameLength) return null;
-    return name.length > maxNameLength ? name.substring(0, maxNameLength) : name;
+    return name.length > maxNameLength
+        ? name.substring(0, maxNameLength)
+        : name;
   }
 
   /// Candidate names for the public-vault pre-flight: the payload name, then
@@ -595,7 +601,8 @@ class MealProposalPayload {
   }) {
     if (!exists) return LocalPhotoIssue.missing;
     if (byteLength <= 0) return LocalPhotoIssue.empty;
-    if (byteLength > (maxBytes ?? maxImageBytes)) return LocalPhotoIssue.tooLarge;
+    if (byteLength > (maxBytes ?? maxImageBytes))
+      return LocalPhotoIssue.tooLarge;
     return LocalPhotoIssue.none;
   }
 
@@ -636,7 +643,8 @@ class ProposalGuard {
       final decoded = jsonDecode(raw);
       if (decoded is Map) {
         return decoded.map(
-          (key, value) => MapEntry(key.toString(), (value as num?)?.toInt() ?? 0),
+          (key, value) =>
+              MapEntry(key.toString(), (value as num?)?.toInt() ?? 0),
         );
       }
     } catch (_) {
@@ -721,9 +729,8 @@ class CloudinaryConfig {
   static const String cloudName = 'bzd1vjrs';
   static const String uploadPreset = 'daily meal';
 
-  static Uri get uploadEndpoint => Uri.parse(
-        'https://api.cloudinary.com/v1_1/$cloudName/image/upload',
-      );
+  static Uri get uploadEndpoint =>
+      Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/image/upload');
 }
 
 /// Result of trying to ship a meal's photo alongside its proposal.
@@ -747,11 +754,11 @@ class StagedPhoto {
 
   /// The photo never left the device (missing, empty, oversized, bad link).
   const StagedPhoto.rejected(Object why, ProposalFailureReason reason)
-      : this._(null, why, reason);
+    : this._(null, why, reason);
 
   /// The photo host was contacted and the upload did not land.
   const StagedPhoto.uploadFailed(Object why, ProposalFailureReason reason)
-      : this._(null, why, reason);
+    : this._(null, why, reason);
 
   /// Whether a photo was available to ship but could not be.
   bool get failed => error != null;
@@ -800,15 +807,15 @@ class MealProposalService {
     SharedPreferences? prefs,
     Future<CloudAccessStatus> Function()? accessStatus,
     Future<bool> Function(List<String> vaultNames)? publicVaultDuplicateProbe,
-  })  : _firestore = firestore,
-        _auth = auth,
-        _prefs = prefs,
-        _accessStatus = accessStatus ?? _alwaysAllowedGate,
-        // `vault_meals` is world-readable, so a `name` query needs no signed-in
-        // user and no collection scan. Tests hand in a stand-in because
-        // dev_dependencies carry no fake Firestore (`pubspec.yaml` is off-limits
-        // to this task); `null` keeps the live query in [_queryPublicVault].
-        _vaultDuplicateProbe = publicVaultDuplicateProbe;
+  }) : _firestore = firestore,
+       _auth = auth,
+       _prefs = prefs,
+       _accessStatus = accessStatus ?? _alwaysAllowedGate,
+       // `vault_meals` is world-readable, so a `name` query needs no signed-in
+       // user and no collection scan. Tests hand in a stand-in because
+       // dev_dependencies carry no fake Firestore (`pubspec.yaml` is off-limits
+       // to this task); `null` keeps the live query in [_queryPublicVault].
+       _vaultDuplicateProbe = publicVaultDuplicateProbe;
 
   final FirebaseFirestore? _firestore;
   final FirebaseAuth? _auth;
@@ -897,7 +904,8 @@ class MealProposalService {
     // writes and leaves the quota and the ledger untouched, so the user can
     // propose a different meal straight after being told.
     if (await _alreadyInPublicVault(
-        MealProposalPayload.vaultProbeNames(meal))) {
+      MealProposalPayload.vaultProbeNames(meal),
+    )) {
       return ProposalOutcome.alreadyInPublicVault();
     }
 
@@ -941,7 +949,10 @@ class MealProposalService {
     if (payload == null) return ProposalOutcome.invalidName();
 
     try {
-      await _fs.collection(stagingCollection).add(payload).timeout(writeTimeout);
+      await _fs
+          .collection(stagingCollection)
+          .add(payload)
+          .timeout(writeTimeout);
     } catch (error) {
       return ProposalOutcome.failed(error, stage: 'staging_meals write');
     }
@@ -968,8 +979,9 @@ class MealProposalService {
     if (vaultNames.isEmpty) return false;
     final probe = _vaultDuplicateProbe;
     try {
-      final served =
-          probe != null ? probe(vaultNames) : _queryPublicVault(vaultNames);
+      final served = probe != null
+          ? probe(vaultNames)
+          : _queryPublicVault(vaultNames);
       return await served.timeout(publicVaultReadTimeout);
     } catch (error) {
       debugPrint('Public-vault duplicate check skipped: $error');
@@ -1039,20 +1051,21 @@ class MealProposalService {
     }
 
     try {
-      final request = http.MultipartRequest('POST', CloudinaryConfig.uploadEndpoint)
-        ..fields['upload_preset'] = CloudinaryConfig.uploadPreset
-        ..files.add(
-          http.MultipartFile.fromBytes(
-            'file',
-            fileBytes,
-            filename: '${DateTime.now().millisecondsSinceEpoch}.jpg',
-          ),
-        );
+      final request =
+          http.MultipartRequest('POST', CloudinaryConfig.uploadEndpoint)
+            ..fields['upload_preset'] = CloudinaryConfig.uploadPreset
+            ..files.add(
+              http.MultipartFile.fromBytes(
+                'file',
+                fileBytes,
+                filename: '${DateTime.now().millisecondsSinceEpoch}.jpg',
+              ),
+            );
 
-      final streamedResponse =
-          await request.send().timeout(imageUploadTimeout);
-      final response = await http.Response.fromStream(streamedResponse)
-          .timeout(imageUploadTimeout);
+      final streamedResponse = await request.send().timeout(imageUploadTimeout);
+      final response = await http.Response.fromStream(
+        streamedResponse,
+      ).timeout(imageUploadTimeout);
 
       if (response.statusCode != 200) {
         // The host answered and said no — a preset/permission problem, not a
@@ -1175,7 +1188,8 @@ Future<ProposalOutcome> runProposalFlow(
     }
     if (!isProposableAgainstCloud(meal: meal, cloud: cloud, strings: strings)) {
       final unchanged = ProposalOutcome.cloudUnchanged();
-      if (context.mounted) showProposalOutcomeToast(context, strings, unchanged);
+      if (context.mounted)
+        showProposalOutcomeToast(context, strings, unchanged);
       return unchanged;
     }
   }
@@ -1206,13 +1220,17 @@ String proposalOutcomeLabel(AppStrings strings, ProposalOutcome outcome) =>
       ProposalOutcomeCode.blockedNoConnection => strings.proposalOffline,
       ProposalOutcomeCode.blockedRequiresWifi => strings.proposalWifiOnly,
       ProposalOutcomeCode.invalidName => strings.proposalInvalidName,
-      ProposalOutcomeCode.dailyLimitReached =>
-        strings.proposalDailyLimit(ProposalQuota.dailyLimit),
+      ProposalOutcomeCode.dailyLimitReached => strings.proposalDailyLimit(
+        ProposalQuota.dailyLimit,
+      ),
       ProposalOutcomeCode.cloudUnchanged => strings.proposalUnchangedFromCloud,
       ProposalOutcomeCode.failed => strings.proposalFailedReason(
-          proposalFailureLabel(strings, outcome.reason,
-              cause: outcome.cause ?? ''),
+        proposalFailureLabel(
+          strings,
+          outcome.reason,
+          cause: outcome.cause ?? '',
         ),
+      ),
     };
 
 /// Maps a [ProposalOutcome] to the localised toast. Kept next to the flow so
@@ -1272,12 +1290,16 @@ String proposalFailureLabel(
       strings.proposalFailPermissionDenied,
     ProposalFailureReason.writeUnreachable => strings.proposalFailUnreachable,
     ProposalFailureReason.requestCancelled => strings.proposalFailCancelled,
-    ProposalFailureReason.cloudTargetMissing => strings.proposalFailTargetMissing,
-    ProposalFailureReason.cloudQuotaExhausted => strings.proposalFailQuotaExhausted,
+    ProposalFailureReason.cloudTargetMissing =>
+      strings.proposalFailTargetMissing,
+    ProposalFailureReason.cloudQuotaExhausted =>
+      strings.proposalFailQuotaExhausted,
     ProposalFailureReason.ledgerUnavailable => strings.proposalFailLedger,
-    ProposalFailureReason.photoUnreadable => strings.proposalFailPhotoUnreadable,
+    ProposalFailureReason.photoUnreadable =>
+      strings.proposalFailPhotoUnreadable,
     ProposalFailureReason.photoTooLarge => strings.proposalFailPhotoTooLarge,
-    ProposalFailureReason.photoLinkInvalid => strings.proposalFailPhotoLinkInvalid,
+    ProposalFailureReason.photoLinkInvalid =>
+      strings.proposalFailPhotoLinkInvalid,
     ProposalFailureReason.photoUploadTimeout =>
       strings.proposalFailPhotoUploadTimeout,
     ProposalFailureReason.photoUploadRefused =>

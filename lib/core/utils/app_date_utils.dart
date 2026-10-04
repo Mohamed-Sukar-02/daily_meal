@@ -21,9 +21,11 @@ DateTime toLocalDay(DateTime dt) {
 /// Egypt has DST since 2023, difference().inDays on local DateTime gives 23/25h days wrong
 int _dayNumber(DateTime d) {
   final l = d.isUtc ? d.toLocal() : d;
-  return DateTime.utc(l.year, l.month, l.day)
-      .difference(DateTime.utc(1970, 1, 1))
-      .inDays;
+  return DateTime.utc(
+    l.year,
+    l.month,
+    l.day,
+  ).difference(DateTime.utc(1970, 1, 1)).inDays;
 }
 
 /// Continuous days since epoch for deterministic jitter [1][D]
@@ -51,7 +53,9 @@ String formatHistoryDate(
   DateTime? referenceToday,
   AppStrings strings = const AppStrings(Locale('ar')),
 }) {
-  final today = referenceToday != null ? toLocalDay(referenceToday) : getLocalToday();
+  final today = referenceToday != null
+      ? toLocalDay(referenceToday)
+      : getLocalToday();
   final localDay = toLocalDay(dt);
 
   if (isSameLocalDay(localDay, today)) {

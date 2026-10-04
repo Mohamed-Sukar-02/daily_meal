@@ -67,11 +67,7 @@ class DominantColour {
       image = (await codec.getNextFrame()).image;
       final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
       if (data == null) return null;
-      return _dominant(
-        data.buffer.asUint8List(),
-        image.width,
-        image.height,
-      );
+      return _dominant(data.buffer.asUint8List(), image.width, image.height);
     } catch (error) {
       // A tint is decoration; it must never be the reason a card is broken.
       debugPrint('DominantColour: $source could not be read ($error)');
@@ -120,7 +116,8 @@ class DominantColour {
         final min = r < g ? (r < b ? r : b) : (g < b ? g : b);
         if (max - min < _minChroma) continue;
         if (max < _minLuminance || min > _maxLuminance) continue;
-        final key = ((r >> _bucketShift) << 8) |
+        final key =
+            ((r >> _bucketShift) << 8) |
             ((g >> _bucketShift) << 4) |
             (b >> _bucketShift);
         buckets.putIfAbsent(key, () => _Bucket()).add(r, g, b, max - min);

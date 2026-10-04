@@ -178,20 +178,21 @@ class MealCloudVocabulary {
   }
 
   static bool sameCloudProtein(ProteinType local, String cloudToken) => _agree(
-        cloudToken: cloudToken,
-        local: local,
-        toCloud: proteinToCloud,
-        fromCloud: proteinFromCloud,
-      );
+    cloudToken: cloudToken,
+    local: local,
+    toCloud: proteinToCloud,
+    fromCloud: proteinFromCloud,
+  );
 
   static bool sameCloudCarbs(CarbsType local, String cloudToken) => _agree(
-        cloudToken: cloudToken,
-        local: local,
-        toCloud: carbsToCloud,
-        fromCloud: carbsFromCloud,
-      );
+    cloudToken: cloudToken,
+    local: local,
+    toCloud: carbsToCloud,
+    fromCloud: carbsFromCloud,
+  );
 
-  static bool sameCloudCategory(MealCategory local, String cloudToken) => _agree(
+  static bool sameCloudCategory(MealCategory local, String cloudToken) =>
+      _agree(
         cloudToken: cloudToken,
         local: local,
         toCloud: categoryToCloud,
@@ -205,7 +206,8 @@ class MealCloudVocabulary {
   /// copying the fold would rewrite a tag the user never contested, and for
   /// protein that also moves the meal into a different cooldown window.
   static bool proteinFoldWouldDowngrade(ProteinType local, String cloudToken) =>
-      sameCloudProtein(local, cloudToken) && proteinFromCloud(cloudToken) != local;
+      sameCloudProtein(local, cloudToken) &&
+      proteinFromCloud(cloudToken) != local;
 
   static bool carbsFoldWouldDowngrade(CarbsType local, String cloudToken) =>
       sameCloudCarbs(local, cloudToken) && carbsFromCloud(cloudToken) != local;

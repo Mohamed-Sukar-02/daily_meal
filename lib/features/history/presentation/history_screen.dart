@@ -114,7 +114,11 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                   const SizedBox(width: 12),
                   IconButton(
                     tooltip: strings.clearAllHistory,
-                    icon: Icon(CupertinoIcons.delete, color: Colors.red.shade700, size: 28),
+                    icon: Icon(
+                      CupertinoIcons.delete,
+                      color: Colors.red.shade700,
+                      size: 28,
+                    ),
                     onPressed: () async {
                       final confirmed = await showDialog<bool>(
                         context: context,
@@ -129,7 +133,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                               child: Text(strings.cancel),
                             ),
                             FilledButton(
-                              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: Colors.red,
+                              ),
                               onPressed: () => Navigator.of(ctx).pop(true),
                               child: Text(strings.clearAll),
                             ),
@@ -138,7 +144,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                       );
 
                       if (confirmed == true) {
-                        await ref.read(historyControllerProvider.notifier).clearAllHistory();
+                        await ref
+                            .read(historyControllerProvider.notifier)
+                            .clearAllHistory();
                         if (context.mounted) {
                           AppToast.showSuccess(context, strings.historyCleared);
                         }
@@ -155,7 +163,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                   return Expanded(
                     child: Center(
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 16,
+                        ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           mainAxisSize: MainAxisSize.min,
@@ -191,8 +202,13 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                               label: Text(strings.goToHome),
                               style: FilledButton.styleFrom(
                                 backgroundColor: AppPalette.brandGreen,
-                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
                               ),
                             ),
                           ],
@@ -205,14 +221,31 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                 // Stats are "this month" (see _buildStatCard footer): filter to
                 // the current month/year BEFORE counting, not all-time.
                 final statsNow = DateTime.now();
-                final monthEntries = entries.where((e) =>
-                    e.history.cookedAt.year == statsNow.year &&
-                    e.history.cookedAt.month == statsNow.month).toList();
+                final monthEntries = entries
+                    .where(
+                      (e) =>
+                          e.history.cookedAt.year == statsNow.year &&
+                          e.history.cookedAt.month == statsNow.month,
+                    )
+                    .toList();
                 // Calculate stats with Arabic labels - use enum equality not string contains (optimal + type-safe)
-                int chickenDays = monthEntries.where((e) => e.history.proteinType == ProteinType.chicken).length;
-                int meatlessDays = monthEntries.where((e) => e.history.proteinType == ProteinType.legume || e.history.proteinType == ProteinType.none || e.history.proteinType == ProteinType.dairy).length;
-                int beefDays = monthEntries.where((e) => e.history.proteinType == ProteinType.beef).length;
-                int fishDays = monthEntries.where((e) => e.history.proteinType == ProteinType.fish).length;
+                int chickenDays = monthEntries
+                    .where((e) => e.history.proteinType == ProteinType.chicken)
+                    .length;
+                int meatlessDays = monthEntries
+                    .where(
+                      (e) =>
+                          e.history.proteinType == ProteinType.legume ||
+                          e.history.proteinType == ProteinType.none ||
+                          e.history.proteinType == ProteinType.dairy,
+                    )
+                    .length;
+                int beefDays = monthEntries
+                    .where((e) => e.history.proteinType == ProteinType.beef)
+                    .length;
+                int fishDays = monthEntries
+                    .where((e) => e.history.proteinType == ProteinType.fish)
+                    .length;
 
                 return Expanded(
                   child: Column(
@@ -224,13 +257,41 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: Row(
                           children: [
-                            _buildStatCard(context, brightness, '🐔', strings.chicken, chickenDays, const Color(0xFFFFF3C4)),
+                            _buildStatCard(
+                              context,
+                              brightness,
+                              '🐔',
+                              strings.chicken,
+                              chickenDays,
+                              const Color(0xFFFFF3C4),
+                            ),
                             const SizedBox(width: 12),
-                            _buildStatCard(context, brightness, '🐟', strings.fish, fishDays, const Color(0xFFBBDEFB)),
+                            _buildStatCard(
+                              context,
+                              brightness,
+                              '🐟',
+                              strings.fish,
+                              fishDays,
+                              const Color(0xFFBBDEFB),
+                            ),
                             const SizedBox(width: 12),
-                            _buildStatCard(context, brightness, '🥩', strings.beef, beefDays, const Color(0xFFFFCDD2)),
+                            _buildStatCard(
+                              context,
+                              brightness,
+                              '🥩',
+                              strings.beef,
+                              beefDays,
+                              const Color(0xFFFFCDD2),
+                            ),
                             const SizedBox(width: 12),
-                            _buildStatCard(context, brightness, '🌿', strings.meatlessLabel, meatlessDays, const Color(0xFFC8E6C9)),
+                            _buildStatCard(
+                              context,
+                              brightness,
+                              '🌿',
+                              strings.meatlessLabel,
+                              meatlessDays,
+                              const Color(0xFFC8E6C9),
+                            ),
                           ],
                         ),
                       ),
@@ -257,14 +318,19 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                               dotColor = Colors.pink.shade400;
                             } else if (entry.proteinType == ProteinType.fish) {
                               dotColor = Colors.blue.shade400;
-                            } else if (entry.proteinType == ProteinType.chicken) {
+                            } else if (entry.proteinType ==
+                                ProteinType.chicken) {
                               dotColor = Colors.amber.shade700;
                             }
 
                             final deleteRow = _DeleteEntryAction(
                               entryId: entry.id,
-                              onPressed: () =>
-                                  _handleDeleteEntry(context, ref, entry, strings),
+                              onPressed: () => _handleDeleteEntry(
+                                context,
+                                ref,
+                                entry,
+                                strings,
+                              ),
                             );
 
                             return Padding(
@@ -282,10 +348,15 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                                         decoration: BoxDecoration(
                                           color: dotColor,
                                           shape: BoxShape.circle,
-                                          border: Border.all(color: AppPalette.card(brightness), width: 2),
+                                          border: Border.all(
+                                            color: AppPalette.card(brightness),
+                                            width: 2,
+                                          ),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: dotColor.withValues(alpha: 0.4),
+                                              color: dotColor.withValues(
+                                                alpha: 0.4,
+                                              ),
                                               blurRadius: 4,
                                             ),
                                           ],
@@ -296,7 +367,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                                           margin: const EdgeInsets.only(top: 4),
                                           width: 2,
                                           height: 72,
-                                          color: AppPalette.hairline(brightness),
+                                          color: AppPalette.hairline(
+                                            brightness,
+                                          ),
                                         ),
                                     ],
                                   ),
@@ -304,7 +377,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                                   // Content
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Row(
                                           children: [
@@ -315,7 +389,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                                                   fontSize: 12,
                                                   fontWeight: FontWeight.w700,
                                                   color:
-                                                      AppPalette.textSecondary(brightness),
+                                                      AppPalette.textSecondary(
+                                                        brightness,
+                                                      ),
                                                 ),
                                               ),
                                             ),
@@ -324,90 +400,149 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                                         ),
                                         const SizedBox(height: 8),
                                         InkWell(
-                                          key: ValueKey('history_meal_card_${entry.id}'),
-                                          borderRadius: BorderRadius.circular(16),
+                                          key: ValueKey(
+                                            'history_meal_card_${entry.id}',
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
                                           onTap: () => MealDetailsSheet.show(
                                             context,
-                                            detailsContext: MealDetailsContext.history,
+                                            detailsContext:
+                                                MealDetailsContext.history,
                                             historyEntry: entry,
                                             meal: meal,
                                           ),
                                           child: Container(
-                                          decoration: BoxDecoration(
-                                            color: AppPalette.card(brightness),
-                                            borderRadius: BorderRadius.circular(16),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: brightness == Brightness.dark
-                                                    ? Colors.black.withValues(alpha: 0.3)
-                                                    : AppPalette.lightTextPrimary.withValues(alpha: 0.05),
-                                                blurRadius: 10,
-                                                offset: const Offset(0, 2),
+                                            decoration: BoxDecoration(
+                                              color: AppPalette.card(
+                                                brightness,
                                               ),
-                                            ],
-                                          ),
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(12),
-                                            child: Row(
-                                              children: [
-                                                ClipOval(
-                                                  child: MealImage(
-                                                    photoPath: meal?.photoPath,
-                                                    width: 48,
-                                                    height: 48,
-                                                    cacheWidth: 320,
-                                                    fallback: Container(
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color:
+                                                      brightness ==
+                                                          Brightness.dark
+                                                      ? Colors.black.withValues(
+                                                          alpha: 0.3,
+                                                        )
+                                                      : AppPalette
+                                                            .lightTextPrimary
+                                                            .withValues(
+                                                              alpha: 0.05,
+                                                            ),
+                                                  blurRadius: 10,
+                                                  offset: const Offset(0, 2),
+                                                ),
+                                              ],
+                                            ),
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(12),
+                                              child: Row(
+                                                children: [
+                                                  ClipOval(
+                                                    child: MealImage(
+                                                      photoPath:
+                                                          meal?.photoPath,
                                                       width: 48,
                                                       height: 48,
-                                                      color: AppPalette.tabContainer(brightness),
-                                                      alignment: Alignment.center,
-                                                      child: const Text('🍲', style: TextStyle(fontSize: 24)),
-                                                    ),
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 12),
-                                                Expanded(
-                                                  child: Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                    children: [
-                                                      Text(
-                                                        strings.historyEntryDisplayName(
-                                                          mealName: entry.mealName,
-                                                          entryType: entry.entryType.name,
-                                                        ),
-                                                        maxLines: 1,
-                                                        overflow: TextOverflow.ellipsis,
-                                                        style: TextStyle(
-                                                          fontWeight: FontWeight.w800,
-                                                          fontSize: 15,
-                                                          color: AppPalette.textPrimary(brightness),
-                                                        ),
-                                                      ),
-                                                      const SizedBox(height: 6),
-                                                      Container(
-                                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                                        decoration: BoxDecoration(
-                                                          color: dotColor.withValues(alpha: 0.12),
-                                                          borderRadius: BorderRadius.circular(8),
-                                                        ),
-                                                        child: Text(
-                                                          entry.proteinType.label(strings),
+                                                      cacheWidth: 320,
+                                                      fallback: Container(
+                                                        width: 48,
+                                                        height: 48,
+                                                        color:
+                                                            AppPalette.tabContainer(
+                                                              brightness,
+                                                            ),
+                                                        alignment:
+                                                            Alignment.center,
+                                                        child: const Text(
+                                                          '🍲',
                                                           style: TextStyle(
-                                                            color: dotColor,
-                                                            fontSize: 11,
-                                                            fontWeight: FontWeight.w700,
+                                                            fontSize: 24,
                                                           ),
                                                         ),
                                                       ),
-                                                    ],
+                                                    ),
                                                   ),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                AppIcon(AppGlyph.chevron, color: AppPalette.textSecondary(brightness), size: 16),
-                                              ],
+                                                  const SizedBox(width: 12),
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Text(
+                                                          strings
+                                                              .historyEntryDisplayName(
+                                                                mealName: entry
+                                                                    .mealName,
+                                                                entryType: entry
+                                                                    .entryType
+                                                                    .name,
+                                                              ),
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                          style: TextStyle(
+                                                            fontWeight:
+                                                                FontWeight.w800,
+                                                            fontSize: 15,
+                                                            color:
+                                                                AppPalette.textPrimary(
+                                                                  brightness,
+                                                                ),
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 6,
+                                                        ),
+                                                        Container(
+                                                          padding:
+                                                              const EdgeInsets.symmetric(
+                                                                horizontal: 8,
+                                                                vertical: 4,
+                                                              ),
+                                                          decoration: BoxDecoration(
+                                                            color: dotColor
+                                                                .withValues(
+                                                                  alpha: 0.12,
+                                                                ),
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  8,
+                                                                ),
+                                                          ),
+                                                          child: Text(
+                                                            entry.proteinType
+                                                                .label(strings),
+                                                            style: TextStyle(
+                                                              color: dotColor,
+                                                              fontSize: 11,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w700,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  AppIcon(
+                                                    AppGlyph.chevron,
+                                                    color:
+                                                        AppPalette.textSecondary(
+                                                          brightness,
+                                                        ),
+                                                    size: 16,
+                                                  ),
+                                                ],
+                                              ),
                                             ),
                                           ),
-                                        ),
                                         ),
                                       ],
                                     ),
@@ -423,13 +558,20 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                 );
               },
               loading: () => Expanded(
-                child: Center(child: CircularProgressIndicator(color: AppPalette.brandGreen)),
+                child: Center(
+                  child: CircularProgressIndicator(
+                    color: AppPalette.brandGreen,
+                  ),
+                ),
               ),
               error: (err, _) => Expanded(
                 child: Center(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(24),
-                    child: Text(strings.errorGeneric(err), textAlign: TextAlign.center),
+                    child: Text(
+                      strings.errorGeneric(err),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ),
               ),
@@ -440,7 +582,14 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
     );
   }
 
-  Widget _buildStatCard(BuildContext context, Brightness brightness, String emoji, String title, int count, Color bgColor) {
+  Widget _buildStatCard(
+    BuildContext context,
+    Brightness brightness,
+    String emoji,
+    String title,
+    int count,
+    Color bgColor,
+  ) {
     final isDark = brightness == Brightness.dark;
     final strings = AppStrings.of(context);
     final Color lightVibrant = bgColor;
@@ -474,7 +623,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: AppPalette.textPrimary(brightness).withValues(alpha: 0.8),
+                    color: AppPalette.textPrimary(
+                      brightness,
+                    ).withValues(alpha: 0.8),
                   ),
                 ),
               ),
@@ -564,4 +715,3 @@ class _DeleteEntryAction extends StatelessWidget {
     );
   }
 }
-

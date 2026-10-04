@@ -13,11 +13,7 @@ class HomeHeader extends ConsumerWidget {
   final VoidCallback? onProfileTap;
   final bool? hasUnreadNotifications;
 
-  const HomeHeader({
-    super.key,
-    this.onProfileTap,
-    this.hasUnreadNotifications,
-  });
+  const HomeHeader({super.key, this.onProfileTap, this.hasUnreadNotifications});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -25,7 +21,9 @@ class HomeHeader extends ConsumerWidget {
     final strings = AppStrings.of(context);
     final settingsAsync = ref.watch(appSettingsProvider);
     final avatarPath = settingsAsync.valueOrNull?.userAvatar;
-    final bool isUnread = (hasUnreadNotifications ?? ref.watch(unreadNotificationsProvider)) == true;
+    final bool isUnread =
+        (hasUnreadNotifications ?? ref.watch(unreadNotificationsProvider)) ==
+        true;
     final isRtl = Directionality.of(context) == TextDirection.rtl;
     final tiltAngle = isRtl ? 0.15 : -0.15;
 
@@ -174,12 +172,12 @@ class HomeHeader extends ConsumerWidget {
 
   Widget _buildAvatarImage(String? avatarPath, Brightness brightness) {
     Widget fallback() => Center(
-          child: AppIcon(
-            AppGlyph.person,
-            color: AppPalette.avatarForeground(brightness),
-            size: 22,
-          ),
-        );
+      child: AppIcon(
+        AppGlyph.person,
+        color: AppPalette.avatarForeground(brightness),
+        size: 22,
+      ),
+    );
 
     if (avatarPath == null || avatarPath.isEmpty) {
       return fallback();
@@ -207,7 +205,9 @@ class HomeHeader extends ConsumerWidget {
       height: 44,
       fit: BoxFit.cover,
       errorBuilder: (ctx, err, st) {
-        debugPrint('HomeHeader avatar file error $avatarPath: $err - trying asset fallback');
+        debugPrint(
+          'HomeHeader avatar file error $avatarPath: $err - trying asset fallback',
+        );
         // If file path contains assets segment, try as asset
         if (avatarPath.contains('assets/')) {
           final assetPart = avatarPath.substring(avatarPath.indexOf('assets/'));

@@ -24,9 +24,8 @@ import 'package:daily_meal/features/meals/presentation/quick_meal_view.dart';
 
 /// Finds the app's own glyph widget. `find.byIcon` is typed to `IconData`, so
 /// [AppIcon] — which carries an `AppGlyph` — has to be matched structurally.
-Finder _glyph(AppGlyph glyph) => find.byWidgetPredicate(
-      (w) => w is AppIcon && w.glyph == glyph,
-    );
+Finder _glyph(AppGlyph glyph) =>
+    find.byWidgetPredicate((w) => w is AppIcon && w.glyph == glyph);
 
 Widget _phone(
   Widget child,
@@ -105,8 +104,9 @@ Widget _quickCard({
 }
 
 void main() {
-  testWidgets('renders every slot on a narrow RTL phone without overflowing',
-      (tester) async {
+  testWidgets('renders every slot on a narrow RTL phone without overflowing', (
+    tester,
+  ) async {
     await tester.pumpWidget(_phone(_maximal, const Locale('ar')));
     await tester.pump();
 
@@ -114,8 +114,9 @@ void main() {
     expect(find.byKey(const Key('quick_meal_view')), findsOneWidget);
   });
 
-  testWidgets('renders every slot on a narrow LTR phone without overflowing',
-      (tester) async {
+  testWidgets('renders every slot on a narrow LTR phone without overflowing', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       _phone(
         const QuickMealView(
@@ -134,8 +135,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('drops the spec strip when there is nothing to show',
-      (tester) async {
+  testWidgets('drops the spec strip when there is nothing to show', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       _phone(
         const QuickMealView(
@@ -157,8 +159,9 @@ void main() {
   // The quick shape: this is the home recommendation card.
   // -------------------------------------------------------------------------
 
-  testWidgets('the quick shape draws the whole home card in Arabic',
-      (tester) async {
+  testWidgets('the quick shape draws the whole home card in Arabic', (
+    tester,
+  ) async {
     const strings = AppStrings(Locale('ar'));
     await tester.pumpWidget(
       _phone(
@@ -181,10 +184,20 @@ void main() {
     // loved state is the filled heart itself, not a third pill.
     expect(find.text(strings.fridaySpecial), findsOneWidget);
     expect(_glyph(AppGlyph.heartFill), findsOneWidget);
+    // Category is shown without any icon, prep time is removed, and CTA is 'هطبخها'.
+    expect(
+      find.text(MealCategory.egyptianTraditional.label(strings)),
+      findsOneWidget,
+    );
+    expect(_glyph(AppGlyph.clock), findsNothing);
+    expect(_glyph(AppGlyph.oven), findsNothing);
+    expect(find.text(strings.cookThis), findsOneWidget);
+    expect(strings.cookThis, 'هطبخها');
   });
 
-  testWidgets('the quick shape wires love and cook to its own callbacks',
-      (tester) async {
+  testWidgets('the quick shape wires love and cook to its own callbacks', (
+    tester,
+  ) async {
     var cooked = 0;
     var loved = 0;
     await tester.pumpWidget(
@@ -238,8 +251,9 @@ void main() {
   // -------------------------------------------------------------------------
 
   for (final variant in MealCardVariant.values) {
-    testWidgets('the $variant cut draws the whole card without overflowing',
-        (tester) async {
+    testWidgets('the $variant cut draws the whole card without overflowing', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _phone(
           _quickCard(
@@ -280,4 +294,28 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'balances medium dish names across <= 3 lines to avoid dead space on narrow screens',
+    (tester) async {
+      await tester.pumpWidget(
+        _phone(
+          _quickCard(
+            name: 'كشري مصري بالصلصة والدقة',
+            onCookedToday: () {},
+            onToggleFavorite: () {},
+            variant: MealCardVariant.photoWideSoft,
+          ),
+          const Locale('ar'),
+        ),
+      );
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      final textFinder = find.text('كشري مصري بالصلصة والدقة');
+      expect(textFinder, findsOneWidget);
+      final textWidget = tester.widget<Text>(textFinder);
+      expect(textWidget.maxLines, 3);
+    },
+  );
 }

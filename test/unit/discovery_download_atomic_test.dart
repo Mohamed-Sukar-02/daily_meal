@@ -19,14 +19,16 @@ void main() {
     });
 
     Future<int> seedOldLinkedMeal() {
-      return db.mealsDao.insertMeal(MealsCompanion(
-        name: const Value('Old Linked Meal'),
-        proteinType: const Value(ProteinType.chicken),
-        carbsType: const Value(CarbsType.rice),
-        category: const Value(MealCategory.egyptianTraditional),
-        prepTime: const Value(30),
-        cloudId: const Value('cloud-old'),
-      ));
+      return db.mealsDao.insertMeal(
+        MealsCompanion(
+          name: const Value('Old Linked Meal'),
+          proteinType: const Value(ProteinType.chicken),
+          carbsType: const Value(CarbsType.rice),
+          category: const Value(MealCategory.egyptianTraditional),
+          prepTime: const Value(30),
+          cloudId: const Value('cloud-old'),
+        ),
+      );
     }
 
     final cloudMeal = CloudMeal(
@@ -40,28 +42,33 @@ void main() {
       createdAt: DateTime(2026),
     );
 
-    test('image localization failure leaves the old meal cloudId intact',
-        () async {
-      final oldId = await seedOldLinkedMeal();
-      final baseline = (await db.mealsDao.getAllMeals()).length;
-      final notifier = DiscoveryNotifier(
-        db.mealsDao,
-        db,
-        localizeImage: (_) async => throw Exception('network down'),
-      );
+    test(
+      'image localization failure leaves the old meal cloudId intact',
+      () async {
+        final oldId = await seedOldLinkedMeal();
+        final baseline = (await db.mealsDao.getAllMeals()).length;
+        final notifier = DiscoveryNotifier(
+          db.mealsDao,
+          db,
+          localizeImage: (_) async => throw Exception('network down'),
+        );
 
-      await expectLater(
-        notifier.downloadAsNew(oldId, cloudMeal),
-        throwsA(isA<Exception>()),
-      );
+        await expectLater(
+          notifier.downloadAsNew(oldId, cloudMeal),
+          throwsA(isA<Exception>()),
+        );
 
-      final meals = await db.mealsDao.getAllMeals();
-      final old = meals.firstWhere((m) => m.id == oldId);
-      expect(old.cloudId, 'cloud-old',
-          reason: 'failed download must not detach the old meal');
-      expect(meals.length, baseline, reason: 'no new row on failure');
-      expect(notifier.state, isA<AsyncError<void>>());
-    });
+        final meals = await db.mealsDao.getAllMeals();
+        final old = meals.firstWhere((m) => m.id == oldId);
+        expect(
+          old.cloudId,
+          'cloud-old',
+          reason: 'failed download must not detach the old meal',
+        );
+        expect(meals.length, baseline, reason: 'no new row on failure');
+        expect(notifier.state, isA<AsyncError<void>>());
+      },
+    );
 
     test('success detaches old cloudId and inserts the new meal', () async {
       final oldId = await seedOldLinkedMeal();
@@ -77,8 +84,11 @@ void main() {
       final meals = await db.mealsDao.getAllMeals();
       expect(meals.length, baseline + 1);
       final old = meals.firstWhere((m) => m.id == oldId);
-      expect(old.cloudId, isNull,
-          reason: 'old meal must lose its cloud link after success');
+      expect(
+        old.cloudId,
+        isNull,
+        reason: 'old meal must lose its cloud link after success',
+      );
       final fresh = meals.firstWhere((m) => m.name == 'Cloud Koshary');
       expect(fresh.cloudId, 'cloud-new');
       expect(fresh.photoPath, '/local/koshary.jpg');

@@ -40,8 +40,9 @@ void main() {
     expect(find.byKey(const Key('profile_save_button')), findsOneWidget);
   }
 
-  testWidgets('profile: a typed-only change is not thrown away by back',
-      (tester) async {
+  testWidgets('profile: a typed-only change is not thrown away by back', (
+    tester,
+  ) async {
     final db = await pumpApp(tester);
 
     await openProfileDialog(tester);
@@ -53,7 +54,8 @@ void main() {
     expect(
       find.byKey(discardDialog),
       findsOneWidget,
-      reason: 'typing alone must make the form dirty (no setState on a '
+      reason:
+          'typing alone must make the form dirty (no setState on a '
           'TextEditingController — canPop has to be recomputed)',
     );
 
@@ -61,13 +63,18 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('profile_save_button')), findsNothing);
     final settings = await db.appSettingsDao.getSettings();
-    expect(settings.userName, isNot('سارة'), reason: 'discarding saves nothing');
+    expect(
+      settings.userName,
+      isNot('سارة'),
+      reason: 'discarding saves nothing',
+    );
 
     await tearDownApp(tester, db);
   });
 
-  testWidgets('profile: "Keep editing" leaves the dialog open with the text',
-      (tester) async {
+  testWidgets('profile: "Keep editing" leaves the dialog open with the text', (
+    tester,
+  ) async {
     final db = await pumpApp(tester);
 
     await openProfileDialog(tester);
@@ -82,7 +89,8 @@ void main() {
     expect(find.byKey(discardDialog), findsNothing);
     expect(find.byKey(const Key('profile_save_button')), findsOneWidget);
     expect(
-      tester.widget<TextField>(find.byKey(const Key('profile_name_field')))
+      tester
+          .widget<TextField>(find.byKey(const Key('profile_name_field')))
           .controller!
           .text,
       'منى',
@@ -91,8 +99,9 @@ void main() {
     await tearDownApp(tester, db);
   });
 
-  testWidgets('profile: saving closes the dialog without any prompt',
-      (tester) async {
+  testWidgets('profile: saving closes the dialog without any prompt', (
+    tester,
+  ) async {
     final db = await pumpApp(tester);
 
     await openProfileDialog(tester);
@@ -105,10 +114,16 @@ void main() {
     await tester.tap(find.byKey(const Key('profile_save_button')));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(discardDialog), findsNothing,
-        reason: 'the save already committed — asking now is the bug');
-    expect(find.byKey(const Key('profile_save_button')), findsNothing,
-        reason: 'the dialog must close on its own after a successful save');
+    expect(
+      find.byKey(discardDialog),
+      findsNothing,
+      reason: 'the save already committed — asking now is the bug',
+    );
+    expect(
+      find.byKey(const Key('profile_save_button')),
+      findsNothing,
+      reason: 'the dialog must close on its own after a successful save',
+    );
     final settings = await db.appSettingsDao.getSettings();
     expect(settings.userName, 'يوسف');
 
@@ -127,13 +142,16 @@ void main() {
     expect(find.byKey(const Key('meal_form_save_button')), findsOneWidget);
   }
 
-  testWidgets('quick add: back after typing asks before discarding',
-      (tester) async {
+  testWidgets('quick add: back after typing asks before discarding', (
+    tester,
+  ) async {
     final db = await pumpApp(tester);
 
     await openQuickAdd(tester);
     await tester.enterText(
-        find.byKey(const Key('meal_form_name_field')), 'كشرى');
+      find.byKey(const Key('meal_form_name_field')),
+      'كشرى',
+    );
     await tester.pumpAndSettle();
 
     await pressSystemBack(tester, const Key('meal_form_name_field'));
@@ -144,19 +162,25 @@ void main() {
     expect(find.byKey(const Key('meal_form_save_button')), findsOneWidget);
 
     final meals = await db.select(db.meals).get();
-    expect(meals.map((m) => m.name), isNot(contains('كشرى')),
-        reason: 'the draft was abandoned, nothing was written');
+    expect(
+      meals.map((m) => m.name),
+      isNot(contains('كشرى')),
+      reason: 'the draft was abandoned, nothing was written',
+    );
 
     await tearDownApp(tester, db);
   });
 
-  testWidgets('quick add: the X button asks, discarding closes the sheet',
-      (tester) async {
+  testWidgets('quick add: the X button asks, discarding closes the sheet', (
+    tester,
+  ) async {
     final db = await pumpApp(tester);
 
     await openQuickAdd(tester);
     await tester.enterText(
-        find.byKey(const Key('meal_form_name_field')), 'ملوخية');
+      find.byKey(const Key('meal_form_name_field')),
+      'ملوخية',
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.byIcon(Icons.close).first);
@@ -171,26 +195,36 @@ void main() {
     await tearDownApp(tester, db);
   });
 
-  testWidgets('quick add: a swipe down never destroys a typed meal silently',
-      (tester) async {
+  testWidgets('quick add: a swipe down never destroys a typed meal silently', (
+    tester,
+  ) async {
     final db = await pumpApp(tester);
 
     await openQuickAdd(tester);
     await tester.enterText(
-        find.byKey(const Key('meal_form_name_field')), 'رز بالحليب');
+      find.byKey(const Key('meal_form_name_field')),
+      'رز بالحليب',
+    );
     await tester.pumpAndSettle();
 
     // Drag from the sheet's own header strip: the region the drag-to-close
     // gesture owns (everything below belongs to the form's scroll view).
     final sheetTop = tester.getTopLeft(find.byType(BottomSheet));
-    await tester.dragFrom(sheetTop + const Offset(200, 6), const Offset(0, 340));
+    await tester.dragFrom(
+      sheetTop + const Offset(200, 6),
+      const Offset(0, 340),
+    );
     await tester.pumpAndSettle();
 
     final sheetGone = find.byType(BottomSheet).evaluate().isEmpty;
     final asked = find.byKey(discardDialog).evaluate().isNotEmpty;
-    expect(sheetGone && !asked, isFalse,
-        reason: 'either the sheet survived the swipe or the user was asked — '
-            'a silent close loses the typed meal');
+    expect(
+      sheetGone && !asked,
+      isFalse,
+      reason:
+          'either the sheet survived the swipe or the user was asked — '
+          'a silent close loses the typed meal',
+    );
 
     final meals = await db.select(db.meals).get();
     expect(meals.map((m) => m.name), isNot(contains('رز بالحليب')));
@@ -198,13 +232,16 @@ void main() {
     await tearDownApp(tester, db);
   });
 
-  testWidgets('quick add: saving closes the sheet without any prompt',
-      (tester) async {
+  testWidgets('quick add: saving closes the sheet without any prompt', (
+    tester,
+  ) async {
     final db = await pumpApp(tester);
 
     await openQuickAdd(tester);
     await tester.enterText(
-        find.byKey(const Key('meal_form_name_field')), 'أكلة محفوظه');
+      find.byKey(const Key('meal_form_name_field')),
+      'أكلة محفوظه',
+    );
     await tester.pumpAndSettle();
 
     await tester.ensureVisible(find.byKey(const Key('meal_form_save_button')));
@@ -212,10 +249,16 @@ void main() {
     await tester.tap(find.byKey(const Key('meal_form_save_button')));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(discardDialog), findsNothing,
-        reason: 'the meal is already written — asking now is the bug');
-    expect(find.byKey(const Key('meal_form_save_button')), findsNothing,
-        reason: 'a committed save must close the sheet');
+    expect(
+      find.byKey(discardDialog),
+      findsNothing,
+      reason: 'the meal is already written — asking now is the bug',
+    );
+    expect(
+      find.byKey(const Key('meal_form_save_button')),
+      findsNothing,
+      reason: 'a committed save must close the sheet',
+    );
     final meals = await db.select(db.meals).get();
     expect(meals.map((m) => m.name), contains('أكلة محفوظه'));
 
@@ -257,8 +300,9 @@ void main() {
     expect(find.byKey(const Key('welcome_name_field')), findsOneWidget);
   }
 
-  testWidgets('welcome: back on step 2 returns to step 1 and keeps the name',
-      (tester) async {
+  testWidgets('welcome: back on step 2 returns to step 1 and keeps the name', (
+    tester,
+  ) async {
     await pumpWelcome(tester);
     await goToStep2(tester);
 
@@ -267,14 +311,19 @@ void main() {
 
     await pressSystemBack(tester, const Key('welcome_name_field'));
 
-    expect(find.byKey(discardDialog), findsNothing,
-        reason: 'step 2 has a step 1 to go back to — nothing is lost, so no '
-            'prompt belongs here');
+    expect(
+      find.byKey(discardDialog),
+      findsNothing,
+      reason:
+          'step 2 has a step 1 to go back to — nothing is lost, so no '
+          'prompt belongs here',
+    );
     expect(find.byKey(const Key('welcome_start_now_button')), findsOneWidget);
 
     await goToStep2(tester);
     expect(
-      tester.widget<TextFormField>(find.byKey(const Key('welcome_name_field')))
+      tester
+          .widget<TextFormField>(find.byKey(const Key('welcome_name_field')))
           .controller!
           .text,
       'هدى',
@@ -290,8 +339,9 @@ void main() {
     expect(find.byKey(discardDialog), findsOneWidget);
   });
 
-  testWidgets('welcome: an untouched form never shows the prompt',
-      (tester) async {
+  testWidgets('welcome: an untouched form never shows the prompt', (
+    tester,
+  ) async {
     await pumpWelcome(tester);
     await goToStep2(tester);
 
@@ -302,8 +352,9 @@ void main() {
     expect(find.byKey(const Key('welcome_start_now_button')), findsOneWidget);
   });
 
-  testWidgets('welcome: discarding a filled form leaves no prompt behind',
-      (tester) async {
+  testWidgets('welcome: discarding a filled form leaves no prompt behind', (
+    tester,
+  ) async {
     await pumpWelcome(tester);
     await goToStep2(tester);
     await tester.enterText(find.byKey(const Key('welcome_name_field')), 'ريم');
@@ -321,7 +372,8 @@ void main() {
 
     await goToStep2(tester);
     expect(
-      tester.widget<TextFormField>(find.byKey(const Key('welcome_name_field')))
+      tester
+          .widget<TextFormField>(find.byKey(const Key('welcome_name_field')))
           .controller!
           .text,
       'ريم',

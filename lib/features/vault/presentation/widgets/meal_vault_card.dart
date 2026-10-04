@@ -116,7 +116,10 @@ class MealVaultCard extends ConsumerWidget {
                                     _emojiBadge(
                                       brightness,
                                       meal.proteinType.emoji,
-                                      _proteinStyle(meal.proteinType, brightness),
+                                      _proteinStyle(
+                                        meal.proteinType,
+                                        brightness,
+                                      ),
                                     ),
                                   Expanded(
                                     child: FittedBox(
@@ -166,9 +169,7 @@ class MealVaultCard extends ConsumerWidget {
         color: style.background,
         shape: BoxShape.circle,
       ),
-      child: Center(
-        child: Text(emoji, style: const TextStyle(fontSize: 14)),
-      ),
+      child: Center(child: Text(emoji, style: const TextStyle(fontSize: 14))),
     );
   }
 
@@ -340,13 +341,8 @@ Widget _listEmojiBadge(Brightness brightness, String emoji, ChipStyle style) {
     margin: const EdgeInsetsDirectional.only(end: 6),
     width: 28,
     height: 28,
-    decoration: BoxDecoration(
-      color: style.background,
-      shape: BoxShape.circle,
-    ),
-    child: Center(
-      child: Text(emoji, style: const TextStyle(fontSize: 14)),
-    ),
+    decoration: BoxDecoration(color: style.background, shape: BoxShape.circle),
+    child: Center(child: Text(emoji, style: const TextStyle(fontSize: 14))),
   );
 }
 

@@ -27,10 +27,14 @@ import 'widgets/more_favorites_grid.dart';
 /// `meal_screen - light.png` for colour distribution.
 ///
 /// Layout (top → bottom):
-///   1. Solid app bar: back · centred short name · sync / favourite / actions.
-///   2. Full-bleed hero photo whose bottom [_heroBleed] continues behind the
-///      info card, fading into the page. The full name sits directly on it.
-///   3. Green info card fused with the dish strip via the folder-tab curve.
+///   1. Solid app bar: back · centred short name · sync · actions.
+///   2. Full-bleed hero photo kept at the vault cards' 1.84 : 1 ratio so a
+///      stored photo is cropped as little as it can be, whose bottom
+///      [_heroBleed] continues behind the info card, fading into the page. The
+///      favourite chip floats in the photo's top-right corner.
+///   3. Green info card: the meal's protein and carbs marks on the left, its
+///      full name on the right. Fused with the dish strip via the folder-tab
+///      curve; the strip alone runs edge to edge.
 ///   4. Selected-dish panel shell · "More Favorites" grid.
 ///   5. Floating, deliberately empty bottom pill.
 ///
@@ -52,7 +56,12 @@ class MealScreen extends ConsumerStatefulWidget {
 }
 
 class _MealScreenState extends ConsumerState<MealScreen> {
-  static const double _heroBleed = 110;
+  /// How far the hero photo runs on past the band it is allotted, i.e. behind
+  /// the info card. The card is translucent in dark, so this is how much photo
+  /// shows under it: 40 stops the photo at the card's visible middle (the card
+  /// is 96 tall and the dish strip covers its last 18), while anything near 96
+  /// carries the photo all the way down to the strip.
+  static const double _heroBleed = 40;
 
   MealDishTab _selectedDish = MealDishTab.main;
 
@@ -308,6 +317,12 @@ void _leaveMealScreen(BuildContext context) {
 class _MealBody extends StatelessWidget {
   static const double _heroBleed = _MealScreenState._heroBleed;
 
+  /// The hero band's width : height, taken from the vault card's
+  /// `MealVaultCard.photoAspectRatio` so the detail screen shows a stored photo
+  /// at the same ratio the vault grid does, instead of a height derived from the
+  /// viewport.
+  static const double _heroPhotoRatio = 1.84;
+
   final Meal meal;
   final Brightness brightness;
   final AppStrings strings;
@@ -346,8 +361,8 @@ class _MealBody extends StatelessWidget {
     final shortName = (meal.shortName?.trim().isNotEmpty == true)
         ? meal.shortName!.trim()
         : meal.name;
-    final screenH = MediaQuery.sizeOf(context).height;
-    final heroH = (screenH * 0.27).clamp(180.0, 225.0);
+    final screenW = MediaQuery.sizeOf(context).width;
+    final heroH = (screenW / _heroPhotoRatio).clamp(150.0, 260.0);
     final sheet = MealScreenPalette.sheet(brightness);
 
     return Column(
@@ -360,7 +375,6 @@ class _MealBody extends StatelessWidget {
           isProposing: isProposing,
           cloudOnly: cloudOnly,
           onCloudTap: onCloudTap,
-          onFavoriteTap: onFavoriteTap,
           onEditTap: onEditTap,
           onDeleteTap: onDeleteTap,
         ),
@@ -423,13 +437,9 @@ class _MealBody extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          SizedBox(
-                            height: heroH,
-                            child: _HeroName(
-                              fullName: meal.name,
-                              brightness: brightness,
-                            ),
-                          ),
+                          // The photo's own band — the name now lives in the
+                          // card below, so nothing is painted over it.
+                          SizedBox(height: heroH),
                           _InterlockedInfoTabs(
                             meal: meal,
                             brightness: brightness,
@@ -451,6 +461,27 @@ class _MealBody extends StatelessWidget {
                           SizedBox(height: _BottomBar.clearance(context)),
                         ],
                       ),
+                      // A sibling of the hero's ClipRect, never a descendant:
+                      // inside it the chip would be sawn off by the photo's own
+                      // bottom edge. The outer Stack already runs with
+                      // `clipBehavior: Clip.none`, so the overhang survives.
+                      //
+                      // Pinned to the photo's top-right corner, and to the
+                      // visual right rather than a directional end so it holds
+                      // that corner whatever the UI language is. The box is 48
+                      // around a 44 disc, so 14 lands the disc's own edge 16 off
+                      // the photo — the margin the info card below keeps.
+                      if (onFavoriteTap != null)
+                        Positioned(
+                          right: 14,
+                          top: 14,
+                          child: _HeroFavoriteButton(
+                            key: const Key('meal_screen_favorite_button'),
+                            isFavorite: meal.isFavorite,
+                            brightness: brightness,
+                            onTap: onFavoriteTap,
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -471,19 +502,19 @@ class _MealBody extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// App bar: [back] · short name (true centred) · [sync] [favourite] [actions]
+// App bar: [back] · short name (true centred) · [sync] [actions]
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _MealAppBar extends StatelessWidget {
   /// Room the centred name keeps clear on both sides of the header.
   ///
-  /// The trailing group is cloud · favourite · overflow. Material's icon button
-  /// minimum forces the first two to 48dp each whatever [_BarButton] asks for,
-  /// the overflow button is its own 40dp box and 4dp closes the group — so
-  /// anything under this and a long short name would sit on top of the marks
-  /// (which it already did, by 12dp, before the fourth button arrived).
-  /// Symmetric so the name stays truly centred.
-  static const double _trailingActionsInset = 48 + 48 + 40 + 4 + 4;
+  /// The trailing group is cloud · overflow, since the favourite moved onto the
+  /// hero photo. The overflow is the 40dp box [_BarButton] asks for, but
+  /// Material's icon-button minimum inflates the cloud mark to 48dp whatever
+  /// `constraints` it is handed, and 2dp of edge padding closes the group — so
+  /// anything under this and the name lands on top of the marks. Symmetric so
+  /// the name stays truly centred.
+  static const double _trailingActionsInset = 48 + 40 + 6;
 
   final String shortName;
   final Meal meal;
@@ -492,7 +523,6 @@ class _MealAppBar extends StatelessWidget {
   final bool isProposing;
   final bool cloudOnly;
   final VoidCallback? onCloudTap;
-  final VoidCallback? onFavoriteTap;
 
   /// Edit / delete, offered only for a meal the vault actually holds.
   final VoidCallback? onEditTap;
@@ -506,7 +536,6 @@ class _MealAppBar extends StatelessWidget {
     required this.isProposing,
     this.cloudOnly = false,
     required this.onCloudTap,
-    required this.onFavoriteTap,
     this.onEditTap,
     this.onDeleteTap,
   });
@@ -524,7 +553,7 @@ class _MealAppBar extends StatelessWidget {
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 2),
           child: SizedBox(
             height: 56,
             child: Stack(
@@ -536,16 +565,21 @@ class _MealAppBar extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                         horizontal: _trailingActionsInset,
                       ),
-                      child: Text(
-                        shortName,
-                        key: const Key('meal_screen_short_name'),
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
+                      // scaleDown, never ellipsize: the name is the one thing on
+                      // this header that may not be hidden, so a name too wide
+                      // for the row shrinks in place instead of losing letters.
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          shortName,
+                          key: const Key('meal_screen_short_name'),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
@@ -571,22 +605,6 @@ class _MealAppBar extends StatelessWidget {
                       cloudOnly: cloudOnly,
                       onActionTap: onCloudTap,
                     ),
-                    if (onFavoriteTap != null)
-                      _BarButton(
-                        key: const Key('meal_screen_favorite_button'),
-                        width: 40,
-                        tooltip: strings.favorite,
-                        onTap: onFavoriteTap,
-                        child: AppIcon(
-                          meal.isFavorite
-                              ? AppGlyph.heartFill
-                              : AppGlyph.heartOutline,
-                          color: meal.isFavorite
-                              ? MealScreenPalette.heart(brightness)
-                              : Colors.white,
-                          size: 22,
-                        ),
-                      ),
                     if (showActions)
                       // The local actions live behind one overflow button
                       // rather than two more glyphs: the app bar's cloud +
@@ -664,7 +682,6 @@ class _MealAppBar extends StatelessWidget {
                             ),
                         ],
                       ),
-                    const SizedBox(width: 4),
                   ],
                 ),
               ],
@@ -864,33 +881,91 @@ class _CloudSyncMark extends ConsumerWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Hero name
+// Favourite chip — floats in the top-right corner of the hero photo
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _HeroName extends StatelessWidget {
-  final String fullName;
-  final Brightness brightness;
+class _HeroFavoriteButton extends StatelessWidget {
+  /// Tap target: Material's own icon-button minimum, so the control stays
+  /// thumb-sized even though it reads smaller than the app bar button it
+  /// replaces.
+  static const double tap = 48;
 
-  const _HeroName({required this.fullName, required this.brightness});
+  /// The painted disc, deliberately smaller than [tap] so the splash has room to
+  /// spread and the mark reads as a badge rather than as a hit box.
+  static const double chip = 44;
+
+  final bool isFavorite;
+  final Brightness brightness;
+  final VoidCallback? onTap;
+
+  const _HeroFavoriteButton({
+    super.key,
+    required this.isFavorite,
+    required this.brightness,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final rtl = Directionality.of(context) == TextDirection.rtl;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
-      child: Align(
-        alignment: rtl ? Alignment.bottomRight : Alignment.bottomLeft,
-        child: Text(
-          fullName,
-          key: const Key('meal_screen_full_name'),
-          textAlign: rtl ? TextAlign.right : TextAlign.left,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 30,
-            height: 1.15,
-            fontWeight: FontWeight.w700,
-            color: MealScreenPalette.fullName(brightness),
+    final strings = AppStrings.of(context);
+    final isDark = MealScreenPalette.isDark(brightness);
+
+    return Tooltip(
+      message: strings.favorite,
+      child: Semantics(
+        button: true,
+        selected: isFavorite,
+        label: strings.favorite,
+        child: SizedBox(
+          width: tap,
+          height: tap,
+          // A transparent Material carries the ink and clips it to the circle;
+          // the visible disc is the Container below, because a Material shaped
+          // as a 48dp circle would paint its own plate at that size.
+          child: Material(
+            type: MaterialType.transparency,
+            shape: const CircleBorder(),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: onTap,
+              customBorder: const CircleBorder(),
+              child: Center(
+                child: Container(
+                  width: chip,
+                  height: chip,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    // A solid plate, never a ghost: over an arbitrary food photo
+                    // a bare outline heart vanishes the moment the dish is
+                    // light-coloured, which is exactly how the app bar glyph
+                    // already read on this hero.
+                    color: isDark
+                        ? MealScreenPalette.darkCard.withValues(alpha: 0.82)
+                        : Colors.white,
+                    border: Border.all(
+                      color: MealScreenPalette.cardStroke(brightness),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(
+                          alpha: isDark ? 0.55 : 0.25,
+                        ),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: AppIcon(
+                    isFavorite ? AppGlyph.heartFill : AppGlyph.heartOutline,
+                    color: isFavorite
+                        ? MealScreenPalette.heart(brightness)
+                        : MealScreenPalette.text(brightness),
+                    size: 22,
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       ),

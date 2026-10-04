@@ -20,13 +20,16 @@ const bool kWifiOnlyCloudDefault = false;
 /// offline-safe path when nobody initialized Firebase.
 final firebaseAvailableProvider = Provider<bool>((ref) => false);
 
-final sharedPreferencesProvider = FutureProvider<SharedPreferences>((ref) async {
+final sharedPreferencesProvider = FutureProvider<SharedPreferences>((
+  ref,
+) async {
   return await SharedPreferences.getInstance();
 });
 
-final wifiOnlyCloudProvider = StateNotifierProvider<WifiOnlyCloudNotifier, bool>((ref) {
-  return WifiOnlyCloudNotifier(ref);
-});
+final wifiOnlyCloudProvider =
+    StateNotifierProvider<WifiOnlyCloudNotifier, bool>((ref) {
+      return WifiOnlyCloudNotifier(ref);
+    });
 
 class WifiOnlyCloudNotifier extends StateNotifier<bool> {
   final Ref ref;
@@ -106,7 +109,9 @@ final reachabilityProvider = FutureProvider<bool>((ref) async {
     return true;
   }
 
-  final hasInterface = connectivity.isNotEmpty && !connectivity.contains(ConnectivityResult.none);
+  final hasInterface =
+      connectivity.isNotEmpty &&
+      !connectivity.contains(ConnectivityResult.none);
   if (!hasInterface) return false;
 
   final cached = _reachabilityCache.getIfValid();
@@ -119,42 +124,44 @@ final reachabilityProvider = FutureProvider<bool>((ref) async {
   return reachable;
 });
 
-final cloudAccessStatusFutureProvider = FutureProvider.autoDispose<CloudAccessStatus>((ref) async {
-  final connectivityAsync = ref.watch(connectivityProvider);
-  final wifiOnly = ref.watch(wifiOnlyCloudProvider);
-  final connectivity = connectivityAsync.valueOrNull ?? await Connectivity().checkConnectivity();
+final cloudAccessStatusFutureProvider =
+    FutureProvider.autoDispose<CloudAccessStatus>((ref) async {
+      final connectivityAsync = ref.watch(connectivityProvider);
+      final wifiOnly = ref.watch(wifiOnlyCloudProvider);
+      final connectivity =
+          connectivityAsync.valueOrNull ??
+          await Connectivity().checkConnectivity();
 
-  if (connectivity.contains(ConnectivityResult.none) || connectivity.isEmpty) {
-    return CloudAccessStatus.noConnection;
-  }
+      if (connectivity.contains(ConnectivityResult.none) ||
+          connectivity.isEmpty) {
+        return CloudAccessStatus.noConnection;
+      }
 
-  if (wifiOnly && !connectivity.contains(ConnectivityResult.wifi)) {
-    return CloudAccessStatus.requiresWifi;
-  }
+      if (wifiOnly && !connectivity.contains(ConnectivityResult.wifi)) {
+        return CloudAccessStatus.requiresWifi;
+      }
 
-  final hasInterface = connectivity.isNotEmpty && !connectivity.contains(ConnectivityResult.none);
-  if (!hasInterface) return CloudAccessStatus.noConnection;
+      final hasInterface =
+          connectivity.isNotEmpty &&
+          !connectivity.contains(ConnectivityResult.none);
+      if (!hasInterface) return CloudAccessStatus.noConnection;
 
-  final cached = _reachabilityCache.getIfValid();
-  bool reachable;
-  if (cached != null) {
-    reachable = cached;
-  } else {
-    reachable = await ReachabilityService.instance.isInternetReachable(
-      timeout: const Duration(seconds: 3),
-    );
-    _reachabilityCache.set(reachable);
-  }
+      final cached = _reachabilityCache.getIfValid();
+      bool reachable;
+      if (cached != null) {
+        reachable = cached;
+      } else {
+        reachable = await ReachabilityService.instance.isInternetReachable(
+          timeout: const Duration(seconds: 3),
+        );
+        _reachabilityCache.set(reachable);
+      }
 
-  if (!reachable) {
-    return CloudAccessStatus.noConnection;
-  }
+      if (!reachable) {
+        return CloudAccessStatus.noConnection;
+      }
 
-  return CloudAccessStatus.allowed;
-});
+      return CloudAccessStatus.allowed;
+    });
 
-enum CloudAccessStatus {
-  allowed,
-  noConnection,
-  requiresWifi,
-}
+enum CloudAccessStatus { allowed, noConnection, requiresWifi }

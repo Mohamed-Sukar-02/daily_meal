@@ -269,12 +269,12 @@ class MealDetailsSheet extends ConsumerWidget {
               isFridaySpecial: info.isFridaySpecial,
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
               nameTrailing: switch (detailsContext) {
-                MealDetailsContext.explore => cloudMeal != null
-                    ? _buildExploreBookmark(ref, brightness)
-                    : null,
-                MealDetailsContext.vault => meal != null
-                    ? _buildVaultLoveButton(ref, brightness)
-                    : null,
+                MealDetailsContext.explore =>
+                  cloudMeal != null
+                      ? _buildExploreBookmark(ref, brightness)
+                      : null,
+                MealDetailsContext.vault =>
+                  meal != null ? _buildVaultLoveButton(ref, brightness) : null,
                 MealDetailsContext.history => null,
               },
             ),
@@ -285,12 +285,24 @@ class MealDetailsSheet extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   switch (detailsContext) {
-                    MealDetailsContext.history =>
-                      _buildHistorySection(context, brightness, strings, info),
-                    MealDetailsContext.explore =>
-                      _buildExploreSection(context, ref, brightness, strings),
-                    MealDetailsContext.vault =>
-                      _buildVaultSection(context, ref, brightness, strings),
+                    MealDetailsContext.history => _buildHistorySection(
+                      context,
+                      brightness,
+                      strings,
+                      info,
+                    ),
+                    MealDetailsContext.explore => _buildExploreSection(
+                      context,
+                      ref,
+                      brightness,
+                      strings,
+                    ),
+                    MealDetailsContext.vault => _buildVaultSection(
+                      context,
+                      ref,
+                      brightness,
+                      strings,
+                    ),
                   },
                 ],
               ),
@@ -376,10 +388,15 @@ class MealDetailsSheet extends ConsumerWidget {
                 size: 16,
               ),
               label: Text(
-                isSavedToVault ? strings.savedInVault : strings.discoveryDownload,
+                isSavedToVault
+                    ? strings.savedInVault
+                    : strings.discoveryDownload,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               style: FilledButton.styleFrom(
                 backgroundColor: isSavedToVault
@@ -486,7 +503,10 @@ class MealDetailsSheet extends ConsumerWidget {
                   icon: AppIcon(AppGlyph.pencil, color: Colors.white, size: 16),
                   label: Text(
                     strings.edit,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppPalette.brandGreen,
@@ -514,7 +534,10 @@ class MealDetailsSheet extends ConsumerWidget {
                   icon: const Icon(Icons.delete_outline_rounded, size: 16),
                   label: Text(
                     strings.delete,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.red.shade700,
@@ -644,7 +667,9 @@ class MealDetailsSheet extends ConsumerWidget {
     return InkWell(
       customBorder: const CircleBorder(),
       onTap: () {
-        ref.read(vaultControllerProvider.notifier).toggleFavorite(meal!.id, isLoved);
+        ref
+            .read(vaultControllerProvider.notifier)
+            .toggleFavorite(meal!.id, isLoved);
       },
       child: Padding(
         padding: const EdgeInsets.all(4.0),
@@ -659,4 +684,3 @@ class MealDetailsSheet extends ConsumerWidget {
     );
   }
 }
- 

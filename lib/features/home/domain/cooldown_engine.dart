@@ -62,12 +62,12 @@ class CooldownEngine {
       );
     }
 
-    final adaptedHistory = history.map((h) => _HistoryCandidate.from(h)).toList()
-      ..sort((a, b) {
-        final dateCmp = b.rawCookedDate.compareTo(a.rawCookedDate);
-        if (dateCmp != 0) return dateCmp;
-        return b.createdAt.compareTo(a.createdAt);
-      });
+    final adaptedHistory =
+        history.map((h) => _HistoryCandidate.from(h)).toList()..sort((a, b) {
+          final dateCmp = b.rawCookedDate.compareTo(a.rawCookedDate);
+          if (dateCmp != 0) return dateCmp;
+          return b.createdAt.compareTo(a.createdAt);
+        });
 
     final Map<int, DateTime> lastCookedByMealId = {};
     for (final h in adaptedHistory) {
@@ -98,7 +98,8 @@ class CooldownEngine {
       chickenCooldown = (settings as dynamic)?.chickenCooldownDays as int? ?? 2;
       beefCooldown = (settings as dynamic)?.beefCooldownDays as int? ?? 2;
       fishCooldown = (settings as dynamic)?.fishCooldownDays as int? ?? 4;
-      meatlessCooldown = (settings as dynamic)?.meatlessCooldownDays as int? ?? 0;
+      meatlessCooldown =
+          (settings as dynamic)?.meatlessCooldownDays as int? ?? 0;
     }
 
     final targetCount = min(3, meals.length);
@@ -175,12 +176,18 @@ class CooldownEngine {
       final DateTime? lastCookedDate = lastCookedByMealId[meal.id];
 
       if (lastCookedDate != null) {
-        final deltaDays = app_date_utils.daysBetweenLocal(lastCookedDate, today);
+        final deltaDays = app_date_utils.daysBetweenLocal(
+          lastCookedDate,
+          today,
+        );
 
         if (level == 4) {
           if (deltaDays == 0) return false;
         } else if (level < 5) {
-          final effectiveCooldown = _calculateEffectiveCooldown(specificCooldown, level);
+          final effectiveCooldown = _calculateEffectiveCooldown(
+            specificCooldown,
+            level,
+          );
           if (deltaDays <= effectiveCooldown) return false;
         }
       }
@@ -291,7 +298,8 @@ class CooldownEngine {
             }
             if (hDate != null) {
               final existing = effectiveMap[hMealId];
-              if (existing == null || hDate.isAfter(existing)) effectiveMap[hMealId] = hDate;
+              if (existing == null || hDate.isAfter(existing))
+                effectiveMap[hMealId] = hDate;
             }
           } catch (_) {}
         }
@@ -319,7 +327,10 @@ class CooldownEngine {
     if (lastCookedDate == null) {
       sRecency = 25.0;
     } else {
-      final deltaDays = app_date_utils.daysBetweenLocal(lastCookedDate, normalizedToday);
+      final deltaDays = app_date_utils.daysBetweenLocal(
+        lastCookedDate,
+        normalizedToday,
+      );
       sRecency = min(20.0, (deltaDays - specificCooldown) / 2.0);
     }
 
@@ -498,7 +509,9 @@ class CooldownEngine {
       }
 
       final proteins = selected.map((m) => m.proteinName).toSet();
-      var index = remaining.indexWhere((m) => !proteins.contains(m.proteinName));
+      var index = remaining.indexWhere(
+        (m) => !proteins.contains(m.proteinName),
+      );
       if (index == -1) {
         final carbs = selected.map((m) => m.carbsName).toSet();
         index = remaining.indexWhere((m) => !carbs.contains(m.carbsName));
@@ -528,13 +541,13 @@ class _MealCandidate {
   final int? customCooldownDays;
 
   _MealCandidate.from(this.rawMeal)
-      : id = (rawMeal as dynamic).id as int,
-        name = (rawMeal as dynamic).name as String,
-        proteinName = _extractEnumName((rawMeal as dynamic).proteinType),
-        carbsName = _extractEnumName((rawMeal as dynamic).carbsType),
-        isFridaySpecial = (rawMeal as dynamic).isFridaySpecial as bool,
-        isFavorite = (rawMeal as dynamic).isFavorite as bool,
-        customCooldownDays = _extractCustomCooldown(rawMeal);
+    : id = (rawMeal as dynamic).id as int,
+      name = (rawMeal as dynamic).name as String,
+      proteinName = _extractEnumName((rawMeal as dynamic).proteinType),
+      carbsName = _extractEnumName((rawMeal as dynamic).carbsType),
+      isFridaySpecial = (rawMeal as dynamic).isFridaySpecial as bool,
+      isFavorite = (rawMeal as dynamic).isFavorite as bool,
+      customCooldownDays = _extractCustomCooldown(rawMeal);
 
   /// Negatives are clamped at the read, not left to the callers: a stored `-1`
   /// would survive `_calculateEffectiveCooldown` as a negative window, i.e. a
@@ -568,14 +581,18 @@ class _HistoryCandidate {
   final String carbsName;
 
   _HistoryCandidate.from(this.rawHistory)
-      : mealId = (rawHistory as dynamic).mealId as int?,
-        rawCookedDate = _extractRawDate(rawHistory),
-        normalizedCookedDate = _normalizeDate(_extractRawDate(rawHistory)),
-        createdAt = (rawHistory as dynamic).createdAt is DateTime
-            ? (rawHistory as dynamic).createdAt as DateTime
-            : DateTime.now(),
-        proteinName = _MealCandidate._extractEnumName((rawHistory as dynamic).proteinType),
-        carbsName = _MealCandidate._extractEnumName((rawHistory as dynamic).carbsType);
+    : mealId = (rawHistory as dynamic).mealId as int?,
+      rawCookedDate = _extractRawDate(rawHistory),
+      normalizedCookedDate = _normalizeDate(_extractRawDate(rawHistory)),
+      createdAt = (rawHistory as dynamic).createdAt is DateTime
+          ? (rawHistory as dynamic).createdAt as DateTime
+          : DateTime.now(),
+      proteinName = _MealCandidate._extractEnumName(
+        (rawHistory as dynamic).proteinType,
+      ),
+      carbsName = _MealCandidate._extractEnumName(
+        (rawHistory as dynamic).carbsType,
+      );
 
   /// Falls back to epoch 0 ("never cooked") rather than `DateTime.now()`: a
   /// corrupted row that reads as "cooked today" would block the meal for the

@@ -85,8 +85,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     if (routerState.uri.queryParameters['section'] != 'notifications') return;
     if (identical(_scrolledForState, routerState)) return;
     _scrolledForState = routerState;
-    WidgetsBinding.instance.addPostFrameCallback((_) =>
-        _scrollToNotificationsSection(attempt: 0));
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _scrollToNotificationsSection(attempt: 0),
+    );
   }
 
   bool _shouldBlinkNotifications = false;
@@ -115,8 +116,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
       return;
     }
     if (attempt < 30) {
-      WidgetsBinding.instance.addPostFrameCallback((_) =>
-          _scrollToNotificationsSection(attempt: attempt + 1));
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _scrollToNotificationsSection(attempt: attempt + 1),
+      );
     }
   }
 
@@ -135,7 +137,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
         bottom: false,
         child: settingsAsync.when(
           data: (settings) {
-            final strings = AppStrings(settings.language == AppLanguagePreference.ar ? const Locale('ar') : const Locale('en'));
+            final strings = AppStrings(
+              settings.language == AppLanguagePreference.ar
+                  ? const Locale('ar')
+                  : const Locale('en'),
+            );
             return ListView(
               key: const Key('settings_scroll_view'),
               controller: _scrollController,
@@ -145,16 +151,34 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                 const SizedBox(height: 20),
                 _buildProfileCard(context, ref, settings, brightness, strings),
                 const SizedBox(height: 24),
-                _buildCooldownSection(context, ref, settings, brightness, strings),
+                _buildCooldownSection(
+                  context,
+                  ref,
+                  settings,
+                  brightness,
+                  strings,
+                ),
                 const SizedBox(height: 24),
                 KeyedSubtree(
                   key: _notificationsSectionKey,
-                  child: _buildNotificationsSection(context, ref, settings, brightness, strings),
+                  child: _buildNotificationsSection(
+                    context,
+                    ref,
+                    settings,
+                    brightness,
+                    strings,
+                  ),
                 ),
                 const SizedBox(height: 24),
                 _buildNetworkSection(brightness, strings),
                 const SizedBox(height: 24),
-                _buildAppearanceSection(context, ref, settings, brightness, strings),
+                _buildAppearanceSection(
+                  context,
+                  ref,
+                  settings,
+                  brightness,
+                  strings,
+                ),
                 const SizedBox(height: 24),
                 _buildAdminSection(context, brightness, strings),
               ],
@@ -262,7 +286,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                         ),
                       ),
                       child: const Center(
-                        child: AppIcon(AppGlyph.pencil, color: Colors.white, size: 12),
+                        child: AppIcon(
+                          AppGlyph.pencil,
+                          color: Colors.white,
+                          size: 12,
+                        ),
                       ),
                     ),
                   ),
@@ -421,7 +449,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
               ],
             ],
           ),
-        )
+        ),
       ],
     );
   }
@@ -486,7 +514,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
             runSpacing: 4,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              _stepButton(brightness, AppGlyph.minus, () => onChanged((days - 1).clamp(0, 30))),
+              _stepButton(
+                brightness,
+                AppGlyph.minus,
+                () => onChanged((days - 1).clamp(0, 30)),
+              ),
               ConstrainedBox(
                 constraints: const BoxConstraints(minWidth: 24, maxWidth: 36),
                 child: FittedBox(
@@ -502,7 +534,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                   ),
                 ),
               ),
-              _stepButton(brightness, AppGlyph.plus, () => onChanged((days + 1).clamp(0, 30))),
+              _stepButton(
+                brightness,
+                AppGlyph.plus,
+                () => onChanged((days + 1).clamp(0, 30)),
+              ),
             ],
           ),
         ],
@@ -538,7 +574,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _iconCircle(brightness, Icons.notifications_active_outlined, AppPalette.chipGold(brightness)),
+                    _iconCircle(
+                      brightness,
+                      Icons.notifications_active_outlined,
+                      AppPalette.chipGold(brightness),
+                    ),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
@@ -592,7 +632,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _iconCircle(brightness, Icons.access_time_rounded, AppPalette.chipViolet(brightness)),
+                        _iconCircle(
+                          brightness,
+                          Icons.access_time_rounded,
+                          AppPalette.chipViolet(brightness),
+                        ),
                         const SizedBox(width: 14),
                         Expanded(
                           child: Column(
@@ -642,13 +686,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                               strings,
                             );
                             if (picked != null) {
-                              controller.updateNotificationTime(picked.hour, picked.minute);
+                              controller.updateNotificationTime(
+                                picked.hour,
+                                picked.minute,
+                              );
                             }
                           },
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
                             decoration: BoxDecoration(
-                              color: AppPalette.chipViolet(brightness).background,
+                              color: AppPalette.chipViolet(
+                                brightness,
+                              ).background,
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Row(
@@ -656,7 +708,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                               children: [
                                 AppIcon(
                                   AppGlyph.clock,
-                                  color: AppPalette.chipViolet(brightness).foreground,
+                                  color: AppPalette.chipViolet(
+                                    brightness,
+                                  ).foreground,
                                   size: 14,
                                 ),
                                 const SizedBox(width: 6),
@@ -665,13 +719,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700,
-                                    color: AppPalette.chipViolet(brightness).foreground,
+                                    color: AppPalette.chipViolet(
+                                      brightness,
+                                    ).foreground,
                                   ),
                                 ),
                                 const SizedBox(width: 4),
                                 AppIcon(
                                   AppGlyph.chevron,
-                                  color: AppPalette.chipViolet(brightness).foreground,
+                                  color: AppPalette.chipViolet(
+                                    brightness,
+                                  ).foreground,
                                   size: 14,
                                 ),
                               ],
@@ -715,7 +773,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
             child: Row(
               children: [
-                _iconCircle(brightness, Icons.wifi_rounded, AppPalette.chipBlue(brightness)),
+                _iconCircle(
+                  brightness,
+                  Icons.wifi_rounded,
+                  AppPalette.chipBlue(brightness),
+                ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -781,7 +843,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SectionHeader(brightness: brightness, title: strings.appearanceAndLanguage),
+        _SectionHeader(
+          brightness: brightness,
+          title: strings.appearanceAndLanguage,
+        ),
         const SizedBox(height: 12),
         _Card(
           brightness: brightness,
@@ -840,17 +905,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                     ),
                     const SizedBox(width: 12),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: AppPalette.tabContainer(brightness),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppPalette.hairline(brightness)),
+                        border: Border.all(
+                          color: AppPalette.hairline(brightness),
+                        ),
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<AppThemeModePreference>(
                           value: settings.themeMode,
                           isDense: true,
-                          icon: AppIcon(AppGlyph.chevron, color: AppPalette.textSecondary(brightness), size: 14),
+                          icon: AppIcon(
+                            AppGlyph.chevron,
+                            color: AppPalette.textSecondary(brightness),
+                            size: 14,
+                          ),
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
@@ -862,9 +936,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                             if (v != null) controller.updateThemeMode(v);
                           },
                           items: [
-                            DropdownMenuItem(value: AppThemeModePreference.system, child: Text(themeLabel(AppThemeModePreference.system))),
-                            DropdownMenuItem(value: AppThemeModePreference.light, child: Text(themeLabel(AppThemeModePreference.light))),
-                            DropdownMenuItem(value: AppThemeModePreference.dark, child: Text(themeLabel(AppThemeModePreference.dark))),
+                            DropdownMenuItem(
+                              value: AppThemeModePreference.system,
+                              child: Text(
+                                themeLabel(AppThemeModePreference.system),
+                              ),
+                            ),
+                            DropdownMenuItem(
+                              value: AppThemeModePreference.light,
+                              child: Text(
+                                themeLabel(AppThemeModePreference.light),
+                              ),
+                            ),
+                            DropdownMenuItem(
+                              value: AppThemeModePreference.dark,
+                              child: Text(
+                                themeLabel(AppThemeModePreference.dark),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -880,7 +969,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _iconCircle(brightness, AppGlyph.globe, AppPalette.chipBlue(brightness)),
+                    _iconCircle(
+                      brightness,
+                      AppGlyph.globe,
+                      AppPalette.chipBlue(brightness),
+                    ),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
@@ -905,7 +998,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                             fit: BoxFit.scaleDown,
                             alignment: AlignmentDirectional.centerStart,
                             child: Text(
-                              settings.language == AppLanguagePreference.ar ? strings.languageArabic : strings.languageEnglish,
+                              settings.language == AppLanguagePreference.ar
+                                  ? strings.languageArabic
+                                  : strings.languageEnglish,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -926,7 +1021,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                       decoration: BoxDecoration(
                         color: AppPalette.tabContainer(brightness),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppPalette.hairline(brightness), width: 1),
+                        border: Border.all(
+                          color: AppPalette.hairline(brightness),
+                          width: 1,
+                        ),
                       ),
                       clipBehavior: Clip.antiAlias,
                       child: Directionality(
@@ -939,18 +1037,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                                 brightness: brightness,
                                 label: 'EN',
                                 isLeft: true,
-                                selected: settings.language == AppLanguagePreference.en,
-                                onTap: () => controller.updateLanguage(AppLanguagePreference.en),
+                                selected:
+                                    settings.language ==
+                                    AppLanguagePreference.en,
+                                onTap: () => controller.updateLanguage(
+                                  AppLanguagePreference.en,
+                                ),
                               ),
                             ),
-                            Container(width: 1, color: AppPalette.hairline(brightness)),
+                            Container(
+                              width: 1,
+                              color: AppPalette.hairline(brightness),
+                            ),
                             Expanded(
                               child: _LanguageSegment(
                                 brightness: brightness,
                                 label: 'AR',
                                 isRight: true,
-                                selected: settings.language == AppLanguagePreference.ar,
-                                onTap: () => controller.updateLanguage(AppLanguagePreference.ar),
+                                selected:
+                                    settings.language ==
+                                    AppLanguagePreference.ar,
+                                onTap: () => controller.updateLanguage(
+                                  AppLanguagePreference.ar,
+                                ),
                               ),
                             ),
                           ],
@@ -976,7 +1085,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     return showWheelTimePicker(context, brightness, initial, strings: strings);
   }
 
-
   Widget _buildAdminSection(
     BuildContext context,
     Brightness brightness,
@@ -999,7 +1107,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                 strings.privacyPolicyTitle,
                 () => showDialog(
                   context: context,
-                  builder: (_) => const widgets.LegalPoliciesDialog(isPrivacy: true),
+                  builder: (_) =>
+                      const widgets.LegalPoliciesDialog(isPrivacy: true),
                 ),
               ),
             ],
@@ -1030,15 +1139,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     );
   }
 
-  Widget _iconCircle(Brightness brightness, dynamic glyphOrIcon, ChipStyle style) {
+  Widget _iconCircle(
+    Brightness brightness,
+    dynamic glyphOrIcon,
+    ChipStyle style,
+  ) {
     return Container(
       width: 44,
       height: 44,
-      decoration: BoxDecoration(color: style.background, shape: BoxShape.circle),
+      decoration: BoxDecoration(
+        color: style.background,
+        shape: BoxShape.circle,
+      ),
       child: Center(
         child: glyphOrIcon is IconData
             ? Icon(glyphOrIcon, color: style.foreground, size: 22)
-            : AppIcon(glyphOrIcon as AppGlyph, color: style.foreground, size: 20),
+            : AppIcon(
+                glyphOrIcon as AppGlyph,
+                color: style.foreground,
+                size: 20,
+              ),
       ),
     );
   }
@@ -1047,12 +1167,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     return Container(
       width: 44,
       height: 44,
-      decoration: BoxDecoration(color: style.background, shape: BoxShape.circle),
+      decoration: BoxDecoration(
+        color: style.background,
+        shape: BoxShape.circle,
+      ),
       child: Center(child: Text(emoji, style: const TextStyle(fontSize: 20))),
     );
   }
 
-  Widget _stepButton(Brightness brightness, AppGlyph glyph, VoidCallback onTap) {
+  Widget _stepButton(
+    Brightness brightness,
+    AppGlyph glyph,
+    VoidCallback onTap,
+  ) {
     return Material(
       color: AppPalette.tabContainer(brightness),
       shape: const CircleBorder(),
@@ -1063,7 +1190,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
           width: 38,
           height: 38,
           child: Center(
-            child: AppIcon(glyph, color: AppPalette.textPrimary(brightness), size: 16),
+            child: AppIcon(
+              glyph,
+              color: AppPalette.textPrimary(brightness),
+              size: 16,
+            ),
           ),
         ),
       ),
@@ -1202,10 +1333,14 @@ class _AvatarWidget extends StatelessWidget {
         height: size,
         cacheWidth: (size * 2).toInt(),
         errorBuilder: (ctx, err, st) {
-          debugPrint('Avatar file load error for $avatarPath: $err - falling back to asset');
+          debugPrint(
+            'Avatar file load error for $avatarPath: $err - falling back to asset',
+          );
           // Try to load as asset if file fails
           return Image.asset(
-            avatarPath!.contains('assets/') ? avatarPath! : 'assets/avatars/MO1.png',
+            avatarPath!.contains('assets/')
+                ? avatarPath!
+                : 'assets/avatars/MO1.png',
             fit: BoxFit.cover,
             width: size,
             height: size,
@@ -1386,7 +1521,9 @@ class _LanguageSegment extends StatelessWidget {
               fontSize: 13,
               fontWeight: FontWeight.w900,
               letterSpacing: 0.3,
-              color: selected ? Colors.white : AppPalette.textSecondary(brightness),
+              color: selected
+                  ? Colors.white
+                  : AppPalette.textSecondary(brightness),
             ),
           ),
         ),
@@ -1522,6 +1659,3 @@ class _CooldownSliderItemState extends State<_CooldownSliderItem> {
     );
   }
 }
-
-
-

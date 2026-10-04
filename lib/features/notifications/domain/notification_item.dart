@@ -1,6 +1,26 @@
+import '../../../core/navigation/notification_route.dart';
 import '../../../core/services/device_profile.dart';
 
 enum NotificationType { meal, reminder, update }
+
+/// Which day band a broadcast falls into in the feed.
+enum NotificationAge { today, yesterday, earlier }
+
+/// The band [time] belongs to, counted in calendar days rather than elapsed
+/// hours, so a broadcast from 11 pm yesterday sits under "Yesterday" beside its
+/// siblings instead of splitting the "Today" band. A timestamp in the future —
+/// a device clock that drifted — is treated as today.
+NotificationAge notificationAgeOf(DateTime time, {DateTime? now}) {
+  final reference = now ?? DateTime.now();
+  final days = DateTime(
+    reference.year,
+    reference.month,
+    reference.day,
+  ).difference(DateTime(time.year, time.month, time.day)).inDays;
+  if (days <= 0) return NotificationAge.today;
+  if (days == 1) return NotificationAge.yesterday;
+  return NotificationAge.earlier;
+}
 
 /// Which lifecycle slice a broadcast was addressed to, as the admin panel
 /// writes it: `segment: { v: 1, kind: 'all' | 'new' | 'returning', days: int }`.
@@ -12,7 +32,8 @@ class NotificationSegment {
   });
 
   /// The shape every document that carries no segment gets.
-  const NotificationSegment.all() : this(version: _supportedVersion, kind: 'all', days: 0);
+  const NotificationSegment.all()
+    : this(version: _supportedVersion, kind: 'all', days: 0);
 
   /// Highest segment layout this build knows how to evaluate.
   static const int _supportedVersion = 1;
@@ -102,4 +123,10 @@ class NotificationItem {
 
   String getLocalizedTitle(bool isEn) => title[isEn ? 'en' : 'ar'] ?? '';
   String getLocalizedSubtitle(bool isEn) => subtitle[isEn ? 'en' : 'ar'] ?? '';
+
+  /// The vault row this broadcast is about, if it is about one at all.
+  MealTarget? get mealTarget => mealTargetFromRoute(route);
+
+  /// The day band this broadcast is grouped under.
+  NotificationAge get age => notificationAgeOf(time);
 }

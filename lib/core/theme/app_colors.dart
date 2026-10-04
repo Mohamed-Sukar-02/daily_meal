@@ -27,13 +27,13 @@ class AppColors {
   // --- Chip Colors (Light Mode Base) ---
   static const Color chipPinkBg = Color(0xFFFDEAEA);
   static const Color chipPinkText = Color(0xFFE85D5D);
-  
+
   static const Color chipYellowBg = Color(0xFFFFF8E1);
   static const Color chipYellowText = Color(0xFFD4930D);
-  
+
   static const Color chipPurpleBg = Color(0xFFF3E8FF);
   static const Color chipPurpleText = Color(0xFF7C3AED);
-  
+
   static const Color chipGreenBg = Color(0xFFE8F5E9);
   static const Color chipGreenText = Color(0xFF2E7D32);
 

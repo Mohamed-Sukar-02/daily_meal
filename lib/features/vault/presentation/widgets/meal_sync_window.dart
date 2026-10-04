@@ -30,11 +30,7 @@ Future<void> showMealSyncWindow(
     context: context,
     builder: (dialogContext) => AlertDialog(
       key: const Key('sync-diff-window'),
-      icon: const AppIcon(
-        AppGlyph.swap,
-        size: 34,
-        color: Color(0xFFFFA53C),
-      ),
+      icon: const AppIcon(AppGlyph.swap, size: 34, color: Color(0xFFFFA53C)),
       title: Text(
         strings.syncWindowTitle,
         style: const TextStyle(fontWeight: FontWeight.bold),
@@ -61,7 +57,9 @@ Future<void> showMealSyncWindow(
                     ),
                   ),
                   Icon(
-                    rtl ? Icons.arrow_back_rounded : Icons.arrow_forward_rounded,
+                    rtl
+                        ? Icons.arrow_back_rounded
+                        : Icons.arrow_forward_rounded,
                     size: 14,
                   ),
                   Expanded(
@@ -94,13 +92,20 @@ Future<void> showMealSyncWindow(
                 .updateMeal(meal.id, cloud);
             if (context.mounted) {
               if (updated) {
-                AppToast.showSuccess(context, strings.mealUpdatedToast(cloud.name));
+                AppToast.showSuccess(
+                  context,
+                  strings.mealUpdatedToast(cloud.name),
+                );
               } else {
                 AppToast.showError(context, strings.mealDownloadFailed);
               }
             }
           },
-          icon: const AppIcon(AppGlyph.cloudDown, color: Colors.white, size: 16),
+          icon: const AppIcon(
+            AppGlyph.cloudDown,
+            color: Colors.white,
+            size: 16,
+          ),
           label: Text(
             strings.syncWindowUpdate,
             maxLines: 1,

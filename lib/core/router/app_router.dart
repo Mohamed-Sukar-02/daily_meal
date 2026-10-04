@@ -21,9 +21,15 @@ import '../widgets/app_icons.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'rootNav');
 final _shellNavigatorHome = GlobalKey<NavigatorState>(debugLabel: 'shellHome');
-final _shellNavigatorVault = GlobalKey<NavigatorState>(debugLabel: 'shellVault');
-final _shellNavigatorHistory = GlobalKey<NavigatorState>(debugLabel: 'shellHistory');
-final _shellNavigatorSettings = GlobalKey<NavigatorState>(debugLabel: 'shellSettings');
+final _shellNavigatorVault = GlobalKey<NavigatorState>(
+  debugLabel: 'shellVault',
+);
+final _shellNavigatorHistory = GlobalKey<NavigatorState>(
+  debugLabel: 'shellHistory',
+);
+final _shellNavigatorSettings = GlobalKey<NavigatorState>(
+  debugLabel: 'shellSettings',
+);
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   // Re-runs `redirect` whenever the setup state loads/changes, so deep
@@ -51,16 +57,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/splash',
         name: 'splash',
-        pageBuilder: (context, state) => const NoTransitionPage(
-          child: SplashScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: SplashScreen()),
       ),
       GoRoute(
         path: '/welcome',
         name: 'welcome',
-        pageBuilder: (context, state) => const NoTransitionPage(
-          child: WelcomeScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: WelcomeScreen()),
       ),
       // Full meal screen (root-level: renders above the tab shell).
       // Reached from the meal details sheet ("full details") and deep links.
@@ -106,16 +110,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/',
                 name: 'home',
-                pageBuilder: (context, state) => const NoTransitionPage(
-                  child: HomeScreen(),
-                ),
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: HomeScreen()),
                 routes: [
                   GoRoute(
                     path: 'notifications',
                     name: 'notifications',
-                    pageBuilder: (context, state) => const NoTransitionPage(
-                      child: NotificationsScreen(),
-                    ),
+                    pageBuilder: (context, state) =>
+                        const NoTransitionPage(child: NotificationsScreen()),
                   ),
                 ],
               ),
@@ -147,9 +149,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/history',
                 name: 'history',
-                pageBuilder: (context, state) => const NoTransitionPage(
-                  child: HistoryScreen(),
-                ),
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: HistoryScreen()),
               ),
             ],
           ),
@@ -161,9 +162,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/settings',
                 name: 'settings',
-                pageBuilder: (context, state) => const NoTransitionPage(
-                  child: SettingsScreen(),
-                ),
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: SettingsScreen()),
               ),
             ],
           ),
@@ -176,10 +176,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 class ScaffoldWithNavBar extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
 
-  const ScaffoldWithNavBar({
-    super.key,
-    required this.navigationShell,
-  });
+  const ScaffoldWithNavBar({super.key, required this.navigationShell});
 
   @override
   ConsumerState<ScaffoldWithNavBar> createState() => _ScaffoldWithNavBarState();
@@ -293,7 +290,8 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
           return;
         }
 
-        final isExitWarningActive = _lastBackPressTime != null &&
+        final isExitWarningActive =
+            _lastBackPressTime != null &&
             now.difference(_lastBackPressTime!) < _exitWindow;
         if (isExitWarningActive) {
           // The second press honours the warning it was given: leave.
@@ -308,59 +306,60 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
       child: Scaffold(
         body: widget.navigationShell,
         bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: AppPalette.navBackground(theme.brightness),
-          border: Border(
-            top: BorderSide(
-              color: AppPalette.hairline(theme.brightness),
-              width: 1,
+          decoration: BoxDecoration(
+            color: AppPalette.navBackground(theme.brightness),
+            border: Border(
+              top: BorderSide(
+                color: AppPalette.hairline(theme.brightness),
+                width: 1,
+              ),
             ),
           ),
-        ),
-        child: SafeArea(
-          child: SizedBox(
-            height: 54,
-            child: Directionality(
-              // Mockups place the Home tab leftmost in both locales.
-              textDirection: TextDirection.ltr,
-              child: Row(
-                children: [
-                  _NavBarItem(
-                    key: const ValueKey('nav_destination_home'),
-                    iconData: Icons.home_rounded,
-                    label: strings.navHome,
-                    isSelected: widget.navigationShell.currentIndex == 0,
-                    onTap: () => _onTap(0),
-                  ),
-                  _NavBarItem(
-                    key: const ValueKey('nav_destination_vault'),
-                    assetPath: 'assets/icons/nav_vault.png',
-                    iconSize: 23.4,
-                    label: strings.navVault,
-                    isSelected: widget.navigationShell.currentIndex == 1,
-                    onTap: () => _onTap(1),
-                  ),
-                  _NavBarItem(
-                    key: const ValueKey('nav_destination_history'),
-                    iconData: Icons.check_circle_outline_rounded,
-                    label: strings.navHistory,
-                    isSelected: widget.navigationShell.currentIndex == 2,
-                    onTap: () => _onTap(2),
-                  ),
-                  _NavBarItem(
-                    key: const ValueKey('nav_destination_settings'),
-                    iconData: Icons.settings_rounded,
-                    label: strings.navSettings,
-                    isSelected: widget.navigationShell.currentIndex == 3,
-                    onTap: () => _onTap(3),
-                  ),
-                ],
+          child: SafeArea(
+            child: SizedBox(
+              height: 54,
+              child: Directionality(
+                // Mockups place the Home tab leftmost in both locales.
+                textDirection: TextDirection.ltr,
+                child: Row(
+                  children: [
+                    _NavBarItem(
+                      key: const ValueKey('nav_destination_home'),
+                      iconData: Icons.home_rounded,
+                      label: strings.navHome,
+                      isSelected: widget.navigationShell.currentIndex == 0,
+                      onTap: () => _onTap(0),
+                    ),
+                    _NavBarItem(
+                      key: const ValueKey('nav_destination_vault'),
+                      assetPath: 'assets/icons/nav_vault.png',
+                      iconSize: 23.4,
+                      label: strings.navVault,
+                      isSelected: widget.navigationShell.currentIndex == 1,
+                      onTap: () => _onTap(1),
+                    ),
+                    _NavBarItem(
+                      key: const ValueKey('nav_destination_history'),
+                      iconData: Icons.check_circle_outline_rounded,
+                      label: strings.navHistory,
+                      isSelected: widget.navigationShell.currentIndex == 2,
+                      onTap: () => _onTap(2),
+                    ),
+                    _NavBarItem(
+                      key: const ValueKey('nav_destination_settings'),
+                      iconData: Icons.settings_rounded,
+                      label: strings.navSettings,
+                      isSelected: widget.navigationShell.currentIndex == 3,
+                      onTap: () => _onTap(3),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
       ),
-    ));
+    );
   }
 }
 
@@ -399,11 +398,7 @@ class _NavBarItem extends StatelessWidget {
         size: iconSize,
       );
     } else if (iconData != null) {
-      iconWidget = Icon(
-        iconData,
-        color: color,
-        size: iconSize,
-      );
+      iconWidget = Icon(iconData, color: color, size: iconSize);
     } else {
       iconWidget = AppIcon(glyph!, color: color, size: iconSize);
     }
@@ -438,8 +433,9 @@ class _NavBarItem extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: color,
-                        fontWeight:
-                            isSelected ? FontWeight.w700 : FontWeight.w500,
+                        fontWeight: isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
                         fontSize: 10.5,
                       ),
                     ),

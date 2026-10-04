@@ -66,18 +66,20 @@ void main() {
     await db.close();
   });
 
-  test('downloadMeal copies the cloud notes so the fresh row starts in sync',
-      () async {
-    final cloud = _cloudMeal();
-    final id = await container
-        .read(discoveryControllerProvider.notifier)
-        .downloadMeal(cloud);
-    expect(id, isNotNull);
+  test(
+    'downloadMeal copies the cloud notes so the fresh row starts in sync',
+    () async {
+      final cloud = _cloudMeal();
+      final id = await container
+          .read(discoveryControllerProvider.notifier)
+          .downloadMeal(cloud);
+      expect(id, isNotNull);
 
-    final row = (await db.mealsDao.getMealById(id!))!;
-    expect(row.notes?.trim(), _notes);
-    expect(mealCloudDiffs(row, cloud, strings), isEmpty);
-  });
+      final row = (await db.mealsDao.getMealById(id!))!;
+      expect(row.notes?.trim(), _notes);
+      expect(mealCloudDiffs(row, cloud, strings), isEmpty);
+    },
+  );
 
   test('"Update from cloud" clears a notes-only difference', () async {
     final localId = await db.mealsDao.insertMeal(_localRow(notes: null));

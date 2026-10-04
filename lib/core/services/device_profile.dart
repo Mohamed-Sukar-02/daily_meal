@@ -38,7 +38,9 @@ class DeviceProfile {
       );
     }
 
-    final seeded = existingInstall ? _preExistingInstallSeed : (now ?? DateTime.now());
+    final seeded = existingInstall
+        ? _preExistingInstallSeed
+        : (now ?? DateTime.now());
     await prefs.setInt(_kFirstOpenedAtKey, seeded.millisecondsSinceEpoch);
     return DeviceProfile(firstOpenedAt: seeded, hasCooked: hasCooked);
   }

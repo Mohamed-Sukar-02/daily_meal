@@ -134,9 +134,10 @@ class VaultFilterNotifier extends Notifier<VaultFilterState> {
   }
 }
 
-final vaultFilterProvider = NotifierProvider<VaultFilterNotifier, VaultFilterState>(() {
-  return VaultFilterNotifier();
-});
+final vaultFilterProvider =
+    NotifierProvider<VaultFilterNotifier, VaultFilterState>(() {
+      return VaultFilterNotifier();
+    });
 
 final filteredMealsProvider = Provider<AsyncValue<List<Meal>>>((ref) {
   final allMealsAsync = ref.watch(allMealsProvider);
@@ -146,13 +147,15 @@ final filteredMealsProvider = Provider<AsyncValue<List<Meal>>>((ref) {
     return meals.where((meal) {
       if (filter.searchQuery.trim().isNotEmpty) {
         final normalizedQuery = normalizeArabic(filter.searchQuery.trim());
-        final mealNormalized = meal.nameNormalized ?? normalizeArabic(meal.name);
+        final mealNormalized =
+            meal.nameNormalized ?? normalizeArabic(meal.name);
         if (!mealNormalized.contains(normalizedQuery)) {
           return false;
         }
       }
 
-      if (filter.proteinType != null && meal.proteinType != filter.proteinType) {
+      if (filter.proteinType != null &&
+          meal.proteinType != filter.proteinType) {
         return false;
       }
 
@@ -206,12 +209,14 @@ class VaultController extends AsyncNotifier<void> {
     state = const AsyncValue.loading();
     try {
       final dao = ref.read(mealsDaoProvider);
-      
+
       final existingByName = await dao.getMealByName(cleanName);
       if (existingByName != null) {
-        throw ArgumentError('A meal with this name already exists in your vault.');
+        throw ArgumentError(
+          'A meal with this name already exists in your vault.',
+        );
       }
-      
+
       final id = await dao.insertMeal(
         MealsCompanion(
           name: Value(cleanName),
@@ -219,7 +224,9 @@ class VaultController extends AsyncNotifier<void> {
           carbsType: Value(carbsType),
           category: Value(category),
           prepTime: Value(prepTimeMinutes),
-          photoPath: photoPath != null ? Value(photoPath) : const Value.absent(),
+          photoPath: photoPath != null
+              ? Value(photoPath)
+              : const Value.absent(),
           isFridaySpecial: Value(isFridaySpecial),
           isFavorite: Value(isFavorite),
           notes: notes != null && notes.trim().isNotEmpty
@@ -242,14 +249,18 @@ class VaultController extends AsyncNotifier<void> {
     state = const AsyncValue.loading();
     try {
       final dao = ref.read(mealsDaoProvider);
-      
+
       if (companion.name.present && companion.name.value.trim().isNotEmpty) {
-        final existingByName = await dao.getMealByName(companion.name.value.trim());
+        final existingByName = await dao.getMealByName(
+          companion.name.value.trim(),
+        );
         if (existingByName != null) {
-          throw ArgumentError('A meal with this name already exists in your vault.');
+          throw ArgumentError(
+            'A meal with this name already exists in your vault.',
+          );
         }
       }
-      
+
       final id = await dao.insertMeal(companion);
       state = const AsyncValue.data(null);
       return id;
@@ -263,15 +274,17 @@ class VaultController extends AsyncNotifier<void> {
     state = const AsyncValue.loading();
     try {
       final dao = ref.read(mealsDaoProvider);
-      
+
       final cleanName = meal.name.trim();
       if (cleanName.isNotEmpty) {
         final existingByName = await dao.getMealByName(cleanName);
         if (existingByName != null && existingByName.id != meal.id) {
-          throw ArgumentError('A meal with this name already exists in your vault.');
+          throw ArgumentError(
+            'A meal with this name already exists in your vault.',
+          );
         }
       }
-      
+
       final success = await dao.updateMeal(meal);
       state = const AsyncValue.data(null);
       return success;
@@ -313,9 +326,11 @@ class VaultController extends AsyncNotifier<void> {
   }
 }
 
-final vaultControllerProvider = AsyncNotifierProvider<VaultController, void>(() {
-  return VaultController();
-});
+final vaultControllerProvider = AsyncNotifierProvider<VaultController, void>(
+  () {
+    return VaultController();
+  },
+);
 
 const String _kVaultIsGridViewKey = 'vault_is_grid_view';
 
@@ -349,8 +364,7 @@ class VaultViewModeNotifier extends Notifier<bool> {
   }
 }
 
-final vaultViewModeProvider =
-    NotifierProvider<VaultViewModeNotifier, bool>(() {
+final vaultViewModeProvider = NotifierProvider<VaultViewModeNotifier, bool>(() {
   return VaultViewModeNotifier();
 });
 
@@ -392,6 +406,7 @@ class SavedCloudMealsNotifier extends Notifier<Set<String>> {
   }
 }
 
-final savedCloudMealsProvider = NotifierProvider<SavedCloudMealsNotifier, Set<String>>(() {
-  return SavedCloudMealsNotifier();
-});
+final savedCloudMealsProvider =
+    NotifierProvider<SavedCloudMealsNotifier, Set<String>>(() {
+      return SavedCloudMealsNotifier();
+    });

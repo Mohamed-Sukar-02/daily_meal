@@ -81,322 +81,366 @@ void main() {
   final wednesday = DateTime(2026, 10, 7, 12, 0);
 
   group('CooldownEngine - R1: Legume & Dairy Cooldown Resolution', () {
-    test('legume meals resolve to meatlessCooldownDays instead of global cooldownDays in compute', () {
-      final settings = _createSettings(cooldownDays: 14, meatlessCooldownDays: 2);
-      final koshari = _createMeal(
-        id: 1,
-        name: 'كشري مصري',
-        proteinType: ProteinType.legume,
-        carbsType: CarbsType.rice,
-      );
-
-      // Cooked 5 days ago:
-      // If using global cooldownDays (14), 5 <= 14 -> blocked at level 0.
-      // If using meatlessCooldownDays (2), 5 > 2 -> eligible at level 0.
-      final history = [
-        _createHistory(
-          id: 101,
-          mealId: 1,
-          mealName: 'كشري مصري',
+    test(
+      'legume meals resolve to meatlessCooldownDays instead of global cooldownDays in compute',
+      () {
+        final settings = _createSettings(
+          cooldownDays: 14,
+          meatlessCooldownDays: 2,
+        );
+        final koshari = _createMeal(
+          id: 1,
+          name: 'كشري مصري',
           proteinType: ProteinType.legume,
-          cookedAt: wednesday.subtract(const Duration(days: 5)),
-        ),
-      ];
+          carbsType: CarbsType.rice,
+        );
 
-      final result = engine.compute<Meal>(
-        meals: [koshari],
-        history: history,
-        settings: settings,
-        today: wednesday,
-      );
+        // Cooked 5 days ago:
+        // If using global cooldownDays (14), 5 <= 14 -> blocked at level 0.
+        // If using meatlessCooldownDays (2), 5 > 2 -> eligible at level 0.
+        final history = [
+          _createHistory(
+            id: 101,
+            mealId: 1,
+            mealName: 'كشري مصري',
+            proteinType: ProteinType.legume,
+            cookedAt: wednesday.subtract(const Duration(days: 5)),
+          ),
+        ];
 
-      expect(result.recommendations, hasLength(1));
-      expect(result.recommendations.first.id, 1);
-      expect(
-        result.relaxationLevel,
-        0,
-        reason: 'Legume meal cooked 5 days ago should be eligible at level 0 with meatlessCooldownDays=2',
-      );
-    });
+        final result = engine.compute<Meal>(
+          meals: [koshari],
+          history: history,
+          settings: settings,
+          today: wednesday,
+        );
 
-    test('dairy meals resolve to meatlessCooldownDays instead of global cooldownDays in compute', () {
-      final settings = _createSettings(cooldownDays: 14, meatlessCooldownDays: 3);
-      final shakshouka = _createMeal(
-        id: 2,
-        name: 'شكشوكة بالجبنة والبيض',
-        proteinType: ProteinType.dairy,
-        carbsType: CarbsType.bread,
-      );
+        expect(result.recommendations, hasLength(1));
+        expect(result.recommendations.first.id, 1);
+        expect(
+          result.relaxationLevel,
+          0,
+          reason:
+              'Legume meal cooked 5 days ago should be eligible at level 0 with meatlessCooldownDays=2',
+        );
+      },
+    );
 
-      // Cooked 4 days ago:
-      // If using global cooldown (14), 4 <= 14 -> blocked at level 0.
-      // If using meatlessCooldown (3), 4 > 3 -> eligible at level 0.
-      final history = [
-        _createHistory(
-          id: 102,
-          mealId: 2,
-          mealName: 'شكشوكة بالجبنة والبيض',
+    test(
+      'dairy meals resolve to meatlessCooldownDays instead of global cooldownDays in compute',
+      () {
+        final settings = _createSettings(
+          cooldownDays: 14,
+          meatlessCooldownDays: 3,
+        );
+        final shakshouka = _createMeal(
+          id: 2,
+          name: 'شكشوكة بالجبنة والبيض',
           proteinType: ProteinType.dairy,
-          cookedAt: wednesday.subtract(const Duration(days: 4)),
-        ),
-      ];
+          carbsType: CarbsType.bread,
+        );
 
-      final result = engine.compute<Meal>(
-        meals: [shakshouka],
-        history: history,
-        settings: settings,
-        today: wednesday,
-      );
+        // Cooked 4 days ago:
+        // If using global cooldown (14), 4 <= 14 -> blocked at level 0.
+        // If using meatlessCooldown (3), 4 > 3 -> eligible at level 0.
+        final history = [
+          _createHistory(
+            id: 102,
+            mealId: 2,
+            mealName: 'شكشوكة بالجبنة والبيض',
+            proteinType: ProteinType.dairy,
+            cookedAt: wednesday.subtract(const Duration(days: 4)),
+          ),
+        ];
 
-      expect(result.recommendations, hasLength(1));
-      expect(result.recommendations.first.id, 2);
-      expect(
-        result.relaxationLevel,
-        0,
-        reason: 'Dairy meal cooked 4 days ago should be eligible at level 0 with meatlessCooldownDays=3',
-      );
-    });
+        final result = engine.compute<Meal>(
+          meals: [shakshouka],
+          history: history,
+          settings: settings,
+          today: wednesday,
+        );
 
-    test('legume and dairy meals respect meatlessCooldownDays = 0 (immediately eligible)', () {
-      final settings = _createSettings(cooldownDays: 14, meatlessCooldownDays: 0);
-      final foul = _createMeal(
-        id: 3,
-        name: 'فول مدمس',
-        proteinType: ProteinType.legume,
-      );
-      final omelette = _createMeal(
-        id: 4,
-        name: 'أومليت بالخضار',
-        proteinType: ProteinType.dairy,
-      );
+        expect(result.recommendations, hasLength(1));
+        expect(result.recommendations.first.id, 2);
+        expect(
+          result.relaxationLevel,
+          0,
+          reason:
+              'Dairy meal cooked 4 days ago should be eligible at level 0 with meatlessCooldownDays=3',
+        );
+      },
+    );
 
-      // Both cooked yesterday: with meatlessCooldownDays = 0, deltaDays (1) > 0, so eligible at level 0
-      final history = [
-        _createHistory(
-          id: 103,
-          mealId: 3,
-          mealName: 'فول مدمس',
+    test(
+      'legume and dairy meals respect meatlessCooldownDays = 0 (immediately eligible)',
+      () {
+        final settings = _createSettings(
+          cooldownDays: 14,
+          meatlessCooldownDays: 0,
+        );
+        final foul = _createMeal(
+          id: 3,
+          name: 'فول مدمس',
           proteinType: ProteinType.legume,
-          cookedAt: wednesday.subtract(const Duration(days: 1)),
-        ),
-        _createHistory(
-          id: 104,
-          mealId: 4,
-          mealName: 'أومليت بالخضار',
+        );
+        final omelette = _createMeal(
+          id: 4,
+          name: 'أومليت بالخضار',
           proteinType: ProteinType.dairy,
-          cookedAt: wednesday.subtract(const Duration(days: 1)),
-        ),
-      ];
+        );
 
-      final result = engine.compute<Meal>(
-        meals: [foul, omelette],
-        history: history,
-        settings: settings,
-        today: wednesday,
-      );
+        // Both cooked yesterday: with meatlessCooldownDays = 0, deltaDays (1) > 0, so eligible at level 0
+        final history = [
+          _createHistory(
+            id: 103,
+            mealId: 3,
+            mealName: 'فول مدمس',
+            proteinType: ProteinType.legume,
+            cookedAt: wednesday.subtract(const Duration(days: 1)),
+          ),
+          _createHistory(
+            id: 104,
+            mealId: 4,
+            mealName: 'أومليت بالخضار',
+            proteinType: ProteinType.dairy,
+            cookedAt: wednesday.subtract(const Duration(days: 1)),
+          ),
+        ];
 
-      expect(result.recommendations, hasLength(2));
-      expect(result.relaxationLevel, 0);
-    });
+        final result = engine.compute<Meal>(
+          meals: [foul, omelette],
+          history: history,
+          settings: settings,
+          today: wednesday,
+        );
 
-    test('legume and dairy meals are blocked at level 0 if within meatlessCooldownDays', () {
-      final settings = _createSettings(cooldownDays: 14, meatlessCooldownDays: 5);
-      final lentilSoup = _createMeal(
-        id: 5,
-        name: 'شوربة عدس',
-        proteinType: ProteinType.legume,
-      );
+        expect(result.recommendations, hasLength(2));
+        expect(result.relaxationLevel, 0);
+      },
+    );
 
-      // Cooked 2 days ago: deltaDays = 2 <= meatlessCooldownDays (5), so blocked at level 0
-      final history = [
-        _createHistory(
-          id: 105,
-          mealId: 5,
-          mealName: 'شوربة عدس',
+    test(
+      'legume and dairy meals are blocked at level 0 if within meatlessCooldownDays',
+      () {
+        final settings = _createSettings(
+          cooldownDays: 14,
+          meatlessCooldownDays: 5,
+        );
+        final lentilSoup = _createMeal(
+          id: 5,
+          name: 'شوربة عدس',
           proteinType: ProteinType.legume,
-          cookedAt: wednesday.subtract(const Duration(days: 2)),
-        ),
-      ];
+        );
 
-      final result = engine.compute<Meal>(
-        meals: [lentilSoup],
-        history: history,
-        settings: settings,
-        today: wednesday,
-      );
+        // Cooked 2 days ago: deltaDays = 2 <= meatlessCooldownDays (5), so blocked at level 0
+        final history = [
+          _createHistory(
+            id: 105,
+            mealId: 5,
+            mealName: 'شوربة عدس',
+            proteinType: ProteinType.legume,
+            cookedAt: wednesday.subtract(const Duration(days: 2)),
+          ),
+        ];
 
-      expect(result.recommendations, hasLength(1));
-      // Level should be relaxed (> 0) because deltaDays (2) <= meatlessCooldownDays (5)
-      expect(result.relaxationLevel, greaterThan(0));
-    });
+        final result = engine.compute<Meal>(
+          meals: [lentilSoup],
+          history: history,
+          settings: settings,
+          today: wednesday,
+        );
 
-    test('calculateMealScore uses meatlessCooldownDays for legume and dairy recency score', () {
-      final koshari = _createMeal(
-        id: 1,
-        name: 'كشري',
-        proteinType: ProteinType.legume,
-      );
-      final cheeseOmelette = _createMeal(
-        id: 2,
-        name: 'عجة بالبيض والجبن',
-        proteinType: ProteinType.dairy,
-      );
+        expect(result.recommendations, hasLength(1));
+        // Level should be relaxed (> 0) because deltaDays (2) <= meatlessCooldownDays (5)
+        expect(result.relaxationLevel, greaterThan(0));
+      },
+    );
 
-      final cookedDate = wednesday.subtract(const Duration(days: 6));
-      final history = {1: cookedDate, 2: cookedDate};
+    test(
+      'calculateMealScore uses meatlessCooldownDays for legume and dairy recency score',
+      () {
+        final koshari = _createMeal(
+          id: 1,
+          name: 'كشري',
+          proteinType: ProteinType.legume,
+        );
+        final cheeseOmelette = _createMeal(
+          id: 2,
+          name: 'عجة بالبيض والجبن',
+          proteinType: ProteinType.dairy,
+        );
 
-      // With meatlessCooldownDays = 2, deltaDays = 6:
-      // sRecency = min(20.0, (6 - 2) / 2.0) = 2.0.
-      // If it erroneously used cooldownDays = 14:
-      // sRecency would be (6 - 14) / 2.0 = -4.0.
-      final scoreLegume = engine.calculateMealScore(
-        meal: koshari,
-        lastCookedByMealId: history,
-        today: wednesday,
-        cooldownDays: 14,
-        meatlessCooldownDays: 2,
-      );
+        final cookedDate = wednesday.subtract(const Duration(days: 6));
+        final history = {1: cookedDate, 2: cookedDate};
 
-      final scoreDairy = engine.calculateMealScore(
-        meal: cheeseOmelette,
-        lastCookedByMealId: history,
-        today: wednesday,
-        cooldownDays: 14,
-        meatlessCooldownDays: 2,
-      );
+        // With meatlessCooldownDays = 2, deltaDays = 6:
+        // sRecency = min(20.0, (6 - 2) / 2.0) = 2.0.
+        // If it erroneously used cooldownDays = 14:
+        // sRecency would be (6 - 14) / 2.0 = -4.0.
+        final scoreLegume = engine.calculateMealScore(
+          meal: koshari,
+          lastCookedByMealId: history,
+          today: wednesday,
+          cooldownDays: 14,
+          meatlessCooldownDays: 2,
+        );
 
-      // Wednesday is not Friday, isFavorite is false, so total score == sRecency == 2.0
-      expect(scoreLegume, closeTo(2.0, 0.001));
-      expect(scoreDairy, closeTo(2.0, 0.001));
-    });
+        final scoreDairy = engine.calculateMealScore(
+          meal: cheeseOmelette,
+          lastCookedByMealId: history,
+          today: wednesday,
+          cooldownDays: 14,
+          meatlessCooldownDays: 2,
+        );
+
+        // Wednesday is not Friday, isFavorite is false, so total score == sRecency == 2.0
+        expect(scoreLegume, closeTo(2.0, 0.001));
+        expect(scoreDairy, closeTo(2.0, 0.001));
+      },
+    );
   });
 
   group('CooldownEngine - R1: Second Card Carb Diversity', () {
-    test('second card chooses diverse carbs when all remaining candidates share the same protein', () {
-      // 4 chicken meals with different carbohydrates
-      final chickenRice1 = _createMeal(
-        id: 1,
-        name: 'فراخ ورز 1',
-        proteinType: ProteinType.chicken,
-        carbsType: CarbsType.rice,
-      );
-      final chickenRice2 = _createMeal(
-        id: 2,
-        name: 'فراخ ورز 2',
-        proteinType: ProteinType.chicken,
-        carbsType: CarbsType.rice,
-      );
-      final chickenPasta = _createMeal(
-        id: 3,
-        name: 'فراخ ومكرونة',
-        proteinType: ProteinType.chicken,
-        carbsType: CarbsType.pasta,
-      );
-      final chickenBread = _createMeal(
-        id: 4,
-        name: 'ساندوتش فراخ بالعيش',
-        proteinType: ProteinType.chicken,
-        carbsType: CarbsType.bread,
-      );
+    test(
+      'second card chooses diverse carbs when all remaining candidates share the same protein',
+      () {
+        // 4 chicken meals with different carbohydrates
+        final chickenRice1 = _createMeal(
+          id: 1,
+          name: 'فراخ ورز 1',
+          proteinType: ProteinType.chicken,
+          carbsType: CarbsType.rice,
+        );
+        final chickenRice2 = _createMeal(
+          id: 2,
+          name: 'فراخ ورز 2',
+          proteinType: ProteinType.chicken,
+          carbsType: CarbsType.rice,
+        );
+        final chickenPasta = _createMeal(
+          id: 3,
+          name: 'فراخ ومكرونة',
+          proteinType: ProteinType.chicken,
+          carbsType: CarbsType.pasta,
+        );
+        final chickenBread = _createMeal(
+          id: 4,
+          name: 'ساندوتش فراخ بالعيش',
+          proteinType: ProteinType.chicken,
+          carbsType: CarbsType.bread,
+        );
 
-      final settings = _createSettings();
+        final settings = _createSettings();
 
-      final result = engine.compute<Meal>(
-        meals: [chickenRice1, chickenRice2, chickenPasta, chickenBread],
-        history: const [],
-        settings: settings,
-        today: wednesday,
-        shuffleSeed: 0,
-      );
+        final result = engine.compute<Meal>(
+          meals: [chickenRice1, chickenRice2, chickenPasta, chickenBread],
+          history: const [],
+          settings: settings,
+          today: wednesday,
+          shuffleSeed: 0,
+        );
 
-      expect(result.recommendations, hasLength(3));
-      final pickedCarbs = result.recommendations.map((m) => m.carbsType).toList();
+        expect(result.recommendations, hasLength(3));
+        final pickedCarbs = result.recommendations
+            .map((m) => m.carbsType)
+            .toList();
 
-      // Card 1 has rice
-      expect(pickedCarbs[0], CarbsType.rice);
-      // Card 2 MUST NOT have rice because chickenPasta was available to diversify carbs
-      expect(
-        pickedCarbs[1],
-        isNot(equals(CarbsType.rice)),
-        reason: 'Card 2 should enforce carb diversity when protein cannot be diversified',
-      );
-      // All 3 cards should have unique carbs
-      expect(
-        pickedCarbs.toSet(),
-        hasLength(3),
-        reason: 'All cards should have distinct carb types',
-      );
-    });
+        // Card 1 has rice
+        expect(pickedCarbs[0], CarbsType.rice);
+        // Card 2 MUST NOT have rice because chickenPasta was available to diversify carbs
+        expect(
+          pickedCarbs[1],
+          isNot(equals(CarbsType.rice)),
+          reason:
+              'Card 2 should enforce carb diversity when protein cannot be diversified',
+        );
+        // All 3 cards should have unique carbs
+        expect(
+          pickedCarbs.toSet(),
+          hasLength(3),
+          reason: 'All cards should have distinct carb types',
+        );
+      },
+    );
 
-    test('second card gracefully falls back to rank order when carb diversity cannot be satisfied', () {
-      // 3 chicken meals that ALL have rice
-      final chickenRice1 = _createMeal(
-        id: 1,
-        name: 'فراخ ورز مصري',
-        proteinType: ProteinType.chicken,
-        carbsType: CarbsType.rice,
-      );
-      final chickenRice2 = _createMeal(
-        id: 2,
-        name: 'فراخ ورز بسمتي',
-        proteinType: ProteinType.chicken,
-        carbsType: CarbsType.rice,
-      );
-      final chickenRice3 = _createMeal(
-        id: 3,
-        name: 'فراخ ورز كاري',
-        proteinType: ProteinType.chicken,
-        carbsType: CarbsType.rice,
-      );
+    test(
+      'second card gracefully falls back to rank order when carb diversity cannot be satisfied',
+      () {
+        // 3 chicken meals that ALL have rice
+        final chickenRice1 = _createMeal(
+          id: 1,
+          name: 'فراخ ورز مصري',
+          proteinType: ProteinType.chicken,
+          carbsType: CarbsType.rice,
+        );
+        final chickenRice2 = _createMeal(
+          id: 2,
+          name: 'فراخ ورز بسمتي',
+          proteinType: ProteinType.chicken,
+          carbsType: CarbsType.rice,
+        );
+        final chickenRice3 = _createMeal(
+          id: 3,
+          name: 'فراخ ورز كاري',
+          proteinType: ProteinType.chicken,
+          carbsType: CarbsType.rice,
+        );
 
-      final settings = _createSettings();
+        final settings = _createSettings();
 
-      final result = engine.compute<Meal>(
-        meals: [chickenRice1, chickenRice2, chickenRice3],
-        history: const [],
-        settings: settings,
-        today: wednesday,
-      );
+        final result = engine.compute<Meal>(
+          meals: [chickenRice1, chickenRice2, chickenRice3],
+          history: const [],
+          settings: settings,
+          today: wednesday,
+        );
 
-      // Should still return all 3 meals without failing
-      expect(result.recommendations, hasLength(3));
-      expect(result.recommendations.map((m) => m.id).toSet(), {1, 2, 3});
-    });
+        // Should still return all 3 meals without failing
+        expect(result.recommendations, hasLength(3));
+        expect(result.recommendations.map((m) => m.id).toSet(), {1, 2, 3});
+      },
+    );
   });
 
   group('CooldownEngine - R1: Dead Code Removal & Relaxation Level 5', () {
-    test('exhausted pool cleanly returns at relaxation level 5 without reaching dead fallback', () {
-      final beefMeal = _createMeal(
-        id: 1,
-        name: 'لحمة ورز',
-        proteinType: ProteinType.beef,
-        carbsType: CarbsType.rice,
-      );
-
-      // Cooked today -> deltaDays = 0, blocked through levels 0..4
-      final history = [
-        _createHistory(
+    test(
+      'exhausted pool cleanly returns at relaxation level 5 without reaching dead fallback',
+      () {
+        final beefMeal = _createMeal(
           id: 1,
-          mealId: 1,
-          mealName: 'لحمة ورز',
+          name: 'لحمة ورز',
           proteinType: ProteinType.beef,
-          cookedAt: wednesday,
-        ),
-      ];
+          carbsType: CarbsType.rice,
+        );
 
-      final settings = _createSettings(cooldownDays: 30, beefCooldownDays: 30);
+        // Cooked today -> deltaDays = 0, blocked through levels 0..4
+        final history = [
+          _createHistory(
+            id: 1,
+            mealId: 1,
+            mealName: 'لحمة ورز',
+            proteinType: ProteinType.beef,
+            cookedAt: wednesday,
+          ),
+        ];
 
-      final result = engine.compute<Meal>(
-        meals: [beefMeal],
-        history: history,
-        settings: settings,
-        today: wednesday,
-      );
+        final settings = _createSettings(
+          cooldownDays: 30,
+          beefCooldownDays: 30,
+        );
 
-      expect(result.recommendations, hasLength(1));
-      expect(result.relaxationLevel, 5);
-      expect(result.isEmptyVault, isFalse);
-    });
+        final result = engine.compute<Meal>(
+          meals: [beefMeal],
+          history: history,
+          settings: settings,
+          today: wednesday,
+        );
+
+        expect(result.recommendations, hasLength(1));
+        expect(result.relaxationLevel, 5);
+        expect(result.isEmptyVault, isFalse);
+      },
+    );
 
     test('empty meals list returns early with empty vault flag', () {
       final settings = _createSettings();

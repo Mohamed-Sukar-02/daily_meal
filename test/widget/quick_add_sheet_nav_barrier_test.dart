@@ -34,10 +34,12 @@ void main() {
   /// tree at all times (the shell keeps all four branches alive), so this is
   /// the only honest reading of "which tab is on screen".
   bool tabSelected(WidgetTester tester, String destination) {
-    final widget = tester.widget<Text>(find.descendant(
-      of: find.byKey(ValueKey('nav_destination_$destination')),
-      matching: find.byType(Text),
-    ));
+    final widget = tester.widget<Text>(
+      find.descendant(
+        of: find.byKey(ValueKey('nav_destination_$destination')),
+        matching: find.byType(Text),
+      ),
+    );
     return widget.style?.fontWeight == FontWeight.w700;
   }
 
@@ -55,62 +57,79 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
   }
 
-  testWidgets('a dirty quick-add sheet cannot be walked away from by the tabs',
-      (tester) async {
-    await setSize(tester, const Size(400, 900));
-    final db = await pumpApp(tester);
-    await openQuickAdd(tester);
+  testWidgets(
+    'a dirty quick-add sheet cannot be walked away from by the tabs',
+    (tester) async {
+      await setSize(tester, const Size(400, 900));
+      final db = await pumpApp(tester);
+      await openQuickAdd(tester);
 
-    // 1. The whole navigation strip is out of reach while the sheet is up.
-    for (final destination in destinations) {
-      expect(
-        find.byKey(ValueKey('nav_destination_$destination')).hitTestable(),
-        findsNothing,
-        reason: '$destination must sit behind the sheet or its barrier',
+      // 1. The whole navigation strip is out of reach while the sheet is up.
+      for (final destination in destinations) {
+        expect(
+          find.byKey(ValueKey('nav_destination_$destination')).hitTestable(),
+          findsNothing,
+          reason: '$destination must sit behind the sheet or its barrier',
+        );
+      }
+
+      // 2. A typed draft, then an attempt to leave through a tab.
+      await tester.enterText(find.byKey(nameField), 'كشرى');
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('nav_destination_history')),
+        warnIfMissed: false,
       );
-    }
+      await tester.pumpAndSettle();
 
-    // 2. A typed draft, then an attempt to leave through a tab.
-    await tester.enterText(find.byKey(nameField), 'كشرى');
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('nav_destination_history')),
-        warnIfMissed: false);
-    await tester.pumpAndSettle();
+      expect(
+        tabSelected(tester, 'history'),
+        isFalse,
+        reason: 'the tab must not change underneath a sheet with unsaved text',
+      );
+      expect(tabSelected(tester, 'vault'), isTrue);
+      expect(
+        find.byType(BottomSheet),
+        findsOneWidget,
+        reason: 'the sheet must not be hidden away by a branch switch',
+      );
+      expect(
+        tester.widget<TextFormField>(find.byKey(nameField)).controller!.text,
+        'كشرى',
+        reason: 'the draft survives the attempt',
+      );
+      final meals = await db.select(db.meals).get();
+      expect(
+        meals.map((m) => m.name),
+        isNot(contains('كشرى')),
+        reason: 'an abandoned draft writes nothing',
+      );
 
-    expect(tabSelected(tester, 'history'), isFalse,
-        reason: 'the tab must not change underneath a sheet with unsaved text');
-    expect(tabSelected(tester, 'vault'), isTrue);
-    expect(find.byType(BottomSheet), findsOneWidget,
-        reason: 'the sheet must not be hidden away by a branch switch');
-    expect(
-      tester.widget<TextFormField>(find.byKey(nameField)).controller!.text,
-      'كشرى',
-      reason: 'the draft survives the attempt',
-    );
-    final meals = await db.select(db.meals).get();
-    expect(meals.map((m) => m.name), isNot(contains('كشرى')),
-        reason: 'an abandoned draft writes nothing');
-
-    // 3. Leaving through the scrim is the guarded path: it asks first.
-    final sheetTop = tester.getTopLeft(find.byType(BottomSheet));
-    await tester.tapAt(Offset(20, sheetTop.dy - 10));
-    await tester.pumpAndSettle();
-    expect(find.byKey(discardDialog), findsOneWidget,
-        reason: 'a barrier dismissal runs Navigator.maybePop, which '
+      // 3. Leaving through the scrim is the guarded path: it asks first.
+      final sheetTop = tester.getTopLeft(find.byType(BottomSheet));
+      await tester.tapAt(Offset(20, sheetTop.dy - 10));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(discardDialog),
+        findsOneWidget,
+        reason:
+            'a barrier dismissal runs Navigator.maybePop, which '
             'PopScope.canPop gates — the reason the sheet is hosted on the '
-            'root navigator');
+            'root navigator',
+      );
 
-    await tester.tap(find.byKey(keepEditingButton));
-    await tester.pumpAndSettle();
-    expect(find.byType(BottomSheet), findsOneWidget);
-    expect(
-      tester.widget<TextFormField>(find.byKey(nameField)).controller!.text,
-      'كشرى',
-    );
+      await tester.tap(find.byKey(keepEditingButton));
+      await tester.pumpAndSettle();
+      expect(find.byType(BottomSheet), findsOneWidget);
+      expect(
+        tester.widget<TextFormField>(find.byKey(nameField)).controller!.text,
+        'كشرى',
+      );
 
-    await runOutToasts(tester);
-    await tearDownApp(tester, db);
-  });
+      await runOutToasts(tester);
+      await tearDownApp(tester, db);
+    },
+  );
 
   testWidgets('a clean sheet still leaves through the scrim without asking, '
       'and still without moving the tab', (tester) async {
@@ -123,63 +142,86 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(BottomSheet), findsNothing);
-    expect(find.byKey(discardDialog), findsNothing,
-        reason: 'nothing was typed, so asking would be the old bug in reverse');
-    expect(tabSelected(tester, 'vault'), isTrue,
-        reason: 'closing the sheet must not be a tab switch');
-
-    await runOutToasts(tester);
-    await tearDownApp(tester, db);
-  });
-
-  testWidgets('hosting the sheet on the root navigator does not restyle it on a '
-      'tablet', (tester) async {
-    await setSize(tester, const Size(1280, 900));
-    final db = await pumpApp(tester);
-    await openQuickAdd(tester);
-
-    final material = tester.getRect(find
-        .descendant(
-            of: find.byType(BottomSheet), matching: find.byType(Material))
-        .first);
-
-    // Material 3 caps a modal sheet at 640dp and centres it. That comes from
-    // the theme (`_BottomSheetDefaultsM3.constraints`), not from the host
-    // navigator, so covering the nav bar must not have moved it.
-    expect(material.width, 640);
-    expect(material.center.dx, 640,
-        reason: 'still centred on a 1280dp screen');
-    expect(material.bottom, 900,
-        reason: 'flush with the bottom edge — the nav strip it used to stop '
-            'above now sits behind it');
-    for (final destination in destinations) {
-      expect(
-        find.byKey(ValueKey('nav_destination_$destination')).hitTestable(),
-        findsNothing,
-      );
-    }
-
-    // Copy and theme still resolve above the barrier: Localizations and the
-    // app-level RTL Directionality are installed by MaterialApp *above* its
-    // router navigator, and the single ProviderScope sits over the whole app.
-    // Read through the sheet's own context, so this pins "Localizations is
-    // reachable from a root-navigator route" rather than one language.
-    final sheetContext =
-        tester.element(find.byKey(const Key('meal_form_save_button')));
-    final strings = AppStrings.of(sheetContext);
-    expect(find.text(strings.quickAddMealTitle), findsOneWidget);
-    expect(find.text(strings.mealNameLabel), findsOneWidget);
     expect(
-      Directionality.of(
-          tester.element(find.byKey(const Key('meal_form_save_button')))),
-      TextDirection.ltr,
-      reason: 'the sheet wraps itself in LTR on purpose; the host navigator '
-          'must not change that',
+      find.byKey(discardDialog),
+      findsNothing,
+      reason: 'nothing was typed, so asking would be the old bug in reverse',
+    );
+    expect(
+      tabSelected(tester, 'vault'),
+      isTrue,
+      reason: 'closing the sheet must not be a tab switch',
     );
 
     await runOutToasts(tester);
     await tearDownApp(tester, db);
   });
+
+  testWidgets(
+    'hosting the sheet on the root navigator does not restyle it on a '
+    'tablet',
+    (tester) async {
+      await setSize(tester, const Size(1280, 900));
+      final db = await pumpApp(tester);
+      await openQuickAdd(tester);
+
+      final material = tester.getRect(
+        find
+            .descendant(
+              of: find.byType(BottomSheet),
+              matching: find.byType(Material),
+            )
+            .first,
+      );
+
+      // Material 3 caps a modal sheet at 640dp and centres it. That comes from
+      // the theme (`_BottomSheetDefaultsM3.constraints`), not from the host
+      // navigator, so covering the nav bar must not have moved it.
+      expect(material.width, 640);
+      expect(
+        material.center.dx,
+        640,
+        reason: 'still centred on a 1280dp screen',
+      );
+      expect(
+        material.bottom,
+        900,
+        reason:
+            'flush with the bottom edge — the nav strip it used to stop '
+            'above now sits behind it',
+      );
+      for (final destination in destinations) {
+        expect(
+          find.byKey(ValueKey('nav_destination_$destination')).hitTestable(),
+          findsNothing,
+        );
+      }
+
+      // Copy and theme still resolve above the barrier: Localizations and the
+      // app-level RTL Directionality are installed by MaterialApp *above* its
+      // router navigator, and the single ProviderScope sits over the whole app.
+      // Read through the sheet's own context, so this pins "Localizations is
+      // reachable from a root-navigator route" rather than one language.
+      final sheetContext = tester.element(
+        find.byKey(const Key('meal_form_save_button')),
+      );
+      final strings = AppStrings.of(sheetContext);
+      expect(find.text(strings.quickAddMealTitle), findsOneWidget);
+      expect(find.text(strings.mealNameLabel), findsOneWidget);
+      expect(
+        Directionality.of(
+          tester.element(find.byKey(const Key('meal_form_save_button'))),
+        ),
+        TextDirection.ltr,
+        reason:
+            'the sheet wraps itself in LTR on purpose; the host navigator '
+            'must not change that',
+      );
+
+      await runOutToasts(tester);
+      await tearDownApp(tester, db);
+    },
+  );
 }
 
 /// Toast timers left running make [AutomatedTestWidgetsFlutterBinding] fail at

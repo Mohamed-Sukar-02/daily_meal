@@ -36,8 +36,9 @@ Future<void> _insertMealWithPhoto(AppDatabase db, String? photoPath) async {
       carbsType: CarbsType.rice,
       category: MealCategory.egyptianTraditional,
       prepTime: 30,
-      photoPath:
-          photoPath == null ? const drift.Value(null) : drift.Value(photoPath),
+      photoPath: photoPath == null
+          ? const drift.Value(null)
+          : drift.Value(photoPath),
     ),
   );
 }
@@ -71,65 +72,84 @@ void main() {
   });
 
   group('DB failure aborts the sweep', () {
-    test('getDbPhotoPaths returns null when the database query fails',
-        () async {
-      final db = _failingDatabase();
+    test(
+      'getDbPhotoPaths returns null when the database query fails',
+      () async {
+        final db = _failingDatabase();
 
-      final paths = await OrphanImageSweeper.getDbPhotoPaths(db);
-      expect(paths, isNull,
-          reason: 'a failed DB query must surface as null, never an empty set');
-    });
+        final paths = await OrphanImageSweeper.getDbPhotoPaths(db);
+        expect(
+          paths,
+          isNull,
+          reason: 'a failed DB query must surface as null, never an empty set',
+        );
+      },
+    );
 
-    test('runSweep aborts and deletes nothing when DB resolution returns null',
-        () async {
-      final images = await _createImagesDir(docsDir);
-      final oldOrphan = await _createFile(
-        images,
-        'old_orphan.jpg',
-        age: const Duration(hours: 2),
-      );
-      final recent = await _createFile(
-        images,
-        'recent.jpg',
-        age: const Duration(minutes: 5),
-      );
+    test(
+      'runSweep aborts and deletes nothing when DB resolution returns null',
+      () async {
+        final images = await _createImagesDir(docsDir);
+        final oldOrphan = await _createFile(
+          images,
+          'old_orphan.jpg',
+          age: const Duration(hours: 2),
+        );
+        final recent = await _createFile(
+          images,
+          'recent.jpg',
+          age: const Duration(minutes: 5),
+        );
 
-      await OrphanImageSweeper.runSweep(
-        docsPath: docsDir.path,
-        resolveDbPaths: () async => null,
-      );
+        await OrphanImageSweeper.runSweep(
+          docsPath: docsDir.path,
+          resolveDbPaths: () async => null,
+        );
 
-      expect(await File(oldOrphan.path).exists(), isTrue,
-          reason: 'DB failure must never delete files');
-      expect(await File(recent.path).exists(), isTrue);
-    });
+        expect(
+          await File(oldOrphan.path).exists(),
+          isTrue,
+          reason: 'DB failure must never delete files',
+        );
+        expect(await File(recent.path).exists(), isTrue);
+      },
+    );
 
-    test('end-to-end: failing DB leaves every photo on disk untouched',
-        () async {
-      final images = await _createImagesDir(docsDir);
-      final files = <File>[];
-      for (var i = 0; i < 5; i++) {
-        files.add(await _createFile(images, 'meal_$i.jpg',
-            age: const Duration(hours: 3)));
-      }
+    test(
+      'end-to-end: failing DB leaves every photo on disk untouched',
+      () async {
+        final images = await _createImagesDir(docsDir);
+        final files = <File>[];
+        for (var i = 0; i < 5; i++) {
+          files.add(
+            await _createFile(
+              images,
+              'meal_$i.jpg',
+              age: const Duration(hours: 3),
+            ),
+          );
+        }
 
-      final db = _failingDatabase();
+        final db = _failingDatabase();
 
-      await OrphanImageSweeper.runSweep(
-        docsPath: docsDir.path,
-        resolveDbPaths: () => OrphanImageSweeper.getDbPhotoPaths(db),
-      );
+        await OrphanImageSweeper.runSweep(
+          docsPath: docsDir.path,
+          resolveDbPaths: () => OrphanImageSweeper.getDbPhotoPaths(db),
+        );
 
-      for (final f in files) {
-        expect(await File(f.path).exists(), isTrue,
-            reason: 'sweep must abort when the DB cannot be read');
-      }
-    });
+        for (final f in files) {
+          expect(
+            await File(f.path).exists(),
+            isTrue,
+            reason: 'sweep must abort when the DB cannot be read',
+          );
+        }
+      },
+    );
   });
 
   group('successful DB query drives a correct sweep', () {
-    test(
-        'old unreferenced files are deleted; '
+    test('old unreferenced files are deleted; '
         'referenced and recent files survive', () async {
       final db = AppDatabase(NativeDatabase.memory());
       addTearDown(db.close);
@@ -161,8 +181,11 @@ void main() {
       // on-disk file must protect it via the basename fallback.
       await _insertMealWithPhoto(
         db,
-        p.join(p.dirname(p.dirname(images.path)), 'elsewhere',
-            'referenced_basename.jpg'),
+        p.join(
+          p.dirname(p.dirname(images.path)),
+          'elsewhere',
+          'referenced_basename.jpg',
+        ),
       );
 
       await OrphanImageSweeper.runSweep(
@@ -170,14 +193,26 @@ void main() {
         resolveDbPaths: () => OrphanImageSweeper.getDbPhotoPaths(db),
       );
 
-      expect(await File(oldOrphan.path).exists(), isFalse,
-          reason: 'unreferenced file older than 1h must be deleted');
-      expect(await File(youngOrphan.path).exists(), isTrue,
-          reason: 'unreferenced file newer than 1h must survive');
-      expect(await File(referencedByFullPath.path).exists(), isTrue,
-          reason: 'file referenced by full path must survive');
-      expect(await File(referencedByBasename.path).exists(), isTrue,
-          reason: 'file referenced by basename must survive');
+      expect(
+        await File(oldOrphan.path).exists(),
+        isFalse,
+        reason: 'unreferenced file older than 1h must be deleted',
+      );
+      expect(
+        await File(youngOrphan.path).exists(),
+        isTrue,
+        reason: 'unreferenced file newer than 1h must survive',
+      );
+      expect(
+        await File(referencedByFullPath.path).exists(),
+        isTrue,
+        reason: 'file referenced by full path must survive',
+      );
+      expect(
+        await File(referencedByBasename.path).exists(),
+        isTrue,
+        reason: 'file referenced by basename must survive',
+      );
     });
 
     test('getDbPhotoPaths collects photo paths from the DB', () async {
@@ -196,44 +231,57 @@ void main() {
   });
 
   group('blast-radius safeguards in the sweeper itself', () {
-    test('empty DB reference set with files on disk aborts mass deletion',
-        () async {
-      final images = await _createImagesDir(docsDir);
-      final oldOrphan = await _createFile(
-        images,
-        'old_orphan.jpg',
-        age: const Duration(hours: 2),
-      );
+    test(
+      'empty DB reference set with files on disk aborts mass deletion',
+      () async {
+        final images = await _createImagesDir(docsDir);
+        final oldOrphan = await _createFile(
+          images,
+          'old_orphan.jpg',
+          age: const Duration(hours: 2),
+        );
 
-      await OrphanImageSweeper.sweepInIsolate(docsDir.path, <String>{});
+        await OrphanImageSweeper.sweepInIsolate(docsDir.path, <String>{});
 
-      expect(await File(oldOrphan.path).exists(), isTrue,
-          reason: 'zero DB references must never wipe an existing library');
-    });
+        expect(
+          await File(oldOrphan.path).exists(),
+          isTrue,
+          reason: 'zero DB references must never wipe an existing library',
+        );
+      },
+    );
 
-    test('deletion batch above maxDeletionsPerSweep aborts the whole sweep',
-        () async {
-      final images = await _createImagesDir(docsDir);
-      final files = <File>[];
-      final count = OrphanImageSweeper.maxDeletionsPerSweep + 1;
-      for (var i = 0; i < count; i++) {
-        files.add(await _createFile(images, 'orphan_$i.jpg',
-            age: const Duration(hours: 2)));
-      }
+    test(
+      'deletion batch above maxDeletionsPerSweep aborts the whole sweep',
+      () async {
+        final images = await _createImagesDir(docsDir);
+        final files = <File>[];
+        final count = OrphanImageSweeper.maxDeletionsPerSweep + 1;
+        for (var i = 0; i < count; i++) {
+          files.add(
+            await _createFile(
+              images,
+              'orphan_$i.jpg',
+              age: const Duration(hours: 2),
+            ),
+          );
+        }
 
-      await OrphanImageSweeper.sweepInIsolate(
-        docsDir.path,
-        {'/somewhere/kept.jpg'},
-      );
+        await OrphanImageSweeper.sweepInIsolate(docsDir.path, {
+          '/somewhere/kept.jpg',
+        });
 
-      for (final f in files) {
-        expect(await File(f.path).exists(), isTrue,
-            reason: 'oversized orphan batch must trigger abort, not a wipe');
-      }
-    });
+        for (final f in files) {
+          expect(
+            await File(f.path).exists(),
+            isTrue,
+            reason: 'oversized orphan batch must trigger abort, not a wipe',
+          );
+        }
+      },
+    );
 
-    test('sweep is a no-op when the images directory does not exist',
-        () async {
+    test('sweep is a no-op when the images directory does not exist', () async {
       await expectLater(
         OrphanImageSweeper.sweepInIsolate(docsDir.path, {'a.jpg'}),
         completes,

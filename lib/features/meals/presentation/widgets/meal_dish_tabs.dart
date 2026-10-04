@@ -13,10 +13,6 @@ const double _curve = 18;
 /// Corner radius shared by the bar and the clip that shapes the tab.
 const double _radius = 16;
 
-/// Horizontal inset, so the strip's ends line up with the info banner it tucks
-/// under instead of running edge to edge.
-const double _inset = 16;
-
 /// How far a curve's control points run in from its own ends, as a fraction of
 /// the run. Both sit on the level they leave or arrive at, which is what keeps
 /// the tangent flat where the curve meets the bar's hairlines; sharing one X
@@ -27,7 +23,10 @@ const double _alpha = 0.38;
 /// ACTIVE segment is a folder tab cut in the page colour, joined to the bar by
 /// a pair of bezier S-curves so tab and page read as one continuous surface.
 ///
-/// The bar's geometry (height, radius, margins, stroke) never changes; only
+/// The bar runs edge to edge, unlike the info card it tucks under: the card
+/// keeps its side margins, the strip does not.
+///
+/// The bar's geometry (height, radius, stroke) never changes; only
 /// the number of segments does, so a meal with no side dishes shows a single
 /// full-width tab rather than a collapsed row.
 ///
@@ -68,10 +67,9 @@ class MealDishTabs extends StatelessWidget {
     final activeVisual = rtl ? n - 1 - activeIndex : activeIndex;
     final visualTarget = activeVisual.toDouble();
 
-    return Container(
+    return SizedBox(
       key: const Key('meal_screen_dish_tabs'),
       height: height,
-      margin: const EdgeInsets.symmetric(horizontal: _inset),
       child: TweenAnimationBuilder<double>(
         tween: Tween(end: visualTarget),
         duration: reduceMotion

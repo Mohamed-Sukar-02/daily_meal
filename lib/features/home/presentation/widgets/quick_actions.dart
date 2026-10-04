@@ -33,14 +33,18 @@ class QuickActions extends StatelessWidget {
     final brightness = Theme.of(context).brightness;
     final strings = AppStrings.of(context);
 
+    // The pill is a capsule, so every corner radius in here is half the height.
+    const height = 38.0;
+    const radius = BorderRadius.all(Radius.circular(height / 2));
+
     return Material(
       key: const ValueKey('btn_cooked_today'),
-      borderRadius: BorderRadius.circular(23),
+      borderRadius: radius,
       color: Colors.transparent,
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: AppPalette.ctaGradient(brightness),
-          borderRadius: BorderRadius.circular(23),
+          borderRadius: radius,
           boxShadow: [
             BoxShadow(
               color: (brightness == Brightness.dark
@@ -53,10 +57,10 @@ class QuickActions extends StatelessWidget {
           ],
         ),
         child: InkWell(
-          borderRadius: BorderRadius.circular(23),
+          borderRadius: radius,
           onTap: onCookedToday,
           child: Container(
-            height: 46,
+            height: height,
             constraints: stretch
                 ? const BoxConstraints(minWidth: 96)
                 : const BoxConstraints(minWidth: 96, maxWidth: 220),

@@ -8,7 +8,9 @@ final mealHistoryProvider = StreamProvider<List<MealHistoryData>>((ref) {
   return dao.watchHistory();
 });
 
-final mealHistoryWithMealProvider = StreamProvider<List<MealHistoryWithMeal>>((ref) {
+final mealHistoryWithMealProvider = StreamProvider<List<MealHistoryWithMeal>>((
+  ref,
+) {
   final dao = ref.watch(mealHistoryDaoProvider);
   return dao.watchHistoryWithMeal();
 });
@@ -17,17 +19,17 @@ class HistoryController extends AsyncNotifier<void> {
   @override
   FutureOr<void> build() {}
 
-  Future<int> logCookedMeal(Meal meal, {DateTime? cookedAt, String? notes}) async {
+  Future<int> logCookedMeal(
+    Meal meal, {
+    DateTime? cookedAt,
+    String? notes,
+  }) async {
     state = const AsyncValue.loading();
     try {
       final db = ref.read(appDatabaseProvider);
       final dao = ref.read(mealHistoryDaoProvider);
       final id = await db.transaction(() async {
-        return await dao.logCookedMeal(
-          meal,
-          cookedAt: cookedAt,
-          notes: notes,
-        );
+        return await dao.logCookedMeal(meal, cookedAt: cookedAt, notes: notes);
       });
       state = const AsyncValue.data(null);
       return id;
@@ -37,7 +39,11 @@ class HistoryController extends AsyncNotifier<void> {
     }
   }
 
-  Future<int> logLeftoverMeal(Meal meal, {DateTime? cookedAt, String? notes}) async {
+  Future<int> logLeftoverMeal(
+    Meal meal, {
+    DateTime? cookedAt,
+    String? notes,
+  }) async {
     state = const AsyncValue.loading();
     try {
       final db = ref.read(appDatabaseProvider);
@@ -111,6 +117,7 @@ class HistoryController extends AsyncNotifier<void> {
   }
 }
 
-final historyControllerProvider = AsyncNotifierProvider<HistoryController, void>(() {
-  return HistoryController();
-});
+final historyControllerProvider =
+    AsyncNotifierProvider<HistoryController, void>(() {
+      return HistoryController();
+    });
